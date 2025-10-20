@@ -17,10 +17,15 @@ ENV/
 data/*
 !data/.gitkeep
 !data/metrics/        # Keep metrics JSON files (small, valuable for dashboard)
+!data/metrics/**      # Keep all contents of metrics directory
 !data/reports/        # Keep quality reports (markdown, useful for reference)
+!data/reports/**      # Keep all contents of reports directory
 data/silver/*         # Exclude processed data files
 data/bronze/*         # Exclude raw data files
 data/gold/*           # Exclude final datasets
+data/staging/*        # Exclude staging data files
+data/processed/*      # Exclude processed data files
+data/raw/*            # Exclude raw data files
 *.pkl
 *.h5
 *.parquet

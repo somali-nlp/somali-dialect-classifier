@@ -135,7 +135,7 @@ def export_for_github_pages(output_dir: Path = Path("_site/data")):
     with open(summary_file, 'w') as f:
         json.dump(summary, f, indent=2)
 
-    print(f"✅ Exported summary to {summary_file}")
+    print(f"[SUCCESS] Exported summary to {summary_file}")
     print(f"   - Total records: {summary['total_records']:,}")
     print(f"   - Total runs: {summary['total_runs']}")
     print(f"   - Sources: {', '.join(summary['sources'])}")
@@ -145,7 +145,7 @@ def export_for_github_pages(output_dir: Path = Path("_site/data")):
     with open(all_metrics_file, 'w') as f:
         json.dump(metrics, f, indent=2)
 
-    print(f"✅ Exported all metrics to {all_metrics_file}")
+    print(f"[SUCCESS] Exported all metrics to {all_metrics_file}")
 
     # Export reports list
     reports_dir = Path("data/reports")
@@ -162,7 +162,7 @@ def export_for_github_pages(output_dir: Path = Path("_site/data")):
         with open(reports_file, 'w') as f:
             json.dump(sorted(reports_list, key=lambda x: x["name"], reverse=True), f, indent=2)
 
-        print(f"✅ Exported {len(reports_list)} reports to {reports_file}")
+        print(f"[SUCCESS] Exported {len(reports_list)} reports to {reports_file}")
 
     return summary
 
@@ -182,12 +182,12 @@ def export_for_local_dashboard(output_dir: Path = Path("dashboard/data")):
     with open(output_dir / "cache_summary.json", 'w') as f:
         json.dump(summary, f, indent=2)
 
-    print(f"✅ Exported local dashboard cache to {output_dir}")
+    print(f"[SUCCESS] Exported local dashboard cache to {output_dir}")
 
 
 def main():
     """Main entry point."""
-    print("🔄 Exporting dashboard data...\n")
+    print("[INFO] Exporting dashboard data...\n")
 
     # Export for GitHub Pages (used by CI/CD)
     if len(sys.argv) > 1 and sys.argv[1] == "--github-pages":
@@ -197,12 +197,12 @@ def main():
         export_for_local_dashboard()
     # Export both
     else:
-        print("📊 GitHub Pages Export:")
+        print("[INFO] GitHub Pages Export:")
         export_for_github_pages()
-        print("\n📊 Local Dashboard Cache:")
+        print("\n[INFO] Local Dashboard Cache:")
         export_for_local_dashboard()
 
-    print("\n✅ Dashboard data export complete!")
+    print("\n[SUCCESS] Dashboard data export complete!")
 
 
 if __name__ == "__main__":
