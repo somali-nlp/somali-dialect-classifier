@@ -13,11 +13,12 @@ ENV/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
-# Data (don't commit large files)
-data/raw/
-data/processed/*.csv
+# Data (don't commit large files - regenerate via pipelines)
+data/*
+!data/.gitkeep
 *.pkl
 *.h5
+*.parquet
 
 # Models (use Git LFS or external storage)
 models/*.bin
@@ -32,6 +33,18 @@ models/*.pt
 .DS_Store
 Thumbs.db
 
+# Logs (runtime artifacts)
+logs/*
+!logs/.gitkeep
+*.log
+
 # Secrets
 .env
 *.key
+
+# Development artifacts (implementation summaries, scratch work)
+.archive/
+*_SUMMARY.md
+*_FEEDBACK*.md
+*_STATUS.md
+*_IMPLEMENTATION*.md

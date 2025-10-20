@@ -1,0 +1,59 @@
+<mediawiki xmlns="http://www.mediawiki.org/xml/export-0.10/" version="0.10">
+  <page>
+    <title>Soomaaliya</title>
+    <ns>0</ns>
+    <id>1</id>
+    <revision>
+      <text xml:space="preserve">'''Soomaaliya''' waa dal ku yaal Geeska Afrika. Caasimaddu waa [[Muqdisho]].
+
+==Taariikhda==
+Soomaaliya waxay leedahay taariikh dheer. {{citation needed}}
+
+==Juqraafiga==
+Waxay xuduud la leedahay [[Itoobiya]], [[Jabuuti]], iyo [[Kenya]].
+
+&lt;ref&gt;Waxaa qoray Wikipedia&lt;/ref&gt;</text>
+    </revision>
+  </page>
+  <page>
+    <title>Muqdisho</title>
+    <ns>0</ns>
+    <id>2</id>
+    <revision>
+      <text xml:space="preserve">'''Muqdisho''' waa caasimada [[Soomaaliya]]. Waa magaalo weyn.
+
+Dadka magaalada waa in ka badan 2 million.
+
+[[Category:Magaalooyinka Soomaaliya]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>Template:Infobox Country</title>
+    <ns>10</ns>
+    <id>3</id>
+    <revision>
+      <text xml:space="preserve">This is a template page and should be filtered out.</text>
+    </revision>
+  </page>
+  <page>
+    <title>User:TestUser</title>
+    <ns>2</ns>
+    <id>4</id>
+    <revision>
+      <text xml:space="preserve">This is a user page and should be filtered out.</text>
+    </revision>
+  </page>
+  <page>
+    <title>Afrika</title>
+    <ns>0</ns>
+    <id>5</id>
+    <revision>
+      <text xml:space="preserve">'''Afrika''' waa qaarad ku taal dhulka [[Dunida]].
+
+Waxay leedahay wadamo badan oo ay ka mid yihiin [[Soomaaliya]], [[Itoobiya]], [[Masar]], iyo [[Koonfur Afrika]].
+
+==Dadka==
+Afrika waxaa deggan in ka badan 1.3 billion qof.</text>
+    </revision>
+  </page>
+</mediawiki>
