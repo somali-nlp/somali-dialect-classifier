@@ -37,7 +37,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r dashboard/requirements.txt
+          pip install streamlit pandas plotly numpy
 
       - name: Build static dashboard
         run: |
@@ -277,6 +277,7 @@ jobs:
               json.dump(summary, f, indent=2)
 
           # Copy reports
+          import shutil
           reports_dir = Path("data/reports")
           if reports_dir.exists():
               site_reports = Path("_site/reports")
@@ -285,7 +286,6 @@ jobs:
               report_list = []
               for report in reports_dir.glob("*_final_quality_report.md"):
                   # Copy report
-                  import shutil
                   shutil.copy(report, site_reports / report.name)
 
                   report_list.append({
@@ -296,9 +296,34 @@ jobs:
               # Save report list
               with open(site_data / "reports.json", "w") as f:
                   json.dump(report_list, f, indent=2)
+          else:
+              # Create empty reports list if no reports exist
+              with open(site_data / "reports.json", "w") as f:
+                  json.dump([], f, indent=2)
 
           print(f"Generated dashboard data: {len(all_metrics)} metrics, {summary['total_records']} total records")
+
+          # List generated files for debugging
+          import os
+          for root, dirs, files in os.walk("_site"):
+              for file in files:
+                  print(f"  - {os.path.join(root, file)}")
           PYTHON_SCRIPT
+
+      - name: Verify build artifacts
+        run: |
+          echo "📁 Checking _site directory structure:"
+          ls -la _site/
+          echo ""
+          echo "📁 Checking data directory:"
+          ls -la _site/data/ || echo "No data directory"
+          echo ""
+          echo "📋 Checking summary.json:"
+          if [ -f _site/data/summary.json ]; then
+            head -5 _site/data/summary.json
+          else
+            echo "ERROR: summary.json not found!"
+          fi
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
