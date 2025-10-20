@@ -448,3 +448,8 @@ raise FileNotFoundError(
 - [Lifecycle & Roadmap](lifecycle.md) - Project phases and milestones
 - [Architecture](../overview/architecture.md) - System design
 - [Filter Framework Decision](../decisions/002-filter-framework.md) - Filter system design rationale
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

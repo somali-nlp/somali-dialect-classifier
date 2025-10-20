@@ -926,7 +926,8 @@ def test_my_custom_filter_parametrized(text, expected):
 
 ---
 
+---
+
 **Version**: 1.0.0
 **Last Updated**: 2025-10-20
-**Maintained By**: Somali NLP Team
-**License**: MIT License
+**Maintainers**: Somali NLP Contributors

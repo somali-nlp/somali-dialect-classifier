@@ -1154,3 +1154,8 @@ After processing BBC data:
 - [Wikipedia Integration Guide](wikipedia-integration.md) - Encyclopedia processing
 - [HuggingFace Integration Guide](huggingface-integration.md) - Large-scale web corpora
 - [Språkbanken Integration Guide](sprakbanken-integration.md) - Academic corpora
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

@@ -477,3 +477,8 @@ RuntimeError: Dataset scripts are no longer supported
 - [ADR-001: OSCAR Exclusion](../decisions/001-oscar-exclusion.md) - Why we excluded OSCAR
 - [ADR-003: MADLAD-400 Exclusion](../decisions/003-madlad-400-exclusion.md) - Why we excluded MADLAD-400
 - [Architecture Overview](../overview/architecture.md) - System design
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

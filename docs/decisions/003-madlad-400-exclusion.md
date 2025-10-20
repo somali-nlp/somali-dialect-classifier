@@ -356,4 +356,9 @@ If MADLAD-400 is critical to your use case:
 
 ---
 
-**Maintainer Note**: If MADLAD-400 is migrated to Parquet format in the future, this decision can be revisited. Until then, **use MC4** - it works beautifully! ✅
+**Maintainer Note**: If MADLAD-400 is migrated to Parquet format in the future, this decision can be revisited. Until then, use MC4 - it works beautifully!
+
+---
+
+**Date**: 2025-10-20
+**Status**: Accepted

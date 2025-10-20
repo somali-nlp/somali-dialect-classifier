@@ -1017,6 +1017,7 @@ When reporting issues, include:
 
 ---
 
+---
+
 **Last Updated**: 2025-10-20
-**Maintained By**: Somali NLP Team
-**License**: MIT License
+**Maintainers**: Somali NLP Contributors

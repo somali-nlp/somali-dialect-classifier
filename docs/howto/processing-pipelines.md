@@ -639,3 +639,8 @@ See [Silver Schema Reference](../reference/silver-schema.md) for complete field 
 - [API Reference](../reference/api.md) - Complete API documentation for all processors
 - [Architecture Overview](../overview/architecture.md) - System design and patterns
 - [Data Pipeline Overview](../overview/data-pipeline-architecture.md) - ETL architecture and medallion layers
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

@@ -325,3 +325,8 @@ The Somali Dialect Classifier is a multi-phase project to build a machine learni
 - [Architecture](../overview/architecture.md) - Technical design
 - [Data Pipeline](../overview/data-pipeline-architecture.md) - Current data flow
 - [Deployment Guide](../operations/deployment.md) - Production setup (when available)
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

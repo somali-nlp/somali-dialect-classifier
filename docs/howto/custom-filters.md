@@ -518,3 +518,8 @@ def well_documented_filter(
 - [Processing Pipelines](processing-pipelines.md) - How to use filters in pipelines
 - [Architecture](../overview/architecture.md) - Filter framework design
 - [Filter Framework Decision](../decisions/002-filter-framework.md) - Design rationale
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

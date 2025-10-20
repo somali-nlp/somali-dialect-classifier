@@ -1152,3 +1152,8 @@ tail -f /var/log/somali-nlp/pipeline.log | grep ERROR
 - [Architecture Documentation](ARCHITECTURE.md) - System design
 - [Data Pipeline](DATA_PIPELINE.md) - ETL pipeline details
 - [Testing Guide](TESTING.md) - Testing strategies
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

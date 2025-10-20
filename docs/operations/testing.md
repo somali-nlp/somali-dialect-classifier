@@ -930,3 +930,8 @@ def test_filter():
        record = build_silver_record(...)
        SilverRecord(**record)  # Validates via Pydantic
    ```
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

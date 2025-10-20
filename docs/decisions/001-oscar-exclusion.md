@@ -158,4 +158,9 @@ But honestly? **MC4 is enough.** You have quantity AND your own quality filters.
 | Maintenance | Zero | Ongoing |
 | **Decision** | **✅ USE** | **❌ SKIP** |
 
-**Bottom line**: MC4 gives you MORE data with LESS hassle. That's a win-win! 🎉
+**Bottom line**: MC4 gives you MORE data with LESS hassle. That's a win-win!
+
+---
+
+**Date**: 2025-10-16
+**Status**: Accepted

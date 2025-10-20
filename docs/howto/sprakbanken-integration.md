@@ -576,3 +576,8 @@ See also:
 - [Data Pipeline Overview](../overview/data-pipeline-architecture.md)
 - [Silver Schema Reference](../reference/silver-schema.md)
 - [Quality Filters Guide](../howto/quality-filters.md)
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

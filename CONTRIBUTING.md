@@ -488,4 +488,9 @@ Please note that this project has a [Code of Conduct](CODE_OF_CONDUCT.md). By pa
 
 ---
 
-**Thank you for contributing to Somali Dialect Classifier!** 🎉
+**Thank you for contributing to Somali Dialect Classifier!**
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

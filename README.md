@@ -520,3 +520,8 @@ All contributors are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md
 ## License
 
 This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

@@ -767,3 +767,8 @@ export SDC_FILTERING__LANG_CONFIDENCE_THRESHOLD=0.7
 4. **Documentation Restructure** - Reorganize docs/ into MkDocs/Sphinx-ready structure (see Principal MLE recommendations)
 5. **Orchestration** - Add Prefect/Dagster flows for scheduled pipeline runs
 6. **Labeling Strategy** - Define annotation guidelines and active learning approach for model training phase
+
+---
+
+**Date**: 2025-10-20
+**Status**: Accepted

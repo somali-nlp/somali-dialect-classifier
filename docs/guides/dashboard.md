@@ -835,7 +835,7 @@ Contributions to improve the dashboard are welcome! See [CONTRIBUTING.md](../../
 
 ---
 
-**Dashboard Version**: 1.0.0
+---
+
 **Last Updated**: 2025-10-20
-**Maintained By**: Somali NLP Team
-**License**: MIT License
+**Maintainers**: Somali NLP Contributors

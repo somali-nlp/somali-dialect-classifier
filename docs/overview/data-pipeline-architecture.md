@@ -1173,3 +1173,8 @@ aws s3 sync data/raw/source=Wikipedia-Somali/date_accessed=2024-12-15/ \
 # Delete local copy
 rm -rf data/raw/source=Wikipedia-Somali/date_accessed=2024-12-15/
 ```
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

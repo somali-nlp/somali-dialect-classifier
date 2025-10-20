@@ -643,3 +643,8 @@ Current API is **stable** for:
 - MAJOR version: Breaking API changes
 - MINOR version: New features (backward compatible)
 - PATCH version: Bug fixes
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

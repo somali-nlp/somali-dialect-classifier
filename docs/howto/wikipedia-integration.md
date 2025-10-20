@@ -908,3 +908,8 @@ After processing Wikipedia data:
 - [BBC Integration Guide](bbc-integration.md) - News article processing
 - [HuggingFace Integration Guide](huggingface-integration.md) - Large-scale web corpora
 - [Språkbanken Integration Guide](sprakbanken-integration.md) - Academic corpora
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

@@ -588,3 +588,8 @@ def test_custom_config():
 - [API Reference](API_REFERENCE.md) - Programmatic APIs
 - [Deployment Guide](DEPLOYMENT.md) - Production deployment
 - [Data Pipeline](DATA_PIPELINE.md) - Pipeline architecture
+
+---
+
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

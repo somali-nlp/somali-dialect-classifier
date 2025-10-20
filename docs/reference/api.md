@@ -1575,3 +1575,9 @@ print(df.head())
 - [Data Pipeline](DATA_PIPELINE.md) - ETL pipeline details
 - [Testing Guide](TESTING.md) - Testing strategies and examples
 - [Deployment Guide](DEPLOYMENT.md) - Production deployment
+
+---
+
+**Version**: 1.0.0
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

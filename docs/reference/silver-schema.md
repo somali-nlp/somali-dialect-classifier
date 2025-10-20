@@ -914,3 +914,9 @@ Planned for future schema versions:
 - [Språkbanken Integration](../howto/sprakbanken-integration.md)
 - [Quality Filters](../howto/quality-filters.md)
 - [Deduplication Guide](../howto/deduplication.md)
+
+---
+
+**Version**: 2.1.0
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors

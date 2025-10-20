@@ -315,7 +315,7 @@ See [Documentation Guide](guides/documentation-guide.md) for comprehensive writi
 
 ---
 
-**Maintained By**: Somali NLP Team
-**License**: MIT License
+---
 
-**Questions?** Open an issue on [GitHub](https://github.com/your-org/somali-dialect-classifier/issues)
+**Last Updated**: 2025-10-20
+**Maintainers**: Somali NLP Contributors
