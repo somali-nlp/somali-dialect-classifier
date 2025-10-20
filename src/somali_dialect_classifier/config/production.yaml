@@ -1,0 +1,310 @@
+# Production Configuration for Somali Dialect Classifier
+# Version: 1.0
+# Last Updated: 2025-01-19
+#
+# This configuration defines production-ready settings for all 4 data sources
+# with ethical scraping policies and observability configuration.
+
+# ============================================================================
+# ETHICAL SCRAPING POLICY
+# ============================================================================
+# This project commits to ethical data collection practices:
+# 1. Respect robots.txt and terms of service
+# 2. Implement rate limiting to avoid overloading servers
+# 3. Use conditional requests to minimize bandwidth
+# 4. Identify bot with proper User-Agent
+# 5. Respect content creators and copyright
+
+# ============================================================================
+# DATA SOURCES CONFIGURATION
+# ============================================================================
+
+sources:
+  # --------------------------------------------------------------------------
+  # BBC Somali News Configuration
+  # --------------------------------------------------------------------------
+  bbc:
+    # Rate limiting settings
+    rate_limiting:
+      delay_range: [5, 10]  # Random delay between requests (seconds)
+      max_requests_per_hour: 60  # Maximum requests per hour
+      backoff_multiplier: 2.0  # Exponential backoff multiplier
+      max_backoff: 300  # Maximum backoff in seconds (5 minutes)
+      jitter: true  # Add random jitter to delays
+
+    # RSS feed settings for ethical throttling
+    rss:
+      check_frequency_hours: 6  # Minimum hours between RSS checks
+      max_items_per_feed: 100  # Maximum items to process per feed
+      feeds:  # RSS feed URLs to monitor
+        - "https://www.bbc.com/somali/index.xml"
+        - "https://www.bbc.com/somali/topics/c340q430z4vt.xml"  # Politics
+        - "https://www.bbc.com/somali/topics/cjgn7n0yz22t.xml"  # Business
+
+    # HTTP settings
+    http:
+      timeout: 30  # Request timeout in seconds
+      max_retries: 3  # Maximum retries for failed requests
+      user_agent: "SomaliNLPBot/1.0 (Educational Research; +https://github.com/somali-nlp/somali-dialect-classifier)"
+      enable_conditional: true  # Use If-Modified-Since and If-None-Match
+      respect_robots_txt: true  # Check and respect robots.txt
+
+    # Content filtering
+    filters:
+      min_text_length: 50  # Minimum article length in characters
+      language_confidence: 0.3  # Somali language detection threshold
+      max_age_days: null  # No age limit (null for unlimited)
+
+    # Daily limits for responsible scraping
+    limits:
+      max_articles_per_day: 500  # Daily cap for articles
+      max_bytes_per_day: 100_000_000  # 100 MB daily bandwidth limit
+
+  # --------------------------------------------------------------------------
+  # Wikipedia Somali Configuration
+  # --------------------------------------------------------------------------
+  wikipedia:
+    # API settings
+    api:
+      endpoint: "https://so.wikipedia.org/w/api.php"
+      batch_size: 100  # Articles per API request
+      timeout: 30  # Request timeout
+
+    # Rate limiting (Wikipedia API is more lenient)
+    rate_limiting:
+      delay_range: [1, 2]  # Shorter delays for API
+      max_requests_per_minute: 30  # API rate limit
+
+    # Content filtering
+    filters:
+      min_text_length: 100  # Minimum article length
+      exclude_redirects: true  # Skip redirect pages
+      exclude_disambiguations: true  # Skip disambiguation pages
+
+  # --------------------------------------------------------------------------
+  # HuggingFace Datasets (MC4) Configuration
+  # --------------------------------------------------------------------------
+  huggingface:
+    # Dataset settings
+    datasets:
+      mc4:
+        name: "mc4"
+        config: "so"  # Somali configuration
+        split: "train"
+        revision: null  # Pin to specific revision for reproducibility
+        streaming: true  # Use streaming to handle large dataset
+        batch_size: 5000  # Records per batch file
+
+    # Processing settings
+    processing:
+      max_workers: 4  # Parallel processing threads
+      checkpoint_frequency: 10000  # Save checkpoint every N records
+      resume_from_checkpoint: true  # Enable resume capability
+
+    # Content filtering
+    filters:
+      min_text_length: 100  # Minimum text length in characters
+      language_confidence: 0.3  # Language detection threshold
+      perplexity_threshold: null  # Optional perplexity filter
+
+  # --------------------------------------------------------------------------
+  # Språkbanken Configuration
+  # --------------------------------------------------------------------------
+  sprakbanken:
+    # API settings
+    api:
+      base_url: "https://spraakbanken.gu.se/ws/korp/v8"
+      timeout: 30  # Request timeout
+      max_retries: 3  # Retry failed requests
+
+    # Corpora to process (23 Somali corpora)
+    corpora:
+      - "somali-abdullah_2012_short_stories"
+      - "somali-asluub-1969"
+      - "somali-cabdalla_2019_politics"
+      - "somali-dahir_2020_news"
+      # ... (full list in processor)
+
+    # Processing settings
+    processing:
+      batch_size: 5000  # Records per batch
+      max_concurrent_requests: 3  # Parallel API requests
+
+    # Content filtering
+    filters:
+      min_token_length: 20  # Minimum text length in tokens
+      language_confidence: 0.3  # Language detection threshold
+
+# ============================================================================
+# DEDUPLICATION CONFIGURATION
+# ============================================================================
+
+deduplication:
+  # Hash-based exact deduplication
+  exact:
+    enabled: true
+    hash_algorithm: "sha256"  # Hash algorithm to use
+    hash_fields: ["text", "url"]  # Fields to include in hash
+    field_separator: "|"  # Separator for combining fields
+
+  # MinHash-based near-deduplication
+  near:
+    enabled: true
+    similarity_threshold: 0.85  # Jaccard similarity threshold
+    num_permutations: 128  # MinHash signature size
+    shingle_size: 3  # Word n-grams for shingling
+    seed: 42  # Random seed for reproducibility
+
+# ============================================================================
+# OBSERVABILITY CONFIGURATION
+# ============================================================================
+
+logging:
+  # Structured logging settings
+  format: "json"  # json or text
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+
+  # File logging
+  file:
+    enabled: true
+    path: "logs/production.log"
+    rotation:
+      max_bytes: 104857600  # 100 MB
+      backup_count: 10  # Keep 10 backup files
+      compress: true  # Compress rotated files
+
+  # Console logging
+  console:
+    enabled: true
+    format: "text"  # Human-readable for console
+    colored: true  # Use color coding
+
+  # Context fields to inject
+  context:
+    run_id: true  # Include run ID in all logs
+    source: true  # Include data source
+    phase: true  # Include processing phase
+    hostname: true  # Include machine hostname
+
+metrics:
+  # Metrics export configuration
+  export:
+    enabled: true
+    format: "json"  # json (initial) or prometheus (future)
+    path: "data/metrics"  # Directory for metrics files
+
+  # Metrics to collect
+  collect:
+    # Counters
+    urls_discovered: true
+    urls_fetched: true
+    urls_processed: true
+    urls_failed: true
+    urls_deduplicated: true
+    bytes_downloaded: true
+
+    # Histograms
+    fetch_duration_ms: true
+    process_duration_ms: true
+    text_length: true
+
+    # Distributions
+    http_status_codes: true
+    filter_reasons: true
+    error_types: true
+
+  # Quality report settings
+  quality_report:
+    enabled: true
+    format: "markdown"  # Report format
+    include_plots: false  # Generate visualization plots
+    path: "data/reports"  # Directory for reports
+
+# ============================================================================
+# RUNTIME CONFIGURATION
+# ============================================================================
+
+runtime:
+  # Crawl ledger settings
+  ledger:
+    backend: "sqlite"  # sqlite or postgres
+    sqlite:
+      path: "data/ledger/crawl_ledger.db"
+      wal_mode: true  # Use WAL mode for better concurrency
+      timeout: 30  # Lock timeout in seconds
+    postgres:  # For future migration
+      connection_string: "${POSTGRES_CONNECTION_STRING}"
+      pool_size: 10
+      max_overflow: 20
+
+  # Processing settings
+  processing:
+    batch_size: 5000  # Default batch size for processing
+    checkpoint_interval: 10000  # Checkpoint every N records
+    max_workers: 4  # Maximum parallel workers
+    memory_limit_gb: 8  # Memory limit per worker
+
+  # Error handling
+  error_handling:
+    max_retries: 3  # Maximum retries for transient errors
+    retry_delay: 5  # Initial retry delay in seconds
+    ignore_errors: false  # Continue on non-fatal errors
+
+  # Cleanup settings
+  cleanup:
+    remove_raw_after_processing: false  # Keep raw files
+    compress_old_files: true  # Compress files older than N days
+    compression_age_days: 7  # Age threshold for compression
+    cleanup_age_days: 30  # Remove failed entries after N days
+
+# ============================================================================
+# PRODUCTION RUN PROFILES
+# ============================================================================
+
+profiles:
+  # Test run configuration
+  test:
+    bbc_max_articles: 100
+    wikipedia_max_articles: 500
+    huggingface_max_records: 1000
+    sprakbanken_max_corpora: 3
+
+  # Medium production run
+  medium:
+    bbc_max_articles: 1000
+    wikipedia_max_articles: null  # All articles
+    huggingface_max_records: 50000
+    sprakbanken_max_corpora: null  # All corpora
+
+  # Full production run
+  full:
+    bbc_max_articles: null  # No limit
+    wikipedia_max_articles: null  # All articles
+    huggingface_max_records: null  # Full dataset
+    sprakbanken_max_corpora: null  # All corpora
+
+# ============================================================================
+# MONITORING & ALERTING
+# ============================================================================
+
+monitoring:
+  # Health checks
+  health_check:
+    enabled: true
+    interval_minutes: 5  # Check every 5 minutes
+
+  # Alert thresholds
+  alerts:
+    error_rate_threshold: 0.1  # Alert if >10% errors
+    dedup_rate_threshold: 0.5  # Alert if >50% duplicates
+    fetch_duration_p95_ms: 5000  # Alert if p95 >5 seconds
+    disk_usage_threshold_gb: 25  # Alert if >25 GB used
+
+# ============================================================================
+# ENVIRONMENT VARIABLES
+# ============================================================================
+# The following environment variables can override settings:
+# - SDC_PROFILE: Select run profile (test, medium, full)
+# - SDC_LOG_LEVEL: Override log level
+# - SDC_LEDGER_BACKEND: Override ledger backend
+# - POSTGRES_CONNECTION_STRING: PostgreSQL connection for ledger

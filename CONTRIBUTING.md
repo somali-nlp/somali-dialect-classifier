@@ -156,19 +156,27 @@ pytest
 
 ## Adding New Data Sources
 
-To add a new data source (e.g., VOA Somali, HuggingFace datasets):
+The project currently has **4 production data sources**: Wikipedia, BBC Somali, HuggingFace (MC4), and Språkbanken (23 corpora). When adding a fifth source:
 
 ### 1. Create Processor Class
 
-Create `src/somali_dialect_classifier/preprocessing/your_source_processor.py`:
+Create `src/somali_dialect_classifier/preprocessing/your_source_somali_processor.py`:
+
+**Note**: Follow the naming convention `<source>_somali_processor.py`
 
 ```python
 from .base_pipeline import BasePipeline, RawRecord
 from typing import Iterator
+from ..config import get_config
 
-class YourSourceProcessor(BasePipeline):
-    def __init__(self):
-        super().__init__(source="YourSource-Somali")
+class YourSourceSomaliProcessor(BasePipeline):
+    def __init__(self, force: bool = False):
+        # Load config BEFORE super().__init__() if using in _register_filters()
+        config = get_config()
+        self.source_config = config.scraping.yoursource  # Add to config.yaml
+
+        super().__init__(source="YourSource-Somali", force=force)
+
         # Set file paths
         self.staging_file = self.staging_dir / "yoursource_articles.json"
         self.processed_file = self.processed_dir / "yoursource.txt"
@@ -188,8 +196,25 @@ class YourSourceProcessor(BasePipeline):
         # Implementation
         yield RawRecord(title="...", text="...", url="...", metadata={})
 
+    def _create_cleaner(self):
+        """Create text cleaner."""
+        from .text_cleaners import create_html_cleaner
+        return create_html_cleaner()
+
+    def _register_filters(self):
+        """Register quality filters."""
+        from .filters import min_length_filter, langid_filter
+
+        self.record_filters.append((min_length_filter, {
+            "threshold": self.source_config.min_length_threshold
+        }))
+        self.record_filters.append((langid_filter, {
+            "allowed_langs": {"so"},
+            "confidence_threshold": self.source_config.langid_confidence
+        }))
+
     def _get_source_type(self) -> str:
-        return "news"  # or "wiki", "social", etc.
+        return "news"  # or "wiki", "social", "corpus", "web"
 
     def _get_license(self) -> str:
         return "CC-BY-4.0"  # or appropriate license
@@ -199,37 +224,127 @@ class YourSourceProcessor(BasePipeline):
 
     def _get_source_metadata(self) -> dict:
         return {"custom_field": "value"}
+
+    def _get_domain(self) -> str:
+        """Return content domain."""
+        return "news"  # or "encyclopedia", "social_media", "literature", etc.
 ```
 
-### 2. Create CLI Entry Point
+### 2. Integrate with Phase 0 Infrastructure
 
-Create `src/somali_dialect_classifier/cli/download_yoursource.py`:
+**Phase 0 provides production-ready MLOps infrastructure**. Integrate your processor:
+
+```python
+from somali_dialect_classifier.utils.logging_utils import (
+    StructuredLogger, set_run_context, get_run_id
+)
+from somali_dialect_classifier.utils.metrics import MetricsCollector, QualityReporter
+from somali_dialect_classifier.preprocessing.crawl_ledger import get_ledger
+from somali_dialect_classifier.preprocessing.dedup import DedupEngine
+
+class YourSourceSomaliProcessor(BasePipeline):
+    def __init__(self, force: bool = False):
+        config = get_config(env="production")  # or "development"
+
+        # Structured logging
+        self.logger = StructuredLogger("YourSource-Somali", config)
+
+        # Crawl ledger for state tracking
+        self.ledger = get_ledger()  # SQLite by default
+
+        # Deduplication engine
+        self.dedup = DedupEngine(config, self.ledger)
+
+        super().__init__(source="YourSource-Somali", force=force)
+
+    def download(self):
+        run_id = get_run_id("YourSource-Somali")
+        set_run_context(run_id=run_id, source="YourSource-Somali", phase="discovery")
+
+        # Initialize metrics
+        self.metrics = MetricsCollector(run_id, "YourSource-Somali")
+
+        self.logger.info("discovery_started", strategy="api")
+
+        # Discover URLs and mark in ledger
+        for url in discovered_urls:
+            self.ledger.mark_discovered(url, "yoursource", metadata={"type": "article"})
+            self.metrics.increment('urls_discovered')
+
+        return manifest_path
+
+    def extract(self):
+        set_run_context(run_id=self.metrics.run_id, source="YourSource-Somali", phase="fetch")
+
+        # Get pending URLs from ledger
+        pending = self.ledger.get_pending("yoursource", limit=1000)
+
+        for entry in pending:
+            # Check for duplicates via hash
+            text_hash = self._compute_text_hash(article_text, url)
+            if self.ledger.is_duplicate(text_hash):
+                self.ledger.mark_duplicate(url, text_hash, duplicate_url)
+                self.metrics.increment('urls_deduplicated')
+                continue
+
+            # Fetch and mark in ledger
+            self.ledger.mark_fetched(url, 200, text_hash, etag="...", content_length=len(text))
+            self.metrics.increment('urls_fetched')
+
+        # Export metrics and generate report
+        self.metrics.export_json()
+        QualityReporter(self.metrics).generate_markdown_report()
+
+        return staging_path
+```
+
+**See**: [Phase 0 Implementation Guide](docs/operations/PHASE_0_IMPLEMENTATION_GUIDE.md)
+
+### 3. Create CLI Entry Point
+
+Create `src/somali_dialect_classifier/cli/download_yoursourcesom.py`:
+
+**Note**: Follow the naming convention `download_<source>som.py`
 
 ```python
 def main() -> None:
-    processor = YourSourceProcessor()
-    processor.download()
-    processor.extract()
-    processor.process()
+    processor = YourSourceSomaliProcessor()
+    processor.run()  # Runs download → extract → process
 ```
 
 Add to `pyproject.toml`:
 ```toml
 [project.scripts]
-yoursource-download = "somali_dialect_classifier.cli.download_yoursource:main"
+yoursourcesom-download = "somali_dialect_classifier.cli.download_yoursourcesom:main"
 ```
 
-### 3. Add Tests
+### 4. Add Configuration
+
+Add to `src/somali_dialect_classifier/config/production.yaml`:
+
+```yaml
+yoursource:
+  timeout: 30
+  max_requests_per_hour: 100
+  min_length_threshold: 50
+  langid_confidence_threshold: 0.3
+```
+
+### 5. Add Tests
 
 1. Add test fixtures to `tests/fixtures/yoursource_sample.json`
 2. Create `tests/test_yoursource_integration.py`
-3. Add processor to `PROCESSOR_CLASSES` in `tests/test_base_pipeline_contract.py`
+3. Create `tests/test_yoursource_processor.py`
+4. Add processor to `PROCESSOR_CLASSES` in `tests/test_base_pipeline_contract.py`
+5. Add Phase 0 integration tests (ledger, metrics, logging)
 
-### 4. Update Documentation
+### 6. Update Documentation
 
 - Add usage example to `README.md`
-- Document data source in docstrings
-- Update architecture diagrams if needed
+- Create `docs/howto/yoursource-integration.md` (follow template from other sources)
+- Update `docs/index.md` to include new source
+- Add to `docs/reference/api.md`
+- Document ethical scraping policies if web scraping
 
 ## Pull Request Process
 

@@ -1,5 +1,7 @@
 from .wikipedia_somali_processor import WikipediaSomaliProcessor
 from .bbc_somali_processor import BBCSomaliProcessor
+from .huggingface_somali_processor import HuggingFaceSomaliProcessor
+from .sprakbanken_somali_processor import SprakbankenSomaliProcessor
 from .text_cleaners import (
     WikiMarkupCleaner,
     WhitespaceCleaner,
@@ -16,14 +18,12 @@ from .record_utils import (
 )
 from .silver_writer import SilverDatasetWriter
 
-# Backwards compatibility alias
-SomaliWikipediaProcessor = WikipediaSomaliProcessor
-
 __all__ = [
     # Processors
     "WikipediaSomaliProcessor",
     "BBCSomaliProcessor",
-    "SomaliWikipediaProcessor",  # Legacy
+    "HuggingFaceSomaliProcessor",
+    "SprakbankenSomaliProcessor",
     # Text cleaning
     "WikiMarkupCleaner",
     "WhitespaceCleaner",

@@ -4,7 +4,7 @@ This document outlines the implementation of the Principal MLE's feedback on sil
 
 ## Overview
 
-**Status**: Core Filter Framework ✅ Complete | HF Processor & Full Testing ⏳ In Progress
+**Status**: ✅ **COMPLETE** - All components implemented and tested
 
 ### Completed Components
 
@@ -13,14 +13,21 @@ This document outlines the implementation of the Principal MLE's feedback on sil
 3. ✅ **Filter Statistics Logging** with Counter
 4. ✅ **Wikipedia Processor Retrofit** with filters
 5. ✅ **BBC Processor Retrofit** with filters and topic enrichment
+6. ✅ **HuggingFaceSomaliProcessor Implementation** with streaming support
+7. ✅ **Comprehensive Unit Tests** for all filters ([test_filters.py](tests/test_filters.py))
+8. ✅ **Integration Tests** for Wikipedia, BBC, and HF processors
+9. ✅ **HF Processor Tests** with fixtures ([test_hf_processor.py](tests/test_hf_processor.py), [test_hf_integration.py](tests/test_hf_integration.py))
+10. ✅ **Configuration Externalization** via environment variables
+11. ✅ **Documentation** - HUGGINGFACE_DATASETS.md, HUGGINGFACE_DATA_FLOW.md
 
-### Remaining Work (Execution Order)
+### Recent Principal MLE Review Fixes
 
-1. ⏳ Add comprehensive unit tests for filters
-2. ⏳ Update integration tests with filter assertions
-3. ⏳ Implement HFDatasetsProcessor class
-4. ⏳ Add HF processor smoke tests
-5. ⏳ Document filter usage guidelines
+1. ✅ **BUG FIX**: `HuggingFaceSomaliProcessor.process()` now raises `ValueError` instead of returning `None` when all records filtered
+2. ✅ **HIGH RISK FIX**: `BasePipeline` default `batch_size` changed from `None` to `5000` to prevent OOM on large sources
+3. ✅ **RISK FIX**: HF source slug changed to filesystem-friendly format (no spaces/parentheses)
+4. ✅ **RISK FIX**: Contract tests made tolerant of missing optional `datasets` library
+5. ✅ **RISK FIX**: BBC scraper hardened with semantic selectors (replaced transient CSS classes)
+6. ✅ **RISK FIX**: BBC scraper now logs warnings on empty text extraction
 
 ---
 
@@ -224,7 +231,7 @@ def _register_filters(self) -> None:
 ### Architecture
 
 ```python
-class HFDatasetsProcessor(BasePipeline):
+class HuggingFaceSomaliProcessor(BasePipeline):
     """
     Processor for HuggingFace datasets with streaming support.
 
@@ -419,7 +426,7 @@ def _register_filters(self) -> None:
 
 ```python
 # Example: Process mc4 Somali subset
-processor = HFDatasetsProcessor(
+processor = HuggingFaceSomaliProcessor(
     dataset_name="mc4",
     config_name="so",  # Somali
     split="train",
@@ -559,7 +566,7 @@ class TestHFProcessor:
         sample = list(dataset.take(5))
 
         # Create processor
-        processor = HFDatasetsProcessor(
+        processor = HuggingFaceSomaliProcessor(
             dataset_name="mc4",
             config_name="so",
             split="train"
@@ -725,7 +732,7 @@ export SDC_FILTERING__LANG_CONFIDENCE_THRESHOLD=0.7
 
 ## Summary
 
-### Completed ✅
+### ✅ All Tasks Complete
 
 1. **Complete Filter Framework** with 5 filters + convenience constructors
 2. **BasePipeline Hook Interface** with `_register_filters()` override point
@@ -733,15 +740,12 @@ export SDC_FILTERING__LANG_CONFIDENCE_THRESHOLD=0.7
 4. **Filter Statistics** logged with Counter
 5. **Wikipedia Retrofit** with min_length + langid filters
 6. **BBC Retrofit** with min_length + langid + topic enrichment
-
-### Design Complete, Implementation Pending ⏳
-
-1. **HFDatasetsProcessor** class (full design documented above)
-2. **Comprehensive unit tests** for all filters
-3. **Integration test updates** for Wikipedia/BBC filtering
-4. **HF smoke tests** with take(5) for CI
-5. **Configuration externalization** for filter thresholds
-6. **README documentation** with usage examples
+7. **HuggingFaceSomaliProcessor** fully implemented with streaming JSONL batching
+8. **Comprehensive unit tests** covering all filters (28+ tests)
+9. **Integration test suite** for Wikipedia/BBC/HF processors
+10. **Configuration externalization** via pydantic-settings
+11. **Documentation** - 1200+ lines across HUGGINGFACE_DATASETS.md and HUGGINGFACE_DATA_FLOW.md
+12. **Principal MLE Review Fixes** - All 6 critical/high-risk/risk items addressed
 
 ### Key Achievements
 
@@ -751,13 +755,15 @@ export SDC_FILTERING__LANG_CONFIDENCE_THRESHOLD=0.7
 - **Audit trail**: Per-filter drop counts logged
 - **Graceful degradation**: Filter exceptions don't crash pipeline
 - **Extensible**: New processors inherit filter framework automatically
+- **Production-ready**: Handles OOM scenarios, filesystem compatibility, empty data edge cases
+- **Test coverage**: 165+ tests including contract tests, integration tests, and unit tests
+- **Robust BBC scraper**: Multi-level semantic selector fallback strategy
 
-### Next Steps for Team
+### Outstanding Items (Future Work)
 
-1. **Senior MLE**: Complete unit test suite for filters
-2. **Mid-level MLE**: Update integration tests with filter assertions
-3. **Mid-level MLE**: Externalize filter config to environment
-4. **Senior + Junior**: Implement HFDatasetsProcessor following design above
-5. **Junior**: Add README documentation for filter usage
-
-**Timeline**: 2-3 days for full implementation + testing
+1. **MLflow Integration** - Hook up filter statistics to MLflow tracking (design documented)
+2. **Great Expectations** - Add data quality assertions (example provided)
+3. **Precision/Recall Evaluation** - Benchmark heuristic filter accuracy against labeled test set
+4. **Documentation Restructure** - Reorganize docs/ into MkDocs/Sphinx-ready structure (see Principal MLE recommendations)
+5. **Orchestration** - Add Prefect/Dagster flows for scheduled pipeline runs
+6. **Labeling Strategy** - Define annotation guidelines and active learning approach for model training phase

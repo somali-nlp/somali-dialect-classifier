@@ -82,7 +82,7 @@ class BasePipeline(DataProcessor, ABC):
         self,
         source: str,
         log_frequency: int = 1000,
-        batch_size: Optional[int] = None,
+        batch_size: Optional[int] = 5000,
         force: bool = False,
     ):
         """
@@ -91,25 +91,41 @@ class BasePipeline(DataProcessor, ABC):
         Args:
             source: Source name (e.g., "Wikipedia-Somali", "BBC-Somali")
             log_frequency: Log progress every N records (default: 1000)
-            batch_size: Write silver dataset in batches of N records (None = all at once)
+            batch_size: Write silver dataset in batches of N records (default: 5000, prevents OOM for large sources)
             force: Force reprocessing even if output files exist (default: False)
         """
         self.source = source
         self.log_frequency = log_frequency
         self.batch_size = batch_size
         self.force = force
-        self.logger = logging.getLogger(__name__)
 
         # Timestamp for partitioning
         self.date_accessed = datetime.now(timezone.utc).date().isoformat()
+
+        # Generate run_id for file naming and traceability
+        from ..utils.logging_utils import generate_run_id
+        self.run_id = generate_run_id(source.lower().replace("-", "_"))
+
+        # Initialize StructuredLogger with run_id for JSON logging
+        # This will be used by all subclasses instead of plain logger
+        from ..utils.logging_utils import StructuredLogger
+        self.structured_logger = StructuredLogger(
+            name=source,
+            level="INFO",
+            log_file=Path(f"logs/{source.lower().replace(' ', '-')}_{self.run_id}_pipeline.log"),
+            json_format=True
+        )
+        # Get the actual logger instance for use in methods
+        self.logger = self.structured_logger.get_logger()
 
         # Load config for directory paths
         config = get_config()
 
         # Consistent directory structure using config paths
+        # NOTE: Using date_accessed for ALL layers (fixed inconsistency)
         self.raw_dir = config.data.raw_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
         self.staging_dir = config.data.staging_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
-        self.processed_dir = config.data.processed_dir / f"source={source}" / f"date_processed={self.date_accessed}"
+        self.processed_dir = config.data.processed_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
 
         # Initialize shared utilities
         self.text_cleaner = self._create_cleaner()
@@ -224,6 +240,34 @@ class BasePipeline(DataProcessor, ABC):
         """
         pass
 
+    @abstractmethod
+    def _get_domain(self) -> str:
+        """
+        Get content domain for silver records.
+
+        Returns:
+            Domain string (e.g., "news", "encyclopedia", "literature", "science")
+
+        Example:
+            return "encyclopedia"  # for Wikipedia
+            return "news"  # for BBC Somali
+        """
+        pass
+
+    @abstractmethod
+    def _get_register(self) -> str:
+        """
+        Get linguistic register for silver records.
+
+        Returns:
+            Register string ("formal", "informal", "colloquial")
+
+        Example:
+            return "formal"  # for Wikipedia, BBC, HuggingFace MC4, Språkbanken
+            return "informal"  # for TikTok (future)
+        """
+        pass
+
     def process(self) -> Path:
         """
         Shared processing orchestration (NO MORE DUPLICATION!).
@@ -318,6 +362,10 @@ class BasePipeline(DataProcessor, ABC):
                 # Include filter-enriched metadata
                 merged_metadata = {**source_meta, **raw_record.metadata, **filter_metadata}
 
+                # Extract source_id from metadata if available
+                # This allows sources to populate source_id field (e.g., corpus_id for Språkbanken)
+                source_id = raw_record.metadata.get('corpus_id') or raw_record.metadata.get('source_id')
+
                 # Build silver record using shared utility
                 record = build_silver_record(
                     text=cleaned,
@@ -328,10 +376,14 @@ class BasePipeline(DataProcessor, ABC):
                     source_type=self._get_source_type(),
                     language=self._get_language(),
                     license_str=self._get_license(),
-                    pipeline_version="1.0.0",
+                    pipeline_version="2.1.0",  # Updated for schema v2.1
                     source_metadata=merged_metadata,
                     date_published=raw_record.metadata.get('date_published'),
                     topic=raw_record.metadata.get('topic'),
+                    domain=self._get_domain(),
+                    embedding=None,  # Placeholder for future embeddings
+                    register=self._get_register(),  # v2.1: Linguistic register
+                    source_id=source_id,  # Source-specific identifier
                 )
                 records.append(record)
                 records_processed += 1
@@ -365,7 +417,29 @@ class BasePipeline(DataProcessor, ABC):
                 records=records,
                 source=self.source,
                 date_accessed=self.date_accessed,
+                run_id=self.run_id,
             )
+
+        # Export processing metrics and generate final quality report
+        # Only do this if metrics collector is available (passed from subclass)
+        if hasattr(self, 'metrics') and self.metrics is not None:
+            # Update metrics with processing stats
+            self.metrics.increment('urls_processed', records_processed)
+            self.metrics.increment('records_written', records_processed)
+
+            # Export final metrics after processing
+            from pathlib import Path
+            metrics_path = Path("data/metrics") / f"{self.run_id}_processing.json"
+            metrics_path.parent.mkdir(parents=True, exist_ok=True)
+            self.metrics.export_json(metrics_path)
+            self.logger.info(f"Processing metrics exported: {metrics_path}")
+
+            # Generate final quality report with complete stats
+            from ..utils.metrics import QualityReporter
+            report_path = Path("data/reports") / f"{self.run_id}_final_quality_report.md"
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            QualityReporter(self.metrics).generate_markdown_report(report_path)
+            self.logger.info(f"Final quality report: {report_path}")
 
         return self.processed_file
 
@@ -377,6 +451,7 @@ class BasePipeline(DataProcessor, ABC):
                 records=records,
                 source=self.source,
                 date_accessed=self.date_accessed,
+                run_id=self.run_id,
             )
 
     def run(self) -> Path:
@@ -392,10 +467,10 @@ class BasePipeline(DataProcessor, ABC):
 
     def save(self, processed_data: str) -> None:
         """
-        Save processed data (legacy method from DataProcessor).
+        Save processed data.
 
-        Note: In the new architecture, saving is handled by process().
-        This method is kept for backward compatibility but is not used.
+        Note: In the current architecture, saving is handled by process().
+        This method is kept for DataProcessor interface compatibility.
         """
         with open(self.processed_file, 'w', encoding='utf-8') as f:
             f.write(processed_data)

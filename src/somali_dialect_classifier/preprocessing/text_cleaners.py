@@ -5,7 +5,13 @@ Pure functions with no side effects - easily testable and reusable.
 """
 
 import re
-from typing import Optional
+from typing import Optional, List, Protocol
+
+
+class Cleaner(Protocol):
+    """Protocol for text cleaner objects."""
+    def clean(self, text: str) -> str:
+        ...
 
 
 class WikiMarkupCleaner:
@@ -99,7 +105,7 @@ class TextCleaningPipeline:
         'text with spaces'
     """
 
-    def __init__(self, cleaners: list):
+    def __init__(self, cleaners: List['Cleaner']):
         """
         Initialize pipeline with list of cleaners.
 

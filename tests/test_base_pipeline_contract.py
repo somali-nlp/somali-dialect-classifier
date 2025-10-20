@@ -20,6 +20,14 @@ from somali_dialect_classifier.preprocessing.base_pipeline import BasePipeline, 
 from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import WikipediaSomaliProcessor
 from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
 
+# Optional: HuggingFaceSomaliProcessor requires the datasets library
+try:
+    from somali_dialect_classifier.preprocessing.huggingface_somali_processor import HuggingFaceSomaliProcessor
+    HF_AVAILABLE = True
+except ImportError:
+    HuggingFaceSomaliProcessor = None
+    HF_AVAILABLE = False
+
 
 # List of all processor classes to test
 # Add new processors here to automatically validate them
@@ -27,6 +35,27 @@ PROCESSOR_CLASSES = [
     WikipediaSomaliProcessor,
     BBCSomaliProcessor,
 ]
+
+# Add HF processor only if datasets library is available
+if HF_AVAILABLE:
+    PROCESSOR_CLASSES.append(HuggingFaceSomaliProcessor)
+
+
+def _instantiate_processor(processor_class):
+    """
+    Helper to instantiate processors with proper arguments.
+
+    Different processors have different required arguments:
+    - WikipediaSomaliProcessor: no required args
+    - BBCSomaliProcessor: requires max_articles
+    - HuggingFaceSomaliProcessor: requires dataset_name and text_field
+    """
+    if processor_class == BBCSomaliProcessor:
+        return processor_class(max_articles=10)
+    elif processor_class == HuggingFaceSomaliProcessor:
+        return processor_class(dataset_name="test/dataset", text_field="text")
+    else:
+        return processor_class()
 
 
 class TestBasePipelineContract:
@@ -37,10 +66,7 @@ class TestBasePipelineContract:
         """Test that processor implements all required abstract methods."""
         # Should be instantiable (all abstract methods implemented)
         try:
-            if processor_class == BBCSomaliProcessor:
-                processor = processor_class(max_articles=10)
-            else:
-                processor = processor_class()
+            processor = _instantiate_processor(processor_class)
         except TypeError as e:
             pytest.fail(f"{processor_class.__name__} failed to instantiate: {e}")
 
@@ -62,10 +88,7 @@ class TestBasePipelineContract:
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
     def test_processor_has_required_attributes(self, processor_class):
         """Test that processor has required attributes from BasePipeline."""
-        if processor_class == BBCSomaliProcessor:
-            processor = processor_class(max_articles=10)
-        else:
-            processor = processor_class()
+        processor = _instantiate_processor(processor_class)
 
         # Attributes set by BasePipeline.__init__
         assert hasattr(processor, 'source'), f"{processor_class.__name__} missing source"
@@ -81,10 +104,7 @@ class TestBasePipelineContract:
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
     def test_source_naming_convention(self, processor_class):
         """Test that source name follows naming convention."""
-        if processor_class == BBCSomaliProcessor:
-            processor = processor_class(max_articles=10)
-        else:
-            processor = processor_class()
+        processor = _instantiate_processor(processor_class)
 
         # Source should be non-empty
         assert processor.source, f"{processor_class.__name__} has empty source"
@@ -99,10 +119,7 @@ class TestBasePipelineContract:
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
     def test_get_source_type_returns_string(self, processor_class):
         """Test that _get_source_type returns a non-empty string."""
-        if processor_class == BBCSomaliProcessor:
-            processor = processor_class(max_articles=10)
-        else:
-            processor = processor_class()
+        processor = _instantiate_processor(processor_class)
 
         source_type = processor._get_source_type()
         assert isinstance(source_type, str), f"{processor_class.__name__}._get_source_type() must return string"
@@ -117,10 +134,7 @@ class TestBasePipelineContract:
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
     def test_get_license_returns_string(self, processor_class):
         """Test that _get_license returns a non-empty string."""
-        if processor_class == BBCSomaliProcessor:
-            processor = processor_class(max_articles=10)
-        else:
-            processor = processor_class()
+        processor = _instantiate_processor(processor_class)
 
         license_str = processor._get_license()
         assert isinstance(license_str, str), f"{processor_class.__name__}._get_license() must return string"
@@ -129,10 +143,7 @@ class TestBasePipelineContract:
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
     def test_get_language_returns_iso_code(self, processor_class):
         """Test that _get_language returns valid ISO 639-1 code."""
-        if processor_class == BBCSomaliProcessor:
-            processor = processor_class(max_articles=10)
-        else:
-            processor = processor_class()
+        processor = _instantiate_processor(processor_class)
 
         language = processor._get_language()
         assert isinstance(language, str), f"{processor_class.__name__}._get_language() must return string"
@@ -148,10 +159,7 @@ class TestBasePipelineContract:
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
     def test_get_source_metadata_returns_dict(self, processor_class):
         """Test that _get_source_metadata returns a dictionary."""
-        if processor_class == BBCSomaliProcessor:
-            processor = processor_class(max_articles=10)
-        else:
-            processor = processor_class()
+        processor = _instantiate_processor(processor_class)
 
         metadata = processor._get_source_metadata()
         assert isinstance(metadata, dict), \
@@ -168,10 +176,7 @@ class TestBasePipelineContract:
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
     def test_create_cleaner_returns_pipeline(self, processor_class):
         """Test that _create_cleaner returns a TextCleaningPipeline."""
-        if processor_class == BBCSomaliProcessor:
-            processor = processor_class(max_articles=10)
-        else:
-            processor = processor_class()
+        processor = _instantiate_processor(processor_class)
 
         cleaner = processor._create_cleaner()
 
@@ -184,10 +189,7 @@ class TestBasePipelineContract:
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
     def test_extract_records_returns_iterator(self, processor_class):
         """Test that _extract_records returns an iterator of RawRecord."""
-        if processor_class == BBCSomaliProcessor:
-            processor = processor_class(max_articles=10)
-        else:
-            processor = processor_class()
+        processor = _instantiate_processor(processor_class)
 
         # _extract_records should be callable
         assert callable(processor._extract_records), \
@@ -201,10 +203,7 @@ class TestBasePipelineContract:
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
     def test_directory_structure_uses_partitioning(self, processor_class):
         """Test that processor uses source partitioning in directory structure."""
-        if processor_class == BBCSomaliProcessor:
-            processor = processor_class(max_articles=10)
-        else:
-            processor = processor_class()
+        processor = _instantiate_processor(processor_class)
 
         # Raw dir should include source partitioning
         assert f"source={processor.source}" in str(processor.raw_dir), \
@@ -217,10 +216,7 @@ class TestBasePipelineContract:
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
     def test_process_returns_path(self, processor_class):
         """Test that process() returns a Path object."""
-        if processor_class == BBCSomaliProcessor:
-            processor = processor_class(max_articles=10)
-        else:
-            processor = processor_class()
+        processor = _instantiate_processor(processor_class)
 
         # process() should return Path type (won't run it, just check signature)
         import inspect

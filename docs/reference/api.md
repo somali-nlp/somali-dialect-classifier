@@ -10,6 +10,8 @@ Comprehensive API documentation for the Somali Dialect Classifier preprocessing 
 2. [Processors](#processors)
    - [WikipediaSomaliProcessor](#wikipediasomaliprocessor)
    - [BBCSomaliProcessor](#bbcsomaliprocessor)
+   - [HuggingFaceSomaliProcessor](#huggingfacesomaliprocessor)
+   - [SprakbankenSomaliProcessor](#sprakbankensomaliprocessor)
 3. [Text Cleaners](#text-cleaners)
    - [WikiMarkupCleaner](#wikimarkupcleaner)
    - [HTMLCleaner](#htmlcleaner)
@@ -188,6 +190,43 @@ def _get_source_metadata(self) -> Dict[str, Any]:
         "wiki_code": "sowiki",
         "dump_url": "https://dumps.wikimedia.org/sowiki/latest/..."
     }
+```
+
+##### `_get_register()` (New in v2.1)
+
+```python
+@abstractmethod
+def _get_register(self) -> str:
+    """
+    Get linguistic register for silver records.
+
+    Returns:
+        Register string: "formal", "informal", or "colloquial"
+    """
+```
+
+**Valid values**:
+- `"formal"` - Standard, academic, or professional language
+- `"informal"` - Casual but structured language
+- `"colloquial"` - Conversational, dialectal variations
+
+**Examples by processor**:
+```python
+# WikipediaSomaliProcessor
+def _get_register(self) -> str:
+    return "formal"  # Encyclopedic content
+
+# BBCSomaliProcessor
+def _get_register(self) -> str:
+    return "formal"  # Professional journalism
+
+# HuggingFaceSomaliProcessor
+def _get_register(self) -> str:
+    return "formal"  # Web corpus (mixed but generally formal)
+
+# SprakbankenSomaliProcessor
+def _get_register(self) -> str:
+    return "formal"  # Academic corpora
 ```
 
 #### Public Methods
@@ -533,6 +572,197 @@ output_path = processor.run()
 # Silver dataset written to:
 # data/processed/silver/source=BBC-Somali/date_accessed=YYYY-MM-DD/part-0000.parquet
 ```
+
+---
+
+### HuggingFaceSomaliProcessor
+
+**Module**: `somali_dialect_classifier.preprocessing.huggingface_somali_processor`
+
+Processor for streaming, extracting, and processing large-scale Somali datasets from HuggingFace Hub.
+
+#### Class Definition
+
+```python
+class HuggingFaceSomaliProcessor(BasePipeline):
+    """
+    Processor for HuggingFace datasets with streaming and manifest-based versioning.
+
+    Supports streaming mode for datasets larger than RAM with resume capability.
+    Currently supports MC4 dataset only (OSCAR and MADLAD-400 excluded).
+    """
+```
+
+#### Constructor
+
+```python
+def __init__(
+    self,
+    dataset_name: str,
+    dataset_config: str,
+    split: str = "train",
+    text_field: str = "text",
+    url_field: Optional[str] = None,
+    metadata_fields: Optional[List[str]] = None,
+    streaming_batch_size: int = 5000,
+    max_records: Optional[int] = None,
+    force: bool = False
+)
+```
+
+**Parameters**:
+- `dataset_name` (str): HuggingFace dataset identifier (e.g., "allenai/c4")
+- `dataset_config` (str): Dataset configuration (e.g., "so" for Somali)
+- `split` (str, optional): Dataset split. Default: "train"
+- `text_field` (str, optional): Field containing text. Default: "text"
+- `url_field` (str, optional): Field containing URL. Default: None
+- `metadata_fields` (List[str], optional): Additional metadata fields to extract. Default: None
+- `streaming_batch_size` (int, optional): Records per JSONL batch. Default: 5000
+- `max_records` (int, optional): Maximum records to process. Default: None (unlimited)
+- `force` (bool, optional): Force reprocessing. Default: False
+
+**Example**:
+```python
+from somali_dialect_classifier.preprocessing.huggingface_somali_processor import HuggingFaceSomaliProcessor
+
+# Process MC4 dataset
+processor = HuggingFaceSomaliProcessor(
+    dataset_name="allenai/c4",
+    dataset_config="so",
+    split="train",
+    text_field="text",
+    url_field="url",
+    metadata_fields=["timestamp"],
+    streaming_batch_size=5000,
+    max_records=10000
+)
+
+# Run full pipeline
+output_path = processor.run()
+```
+
+#### Factory Functions
+
+##### `create_mc4_processor()`
+
+```python
+def create_mc4_processor(
+    max_records: Optional[int] = None,
+    force: bool = False
+) -> HuggingFaceSomaliProcessor:
+    """Create pre-configured processor for MC4 dataset."""
+```
+
+**Example**:
+```python
+from somali_dialect_classifier.preprocessing.huggingface_somali_processor import create_mc4_processor
+
+processor = create_mc4_processor(max_records=10000)
+processor.run()
+```
+
+#### See Also
+
+For comprehensive documentation on HuggingFace integration, including streaming architecture, manifest format, and resume capability, see [HuggingFace Integration Guide](../howto/huggingface-integration.md).
+
+---
+
+### SprakbankenSomaliProcessor
+
+**Module**: `somali_dialect_classifier.preprocessing.sprakbanken_somali_processor`
+
+Processor for downloading, extracting, and processing Somali corpora from University of Gothenburg's Språkbanken repository.
+
+#### Class Definition
+
+```python
+class SprakbankenSomaliProcessor(BasePipeline):
+    """
+    Processor for Språkbanken Somali corpora.
+
+    Supports 23 diverse corpora across multiple domains (news, literature,
+    science, health, radio, etc.) from University of Gothenburg.
+    """
+```
+
+#### Constructor
+
+```python
+def __init__(
+    self,
+    corpus_id: str,
+    batch_size: int = 10000,
+    force: bool = False
+)
+```
+
+**Parameters**:
+- `corpus_id` (str): Corpus identifier (e.g., "cilmi", "ogaden", "all" for all 23 corpora)
+- `batch_size` (int, optional): Records per batch. Default: 10000
+- `force` (bool, optional): Force reprocessing. Default: False
+
+**Example**:
+```python
+from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import SprakbankenSomaliProcessor
+
+# Process single corpus
+processor = SprakbankenSomaliProcessor(corpus_id="ogaden")
+processor.run()
+
+# Process all 23 corpora
+processor_all = SprakbankenSomaliProcessor(corpus_id="all")
+processor_all.run()
+```
+
+#### Helper Functions
+
+##### `list_available_corpora()`
+
+```python
+def list_available_corpora() -> List[str]:
+    """Return list of all 23 corpus IDs."""
+```
+
+##### `get_corpus_info()`
+
+```python
+def get_corpus_info(corpus_id: str) -> Dict[str, Any]:
+    """Get metadata about specific corpus."""
+```
+
+**Example**:
+```python
+from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import (
+    list_available_corpora,
+    get_corpus_info
+)
+
+# List all corpora
+corpora = list_available_corpora()
+print(f"Total corpora: {len(corpora)}")  # 23
+
+# Get specific corpus info
+info = get_corpus_info("ogaden")
+print(f"Domain: {info['domain']}")  # "news_regional"
+print(f"License: {info['license']}")  # "CC BY 4.0"
+```
+
+#### Available Corpora
+
+**23 total corpora** organized by domain:
+- **News** (7): as-2001, as-2016, ah-2010-19, cb, cb-2001-03, cb-2016, ogaden
+- **Literature** (4): sheekooyin, sheekooying, suugaan, suugaan-turjuman
+- **Science** (2): cilmi, saynis-1980-89
+- **Health** (1): caafimaad-1972-79
+- **Children** (1): sheekooyin-carruureed
+- **Radio** (2): radioden2014, radioswe2014
+- **Translation** (1): tid-turjuman
+- **QA** (1): kqa
+- **Historical** (4): 1971-79, 1993-94, 2001, mk-1972-79
+
+#### See Also
+
+For comprehensive documentation on Språkbanken integration, including all 23 corpora, domain mapping, and metadata extraction, see [Språkbanken Integration Guide](../howto/sprakbanken-integration.md).
 
 ---
 
@@ -1106,10 +1336,11 @@ def build_silver_record(
     source_type: str = "wiki",
     language: str = "so",
     license_str: str = "CC-BY-SA-3.0",
-    pipeline_version: str = "1.0.0",
+    pipeline_version: str = "2.1.0",
     source_metadata: Optional[dict] = None,
     date_published: Optional[str] = None,
     topic: Optional[str] = None,
+    register: str = "formal",
 ) -> dict:
 ```
 
@@ -1122,15 +1353,16 @@ def build_silver_record(
 - `source_type` (str, optional): Type of source (wiki, news, social, etc.). Default: "wiki"
 - `language` (str, optional): ISO 639-1 language code. Default: "so"
 - `license_str` (str, optional): License identifier. Default: "CC-BY-SA-3.0"
-- `pipeline_version` (str, optional): Version of processing pipeline. Default: "1.0.0"
+- `pipeline_version` (str, optional): Version of processing pipeline. Default: "2.1.0"
 - `source_metadata` (dict, optional): Additional source-specific metadata. Default: None
 - `date_published` (str, optional): ISO date when content was published. Default: None
 - `topic` (str, optional): Content topic/category. Default: None
+- `register` (str, optional): Linguistic register. Default: "formal". Valid: "formal", "informal", "colloquial"
 
 **Returns**:
 - `dict`: Dictionary with standardized schema
 
-**Schema**:
+**Schema** (v2.1):
 ```python
 {
     "id": str,               # SHA256 hash of title + url
@@ -1149,6 +1381,9 @@ def build_silver_record(
     "text_hash": str,        # SHA256 hash of text
     "pipeline_version": str, # Pipeline version
     "source_metadata": str,  # JSON-serialized metadata
+    "domain": str,           # Content domain (v2.0)
+    "embedding": str,        # Embedding vector (v2.0, currently null)
+    "register": str,         # Linguistic register (v2.1): formal/informal/colloquial
 }
 ```
 
@@ -1165,12 +1400,14 @@ record = build_silver_record(
     source_type="wiki",
     language="so",
     license_str="CC-BY-SA-3.0",
-    source_metadata={"wiki_code": "sowiki"}
+    source_metadata={"wiki_code": "sowiki"},
+    register="formal"  # NEW in v2.1
 )
 
-print(record["id"])      # "a3f8d9c2..."
-print(record["tokens"])  # 7
-print(record["text_hash"])  # "b7d4e2a1..."
+print(record["id"])        # "a3f8d9c2..."
+print(record["tokens"])    # 7
+print(record["text_hash"]) # "b7d4e2a1..."
+print(record["register"])  # "formal"
 ```
 
 ---
@@ -1194,7 +1431,7 @@ class SilverDatasetWriter:
     """
 ```
 
-#### Schema
+#### Schema (v2.1)
 
 ```python
 SCHEMA = pa.schema([
@@ -1214,8 +1451,14 @@ SCHEMA = pa.schema([
     ("text_hash", pa.string()),
     ("pipeline_version", pa.string()),
     ("source_metadata", pa.string()),  # JSON string
+    ("domain", pa.string()),            # v2.0
+    ("embedding", pa.string()),         # v2.0
+    ("register", pa.string()),          # v2.1 - NEW: formal/informal/colloquial
 ])
 ```
+
+**Valid register values**: "formal", "informal", "colloquial"
+**Validation**: `VALID_REGISTERS = {"formal", "informal", "colloquial"}`
 
 #### Constructor
 

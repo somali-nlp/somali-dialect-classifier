@@ -17,7 +17,7 @@ Filters can be chained in BasePipeline to enforce data quality standards
 across all sources (Wikipedia, BBC, HuggingFace, etc.).
 """
 
-from typing import Tuple, Dict, Any, Set, List
+from typing import Tuple, Dict, Any, Set, List, Callable
 import re
 
 
@@ -265,7 +265,7 @@ def namespace_filter(
 
 def custom_filter(
     cleaned_text: str,
-    predicate_func: callable,
+    predicate_func: Callable,
     metadata_key: str = "custom_filter_result"
 ) -> Tuple[bool, Dict[str, Any]]:
     """

@@ -253,3 +253,55 @@ class TestBBCIntegration:
 
         # Schema should match exactly
         assert table.schema == writer.SCHEMA, "BBC schema doesn't match expected silver schema"
+
+    def test_scraper_empty_text_regression(self, temp_data_dir, monkeypatch, caplog):
+        """
+        Regression test: Ensure scraper detects when text extraction fails.
+
+        This catches cases where BBC changes their HTML structure and the
+        scraper silently returns empty bodies. The scraper should log a warning
+        when this happens.
+        """
+        from unittest.mock import Mock, patch
+
+        monkeypatch.chdir(temp_data_dir.parent)
+
+        # Create a mock HTML response with NO extractable content (simulates BBC structure change)
+        mock_html = """
+        <html>
+            <head><title>Test</title></head>
+            <body>
+                <h1>Article Title</h1>
+                <!-- No paragraphs, no main content, no article tag -->
+                <div class="navigation">Menu items</div>
+                <footer>Footer content</footer>
+            </body>
+        </html>
+        """
+
+        # Create processor
+        processor = BBCSomaliProcessor(max_articles=1)
+
+        # Mock requests to return empty-content HTML
+        with patch('requests.Session') as mock_session_class:
+            mock_session = Mock()
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.content = mock_html.encode('utf-8')
+            mock_session.get.return_value = mock_response
+            mock_session_class.return_value = mock_session
+
+            # Scrape the mock article
+            result = processor._scrape_article(mock_session, 'https://www.bbc.com/somali/articles/test')
+
+            # Should still return a result (not None)
+            assert result is not None
+
+            # But text should be empty
+            assert result['text'] == '', f"Expected empty text, got: {result['text']}"
+
+            # Check that warning was logged
+            assert any(
+                "Empty text extracted" in record.message and "BBC may have changed" in record.message
+                for record in caplog.records
+            ), "Expected warning about empty text extraction, but none found"

@@ -59,6 +59,275 @@ processor.process()
 # 4. Log statistics and metadata
 ```
 
+## Production Infrastructure
+
+All processors are integrated with production-ready MLOps infrastructure:
+
+### Observability
+
+**Structured Logging:**
+```python
+# Automatic context injection
+from somali_dialect_classifier.utils.logging_utils import set_context, generate_run_id
+
+run_id = generate_run_id("bbc")  # "20250119_103045_bbc_a1b2c3d4"
+set_context(run_id=run_id, source="BBC-Somali", phase="fetch")
+
+# All subsequent logs include run_id, source, phase
+logger.info("Article fetched", url="...", http_status=200)
+# → {"timestamp": "...", "run_id": "20250119_103045_bbc_a1b2c3d4", "source": "BBC-Somali", ...}
+```
+
+**Metrics Collection:**
+```python
+from somali_dialect_classifier.utils.metrics import MetricsCollector, QualityReporter
+
+metrics = MetricsCollector(run_id, "BBC-Somali")
+metrics.increment('urls_discovered', 100)
+metrics.record_fetch_duration(234.5)  # milliseconds
+metrics.record_http_status(200)
+
+# Export metrics
+metrics.export_json(Path("data/metrics/20250119_103045_bbc_discovery.json"))
+
+# Generate quality report
+QualityReporter(metrics).generate_markdown_report(Path("data/reports/quality.md"))
+```
+
+**Quality Reports:**
+
+Automated reports include:
+- Executive summary (✅ Healthy, ⚠️ Warning, ❌ Critical)
+- Processing statistics (success/failure rates)
+- Performance metrics (mean, median, p95, p99)
+- HTTP status distribution
+- Automated recommendations
+
+### State Management
+
+**Crawl Ledger:**
+```python
+from somali_dialect_classifier.preprocessing.crawl_ledger import get_ledger
+
+ledger = get_ledger()
+
+# Discovery phase
+ledger.discover_url("https://example.com/article", "bbc", metadata={})
+
+# Fetch phase
+if ledger.should_fetch_url(url, force=False):
+    # Fetch article
+    ledger.mark_fetched(url, http_status=200, content_length=5000)
+
+# Processing phase
+ledger.mark_processed(url, text_hash="sha256...", silver_id="uuid...")
+```
+
+**URL States:**
+- `discovered` → `fetched` → `processed` ✅
+- `discovered` → `fetched` → `failed` ❌
+- `discovered` → `skipped` (already processed)
+- `discovered` → `duplicate` (dedup detected)
+
+### Deduplication
+
+**Two-Tier Approach:**
+
+1. **Exact Deduplication** (SHA256):
+```python
+from somali_dialect_classifier.preprocessing.dedup import DedupEngine, DedupConfig
+
+config = DedupConfig(hash_fields=["text", "url"], enable_minhash=True)
+dedup = DedupEngine(config)
+
+is_dup, text_hash, minhash_sig = dedup.process_document(text, url)
+```
+
+2. **Near-Duplicate Detection** (MinHash LSH):
+   - Jaccard similarity threshold: 0.85
+   - Detects paraphrased or lightly edited content
+   - Optional (requires `datasketch` package)
+
+### Configuration
+
+**YAML-Based Settings:**
+
+```yaml
+# config/production.yaml
+sources:
+  bbc:
+    rate_limiting:
+      max_requests_per_hour: 60
+      min_delay_seconds: 5
+      max_delay_seconds: 10
+    quality:
+      min_length_threshold: 50
+      langid_confidence_threshold: 0.3
+```
+
+**Environment Overrides:**
+```bash
+export SDC_SCRAPING__BBC__MAX_REQUESTS_PER_HOUR=100
+```
+
+### Data Lineage
+
+**Run ID Continuity:**
+
+All phases share the same run_id for tracking:
+
+```
+download() → run_id: wiki_20250119_123456
+  ├─ data/raw/source=Wikipedia-Somali/date_accessed=2025-01-19/
+  ├─ data/metrics/wiki_20250119_123456_discovery.json
+  └─ manifest stores run_id
+
+extract() → same run_id: wiki_20250119_123456
+  ├─ data/staging/source=Wikipedia-Somali/date_accessed=2025-01-19/
+  ├─ data/metrics/wiki_20250119_123456_extraction.json
+  └─ data/reports/wiki_20250119_123456_quality_report.md
+
+process() → same run_id
+  └─ data/processed/silver/source=Wikipedia-Somali/date_accessed=2025-01-19/
+```
+
+This enables:
+- Tracing data from raw to silver
+- Correlating logs, metrics, and outputs
+- Reproducing specific runs
+- Debugging issues across pipeline stages
+
+## File Naming Conventions
+
+All processed files follow a consistent naming pattern for traceability and lineage tracking.
+
+### Naming Pattern
+
+```
+{source_slug}_{run_id}_{layer}_{descriptive_name}[_{partition_num}].{ext}
+```
+
+**Components**:
+- **source_slug**: Lowercase hyphenated source identifier
+  - `wikipedia-somali`: Wikipedia articles
+  - `bbc-somali`: BBC news articles
+  - `hf-mc4-so`: HuggingFace MC4 Somali subset
+  - `sprakbanken-cilmi`: Språkbanken Cilmi corpus
+  - `sprakbanken-ogaden`: Språkbanken Ogaden corpus
+
+- **run_id**: Timestamp in format `YYYYMMDD_HHMMSS`
+  - Example: `20251020_143045`
+  - Unique per pipeline execution
+  - Enables lineage tracking across all pipeline stages
+  - Links files to logs, metrics, and quality reports
+
+- **layer**: Data processing layer
+  - `raw`: Immutable source data
+  - `staging`: Intermediate extracts
+  - `processed`: Cleaned text
+  - `silver`: Production-ready Parquet
+
+- **descriptive_name**: Purpose-specific identifier
+  - `manifest`: Dataset metadata
+  - `extracted`: Extracted raw text
+  - `articles`: Article collection
+  - `cleaned`: Cleaned/processed text
+  - `part-0000`, `part-0001`: Partitioned files
+  - `metadata`: Metadata sidecar
+
+- **partition_num**: Optional zero-padded partition number
+  - Format: `0000`, `0001`, `0002`, etc.
+  - Used for files split across multiple partitions
+
+### Examples by Source
+
+**Wikipedia-Somali**:
+```
+# Staging
+wikipedia-somali_20251020_143045_staging_extracted.txt
+
+# Processed
+wikipedia-somali_20251020_143045_processed_cleaned.txt
+
+# Silver
+wikipedia-somali_20251020_143045_silver_part-0000.parquet
+wikipedia-somali_20251020_143045_silver_metadata.json
+```
+
+**BBC-Somali**:
+```
+# Raw
+bbc-somali_20251020_150230_raw_article-links.json
+bbc-somali_20251020_150230_raw_article-0001.json
+bbc-somali_20251020_150230_raw_article-0002.json
+
+# Staging
+bbc-somali_20251020_150230_staging_articles.jsonl
+
+# Processed
+bbc-somali_20251020_150230_processed_cleaned.txt
+
+# Silver
+bbc-somali_20251020_150230_silver_part-0000.parquet
+bbc-somali_20251020_150230_silver_metadata.json
+```
+
+**HuggingFace MC4**:
+```
+# Raw
+mc4_20251020_153000_raw_manifest.json
+
+# Staging
+mc4_20251020_153000_staging_batch-000000.jsonl
+mc4_20251020_153000_staging_batch-000001.jsonl
+
+# Processed
+mc4_20251020_153000_processed_cleaned.txt
+
+# Silver
+hf-mc4-so_20251020_153000_silver_part-0000.parquet
+hf-mc4-so_20251020_153000_silver_metadata.json
+```
+
+**Språkbanken**:
+```
+# Raw
+sprakbanken-cilmi_20251020_160000_raw_manifest.json
+
+# Staging
+sprakbanken-cilmi_20251020_160000_staging_extracted.jsonl
+
+# Processed
+sprakbanken-cilmi_20251020_160000_processed_cleaned.txt
+
+# Silver
+sprakbanken-cilmi_20251020_160000_silver_part-0000.parquet
+sprakbanken-cilmi_20251020_160000_silver_metadata.json
+```
+
+### Key Benefits
+
+1. **Traceability**: Every file includes run_id for complete lineage tracking
+2. **No Overwrites**: Multiple runs on same day never collide
+3. **Debuggability**: Can trace from silver → processed → staging → raw using run_id
+4. **Log Correlation**: run_id matches structured logs and metrics files
+5. **Reproducibility**: Exact run can be identified and reproduced
+6. **Automation**: Predictable patterns enable automated data catalog integration
+
+### Partition Key Consistency
+
+**Old Behavior** (INCONSISTENT):
+- Raw/Staging: `date_accessed=YYYY-MM-DD`
+- Processed: `date_processed=YYYY-MM-DD` ⚠️ DIFFERENT KEY
+
+**New Behavior** (CONSISTENT):
+- All layers: `date_accessed=YYYY-MM-DD` ✅ SAME KEY
+
+This consistency enables:
+- Simpler queries (same partition key across layers)
+- Correct temporal alignment (all layers track access date)
+- Better data catalog integration
+
 ## Data Layers
 
 ### Bronze Layer (Raw)
@@ -78,13 +347,17 @@ processor.process()
 data/raw/
 ├── source=Wikipedia-Somali/
 │   └── date_accessed=2025-01-15/
-│       └── sowiki-latest-pages-articles.xml.bz2  # 500MB compressed
+│       └── sowiki-latest-pages-articles.xml.bz2  # 500MB compressed (no run_id - external source)
 │
 └── source=BBC-Somali/
     └── date_accessed=2025-01-15/
-        ├── article_links.json                    # Discovered URLs
-        └── article_*.json                        # Individual articles
+        ├── bbc-somali_20250115_143000_raw_article-links.json     # Discovered URLs
+        └── bbc-somali_20250115_143000_raw_article-0001.json      # Individual articles
 ```
+
+**File Naming Pattern**: `{source-slug}_{run_id}_{layer}_{descriptive-name}.{ext}`
+- Wikipedia dumps don't include run_id (external source)
+- All processed files include run_id for traceability
 
 **Code**:
 ```python
@@ -109,12 +382,14 @@ raw_dir.mkdir(parents=True, exist_ok=True)
 data/staging/
 ├── source=Wikipedia-Somali/
 │   └── date_accessed=2025-01-15/
-│       └── wikisom_raw.txt                       # All pages concatenated
+│       └── wikipedia-somali_20250115_143000_staging_extracted.txt     # All pages concatenated
 │
 └── source=BBC-Somali/
     └── date_accessed=2025-01-15/
-        └── bbcsom_articles.json                  # Array of articles
+        └── bbc-somali_20250115_143000_staging_articles.jsonl          # JSONL format (one article per line)
 ```
+
+**File Naming**: Includes run_id for lineage tracking across pipeline stages
 
 **When to Use**:
 - Debugging extraction logic
@@ -133,32 +408,77 @@ data/staging/
 - ✅ **Deduplicated**: Hash-based ID prevents duplicates
 - ✅ **Queryable**: Parquet columnar format
 
-**Schema**:
+**Schema (v2.1)**:
 ```python
 SILVER_SCHEMA = pa.schema([
     ('id', pa.string()),               # sha256(text)[:16] + source_prefix
     ('text', pa.string()),             # Cleaned Somali text
     ('source', pa.string()),           # "Wikipedia-Somali", "BBC-Somali"
-    ('source_type', pa.string()),      # "encyclopedia", "news"
+    ('source_type', pa.string()),      # "encyclopedia", "news", "web", "corpus"
     ('date_accessed', pa.date32()),    # Collection timestamp
     ('language', pa.string()),         # "so" (ISO 639-1)
-    ('license', pa.string()),          # "CC-BY-SA-3.0", "Fair Use"
+    ('license', pa.string()),          # "CC-BY-SA-3.0", "BBC Terms", "ODC-BY-1.0", "CC BY 4.0"
     ('token_count', pa.int32()),       # Whitespace-based word count
     ('metadata', pa.string()),         # JSON: {"title", "url", "detected_lang", ...}
+    ('domain', pa.string()),           # v2.0: Content domain (news, encyclopedia, web, etc.)
+    ('embedding', pa.string()),        # v2.0: Embedding vector (JSON, currently null)
+    ('register', pa.string()),         # v2.1: Linguistic register (formal/informal/colloquial)
 ])
 ```
+
+**Register field** (NEW in v2.1):
+- All current sources return `"formal"` (Wikipedia, BBC, HuggingFace MC4, Språkbanken)
+- Future social media sources will use `"informal"`
+- Future conversational sources will use `"colloquial"`
 
 **Examples**:
 ```
 data/processed/silver/
 ├── source=Wikipedia-Somali/
 │   └── date_accessed=2025-01-15/
-│       └── part-0000.parquet                     # 50,000 articles
+│       ├── wikipedia-somali_20250115_143000_silver_part-0000.parquet     # 50,000 articles
+│       └── wikipedia-somali_20250115_143000_silver_metadata.json         # Metadata sidecar
 │
 └── source=BBC-Somali/
     └── date_accessed=2025-01-15/
-        └── part-0000.parquet                     # 1,200 articles
+        ├── bbc-somali_20250115_150230_silver_part-0000.parquet           # 1,200 articles
+        └── bbc-somali_20250115_150230_silver_metadata.json               # Metadata sidecar
 ```
+
+**Metadata JSON Sidecar** (NEW):
+```json
+{
+  "run_id": "20250115_143000",
+  "source": "Wikipedia-Somali",
+  "pipeline_version": "2.1.0",
+  "date_accessed": "2025-01-15",
+  "date_processed": "2025-01-15T14:45:30Z",
+  "total_records": 50000,
+  "total_partitions": 1,
+  "schema_version": "2.1",
+  "checksums": {
+    "part-0000": {
+      "sha256": "abc123def456...",
+      "size_bytes": 45000000,
+      "record_count": 50000
+    }
+  },
+  "statistics": {
+    "total_size_bytes": 45000000,
+    "avg_record_size_bytes": 900,
+    "min_tokens": 50,
+    "max_tokens": 15000,
+    "avg_tokens": 342
+  }
+}
+```
+
+**Benefits of Metadata Sidecars**:
+- ✅ **Data Integrity**: SHA256 checksums for corruption detection
+- ✅ **Lineage Tracking**: run_id links to logs and metrics
+- ✅ **Statistics**: Record counts, sizes, token statistics
+- ✅ **Version Control**: Pipeline and schema versions tracked
+- ✅ **Automation Ready**: Machine-readable metadata for data catalogs
 
 **Querying**:
 ```python

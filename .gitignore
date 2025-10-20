@@ -16,9 +16,15 @@ ENV/
 # Data (don't commit large files - regenerate via pipelines)
 data/*
 !data/.gitkeep
+!data/metrics/        # Keep metrics JSON files (small, valuable for dashboard)
+!data/reports/        # Keep quality reports (markdown, useful for reference)
+data/silver/*         # Exclude processed data files
+data/bronze/*         # Exclude raw data files
+data/gold/*           # Exclude final datasets
 *.pkl
 *.h5
 *.parquet
+*.jsonl              # Exclude large JSONL data files
 
 # Models (use Git LFS or external storage)
 models/*.bin
@@ -42,9 +48,5 @@ logs/*
 .env
 *.key
 
-# Development artifacts (implementation summaries, scratch work)
+# Development artifacts (archived planning documents)
 .archive/
-*_SUMMARY.md
-*_FEEDBACK*.md
-*_STATUS.md
-*_IMPLEMENTATION*.md

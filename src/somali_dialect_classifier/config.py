@@ -100,6 +100,45 @@ if PYDANTIC_AVAILABLE:
             description='User agent string for requests'
         )
 
+        # RSS feed configuration
+        rss_feeds: list = Field(
+            default_factory=lambda: [
+                'https://www.bbc.com/somali/index.xml',
+                'https://feeds.bbci.co.uk/somali/rss.xml'
+            ],
+            description='List of RSS feed URLs to scrape'
+        )
+        max_items_per_feed: Optional[int] = Field(
+            default=100,
+            description='Maximum items to extract per RSS feed (None = unlimited)'
+        )
+        check_frequency_hours: int = Field(
+            default=24,
+            description='Minimum hours between RSS feed checks'
+        )
+
+        # Rate limiting configuration
+        delay_range: tuple = Field(
+            default=(3, 6),
+            description='Min and max delay between requests (seconds)'
+        )
+        max_requests_per_hour: Optional[int] = Field(
+            default=60,
+            description='Maximum requests per hour (None = unlimited)'
+        )
+        backoff_multiplier: float = Field(
+            default=2.0,
+            description='Exponential backoff multiplier on errors'
+        )
+        max_backoff: float = Field(
+            default=300.0,
+            description='Maximum backoff time in seconds (5 minutes)'
+        )
+        jitter: bool = Field(
+            default=True,
+            description='Add random jitter to delays'
+        )
+
 
     class WikipediaScrapingConfig(BaseSettings):
         """Wikipedia scraping configuration."""
@@ -124,6 +163,82 @@ if PYDANTIC_AVAILABLE:
         )
 
 
+    class HuggingFaceScrapingConfig(BaseSettings):
+        """HuggingFace datasets configuration."""
+        model_config = SettingsConfigDict(
+            env_prefix='SDC_SCRAPING__HUGGINGFACE__',
+            env_file='.env',
+            env_file_encoding='utf-8',
+            extra='ignore'
+        )
+
+        streaming_batch_size: int = Field(
+            default=5000,
+            description='Records per JSONL batch file'
+        )
+        max_records: Optional[int] = Field(
+            default=None,
+            description='Maximum records to process (None = unlimited)'
+        )
+        min_length_threshold: int = Field(
+            default=100,
+            description='Minimum text length for quality filter (chars)'
+        )
+        langid_confidence_threshold: float = Field(
+            default=0.3,
+            description='Language detection confidence threshold (0-1)'
+        )
+        resume_enabled: bool = Field(
+            default=True,
+            description='Enable resume from last offset on failure'
+        )
+
+        # Dataset revision pinning
+        default_dataset: str = Field(
+            default='mc4',
+            description='Default dataset to load'
+        )
+        dataset_config: str = Field(
+            default='so',
+            description='Dataset configuration (language code)'
+        )
+        revision: Optional[str] = Field(
+            default=None,
+            description='Git revision/commit hash to pin dataset version (None = latest)'
+        )
+
+
+    class SprakbankenScrapingConfig(BaseSettings):
+        """Språkbanken corpora configuration."""
+        model_config = SettingsConfigDict(
+            env_prefix='SDC_SCRAPING__SPRAKBANKEN__',
+            env_file='.env',
+            env_file_encoding='utf-8',
+            extra='ignore'
+        )
+
+        batch_size: int = Field(
+            default=5000,
+            description='Batch size for processing'
+        )
+        max_corpora: Optional[int] = Field(
+            default=None,
+            description='Maximum number of corpora to process (None = all 23)'
+        )
+        timeout: int = Field(
+            default=30,
+            description='Request timeout (seconds)'
+        )
+        min_length_threshold: int = Field(
+            default=20,
+            description='Minimum text length for quality filter (tokens)'
+        )
+        langid_confidence_threshold: float = Field(
+            default=0.3,
+            description='Language detection confidence threshold (0-1)'
+        )
+
+
     class ScrapingConfig(BaseSettings):
         """Scraping configuration."""
         model_config = SettingsConfigDict(
@@ -135,6 +250,8 @@ if PYDANTIC_AVAILABLE:
 
         bbc: BBCScrapingConfig = Field(default_factory=BBCScrapingConfig)
         wikipedia: WikipediaScrapingConfig = Field(default_factory=WikipediaScrapingConfig)
+        huggingface: HuggingFaceScrapingConfig = Field(default_factory=HuggingFaceScrapingConfig)
+        sprakbanken: SprakbankenScrapingConfig = Field(default_factory=SprakbankenScrapingConfig)
 
 
     class LoggingConfig(BaseSettings):
@@ -194,6 +311,21 @@ else:
         timeout: int = 30
         user_agent: str = 'Mozilla/5.0 (compatible; SomaliNLPBot/1.0)'
 
+        # RSS feed configuration
+        rss_feeds: list = field(default_factory=lambda: [
+            'https://www.bbc.com/somali/index.xml',
+            'https://feeds.bbci.co.uk/somali/rss.xml'
+        ])
+        max_items_per_feed: Optional[int] = 100
+        check_frequency_hours: int = 24
+
+        # Rate limiting configuration
+        delay_range: tuple = (3, 6)
+        max_requests_per_hour: Optional[int] = 60
+        backoff_multiplier: float = 2.0
+        max_backoff: float = 300.0
+        jitter: bool = True
+
 
     @dataclass
     class WikipediaScrapingConfig:
@@ -204,10 +336,37 @@ else:
 
 
     @dataclass
+    class HuggingFaceScrapingConfig:
+        """HuggingFace datasets configuration."""
+        streaming_batch_size: int = 5000
+        max_records: Optional[int] = None
+        min_length_threshold: int = 100
+        langid_confidence_threshold: float = 0.3
+        resume_enabled: bool = True
+
+        # Dataset revision pinning
+        default_dataset: str = 'mc4'
+        dataset_config: str = 'so'
+        revision: Optional[str] = None
+
+
+    @dataclass
+    class SprakbankenScrapingConfig:
+        """Språkbanken corpora configuration."""
+        batch_size: int = 5000
+        max_corpora: Optional[int] = None
+        timeout: int = 30
+        min_length_threshold: int = 20
+        langid_confidence_threshold: float = 0.3
+
+
+    @dataclass
     class ScrapingConfig:
         """Scraping configuration."""
         bbc: BBCScrapingConfig = field(default_factory=BBCScrapingConfig)
         wikipedia: WikipediaScrapingConfig = field(default_factory=WikipediaScrapingConfig)
+        huggingface: HuggingFaceScrapingConfig = field(default_factory=HuggingFaceScrapingConfig)
+        sprakbanken: SprakbankenScrapingConfig = field(default_factory=SprakbankenScrapingConfig)
 
 
     @dataclass

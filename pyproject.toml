@@ -16,6 +16,7 @@ dependencies = [
   "pyarrow>=14",
   "beautifulsoup4>=4.12",
   "lxml>=4.9",  # XML parser for sitemap
+  "feedparser>=6.0",  # RSS feed parsing for BBC scraping
 ]
 
 [project.optional-dependencies]
@@ -72,6 +73,9 @@ all = [
 [project.scripts]
 wikisom-download = "somali_dialect_classifier.cli.download_wikisom:main"
 bbcsom-download = "somali_dialect_classifier.cli.download_bbcsom:main"
+hfsom-download = "somali_dialect_classifier.cli.download_hfsom:main"
+spraksom-download = "somali_dialect_classifier.cli.download_sprakbankensom:main"
+somali-orchestrate = "somali_dialect_classifier.orchestration.flows:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/somali_dialect_classifier"]
@@ -110,6 +114,9 @@ addopts = [
   "--tb=short",
 ]
 timeout = 300
+markers = [
+  "integration: marks tests as integration tests (may require network access)",
+]
 
 [tool.mypy]
 python_version = "3.9"

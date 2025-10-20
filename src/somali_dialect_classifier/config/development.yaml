@@ -1,0 +1,224 @@
+# Development Configuration for Somali Dialect Classifier
+# Version: 1.0
+# Last Updated: 2025-01-19
+#
+# This configuration provides safe defaults for development and testing.
+# Lower rate limits, smaller batch sizes, and verbose logging.
+
+# ============================================================================
+# DATA SOURCES CONFIGURATION (DEV)
+# ============================================================================
+
+sources:
+  bbc:
+    rate_limiting:
+      delay_range: [1, 3]  # Faster for testing
+      max_requests_per_hour: 100  # Higher for dev
+      backoff_multiplier: 1.5
+      max_backoff: 60
+      jitter: true
+
+    rss:
+      check_frequency_hours: 1  # More frequent in dev
+      max_items_per_feed: 10  # Fewer items for testing
+      feeds:
+        - "https://www.bbc.com/somali/index.xml"
+
+    http:
+      timeout: 10  # Shorter timeout
+      max_retries: 2
+      user_agent: "SomaliNLPBot-Dev/1.0 (Testing)"
+      enable_conditional: true
+      respect_robots_txt: true
+
+    filters:
+      min_text_length: 10  # Lower threshold for testing
+      language_confidence: 0.1  # More permissive
+
+    limits:
+      max_articles_per_day: 100  # Lower daily limit
+      max_bytes_per_day: 10_000_000  # 10 MB
+
+  wikipedia:
+    api:
+      endpoint: "https://so.wikipedia.org/w/api.php"
+      batch_size: 10  # Smaller batches
+      timeout: 10
+
+    rate_limiting:
+      delay_range: [0.5, 1]  # Faster for dev
+      max_requests_per_minute: 60
+
+    filters:
+      min_text_length: 50
+      exclude_redirects: true
+      exclude_disambiguations: true
+
+  huggingface:
+    datasets:
+      mc4:
+        name: "mc4"
+        config: "so"
+        split: "train"
+        revision: null
+        streaming: true
+        batch_size: 100  # Smaller batches
+
+    processing:
+      max_workers: 2  # Fewer workers
+      checkpoint_frequency: 500  # More frequent checkpoints
+      resume_from_checkpoint: true
+
+    filters:
+      min_text_length: 50
+      language_confidence: 0.1
+      perplexity_threshold: null
+
+  sprakbanken:
+    api:
+      base_url: "https://spraakbanken.gu.se/ws/korp/v8"
+      timeout: 10
+      max_retries: 2
+
+    corpora:  # Only 2 corpora for testing
+      - "somali-asluub-1969"
+      - "somali-dahir_2020_news"
+
+    processing:
+      batch_size: 100  # Smaller batches
+      max_concurrent_requests: 1  # Sequential for debugging
+
+    filters:
+      min_token_length: 10
+      language_confidence: 0.1
+
+# ============================================================================
+# DEDUPLICATION CONFIGURATION (DEV)
+# ============================================================================
+
+deduplication:
+  exact:
+    enabled: true
+    hash_algorithm: "sha256"
+    hash_fields: ["text"]  # Simpler for testing
+    field_separator: "|"
+
+  near:
+    enabled: false  # Disabled for faster dev
+    similarity_threshold: 0.85
+    num_permutations: 64  # Smaller signature
+    shingle_size: 3
+    seed: 42
+
+# ============================================================================
+# OBSERVABILITY CONFIGURATION (DEV)
+# ============================================================================
+
+logging:
+  format: "text"  # Human-readable
+  level: "DEBUG"  # Verbose logging
+
+  file:
+    enabled: true
+    path: "logs/development.log"
+    rotation:
+      max_bytes: 10485760  # 10 MB
+      backup_count: 3
+      compress: false
+
+  console:
+    enabled: true
+    format: "text"
+    colored: true
+
+  context:
+    run_id: true
+    source: true
+    phase: true
+    hostname: false  # Not needed in dev
+
+metrics:
+  export:
+    enabled: true
+    format: "json"
+    path: "data/metrics_dev"
+
+  collect:  # Collect all metrics in dev
+    urls_discovered: true
+    urls_fetched: true
+    urls_processed: true
+    urls_failed: true
+    urls_deduplicated: true
+    bytes_downloaded: true
+    fetch_duration_ms: true
+    process_duration_ms: true
+    text_length: true
+    http_status_codes: true
+    filter_reasons: true
+    error_types: true
+
+  quality_report:
+    enabled: true
+    format: "markdown"
+    include_plots: false
+    path: "data/reports_dev"
+
+# ============================================================================
+# RUNTIME CONFIGURATION (DEV)
+# ============================================================================
+
+runtime:
+  ledger:
+    backend: "sqlite"
+    sqlite:
+      path: "data/ledger/dev_ledger.db"
+      wal_mode: true
+      timeout: 10
+
+  processing:
+    batch_size: 100  # Smaller batches
+    checkpoint_interval: 500
+    max_workers: 2
+    memory_limit_gb: 4
+
+  error_handling:
+    max_retries: 2
+    retry_delay: 2
+    ignore_errors: true  # Continue on errors in dev
+
+  cleanup:
+    remove_raw_after_processing: false
+    compress_old_files: false  # No compression in dev
+    compression_age_days: 30
+    cleanup_age_days: 7  # Cleanup sooner
+
+# ============================================================================
+# DEVELOPMENT PROFILES
+# ============================================================================
+
+profiles:
+  quick:  # Ultra-fast testing
+    bbc_max_articles: 10
+    wikipedia_max_articles: 20
+    huggingface_max_records: 50
+    sprakbanken_max_corpora: 1
+
+  test:  # Standard testing
+    bbc_max_articles: 50
+    wikipedia_max_articles: 100
+    huggingface_max_records: 500
+    sprakbanken_max_corpora: 2
+
+# ============================================================================
+# MONITORING (DEV)
+# ============================================================================
+
+monitoring:
+  health_check:
+    enabled: false  # Disabled in dev
+
+  alerts:  # Higher thresholds for dev
+    error_rate_threshold: 0.3
+    dedup_rate_threshold: 0.7
+    fetch_duration_p95_ms: 10000
+    disk_usage_threshold_gb: 5

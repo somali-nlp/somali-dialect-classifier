@@ -1,84 +1,103 @@
-# Somali NLP Pipeline Dashboard
+# Dashboard Technical Reference
 
-Interactive dashboard for monitoring data collection, quality metrics, and pipeline performance.
+Interactive Streamlit dashboard for monitoring data pipeline metrics and quality.
 
-## 🌐 Live Dashboard
+**For complete documentation, setup instructions, and usage guide, see**: [Dashboard Guide](../docs/guides/dashboard.md)
 
-**GitHub Pages (Static)**: https://somali-nlp.github.io/somali-dialect-classifier/
+---
 
-The static version shows key metrics and links to quality reports.
+## Quick Reference
 
-## 🚀 Run Interactive Dashboard Locally
-
-The full interactive dashboard with charts, filters, and real-time analysis:
+### Running Locally
 
 ```bash
 # Install dependencies
-pip install -r dashboard/requirements.txt
+pip install -r requirements.txt
 
 # Run dashboard
-streamlit run dashboard/app.py
+streamlit run app.py
 ```
 
-The dashboard will open at `http://localhost:8501`
+Opens at `http://localhost:8501`
 
-## 📊 Features
+### Live Dashboard
 
-### Key Metrics
-- Total records processed across all sources
-- Average success rate and standard deviation
-- Data volume downloaded
-- URLs processed
-- Deduplication statistics
+**GitHub Pages**: `https://YOUR-USERNAME.github.io/somali-dialect-classifier/`
 
-### Visualizations
-- **Records Over Time**: Track pipeline output per run
-- **Success Rate Trends**: Monitor data quality over time
-- **Deduplication Rates**: Identify data redundancy patterns
-- **Throughput Analysis**: URLs/second and records/minute
-- **Performance Metrics**: P95 fetch latency by source
-- **Source Comparison**: Compare performance across data sources
+---
 
-### Quality Reports
-- Interactive viewer for detailed quality reports
-- Markdown rendering of full reports
-- Filterable by source and date range
+## Technical Specifications
 
-## 📁 Data Sources
+### Dependencies
+
+- **streamlit** (>=1.28.0) - Web application framework
+- **plotly** (>=5.17.0) - Interactive visualizations
+- **pandas** (>=2.0.0) - Data manipulation
+- **pyarrow** (>=13.0.0) - Parquet file reading
+
+### Data Sources
 
 The dashboard reads from:
-- `data/metrics/*.json` - Pipeline metrics (auto-generated)
-- `data/reports/*.md` - Quality reports (auto-generated)
+- `../data/metrics/*.json` - Pipeline metrics (auto-generated)
+- `../data/reports/*.md` - Quality reports (auto-generated)
 
-## 🔄 Auto-Deployment
+### File Structure
 
-The dashboard automatically deploys to GitHub Pages when:
-- New metrics are committed to `data/metrics/`
-- New reports are committed to `data/reports/`
-- Dashboard code is updated
-
-See [`.github/workflows/deploy-dashboard.yml`](../.github/workflows/deploy-dashboard.yml)
-
-## 🛠️ Customization
-
-### Add New Metrics
-
-Modify the data loading in `app.py`:
-
-```python
-# Add new metric to row dictionary
-row["your_metric"] = snapshot.get("your_metric", 0)
+```
+dashboard/
+├── app.py              # Main Streamlit application
+├── requirements.txt    # Python dependencies
+├── README.md          # This file
+└── data/              # Cached dashboard data (local only)
 ```
 
-### Add New Charts
+### Key Metrics Displayed
 
-Use Plotly Express for quick charts:
+1. **Aggregate Metrics**
+   - Total records processed
+   - Average success rate
+   - Data volume (MB)
+   - URLs processed
+   - Deduplication statistics
+
+2. **Time Series Visualizations**
+   - Records over time by source
+   - Success rate trends
+   - Deduplication rates
+   - Throughput (URLs/sec, records/min)
+   - Performance (P95 latency)
+
+3. **Source Comparisons**
+   - Side-by-side metrics
+   - Performance benchmarks
+   - Quality indicators
+
+### Auto-Deployment
+
+GitHub Actions workflow automatically deploys the dashboard to GitHub Pages on every push to `main` branch.
+
+See: [`.github/workflows/deploy-dashboard.yml`](../.github/workflows/deploy-dashboard.yml)
+
+---
+
+## Customization
+
+### Adding Metrics
+
+1. Update `MetricsCollector` in `src/somali_dialect_classifier/utils/metrics.py`
+2. Add metric to `load_metrics()` function in `app.py`
+3. Create visualization for the new metric
+4. Test locally, then commit and push
+
+### Modifying Visualizations
+
+All charts use Plotly Express. Example:
 
 ```python
 import plotly.express as px
 
 fig = px.line(
-    filtered_df,
+    df,
     x="timestamp",
     y="your_metric",
     color="source",
@@ -87,19 +106,184 @@ fig = px.line(
 st.plotly_chart(fig, use_container_width=True)
 ```
 
-## 📱 Responsive Design
+### Styling
 
-The dashboard is mobile-friendly and adapts to different screen sizes.
+Streamlit uses its own theming system. Customize in `.streamlit/config.toml`:
 
-## 🎯 Portfolio Value
+```toml
+[theme]
+primaryColor = "#FF4B4B"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+font = "sans serif"
+```
 
-This dashboard showcases:
-- **Data Engineering**: Automated pipeline with quality monitoring
-- **Visualization**: Interactive charts and KPIs
-- **CI/CD**: Automated deployment with GitHub Actions
-- **DevOps**: Production-ready logging and metrics
-- **Best Practices**: Structured data, caching, error handling
+---
 
-## 📄 License
+## API Reference
 
-Same as parent project - see [LICENSE](../LICENSE)
+### Main Components
+
+#### `load_metrics() -> pd.DataFrame`
+
+Loads all metrics from `data/metrics/*.json` and returns a pandas DataFrame.
+
+**Returns**:
+- DataFrame with columns: `timestamp`, `source`, `records`, `success_rate`, etc.
+
+#### `load_quality_reports() -> List[Dict]`
+
+Loads all quality reports from `data/reports/*.md`.
+
+**Returns**:
+- List of dictionaries with keys: `source`, `timestamp`, `content`
+
+#### `render_metric_card(title: str, value: str, delta: str = None)`
+
+Renders a metric card using Streamlit's `st.metric()`.
+
+**Parameters**:
+- `title`: Metric display name
+- `value`: Current value (formatted string)
+- `delta`: Optional change indicator
+
+#### `render_time_series_chart(df: pd.DataFrame, y_column: str, title: str)`
+
+Renders an interactive line chart with Plotly.
+
+**Parameters**:
+- `df`: DataFrame with `timestamp`, `source`, and metric columns
+- `y_column`: Column name for y-axis
+- `title`: Chart title
+
+---
+
+## Development
+
+### Local Testing
+
+```bash
+# Run with auto-reload on file changes
+streamlit run app.py
+
+# Run with debug logging
+streamlit run app.py --logger.level=debug
+
+# Run on custom port
+streamlit run app.py --server.port=8502
+```
+
+### Performance Optimization
+
+```python
+# Use caching for expensive operations
+@st.cache_data(ttl=600)  # Cache for 10 minutes
+def load_metrics():
+    # ... loading code ...
+
+# Limit data volume
+df = df.tail(1000)  # Only last 1000 records
+
+# Use efficient pandas operations
+df = df[df["timestamp"] > cutoff_date]  # Filter early
+```
+
+### Debugging
+
+```python
+# Add debug output
+st.write("Debug info:", df.shape)
+
+# Show raw data
+with st.expander("Raw Data"):
+    st.dataframe(df)
+
+# Log to console
+import logging
+logging.debug(f"Loaded {len(df)} records")
+```
+
+---
+
+## Deployment
+
+### GitHub Pages (Automated)
+
+Dashboard automatically deploys via GitHub Actions on push to `main`.
+
+**Workflow**: `.github/workflows/deploy-dashboard.yml`
+
+**Steps**:
+1. Checkout repository
+2. Set up Python
+3. Install dependencies
+4. Generate static dashboard
+5. Deploy to GitHub Pages
+
+### Manual Deployment
+
+```bash
+# Export static dashboard data
+python scripts/export_dashboard_data.py
+
+# Deploy static files to hosting service
+# (S3, Netlify, Vercel, etc.)
+```
+
+### Environment Variables
+
+Optional environment variables for configuration:
+
+- `SDC_DATA_DIR`: Override data directory location
+- `SDC_METRICS_DIR`: Override metrics directory location
+- `SDC_REPORTS_DIR`: Override reports directory location
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**Dashboard not loading data**:
+```bash
+# Check metrics exist
+ls ../data/metrics/
+
+# Verify JSON format
+python -m json.tool ../data/metrics/latest_metrics.json
+```
+
+**Plotly charts not rendering**:
+```bash
+# Update Plotly
+pip install plotly --upgrade
+
+# Clear Streamlit cache
+rm -rf ~/.streamlit/cache/
+```
+
+**Port already in use**:
+```bash
+# Kill existing process
+lsof -i :8501
+kill -9 <PID>
+
+# Or use different port
+streamlit run app.py --server.port=8502
+```
+
+---
+
+## Resources
+
+- **Complete Guide**: [Dashboard Guide](../docs/guides/dashboard.md)
+- **Streamlit Docs**: https://docs.streamlit.io
+- **Plotly Docs**: https://plotly.com/python/
+- **GitHub Actions**: https://docs.github.com/actions
+
+---
+
+**Version**: 1.0.0
+**Last Updated**: 2025-10-20
+**License**: MIT License
