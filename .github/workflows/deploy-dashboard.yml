@@ -60,6 +60,9 @@ jobs:
               <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
               <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 
+              <!-- Chart.js for data visualizations -->
+              <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
               <style>
                   :root {
                       --color-primary: #2563eb;
@@ -343,6 +346,98 @@ jobs:
                       font-size: 0.875rem;
                   }
 
+                  /* Chart containers */
+                  .charts-section {
+                      display: grid;
+                      grid-template-columns: 1fr;
+                      gap: 2rem;
+                      margin: 2rem 0;
+                  }
+
+                  .chart-container {
+                      background: var(--color-bg-elevated);
+                      border: 1px solid var(--color-border);
+                      border-radius: var(--radius);
+                      padding: 2rem;
+                      box-shadow: var(--shadow-sm);
+                      min-height: 400px;
+                  }
+
+                  .chart-title {
+                      font-size: 1.125rem;
+                      font-weight: 600;
+                      color: var(--color-text);
+                      margin-bottom: 1.5rem;
+                      padding-bottom: 0.5rem;
+                      border-bottom: 1px solid var(--color-border-light);
+                  }
+
+                  .chart-canvas {
+                      position: relative;
+                      height: 350px;
+                      width: 100%;
+                  }
+
+                  .charts-grid-2 {
+                      display: grid;
+                      grid-template-columns: repeat(2, 1fr);
+                      gap: 2rem;
+                      margin: 2rem 0;
+                  }
+
+                  .empty-state {
+                      text-align: center;
+                      padding: 4rem 2rem;
+                      color: var(--color-text-secondary);
+                  }
+
+                  .empty-state-icon {
+                      font-size: 3rem;
+                      margin-bottom: 1rem;
+                      opacity: 0.5;
+                  }
+
+                  .empty-state-title {
+                      font-size: 1.25rem;
+                      font-weight: 600;
+                      color: var(--color-text);
+                      margin-bottom: 0.5rem;
+                  }
+
+                  .empty-state-text {
+                      color: var(--color-text-secondary);
+                      margin-bottom: 0;
+                  }
+
+                  .collapsible {
+                      cursor: pointer;
+                      user-select: none;
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                  }
+
+                  .collapsible::after {
+                      content: '\u25BC';
+                      font-size: 0.75rem;
+                      color: var(--color-text-secondary);
+                      transition: transform 0.2s ease;
+                  }
+
+                  .collapsible.collapsed::after {
+                      transform: rotate(-90deg);
+                  }
+
+                  .collapsible-content {
+                      max-height: 1000px;
+                      overflow: hidden;
+                      transition: max-height 0.3s ease;
+                  }
+
+                  .collapsible-content.collapsed {
+                      max-height: 0;
+                  }
+
                   @media (max-width: 768px) {
                       .header h1 {
                           font-size: 1.5rem;
@@ -368,6 +463,19 @@ jobs:
                           width: 100%;
                           text-align: center;
                       }
+
+                      .charts-grid-2 {
+                          grid-template-columns: 1fr;
+                      }
+
+                      .chart-container {
+                          padding: 1.5rem;
+                          min-height: 350px;
+                      }
+
+                      .chart-canvas {
+                          height: 300px;
+                      }
                   }
               </style>
           </head>
@@ -375,52 +483,85 @@ jobs:
               <header class="header">
                   <div class="header-content">
                       <h1>Somali Dialect Classifier</h1>
-                      <p class="subtitle">Comprehensive NLP Data Pipeline for Somali Language Processing</p>
+                      <p class="subtitle">NLP Data Pipeline for Somali Language Processing</p>
                   </div>
               </header>
 
               <main class="container">
-                  <section id="about">
-                      <h2>About This Project</h2>
-                      <div class="card">
-                          <p>
-                              The Somali Dialect Classifier addresses a critical challenge in natural language processing:
-                              <strong>data scarcity for low-resource languages</strong>. Somali, spoken by over 16 million people,
-                              lacks the extensive datasets available for languages like English or Spanish, making it difficult
-                              to build effective NLP models for dialect classification and language understanding.
-                          </p>
-                          <p>
-                              This project builds a comprehensive, automated data pipeline that aggregates high-quality Somali
-                              text data from multiple sources, enabling researchers and developers to train robust dialect
-                              classification models and advance Somali NLP capabilities.
-                          </p>
-
-                          <h3>Key Features</h3>
-                          <ul class="feature-list">
-                              <li><strong>Multi-Source Data Collection:</strong> Aggregates data from 4+ diverse sources including Wikipedia Somali, BBC Somali, and specialized datasets from Hugging Face</li>
-                              <li><strong>Quality-First Architecture:</strong> Implements comprehensive quality metrics, content filtering, and language detection to ensure data integrity</li>
-                              <li><strong>Intelligent Deduplication:</strong> Uses MinHash LSH algorithms to eliminate duplicate content across sources while preserving unique dialect examples</li>
-                              <li><strong>Production-Grade Pipeline:</strong> Bronze-silver-gold data architecture with automated processing, error handling, and monitoring</li>
-                              <li><strong>Research-Ready Datasets:</strong> Generates clean, deduplicated silver datasets with quality reports and statistics for immediate use in model training</li>
-                          </ul>
-
-                          <h3>Technical Highlights</h3>
-                          <ul class="feature-list">
-                              <li>130,000+ high-quality Somali text records collected and processed</li>
-                              <li>Automated pipeline with CI/CD integration via GitHub Actions</li>
-                              <li>Comprehensive quality metrics tracking (success rates, deduplication rates, content statistics)</li>
-                              <li>Modular processor architecture supporting easy integration of new data sources</li>
-                              <li>Silver dataset with metadata for dialect classification and language modeling tasks</li>
-                          </ul>
-                      </div>
-                  </section>
-
+                  <!-- Key Metrics Section -->
                   <section id="metrics">
                       <h2>Pipeline Status</h2>
                       <div class="metrics-grid" id="metricsGrid">
                           <div class="loading-container">
                               <div class="loading-spinner"></div>
                               <p>Loading pipeline metrics...</p>
+                          </div>
+                      </div>
+                  </section>
+
+                  <!-- Data Visualizations Section -->
+                  <section id="visualizations">
+                      <h2>Data Visualizations</h2>
+
+                      <!-- Records Over Time Chart -->
+                      <div class="charts-section">
+                          <div class="chart-container">
+                              <div class="chart-title">Records Processed Over Time</div>
+                              <div class="chart-canvas">
+                                  <canvas id="recordsOverTimeChart"></canvas>
+                              </div>
+                          </div>
+                      </div>
+
+                      <!-- Source Comparison and Success Rate Charts -->
+                      <div class="charts-grid-2">
+                          <div class="chart-container">
+                              <div class="chart-title">Source Comparison</div>
+                              <div class="chart-canvas">
+                                  <canvas id="sourceComparisonChart"></canvas>
+                              </div>
+                          </div>
+                          <div class="chart-container">
+                              <div class="chart-title">Success Rate Trends</div>
+                              <div class="chart-canvas">
+                                  <canvas id="successRateChart"></canvas>
+                              </div>
+                          </div>
+                      </div>
+
+                      <!-- Data Quality Chart -->
+                      <div class="charts-section">
+                          <div class="chart-container">
+                              <div class="chart-title">Data Quality Metrics</div>
+                              <div class="chart-canvas">
+                                  <canvas id="dataQualityChart"></canvas>
+                              </div>
+                          </div>
+                      </div>
+                  </section>
+
+                  <!-- About Section (Collapsible) -->
+                  <section id="about">
+                      <h2 class="collapsible" onclick="toggleCollapsible(this)">About This Project</h2>
+                      <div class="collapsible-content">
+                          <div class="card">
+                              <p>
+                                  The Somali Dialect Classifier addresses a critical challenge in natural language processing:
+                                  <strong>data scarcity for low-resource languages</strong>. Somali, spoken by over 16 million people,
+                                  lacks the extensive datasets available for languages like English or Spanish.
+                              </p>
+                              <p>
+                                  This project builds a comprehensive, automated data pipeline that aggregates high-quality Somali
+                                  text data from multiple sources for dialect classification and language modeling.
+                              </p>
+
+                              <h3>Key Features</h3>
+                              <ul class="feature-list">
+                                  <li><strong>Multi-Source Data Collection:</strong> Wikipedia, BBC Somali, HuggingFace, and more</li>
+                                  <li><strong>Quality-First Architecture:</strong> Comprehensive filtering and language detection</li>
+                                  <li><strong>Intelligent Deduplication:</strong> MinHash LSH for duplicate detection</li>
+                                  <li><strong>Production-Grade Pipeline:</strong> Bronze-silver-gold architecture</li>
+                              </ul>
                           </div>
                       </div>
                   </section>
@@ -458,6 +599,11 @@ jobs:
                   // Configuration
                   const MAX_RETRIES = 3;
                   let metricsRetries = 0;
+                  let allMetricsData = [];
+                  let chartsInitialized = false;
+
+                  // Chart instances (for cleanup)
+                  let recordsChart, sourceChart, successChart, qualityChart;
 
                   // Format large numbers with commas
                   function formatNumber(num) {
@@ -475,6 +621,41 @@ jobs:
                           });
                       } catch (e) {
                           return 'N/A';
+                      }
+                  }
+
+                  // Format date for charts (shorter)
+                  function formatChartDate(isoString) {
+                      try {
+                          const date = new Date(isoString);
+                          return date.toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                          });
+                      } catch (e) {
+                          return 'N/A';
+                      }
+                  }
+
+                  // Collapsible sections
+                  function toggleCollapsible(element) {
+                      const content = element.nextElementSibling;
+                      element.classList.toggle('collapsed');
+                      content.classList.toggle('collapsed');
+                  }
+
+                  // Load all detailed metrics for charts
+                  async function loadAllMetrics() {
+                      try {
+                          const response = await fetch('data/all_metrics.json');
+                          if (!response.ok) {
+                              throw new Error('Failed to load detailed metrics');
+                          }
+                          allMetricsData = await response.json();
+                          return allMetricsData;
+                      } catch (error) {
+                          console.error('Error loading detailed metrics:', error);
+                          return [];
                       }
                   }
 
@@ -498,6 +679,9 @@ jobs:
                           const lastUpdate = data.last_update;
                           const totalRuns = data.total_runs || 0;
 
+                          // Determine success indicator color
+                          const successColor = successRate >= 0.9 ? 'success' : successRate >= 0.7 ? 'warning' : 'info';
+
                           grid.innerHTML = `
                               <div class="metric-card">
                                   <div class="metric-label">Total Records</div>
@@ -507,7 +691,7 @@ jobs:
                               <div class="metric-card">
                                   <div class="metric-label">Success Rate</div>
                                   <div class="metric-value">${(successRate * 100).toFixed(1)}%</div>
-                                  <div class="status-indicator status-info">Monitored</div>
+                                  <div class="status-indicator status-${successColor}">Monitored</div>
                               </div>
                               <div class="metric-card">
                                   <div class="metric-label">Data Sources</div>
@@ -520,6 +704,15 @@ jobs:
                                   <div class="status-indicator status-info">${totalRuns} Runs</div>
                               </div>
                           `;
+
+                          // Load detailed metrics and render charts
+                          const detailedMetrics = await loadAllMetrics();
+                          if (detailedMetrics && detailedMetrics.length > 0) {
+                              renderCharts(detailedMetrics);
+                          } else {
+                              showEmptyChartStates();
+                          }
+
                       } catch (error) {
                           console.error('Error loading metrics:', error);
 
@@ -536,8 +729,361 @@ jobs:
                                       </div>
                                   `;
                               }
+                              showEmptyChartStates();
                           }
                       }
+                  }
+
+                  // Show empty states for charts
+                  function showEmptyChartStates() {
+                      const chartContainers = ['recordsOverTimeChart', 'sourceComparisonChart', 'successRateChart', 'dataQualityChart'];
+                      chartContainers.forEach(chartId => {
+                          const canvas = document.getElementById(chartId);
+                          if (canvas) {
+                              const container = canvas.closest('.chart-container');
+                              if (container) {
+                                  canvas.style.display = 'none';
+                                  container.innerHTML += `
+                                      <div class="empty-state">
+                                          <div class="empty-state-icon">📊</div>
+                                          <div class="empty-state-title">Waiting for Pipeline Data</div>
+                                          <div class="empty-state-text">Charts will populate automatically when pipeline runs are available.</div>
+                                      </div>
+                                  `;
+                              }
+                          }
+                      });
+                  }
+
+                  // Render all charts
+                  function renderCharts(metrics) {
+                      if (!metrics || metrics.length === 0) {
+                          showEmptyChartStates();
+                          return;
+                      }
+
+                      // Sort metrics by timestamp
+                      metrics.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                      renderRecordsOverTimeChart(metrics);
+                      renderSourceComparisonChart(metrics);
+                      renderSuccessRateChart(metrics);
+                      renderDataQualityChart(metrics);
+                  }
+
+                  // 1. Records Over Time Line Chart
+                  function renderRecordsOverTimeChart(metrics) {
+                      const ctx = document.getElementById('recordsOverTimeChart');
+                      if (!ctx) return;
+
+                      // Group by source
+                      const sourceData = {};
+                      metrics.forEach(m => {
+                          if (!sourceData[m.source]) {
+                              sourceData[m.source] = [];
+                          }
+                          sourceData[m.source].push({
+                              timestamp: m.timestamp,
+                              records: m.records_written
+                          });
+                      });
+
+                      // Color palette
+                      const colors = {
+                          'Wikipedia-Somali': '#3b82f6',
+                          'BBC-Somali': '#ef4444',
+                          'HuggingFace-MC4': '#10b981',
+                          'Sprakbanken': '#f59e0b'
+                      };
+
+                      const datasets = Object.keys(sourceData).map(source => ({
+                          label: source,
+                          data: sourceData[source].map(d => ({
+                              x: new Date(d.timestamp),
+                              y: d.records
+                          })),
+                          borderColor: colors[source] || '#6b7280',
+                          backgroundColor: colors[source] || '#6b7280',
+                          borderWidth: 2,
+                          tension: 0.4,
+                          fill: false
+                      }));
+
+                      if (recordsChart) recordsChart.destroy();
+                      recordsChart = new Chart(ctx, {
+                          type: 'line',
+                          data: { datasets },
+                          options: {
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              plugins: {
+                                  legend: {
+                                      display: true,
+                                      position: 'top'
+                                  },
+                                  tooltip: {
+                                      mode: 'index',
+                                      intersect: false,
+                                      callbacks: {
+                                          label: function(context) {
+                                              return context.dataset.label + ': ' + formatNumber(context.parsed.y) + ' records';
+                                          }
+                                      }
+                                  }
+                              },
+                              scales: {
+                                  x: {
+                                      type: 'time',
+                                      time: {
+                                          unit: 'day',
+                                          displayFormats: {
+                                              day: 'MMM dd'
+                                          }
+                                      },
+                                      title: {
+                                          display: true,
+                                          text: 'Date'
+                                      }
+                                  },
+                                  y: {
+                                      beginAtZero: true,
+                                      title: {
+                                          display: true,
+                                          text: 'Records Processed'
+                                      },
+                                      ticks: {
+                                          callback: function(value) {
+                                              return formatNumber(value);
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+                      });
+                  }
+
+                  // 2. Source Comparison Bar Chart
+                  function renderSourceComparisonChart(metrics) {
+                      const ctx = document.getElementById('sourceComparisonChart');
+                      if (!ctx) return;
+
+                      // Aggregate records by source
+                      const sourceRecords = {};
+                      metrics.forEach(m => {
+                          if (!sourceRecords[m.source]) {
+                              sourceRecords[m.source] = 0;
+                          }
+                          sourceRecords[m.source] += m.records_written;
+                      });
+
+                      const sources = Object.keys(sourceRecords);
+                      const records = sources.map(s => sourceRecords[s]);
+
+                      const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+
+                      if (sourceChart) sourceChart.destroy();
+                      sourceChart = new Chart(ctx, {
+                          type: 'bar',
+                          data: {
+                              labels: sources,
+                              datasets: [{
+                                  label: 'Total Records',
+                                  data: records,
+                                  backgroundColor: colors.slice(0, sources.length),
+                                  borderRadius: 6,
+                                  borderWidth: 0
+                              }]
+                          },
+                          options: {
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              plugins: {
+                                  legend: {
+                                      display: false
+                                  },
+                                  tooltip: {
+                                      callbacks: {
+                                          label: function(context) {
+                                              return formatNumber(context.parsed.y) + ' records';
+                                          }
+                                      }
+                                  }
+                              },
+                              scales: {
+                                  y: {
+                                      beginAtZero: true,
+                                      ticks: {
+                                          callback: function(value) {
+                                              return formatNumber(value);
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+                      });
+                  }
+
+                  // 3. Success Rate Trends Line Chart
+                  function renderSuccessRateChart(metrics) {
+                      const ctx = document.getElementById('successRateChart');
+                      if (!ctx) return;
+
+                      // Group by source
+                      const sourceData = {};
+                      metrics.forEach(m => {
+                          if (!sourceData[m.source]) {
+                              sourceData[m.source] = [];
+                          }
+                          sourceData[m.source].push({
+                              timestamp: m.timestamp,
+                              success_rate: (m.success_rate || 0) * 100
+                          });
+                      });
+
+                      const colors = {
+                          'Wikipedia-Somali': '#3b82f6',
+                          'BBC-Somali': '#ef4444',
+                          'HuggingFace-MC4': '#10b981',
+                          'Sprakbanken': '#f59e0b'
+                      };
+
+                      const datasets = Object.keys(sourceData).map(source => ({
+                          label: source,
+                          data: sourceData[source].map(d => ({
+                              x: new Date(d.timestamp),
+                              y: d.success_rate
+                          })),
+                          borderColor: colors[source] || '#6b7280',
+                          backgroundColor: colors[source] || '#6b7280',
+                          borderWidth: 2,
+                          tension: 0.4,
+                          fill: false
+                      }));
+
+                      if (successChart) successChart.destroy();
+                      successChart = new Chart(ctx, {
+                          type: 'line',
+                          data: { datasets },
+                          options: {
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              plugins: {
+                                  legend: {
+                                      display: true,
+                                      position: 'top'
+                                  },
+                                  tooltip: {
+                                      mode: 'index',
+                                      intersect: false,
+                                      callbacks: {
+                                          label: function(context) {
+                                              return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + '%';
+                                          }
+                                      }
+                                  }
+                              },
+                              scales: {
+                                  x: {
+                                      type: 'time',
+                                      time: {
+                                          unit: 'day',
+                                          displayFormats: {
+                                              day: 'MMM dd'
+                                          }
+                                      },
+                                      title: {
+                                          display: true,
+                                          text: 'Date'
+                                      }
+                                  },
+                                  y: {
+                                      min: 0,
+                                      max: 100,
+                                      title: {
+                                          display: true,
+                                          text: 'Success Rate (%)'
+                                      },
+                                      ticks: {
+                                          callback: function(value) {
+                                              return value + '%';
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+                      });
+                  }
+
+                  // 4. Data Quality Horizontal Bar Chart
+                  function renderDataQualityChart(metrics) {
+                      const ctx = document.getElementById('dataQualityChart');
+                      if (!ctx) return;
+
+                      // Calculate average quality metrics
+                      let totalSuccess = 0;
+                      let totalDedup = 0;
+                      let count = 0;
+
+                      metrics.forEach(m => {
+                          if (m.success_rate !== undefined) {
+                              totalSuccess += m.success_rate;
+                              count++;
+                          }
+                          if (m.deduplication_rate !== undefined) {
+                              totalDedup += m.deduplication_rate;
+                          }
+                      });
+
+                      const avgSuccess = count > 0 ? (totalSuccess / count) * 100 : 0;
+                      const avgDedup = count > 0 ? (totalDedup / count) * 100 : 0;
+                      const dataQuality = avgSuccess > 0 ? (avgSuccess * 0.7 + (100 - avgDedup) * 0.3) : 0;
+
+                      if (qualityChart) qualityChart.destroy();
+                      qualityChart = new Chart(ctx, {
+                          type: 'bar',
+                          data: {
+                              labels: ['Success Rate', 'Deduplication Rate', 'Overall Quality'],
+                              datasets: [{
+                                  label: 'Quality Metrics',
+                                  data: [avgSuccess, avgDedup, dataQuality],
+                                  backgroundColor: ['#10b981', '#f59e0b', '#3b82f6'],
+                                  borderRadius: 6,
+                                  borderWidth: 0
+                              }]
+                          },
+                          options: {
+                              indexAxis: 'y',
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              plugins: {
+                                  legend: {
+                                      display: false
+                                  },
+                                  tooltip: {
+                                      callbacks: {
+                                          label: function(context) {
+                                              return context.parsed.x.toFixed(1) + '%';
+                                          }
+                                      }
+                                  }
+                              },
+                              scales: {
+                                  x: {
+                                      min: 0,
+                                      max: 100,
+                                      title: {
+                                          display: true,
+                                          text: 'Percentage (%)'
+                                      },
+                                      ticks: {
+                                          callback: function(value) {
+                                              return value + '%';
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+                      });
                   }
 
                   // Load and display quality reports
@@ -621,6 +1167,7 @@ jobs:
                               "timestamp": snapshot.get("timestamp", ""),
                               "records_written": snapshot.get("records_written", 0),
                               "success_rate": stats.get("fetch_success_rate", 0),
+                              "deduplication_rate": stats.get("deduplication_rate", 0),
                           })
                   except Exception as e:
                       print(f"Error loading {metrics_file}: {e}")
@@ -646,6 +1193,10 @@ jobs:
           # Save summary
           with open(site_data / "summary.json", "w") as f:
               json.dump(summary, f, indent=2)
+
+          # Save all metrics for chart rendering
+          with open(site_data / "all_metrics.json", "w") as f:
+              json.dump(all_metrics, f, indent=2)
 
           # Copy reports
           import shutil
