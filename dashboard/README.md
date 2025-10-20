@@ -22,7 +22,8 @@ Opens at `http://localhost:8501`
 
 ### Live Dashboard
 
-**GitHub Pages**: `https://YOUR-USERNAME.github.io/somali-dialect-classifier/`
+**GitHub Pages**: `https://somali-nlp.github.io/somali-dialect-classifier/`
+*Status*: Deployment pending - workflow needs to be triggered
 
 ---
 

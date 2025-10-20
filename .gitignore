@@ -50,3 +50,6 @@ logs/*
 
 # Development artifacts (archived planning documents)
 .archive/
+
+# GitHub Pages build artifacts
+_site/
