@@ -11,8 +11,8 @@
 The Somali Dialect Classifier includes a professional data quality monitoring dashboard with zero hosting costs. This guide covers everything from quick setup to advanced customization.
 
 **What You Get**:
-- Live static dashboard on GitHub Pages (public portfolio piece)
-- Interactive local dashboard with Streamlit (deep analysis)
+- Live static dashboard on GitHub Pages
+- Interactive local dashboard with Streamlit for deep analysis
 - Automated deployments via GitHub Actions
 - Real-time metrics visualization
 - Quality reports and trend analysis
@@ -27,7 +27,7 @@ The Somali Dialect Classifier includes a professional data quality monitoring da
 - [Dashboard Features](#dashboard-features)
 - [Customization](#customization)
 - [Troubleshooting](#troubleshooting)
-- [Portfolio & Career Impact](#portfolio--career-impact)
+- [Advanced Features](#advanced-features)
 
 ---
 
@@ -121,11 +121,11 @@ git push origin main
 - Links to quality reports
 - Source comparison tables
 - Zero cost hosting
-- Public portfolio piece
+- Automatic updates on GitHub Pages
 
 **Auto-updates**: On every push to `main` branch
 
-**Best For**: Sharing with employers, portfolio showcase, public metrics
+**Best For**: Public metrics sharing, quick overview, external stakeholder visibility
 
 #### 2. Interactive Dashboard (Local/Streamlit)
 
@@ -774,18 +774,17 @@ def update_notion_database(metrics):
 
 ## Next Steps
 
-### Checklist
+### Deployment Checklist
 
 - [ ] Set up GitHub Pages
 - [ ] Push metrics to repository
 - [ ] Update URLs in dashboard files
 - [ ] Deploy dashboard
+- [ ] Verify deployment in GitHub Actions
 - [ ] Test local interactive dashboard
 - [ ] Add custom metrics (optional)
-- [ ] Screenshot for portfolio
-- [ ] Share on LinkedIn
-- [ ] Add to resume
-- [ ] Create case study blog post
+- [ ] Configure monitoring alerts (optional)
+- [ ] Set up automated pipeline runs (optional)
 
 ### Further Enhancements
 
