@@ -56,6 +56,10 @@ jobs:
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <title>Somali NLP Pipeline Dashboard</title>
               <style>
+                  @keyframes spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                  }
                   body {
                       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                       margin: 0;
@@ -136,7 +140,11 @@ jobs:
                   <p>Automated data collection and quality monitoring for Somali language NLP datasets.</p>
 
                   <div class="metrics" id="metrics">
-                      <!-- Metrics will be loaded here -->
+                      <!-- Loading state -->
+                      <div style="text-align: center; padding: 40px; color: #6b7280;">
+                          <div style="border: 3px solid #f3f4f6; border-top: 3px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                          <p>Loading metrics...</p>
+                      </div>
                   </div>
 
                   <h2>🚀 Interactive Dashboard</h2>
@@ -168,54 +176,99 @@ jobs:
               </div>
 
               <script>
+                  // Track load attempts for retry logic
+                  let loadAttempts = 0;
+                  const maxAttempts = 3;
+
                   // Load and display metrics summary
-                  fetch('data/summary.json')
-                      .then(response => response.json())
-                      .then(data => {
-                          const metricsDiv = document.getElementById('metrics');
-                          metricsDiv.innerHTML = `
-                              <div class="metric-card">
-                                  <div class="metric-label">Total Records</div>
-                                  <div class="metric-value">${data.total_records.toLocaleString()}</div>
-                              </div>
-                              <div class="metric-card">
-                                  <div class="metric-label">Success Rate</div>
-                                  <div class="metric-value">${(data.avg_success_rate * 100).toFixed(1)}%</div>
-                              </div>
-                              <div class="metric-card">
-                                  <div class="metric-label">Data Sources</div>
-                                  <div class="metric-value">${data.sources.length}</div>
-                              </div>
-                              <div class="metric-card">
-                                  <div class="metric-label">Last Update</div>
-                                  <div class="metric-value">${new Date(data.last_update).toLocaleDateString()}</div>
-                              </div>
-                          `;
-                      })
-                      .catch(err => {
-                          console.error('Error loading metrics:', err);
-                          document.getElementById('metrics').innerHTML =
-                              '<p style="color: #6b7280;">Run a pipeline to generate metrics data.</p>';
-                      });
+                  function loadMetrics() {
+                      loadAttempts++;
+                      fetch('data/summary.json')
+                          .then(response => {
+                              if (!response.ok) {
+                                  throw new Error(`HTTP error! status: ${response.status}`);
+                              }
+                              return response.json();
+                          })
+                          .then(data => {
+                              const metricsDiv = document.getElementById('metrics');
+                              if (!metricsDiv) return;
+
+                              // Validate and extract data with safe defaults
+                              const totalRecords = data.total_records || 0;
+                              const successRate = data.avg_success_rate || 0;
+                              const sources = data.sources || [];
+                              const lastUpdate = data.last_update || new Date().toISOString();
+
+                              metricsDiv.innerHTML = `
+                                  <div class="metric-card">
+                                      <div class="metric-label">Total Records</div>
+                                      <div class="metric-value">${totalRecords.toLocaleString()}</div>
+                                  </div>
+                                  <div class="metric-card">
+                                      <div class="metric-label">Success Rate</div>
+                                      <div class="metric-value">${(successRate * 100).toFixed(1)}%</div>
+                                  </div>
+                                  <div class="metric-card">
+                                      <div class="metric-label">Data Sources</div>
+                                      <div class="metric-value">${sources.length}</div>
+                                  </div>
+                                  <div class="metric-card">
+                                      <div class="metric-label">Last Update</div>
+                                      <div class="metric-value">${new Date(lastUpdate).toLocaleDateString()}</div>
+                                  </div>
+                              `;
+                          })
+                          .catch(err => {
+                              console.error('Error loading metrics:', err);
+                              const metricsDiv = document.getElementById('metrics');
+                              if (metricsDiv) {
+                                  if (loadAttempts < maxAttempts) {
+                                      setTimeout(loadMetrics, 1000);
+                                  } else {
+                                      metricsDiv.innerHTML = '<p style="color: #6b7280;">Run a pipeline to generate metrics data.</p>';
+                                  }
+                              }
+                          });
+                  }
 
                   // Load reports list
-                  fetch('data/reports.json')
-                      .then(response => response.json())
-                      .then(reports => {
-                          const reportsDiv = document.getElementById('reports');
-                          if (reports.length === 0) {
-                              reportsDiv.innerHTML = '<p style="color: #6b7280;">No reports available yet.</p>';
-                          } else {
-                              reportsDiv.innerHTML = reports.slice(0, 5).map(report => `
-                                  <a href="reports/${report.filename}" class="report-link">
-                                      📄 ${report.name}
-                                  </a>
-                              `).join('');
-                          }
-                      })
-                      .catch(err => {
-                          console.error('Error loading reports:', err);
-                      });
+                  function loadReports() {
+                      fetch('data/reports.json')
+                          .then(response => {
+                              if (!response.ok) {
+                                  throw new Error(`HTTP error! status: ${response.status}`);
+                              }
+                              return response.json();
+                          })
+                          .then(reports => {
+                              const reportsDiv = document.getElementById('reports');
+                              if (!reportsDiv) return;
+
+                              if (!reports || reports.length === 0) {
+                                  reportsDiv.innerHTML = '<p style="color: #6b7280;">No reports available yet.</p>';
+                              } else {
+                                  reportsDiv.innerHTML = reports.slice(0, 5).map(report => `
+                                      <a href="reports/${report.filename}" class="report-link">
+                                          📄 ${report.name || 'Report'}
+                                      </a>
+                                  `).join('');
+                              }
+                          })
+                          .catch(err => {
+                              console.error('Error loading reports:', err);
+                              const reportsDiv = document.getElementById('reports');
+                              if (reportsDiv) {
+                                  reportsDiv.innerHTML = '<p style="color: #6b7280;">No reports available.</p>';
+                              }
+                          });
+                  }
+
+                  // Initialize when DOM is ready
+                  window.addEventListener('DOMContentLoaded', function() {
+                      loadMetrics();
+                      loadReports();
+                  });
               </script>
           </body>
           </html>
