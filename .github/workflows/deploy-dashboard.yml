@@ -1851,6 +1851,11 @@ jobs:
                           }
                       });
 
+                      // Default to first section if at top of page
+                      if (!current && sections.length > 0) {
+                          current = sections[0].getAttribute('id');
+                      }
+
                       navLinks.forEach(link => {
                           link.classList.remove('active');
                           if (link.getAttribute('href') === '#' + current) {
@@ -2950,12 +2955,20 @@ jobs:
 
                       // Setup scroll listeners
                       let scrollTimeout;
+                      let rafId;
                       window.addEventListener('scroll', function() {
                           handleNavScroll();
 
-                          // Debounce active link update
+                          // Debounce active link update with longer delay for smooth scrolling
                           clearTimeout(scrollTimeout);
-                          scrollTimeout = setTimeout(updateActiveNavLink, 100);
+                          if (rafId) {
+                              cancelAnimationFrame(rafId);
+                          }
+
+                          // Use requestAnimationFrame for smooth updates
+                          rafId = requestAnimationFrame(() => {
+                              scrollTimeout = setTimeout(updateActiveNavLink, 150);
+                          });
                       }, { passive: true });
 
                       // Initial active link update
