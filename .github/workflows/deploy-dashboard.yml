@@ -649,6 +649,275 @@ jobs:
                       max-height: 0;
                   }
 
+                  /* ========== Sticky Navigation ========== */
+                  .main-nav {
+                      position: sticky;
+                      top: 0;
+                      background: white;
+                      border-bottom: 1px solid var(--gray-200);
+                      z-index: 50;
+                      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                      transition: box-shadow 0.2s ease;
+                  }
+
+                  .main-nav.scrolled {
+                      box-shadow: var(--shadow-md);
+                  }
+
+                  .nav-container {
+                      max-width: 1200px;
+                      margin: 0 auto;
+                      padding: var(--space-4) var(--space-6);
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                  }
+
+                  .nav-logo {
+                      font-size: var(--text-lg);
+                      font-weight: var(--font-bold);
+                      color: var(--primary-600);
+                      text-decoration: none;
+                      display: flex;
+                      align-items: center;
+                  }
+
+                  .nav-logo:hover {
+                      color: var(--primary-700);
+                  }
+
+                  .nav-menu {
+                      display: flex;
+                      list-style: none;
+                      gap: var(--space-6);
+                      margin: 0;
+                      padding: 0;
+                  }
+
+                  .nav-menu li {
+                      margin: 0;
+                  }
+
+                  .nav-menu a {
+                      text-decoration: none;
+                      color: var(--gray-700);
+                      font-weight: var(--font-medium);
+                      font-size: var(--text-sm);
+                      padding: var(--space-2) var(--space-3);
+                      border-radius: var(--radius-md);
+                      transition: all 0.2s ease;
+                      display: block;
+                  }
+
+                  .nav-menu a:hover {
+                      background: var(--primary-50);
+                      color: var(--primary-700);
+                  }
+
+                  .nav-menu a.active {
+                      background: var(--primary-600);
+                      color: white;
+                  }
+
+                  .nav-cta {
+                      background: var(--primary-600);
+                      color: white !important;
+                  }
+
+                  .nav-cta:hover {
+                      background: var(--primary-700) !important;
+                      color: white !important;
+                  }
+
+                  /* Mobile hamburger menu */
+                  .nav-toggle {
+                      display: none;
+                      background: none;
+                      border: none;
+                      cursor: pointer;
+                      padding: var(--space-2);
+                      color: var(--gray-700);
+                  }
+
+                  .nav-toggle:focus {
+                      outline: 2px solid var(--primary-600);
+                      outline-offset: 2px;
+                  }
+
+                  .hamburger {
+                      display: block;
+                      width: 24px;
+                      height: 2px;
+                      background: currentColor;
+                      position: relative;
+                      transition: all 0.3s ease;
+                  }
+
+                  .hamburger::before,
+                  .hamburger::after {
+                      content: '';
+                      position: absolute;
+                      width: 24px;
+                      height: 2px;
+                      background: currentColor;
+                      transition: all 0.3s ease;
+                  }
+
+                  .hamburger::before {
+                      top: -8px;
+                  }
+
+                  .hamburger::after {
+                      top: 8px;
+                  }
+
+                  .nav-toggle[aria-expanded="true"] .hamburger {
+                      background: transparent;
+                  }
+
+                  .nav-toggle[aria-expanded="true"] .hamburger::before {
+                      top: 0;
+                      transform: rotate(45deg);
+                  }
+
+                  .nav-toggle[aria-expanded="true"] .hamburger::after {
+                      top: 0;
+                      transform: rotate(-45deg);
+                  }
+
+                  /* ========== Data Export Buttons ========== */
+                  .export-buttons {
+                      display: flex;
+                      gap: var(--space-3);
+                      margin-bottom: var(--space-6);
+                      flex-wrap: wrap;
+                  }
+
+                  .btn-export {
+                      display: inline-flex;
+                      align-items: center;
+                      gap: var(--space-2);
+                      padding: var(--space-2) var(--space-4);
+                      background: var(--gray-100);
+                      color: var(--gray-700);
+                      border: 1px solid var(--gray-300);
+                      border-radius: var(--radius-md);
+                      font-size: var(--text-sm);
+                      font-weight: var(--font-medium);
+                      cursor: pointer;
+                      transition: all 0.2s ease;
+                  }
+
+                  .btn-export:hover {
+                      background: var(--gray-200);
+                      border-color: var(--gray-400);
+                  }
+
+                  .btn-export:active {
+                      transform: translateY(1px);
+                  }
+
+                  /* ========== Responsive Data Tables ========== */
+                  .data-table-container {
+                      overflow-x: auto;
+                      margin: var(--space-4) 0;
+                  }
+
+                  .data-table {
+                      width: 100%;
+                      border-collapse: collapse;
+                      font-size: var(--text-sm);
+                  }
+
+                  .data-table th,
+                  .data-table td {
+                      padding: var(--space-3) var(--space-4);
+                      text-align: left;
+                      border-bottom: 1px solid var(--gray-200);
+                  }
+
+                  .data-table th {
+                      background: var(--gray-50);
+                      font-weight: var(--font-semibold);
+                      color: var(--gray-700);
+                  }
+
+                  .data-table tbody tr:hover {
+                      background: var(--gray-50);
+                  }
+
+                  /* Card layout for mobile */
+                  .table-card {
+                      display: none;
+                  }
+
+                  /* ========== Contribution Section ========== */
+                  .contribute-section {
+                      background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+                      border-radius: var(--radius-xl);
+                      padding: var(--space-12) var(--space-8);
+                      margin: var(--space-16) 0;
+                      text-align: center;
+                  }
+
+                  .contribute-section h2 {
+                      color: var(--primary-900);
+                      border: none;
+                      margin-bottom: var(--space-4);
+                  }
+
+                  .contribute-section > p {
+                      color: var(--gray-700);
+                      font-size: var(--text-lg);
+                      margin-bottom: var(--space-10);
+                      max-width: 600px;
+                      margin-left: auto;
+                      margin-right: auto;
+                  }
+
+                  .contribute-grid {
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                      gap: var(--space-6);
+                      margin-top: var(--space-8);
+                  }
+
+                  .contribute-card {
+                      background: white;
+                      border-radius: var(--radius-lg);
+                      padding: var(--space-8);
+                      box-shadow: var(--shadow-sm);
+                      transition: all 0.3s ease;
+                      border: 2px solid transparent;
+                  }
+
+                  .contribute-card:hover {
+                      transform: translateY(-4px);
+                      box-shadow: var(--shadow-lg);
+                      border-color: var(--primary-300);
+                  }
+
+                  .contribute-card h3 {
+                      color: var(--primary-700);
+                      margin-bottom: var(--space-3);
+                      font-size: var(--text-xl);
+                  }
+
+                  .contribute-card p {
+                      color: var(--gray-600);
+                      margin-bottom: var(--space-5);
+                      line-height: var(--leading-relaxed);
+                  }
+
+                  .contribute-card .btn {
+                      width: 100%;
+                  }
+
+                  .contribute-icon {
+                      font-size: var(--text-4xl);
+                      margin-bottom: var(--space-4);
+                  }
+
                   /* ========== Footer ========== */
                   .footer {
                       margin-top: var(--space-20);
@@ -661,6 +930,76 @@ jobs:
 
                   /* ========== Responsive Design ========== */
                   @media (max-width: 768px) {
+                      /* Mobile Navigation */
+                      .nav-toggle {
+                          display: block;
+                      }
+
+                      .nav-menu {
+                          position: absolute;
+                          top: 100%;
+                          left: 0;
+                          right: 0;
+                          background: white;
+                          flex-direction: column;
+                          gap: 0;
+                          border-bottom: 1px solid var(--gray-200);
+                          box-shadow: var(--shadow-md);
+                          max-height: 0;
+                          overflow: hidden;
+                          transition: max-height 0.3s ease;
+                      }
+
+                      .nav-menu.open {
+                          max-height: 400px;
+                      }
+
+                      .nav-menu li {
+                          border-bottom: 1px solid var(--gray-100);
+                      }
+
+                      .nav-menu a {
+                          padding: var(--space-4) var(--space-6);
+                          border-radius: 0;
+                      }
+
+                      /* Responsive Tables - Card Layout */
+                      .data-table {
+                          display: none;
+                      }
+
+                      .table-card {
+                          display: block;
+                          background: white;
+                          border: 1px solid var(--gray-200);
+                          border-radius: var(--radius-lg);
+                          padding: var(--space-4);
+                          margin-bottom: var(--space-4);
+                      }
+
+                      .table-card-row {
+                          display: flex;
+                          justify-content: space-between;
+                          padding: var(--space-2) 0;
+                          border-bottom: 1px solid var(--gray-100);
+                      }
+
+                      .table-card-row:last-child {
+                          border-bottom: none;
+                      }
+
+                      .table-card-label {
+                          font-weight: var(--font-semibold);
+                          color: var(--gray-700);
+                          font-size: var(--text-sm);
+                      }
+
+                      .table-card-value {
+                          color: var(--gray-600);
+                          font-size: var(--text-sm);
+                      }
+
+                      /* Hero Section */
                       .hero {
                           padding: var(--space-12) var(--space-4);
                       }
@@ -716,6 +1055,10 @@ jobs:
                       h2 {
                           font-size: var(--text-2xl);
                       }
+
+                      .contribute-grid {
+                          grid-template-columns: 1fr;
+                      }
                   }
 
                   @media (max-width: 480px) {
@@ -755,6 +1098,28 @@ jobs:
           <body>
               <!-- Skip to content link for keyboard navigation -->
               <a href="#main-content" class="skip-link">Skip to main content</a>
+
+              <!-- Sticky Navigation Bar -->
+              <nav class="main-nav" role="navigation" aria-label="Main navigation">
+                  <div class="nav-container">
+                      <a href="#" class="nav-logo" aria-label="Somali Dialect Classifier Home">
+                          Somali Dialect Classifier
+                      </a>
+                      <button class="nav-toggle"
+                              aria-expanded="false"
+                              aria-controls="navMenu"
+                              aria-label="Toggle navigation menu">
+                          <span class="hamburger"></span>
+                      </button>
+                      <ul class="nav-menu" id="navMenu">
+                          <li><a href="#dashboard">Overview</a></li>
+                          <li><a href="#visualizations">Data</a></li>
+                          <li><a href="#about">About</a></li>
+                          <li><a href="#reports">Reports</a></li>
+                          <li><a href="#contribute" class="nav-cta">Contribute</a></li>
+                      </ul>
+                  </div>
+              </nav>
 
               <!-- Hero Section -->
               <section class="hero" role="banner">
@@ -817,10 +1182,28 @@ jobs:
                   <section id="visualizations" aria-labelledby="viz-heading">
                       <h2 id="viz-heading">Data Visualizations</h2>
 
+                      <!-- Data Export Buttons -->
+                      <div class="export-buttons" role="group" aria-label="Data export options">
+                          <button class="btn-export" onclick="exportData('csv')" aria-label="Export data as CSV">
+                              📊 Export CSV
+                          </button>
+                          <button class="btn-export" onclick="exportData('json')" aria-label="Export data as JSON">
+                              📋 Export JSON
+                          </button>
+                          <button class="btn-export" onclick="resetZoom()" aria-label="Reset all chart zoom levels">
+                              🔄 Reset Zoom
+                          </button>
+                      </div>
+
                       <!-- Records Over Time Chart -->
                       <div class="charts-section">
                           <div class="chart-container">
-                              <div class="chart-title">Records Processed Over Time</div>
+                              <div class="chart-title">
+                                  Records Processed Over Time
+                                  <span style="font-size: var(--text-xs); color: var(--gray-500); font-weight: normal; margin-left: var(--space-2);">
+                                      (Scroll to zoom, drag to pan)
+                                  </span>
+                              </div>
                               <div class="chart-canvas" role="img" aria-label="Line chart showing records processed over time by data source">
                                   <canvas id="recordsOverTimeChart"></canvas>
                               </div>
@@ -894,10 +1277,67 @@ jobs:
                           </div>
                       </div>
                   </section>
+
+                  <!-- Contribution Section -->
+                  <section id="contribute" class="contribute-section" aria-labelledby="contribute-heading">
+                      <h2 id="contribute-heading">Contribute to Somali NLP</h2>
+                      <p>Join the community in building the largest open-source Somali language dataset for machine learning research.</p>
+
+                      <div class="contribute-grid">
+                          <div class="contribute-card">
+                              <div class="contribute-icon" role="img" aria-label="Data sources icon">📚</div>
+                              <h3>Add Data Sources</h3>
+                              <p>Help us integrate new Somali text corpora from Wikipedia, news sites, academic journals, and cultural archives.</p>
+                              <a href="https://github.com/somali-nlp/somali-dialect-classifier/issues/new?labels=data-source&template=data_source_request.md"
+                                 class="btn btn-primary"
+                                 aria-label="Request new data source">
+                                  Suggest Source
+                              </a>
+                          </div>
+
+                          <div class="contribute-card">
+                              <div class="contribute-icon" role="img" aria-label="Quality improvement icon">✨</div>
+                              <h3>Improve Quality</h3>
+                              <p>Enhance data cleaning, deduplication algorithms, language detection, and quality validation processes.</p>
+                              <a href="https://github.com/somali-nlp/somali-dialect-classifier/blob/main/CONTRIBUTING.md"
+                                 class="btn btn-primary"
+                                 aria-label="Read contribution guidelines">
+                                  Contributing Guide
+                              </a>
+                          </div>
+
+                          <div class="contribute-card">
+                              <div class="contribute-icon" role="img" aria-label="Build tools icon">🔧</div>
+                              <h3>Build Tools</h3>
+                              <p>Create analysis tools, visualizations, dialect classifiers, and applications using this dataset.</p>
+                              <a href="https://github.com/somali-nlp/somali-dialect-classifier"
+                                 class="btn btn-primary"
+                                 aria-label="View GitHub repository">
+                                  View on GitHub
+                              </a>
+                          </div>
+                      </div>
+                  </section>
               </main>
 
               <footer class="footer" role="contentinfo">
                   <p>Somali Dialect Classifier | Open Source NLP Research Project</p>
+                  <p style="margin-top: var(--space-2); font-size: var(--text-xs);">
+                      <a href="https://github.com/somali-nlp/somali-dialect-classifier"
+                         style="color: var(--primary-600); text-decoration: none;">
+                          GitHub
+                      </a>
+                      •
+                      <a href="https://github.com/somali-nlp/somali-dialect-classifier#readme"
+                         style="color: var(--primary-600); text-decoration: none;">
+                          Documentation
+                      </a>
+                      •
+                      <a href="https://github.com/somali-nlp/somali-dialect-classifier/blob/main/LICENSE"
+                         style="color: var(--primary-600); text-decoration: none;">
+                          License
+                      </a>
+                  </p>
               </footer>
 
               <script>
@@ -908,6 +1348,132 @@ jobs:
 
                   // Chart instances (for cleanup)
                   let recordsChart, sourceChart, successChart, qualityChart;
+
+                  // ========== Navigation Functions ==========
+
+                  // Mobile navigation toggle
+                  function toggleMobileNav() {
+                      const toggle = document.querySelector('.nav-toggle');
+                      const menu = document.querySelector('.nav-menu');
+                      const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+
+                      toggle.setAttribute('aria-expanded', !isExpanded);
+                      menu.classList.toggle('open');
+                  }
+
+                  // Smooth scroll to sections
+                  function smoothScrollTo(targetId) {
+                      const target = document.querySelector(targetId);
+                      if (target) {
+                          const navHeight = document.querySelector('.main-nav').offsetHeight;
+                          const targetPosition = target.offsetTop - navHeight - 20;
+
+                          window.scrollTo({
+                              top: targetPosition,
+                              behavior: 'smooth'
+                          });
+                      }
+                  }
+
+                  // Update active navigation link
+                  function updateActiveNavLink() {
+                      const sections = document.querySelectorAll('section[id]');
+                      const navLinks = document.querySelectorAll('.nav-menu a');
+
+                      let current = '';
+
+                      sections.forEach(section => {
+                          const sectionTop = section.offsetTop;
+                          const sectionHeight = section.clientHeight;
+                          if (window.scrollY >= (sectionTop - 200)) {
+                              current = section.getAttribute('id');
+                          }
+                      });
+
+                      navLinks.forEach(link => {
+                          link.classList.remove('active');
+                          if (link.getAttribute('href') === '#' + current) {
+                              link.classList.add('active');
+                          }
+                      });
+                  }
+
+                  // Add scrolled class to navigation on scroll
+                  function handleNavScroll() {
+                      const nav = document.querySelector('.main-nav');
+                      if (window.scrollY > 50) {
+                          nav.classList.add('scrolled');
+                      } else {
+                          nav.classList.remove('scrolled');
+                      }
+                  }
+
+                  // ========== Data Export Functions ==========
+
+                  function exportData(format) {
+                      if (!allMetricsData || allMetricsData.length === 0) {
+                          alert('No data available to export. Please wait for data to load.');
+                          return;
+                      }
+
+                      const timestamp = new Date().toISOString().split('T')[0];
+                      const filename = `somali-nlp-metrics-${timestamp}`;
+
+                      if (format === 'csv') {
+                          exportAsCSV(allMetricsData, filename);
+                      } else if (format === 'json') {
+                          exportAsJSON(allMetricsData, filename);
+                      }
+                  }
+
+                  function exportAsCSV(data, filename) {
+                      // CSV headers
+                      const headers = ['Run ID', 'Source', 'Timestamp', 'Records Written', 'Success Rate', 'Deduplication Rate'];
+
+                      // CSV rows
+                      const rows = data.map(item => [
+                          item.run_id || '',
+                          item.source || '',
+                          item.timestamp || '',
+                          item.records_written || 0,
+                          ((item.success_rate || 0) * 100).toFixed(2) + '%',
+                          ((item.deduplication_rate || 0) * 100).toFixed(2) + '%'
+                      ]);
+
+                      // Combine headers and rows
+                      const csvContent = [
+                          headers.join(','),
+                          ...rows.map(row => row.join(','))
+                      ].join('\n');
+
+                      // Download
+                      downloadFile(csvContent, filename + '.csv', 'text/csv');
+                  }
+
+                  function exportAsJSON(data, filename) {
+                      const jsonContent = JSON.stringify(data, null, 2);
+                      downloadFile(jsonContent, filename + '.json', 'application/json');
+                  }
+
+                  function downloadFile(content, filename, mimeType) {
+                      const blob = new Blob([content], { type: mimeType });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = filename;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
+                  }
+
+                  // Reset zoom on all charts
+                  function resetZoom() {
+                      if (recordsChart) recordsChart.resetZoom();
+                      if (sourceChart) sourceChart.resetZoom();
+                      if (successChart) successChart.resetZoom();
+                      if (qualityChart) qualityChart.resetZoom();
+                  }
 
                   // Format large numbers with commas
                   function formatNumber(num) {
@@ -1093,7 +1659,7 @@ jobs:
                   Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
                   Chart.defaults.color = '#6b7280';
 
-                  // 1. Records Over Time Line Chart
+                  // 1. Records Over Time Line Chart (with zoom and enhanced tooltips)
                   function renderRecordsOverTimeChart(metrics) {
                       const ctx = document.getElementById('recordsOverTimeChart');
                       if (!ctx) return;
@@ -1106,7 +1672,9 @@ jobs:
                           }
                           sourceData[m.source].push({
                               timestamp: m.timestamp,
-                              records: m.records_written
+                              records: m.records_written,
+                              run_id: m.run_id,
+                              success_rate: m.success_rate
                           });
                       });
 
@@ -1122,13 +1690,17 @@ jobs:
                           label: source,
                           data: sourceData[source].map(d => ({
                               x: new Date(d.timestamp),
-                              y: d.records
+                              y: d.records,
+                              run_id: d.run_id,
+                              success_rate: d.success_rate
                           })),
                           borderColor: colors[source] || '#6b7280',
                           backgroundColor: colors[source] || '#6b7280',
                           borderWidth: 2,
                           tension: 0.4,
-                          fill: false
+                          fill: false,
+                          pointRadius: 4,
+                          pointHoverRadius: 6
                       }));
 
                       if (recordsChart) recordsChart.destroy();
@@ -1138,18 +1710,67 @@ jobs:
                           options: {
                               responsive: true,
                               maintainAspectRatio: false,
+                              interaction: {
+                                  mode: 'index',
+                                  intersect: false
+                              },
                               plugins: {
                                   legend: {
                                       display: true,
-                                      position: 'top'
+                                      position: 'top',
+                                      labels: {
+                                          padding: 15,
+                                          usePointStyle: true
+                                      }
                                   },
                                   tooltip: {
                                       mode: 'index',
                                       intersect: false,
+                                      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                                      padding: 12,
+                                      titleFont: {
+                                          size: 14,
+                                          weight: 'bold'
+                                      },
+                                      bodyFont: {
+                                          size: 13
+                                      },
                                       callbacks: {
+                                          title: function(context) {
+                                              return formatDate(context[0].raw.x);
+                                          },
                                           label: function(context) {
-                                              return context.dataset.label + ': ' + formatNumber(context.parsed.y) + ' records';
+                                              const records = formatNumber(context.parsed.y);
+                                              const successRate = (context.raw.success_rate * 100).toFixed(1);
+                                              return [
+                                                  context.dataset.label + ':',
+                                                  '  Records: ' + records,
+                                                  '  Success: ' + successRate + '%'
+                                              ];
+                                          },
+                                          afterBody: function(context) {
+                                              if (context[0].raw.run_id) {
+                                                  return '\nRun ID: ' + context[0].raw.run_id.substring(0, 8);
+                                              }
+                                              return '';
                                           }
+                                      }
+                                  },
+                                  zoom: {
+                                      pan: {
+                                          enabled: true,
+                                          mode: 'x',
+                                          modifierKey: 'ctrl'
+                                      },
+                                      zoom: {
+                                          wheel: {
+                                              enabled: true,
+                                              speed: 0.1
+                                          },
+                                          pinch: {
+                                              enabled: true
+                                          },
+                                          mode: 'x'
                                       }
                                   }
                               },
@@ -1164,19 +1785,31 @@ jobs:
                                       },
                                       title: {
                                           display: true,
-                                          text: 'Date'
+                                          text: 'Date',
+                                          font: {
+                                              weight: 'bold'
+                                          }
+                                      },
+                                      grid: {
+                                          color: 'rgba(0, 0, 0, 0.05)'
                                       }
                                   },
                                   y: {
                                       beginAtZero: true,
                                       title: {
                                           display: true,
-                                          text: 'Records Processed'
+                                          text: 'Records Processed',
+                                          font: {
+                                              weight: 'bold'
+                                          }
                                       },
                                       ticks: {
                                           callback: function(value) {
                                               return formatNumber(value);
                                           }
+                                      },
+                                      grid: {
+                                          color: 'rgba(0, 0, 0, 0.05)'
                                       }
                                   }
                               }
@@ -1455,8 +2088,58 @@ jobs:
 
                   // Initialize dashboard
                   document.addEventListener('DOMContentLoaded', function() {
+                      // Load data
                       loadMetrics();
                       loadReports();
+
+                      // Setup navigation
+                      const navToggle = document.querySelector('.nav-toggle');
+                      if (navToggle) {
+                          navToggle.addEventListener('click', toggleMobileNav);
+                      }
+
+                      // Setup smooth scroll for navigation links
+                      const navLinks = document.querySelectorAll('.nav-menu a, .hero-cta a[href^="#"]');
+                      navLinks.forEach(link => {
+                          link.addEventListener('click', function(e) {
+                              const href = this.getAttribute('href');
+                              if (href.startsWith('#')) {
+                                  e.preventDefault();
+                                  smoothScrollTo(href);
+
+                                  // Close mobile menu after click
+                                  const menu = document.querySelector('.nav-menu');
+                                  const toggle = document.querySelector('.nav-toggle');
+                                  if (menu && menu.classList.contains('open')) {
+                                      menu.classList.remove('open');
+                                      toggle.setAttribute('aria-expanded', 'false');
+                                  }
+                              }
+                          });
+                      });
+
+                      // Setup scroll listeners
+                      let scrollTimeout;
+                      window.addEventListener('scroll', function() {
+                          handleNavScroll();
+
+                          // Debounce active link update
+                          clearTimeout(scrollTimeout);
+                          scrollTimeout = setTimeout(updateActiveNavLink, 100);
+                      }, { passive: true });
+
+                      // Initial active link update
+                      updateActiveNavLink();
+
+                      // Keyboard support for collapsible sections
+                      document.querySelectorAll('.collapsible').forEach(element => {
+                          element.addEventListener('keydown', function(e) {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  toggleCollapsible(this);
+                              }
+                          });
+                      });
                   });
               </script>
           </body>
