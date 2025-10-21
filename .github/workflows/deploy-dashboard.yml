@@ -730,11 +730,33 @@ jobs:
                   .nav-cta {
                       background: var(--primary-600);
                       color: white !important;
+                      padding: 10px 20px !important;
+                      margin-left: var(--space-3);
+                      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+                      position: relative;
+                      overflow: hidden;
+                  }
+
+                  .nav-cta::before {
+                      content: '';
+                      position: absolute;
+                      top: 0;
+                      left: -100%;
+                      width: 100%;
+                      height: 100%;
+                      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                      transition: left 0.5s ease;
                   }
 
                   .nav-cta:hover {
                       background: var(--primary-700) !important;
                       color: white !important;
+                      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+                      transform: translateY(-1px);
+                  }
+
+                  .nav-cta:hover::before {
+                      left: 100%;
                   }
 
                   /* Mobile hamburger menu */
@@ -875,7 +897,7 @@ jobs:
                   }
 
                   .contribute-section > p {
-                      color: var(--gray-700);
+                      color: var(--gray-900);
                       font-size: var(--text-lg);
                       margin-bottom: var(--space-10);
                       max-width: 600px;
@@ -1488,7 +1510,7 @@ jobs:
                           <li><a href="#success-rate-faq">Metrics FAQ</a></li>
                           <li><a href="#about">About</a></li>
                           <li><a href="#reports">Reports</a></li>
-                          <li><a href="#contribute" class="nav-cta">Contribute</a></li>
+                          <li><a href="#contribute" class="nav-cta">➕ Contribute</a></li>
                       </ul>
                   </div>
               </nav>
@@ -1567,12 +1589,19 @@ jobs:
                           </button>
                       </div>
 
+                      <!-- Data Collection Info Banner -->
+                      <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 12px 16px; margin-bottom: 20px; border-radius: 4px;">
+                          <strong>ℹ️ Initial Data Collection</strong><br>
+                          <span style="font-size: 14px; color: #92400E;">Charts show snapshot from first pipeline run (Oct 21, 2025). Time-series trends will appear after multiple daily runs.</span>
+                      </div>
+
                       <!-- Records Over Time Chart -->
                       <div class="charts-section">
                           <div class="chart-container">
                               <div class="chart-title">
-                                  Records Processed Over Time
-                                  <span style="font-size: var(--text-xs); color: var(--gray-500); font-weight: normal; margin-left: var(--space-2);">
+                                  Records Processed by Source
+                                  <span style="font-size: 0.75rem; color: #6b7280; font-weight: normal; margin-left: 8px;">(Snapshot View)</span>
+                                  <span style="font-size: var(--text-xs); color: var(--gray-500); font-weight: normal; margin-left: var(--space-2); display: block;">
                                       (Scroll to zoom, drag to pan)
                                   </span>
                               </div>
@@ -1591,8 +1620,11 @@ jobs:
                               </div>
                           </div>
                           <div class="chart-container">
-                              <div class="chart-title">Success Rate Trends</div>
-                              <div class="chart-canvas" role="img" aria-label="Line chart showing success rate trends over time by source">
+                              <div class="chart-title">
+                                  Success Rate by Source
+                                  <span style="font-size: 0.75rem; color: #6b7280; font-weight: normal; margin-left: 8px;">(Snapshot View)</span>
+                              </div>
+                              <div class="chart-canvas" role="img" aria-label="Chart showing success rate by data source">
                                   <canvas id="successRateChart"></canvas>
                               </div>
                           </div>
@@ -2172,12 +2204,12 @@ jobs:
                           });
                       });
 
-                      // Color palette (colorblind-safe)
+                      // Color palette (Wong's colorblind-safe palette)
                       const colors = {
-                          'Wikipedia-Somali': '#3b82f6',
-                          'BBC-Somali': '#ef4444',
-                          'HuggingFace-MC4': '#10b981',
-                          'Sprakbanken': '#f59e0b'
+                          'Wikipedia-Somali': '#0173B2',
+                          'BBC-Somali': '#DE8F05',
+                          'HuggingFace-MC4': '#029E73',
+                          'Sprakbanken': '#CC78BC'
                       };
 
                       const datasets = Object.keys(sourceData).map(source => ({
@@ -2193,8 +2225,11 @@ jobs:
                           borderWidth: 2,
                           tension: 0.4,
                           fill: false,
-                          pointRadius: 4,
-                          pointHoverRadius: 6
+                          pointRadius: 8,
+                          pointHoverRadius: 12,
+                          pointBorderWidth: 2,
+                          pointBackgroundColor: '#ffffff',
+                          pointStyle: 'circle'
                       }));
 
                       if (recordsChart) recordsChart.destroy();
@@ -2390,10 +2425,10 @@ jobs:
                       });
 
                       const colors = {
-                          'Wikipedia-Somali': '#3b82f6',
-                          'BBC-Somali': '#ef4444',
-                          'HuggingFace-MC4': '#10b981',
-                          'Sprakbanken': '#f59e0b'
+                          'Wikipedia-Somali': '#0173B2',
+                          'BBC-Somali': '#DE8F05',
+                          'HuggingFace-MC4': '#029E73',
+                          'Sprakbanken': '#CC78BC'
                       };
 
                       const datasets = Object.keys(sourceData).map(source => ({
@@ -2446,7 +2481,7 @@ jobs:
                                       }
                                   },
                                   y: {
-                                      min: 0,
+                                      min: 90,
                                       max: 100,
                                       title: {
                                           display: true,
@@ -2455,7 +2490,8 @@ jobs:
                                       ticks: {
                                           callback: function(value) {
                                               return value + '%';
-                                          }
+                                          },
+                                          stepSize: 2
                                       }
                                   }
                               }
