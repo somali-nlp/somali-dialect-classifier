@@ -14,18 +14,18 @@ ENV/
 *.ipynb_checkpoints
 
 # Data (don't commit large files - regenerate via pipelines)
-data/*
-!data/.gitkeep
-!data/metrics/        # Keep metrics JSON files (small, valuable for dashboard)
-!data/metrics/**      # Keep all contents of metrics directory
-!data/reports/        # Keep quality reports (markdown, useful for reference)
-!data/reports/**      # Keep all contents of reports directory
-data/silver/*         # Exclude processed data files
-data/bronze/*         # Exclude raw data files
-data/gold/*           # Exclude final datasets
-data/staging/*        # Exclude staging data files
-data/processed/*      # Exclude processed data files
-data/raw/*            # Exclude raw data files
+# Explicitly ignore subdirectories except metrics and reports
+data/silver/          # Exclude processed data files
+data/bronze/          # Exclude raw data files
+data/gold/            # Exclude final datasets
+data/staging/         # Exclude staging data files
+data/processed/       # Exclude processed data files
+data/raw/             # Exclude raw data files
+data/ledger/          # Exclude crawl ledger database
+data/analysis/        # Exclude analysis artifacts
+# Keep metrics and reports for dashboard (small files)
+# data/metrics/ - JSON metrics files
+# data/reports/ - Quality reports (markdown)
 *.pkl
 *.h5
 *.parquet

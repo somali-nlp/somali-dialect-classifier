@@ -1,0 +1,43 @@
+{
+  "snapshot": {
+    "timestamp": "2025-10-21T11:37:08.526194+00:00",
+    "run_id": "20251021_113641_bbc_somali_efac82d1",
+    "source": "BBC-Somali",
+    "duration_seconds": 27.3329439163208,
+    "pipeline_type": "web_scraping",
+    "urls_discovered": 118,
+    "urls_fetched": 0,
+    "urls_processed": 0,
+    "urls_failed": 0,
+    "urls_skipped": 0,
+    "urls_deduplicated": 0,
+    "files_discovered": 0,
+    "files_processed": 0,
+    "records_extracted": 0,
+    "datasets_opened": 0,
+    "records_fetched": 0,
+    "records_processed": 0,
+    "batches_completed": 0,
+    "bytes_downloaded": 0,
+    "records_written": 0,
+    "http_status_codes": {},
+    "filter_reasons": {},
+    "error_types": {},
+    "fetch_durations_ms": [],
+    "process_durations_ms": [],
+    "text_lengths": [],
+    "unique_hashes": 0,
+    "duplicate_hashes": 0,
+    "near_duplicates": 0
+  },
+  "statistics": {
+    "fetch_success_rate": 0,
+    "fetch_failure_rate": 0,
+    "deduplication_rate": 0,
+    "throughput": {
+      "urls_per_second": 0.0,
+      "bytes_per_second": 0.0,
+      "records_per_minute": 0.0
+    }
+  }
+}
