@@ -529,10 +529,17 @@ class SprakbankenSomaliProcessor(BasePipeline):
                 url = f"https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}"
 
                 # Store corpus_id in metadata to pass to source_id field
+                # Also include minhash_signature and text_hash for ledger tracking
                 metadata_with_corpus_id = {
                     **record["metadata"],
                     "corpus_id": corpus_id,  # Will be used to populate source_id
                 }
+
+                # Include dedup metadata if present (for ledger.mark_processed)
+                if "minhash_signature" in record:
+                    metadata_with_corpus_id["minhash_signature"] = record["minhash_signature"]
+                if "text_hash" in record:
+                    metadata_with_corpus_id["text_hash"] = record["text_hash"]
 
                 yield RawRecord(
                     title=record["title"],
