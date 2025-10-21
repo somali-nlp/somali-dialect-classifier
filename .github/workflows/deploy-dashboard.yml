@@ -1507,10 +1507,10 @@ jobs:
                       <ul class="nav-menu" id="navMenu">
                           <li><a href="#dashboard">Overview</a></li>
                           <li><a href="#visualizations">Data</a></li>
-                          <li><a href="#success-rate-faq">Metrics FAQ</a></li>
                           <li><a href="#about">About</a></li>
                           <li><a href="#reports">Reports</a></li>
                           <li><a href="#contribute" class="nav-cta">➕ Contribute</a></li>
+                          <li><a href="#success-rate-faq">Metrics FAQ</a></li>
                       </ul>
                   </div>
               </nav>
