@@ -388,6 +388,17 @@ class BasePipeline(DataProcessor, ABC):
                 records.append(record)
                 records_processed += 1
 
+                # Mark URL as processed in ledger (if ledger exists)
+                if hasattr(self, 'ledger') and self.ledger is not None:
+                    # Get minhash_signature from metadata if available
+                    minhash_sig = raw_record.metadata.get('minhash_signature')
+                    self.ledger.mark_processed(
+                        url=raw_record.url,
+                        text_hash=record["text_hash"],
+                        silver_id=record["id"],
+                        minhash_signature=minhash_sig
+                    )
+
                 # Consistent progress logging
                 if records_processed % self.log_frequency == 0:
                     self.logger.info(f"Progress: {records_processed} records processed...")
@@ -463,7 +474,14 @@ class BasePipeline(DataProcessor, ABC):
         """
         self.download()
         self.extract()
-        return self.process()
+        processed_file = self.process()
+
+        # Auto-cleanup old raw files if enabled
+        config = get_config()
+        if config.data.enable_auto_cleanup:
+            self.cleanup_old_raw_files()
+
+        return processed_file
 
     def save(self, processed_data: str) -> None:
         """
@@ -474,3 +492,71 @@ class BasePipeline(DataProcessor, ABC):
         """
         with open(self.processed_file, 'w', encoding='utf-8') as f:
             f.write(processed_data)
+
+    def cleanup_old_raw_files(self, retention_days: Optional[int] = None) -> int:
+        """
+        Clean up old raw files based on retention policy.
+
+        Args:
+            retention_days: Number of days to retain files (None = use config)
+
+        Returns:
+            Number of files deleted
+
+        Example:
+            # Clean up files older than 7 days
+            processor.cleanup_old_raw_files(retention_days=7)
+        """
+        config = get_config()
+
+        # Use provided retention_days or fall back to config
+        if retention_days is None:
+            retention_days = config.data.raw_retention_days
+
+        # If no retention policy set, don't delete anything
+        if retention_days is None:
+            self.logger.info("No retention policy set, skipping cleanup")
+            return 0
+
+        from datetime import datetime, timedelta, timezone
+        import os
+
+        cutoff_time = datetime.now(timezone.utc) - timedelta(days=retention_days)
+        deleted_count = 0
+
+        self.logger.info(f"Cleaning up raw files older than {retention_days} days...")
+
+        # Only clean up raw directory for this source
+        source_raw_dir = config.data.raw_dir / f"source={self.source}"
+        if not source_raw_dir.exists():
+            return 0
+
+        # Walk through all date_accessed partitions
+        for date_partition in source_raw_dir.iterdir():
+            if not date_partition.is_dir():
+                continue
+
+            # Check all files in this partition
+            for file_path in date_partition.glob("**/*.json"):
+                try:
+                    # Get file modification time
+                    file_mtime = datetime.fromtimestamp(
+                        file_path.stat().st_mtime,
+                        tz=timezone.utc
+                    )
+
+                    # Delete if older than retention period
+                    if file_mtime < cutoff_time:
+                        file_path.unlink()
+                        deleted_count += 1
+                        self.logger.debug(f"Deleted old raw file: {file_path}")
+
+                except (OSError, PermissionError) as e:
+                    self.logger.warning(f"Failed to delete {file_path}: {e}")
+
+        if deleted_count > 0:
+            self.logger.info(f"Cleaned up {deleted_count} old raw files")
+        else:
+            self.logger.info("No old files found to clean up")
+
+        return deleted_count

@@ -448,43 +448,37 @@ class SprakbankenSomaliProcessor(BasePipeline):
                         url = f"https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}"
                         text_content = " ".join(sentences)
 
-                        # Compute hash and check duplicates
-                        text_hash = self._compute_text_hash(text_content, url)
+                        # Process duplicates with combined exact and near-duplicate detection
+                        is_dup, similar_url, text_hash, minhash_sig = self.dedup.process_document(text_content, url)
 
-                        # Skip exact duplicates
-                        if not self.dedup.is_duplicate_hash(text_hash):
-                            # Process near-duplicates with MinHash
-                            is_dup, similar_url, minhash_sig = self.dedup.process_document(text_content, url)
+                        if not is_dup:
+                            # Create record for this text
+                            record = {
+                                "corpus_id": corpus_id,
+                                "title": text_metadata.get("title", f"{corpus_id}_text_{texts_count}"),
+                                "text": text_content,
+                                "text_hash": text_hash,
+                                "minhash_signature": minhash_sig,
+                                "metadata": {
+                                    **corpus_info,  # Domain, period, etc.
+                                    **text_metadata,  # Author, date, publisher, etc.
+                                    "sentence_count": len(sentences),
+                                },
+                            }
 
-                            if not is_dup:
-                                # Create record for this text
-                                record = {
-                                    "corpus_id": corpus_id,
-                                    "title": text_metadata.get("title", f"{corpus_id}_text_{texts_count}"),
-                                    "text": text_content,
-                                    "text_hash": text_hash,
-                                    "minhash_signature": minhash_sig,
-                                    "metadata": {
-                                        **corpus_info,  # Domain, period, etc.
-                                        **text_metadata,  # Author, date, publisher, etc.
-                                        "sentence_count": len(sentences),
-                                    },
-                                }
+                            # Write to JSONL
+                            out_file.write(json.dumps(record, ensure_ascii=False) + '\n')
+                            texts_count += 1
 
-                                # Write to JSONL
-                                out_file.write(json.dumps(record, ensure_ascii=False) + '\n')
-                                texts_count += 1
-
-                                # Track text length metrics
-                                self.metrics.record_text_length(len(text_content))
-                            else:
-                                # Near-duplicate detected
-                                self.logger.debug(f"Near-duplicate detected in {corpus_id}: {similar_url}")
-                                self.metrics.increment('near_duplicates')
+                            # Track text length metrics
+                            self.metrics.record_text_length(len(text_content))
                         else:
-                            # Exact duplicate detected
-                            self.logger.debug(f"Duplicate text detected in {corpus_id}")
-                            self.metrics.increment('texts_deduplicated')
+                            # Duplicate detected
+                            self.logger.debug(f"Duplicate detected in {corpus_id}: {similar_url}")
+                            if similar_url == "exact_duplicate":
+                                self.metrics.increment('texts_deduplicated')
+                            else:
+                                self.metrics.increment('near_duplicates')
 
         except Exception as e:
             self.logger.error(f"Error extracting {corpus_file}: {e}")

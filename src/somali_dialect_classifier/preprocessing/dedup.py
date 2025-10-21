@@ -372,15 +372,16 @@ class DedupEngine:
         text: str,
         url: str,
         **kwargs
-    ) -> Tuple[bool, str, Optional[str]]:
+    ) -> Tuple[bool, Optional[str], str, Optional[str]]:
         """
         Process document for deduplication.
 
         Returns:
-            (is_duplicate, text_hash, minhash_signature)
+            (is_duplicate, similar_url, text_hash, minhash_signature)
             - is_duplicate: True if duplicate found
+            - similar_url: URL of similar document (if duplicate found), None otherwise
             - text_hash: SHA256 hash of content
-            - minhash_signature: MinHash signature (if enabled)
+            - minhash_signature: MinHash signature (if enabled and not duplicate)
         """
         # Compute exact hash
         text_hash = self.hasher.compute_hash(text=text, url=url, **kwargs)
@@ -388,7 +389,8 @@ class DedupEngine:
         # Check exact duplicate
         if text_hash in self.seen_hashes:
             logger.debug(f"Exact duplicate found: {url} (hash: {text_hash[:16]}...)")
-            return (True, text_hash, None)
+            # Return with "exact_duplicate" as similar_url marker
+            return (True, "exact_duplicate", text_hash, None)
 
         # Compute MinHash signature if enabled
         minhash_signature = None
@@ -401,7 +403,7 @@ class DedupEngine:
                     f"Near-duplicate found: {url} similar to {similar_url} "
                     f"(similarity: {similarity:.2f})"
                 )
-                return (True, text_hash, None)
+                return (True, similar_url, text_hash, None)
 
             # Not a duplicate, add to index
             minhash_signature = self.minhash.add_document(url, text)
@@ -409,7 +411,7 @@ class DedupEngine:
         # Record hash as seen
         self.seen_hashes.add(text_hash)
 
-        return (False, text_hash, minhash_signature)
+        return (False, None, text_hash, minhash_signature)
 
     def is_duplicate_hash(self, text_hash: str) -> bool:
         """Check if hash was already seen."""

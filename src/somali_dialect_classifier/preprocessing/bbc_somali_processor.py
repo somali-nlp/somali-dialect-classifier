@@ -345,106 +345,98 @@ class BBCSomaliProcessor(BasePipeline):
         self.logger.info("PHASE 2: Article Extraction")
         self.logger.info("=" * 60)
 
-        articles = []
+        articles_count = 0
         session = self._get_http_session()
 
-        # Use tqdm for progress tracking
-        with tqdm(total=len(links), desc="Scraping articles", unit="article") as pbar:
-            for i, link in enumerate(links, 1):
-                # Check if should fetch (skip if already processed/failed)
-                if not self.ledger.should_fetch_url(link, force=self.force):
+        # Open staging file for streaming JSONL writes to avoid memory spike
+        with open(self.staging_file, 'w', encoding='utf-8') as staging_out:
+            # Use tqdm for progress tracking
+            with tqdm(total=len(links), desc="Scraping articles", unit="article") as pbar:
+                for i, link in enumerate(links, 1):
+                    # Check if should fetch (skip if already processed/failed)
+                    if not self.ledger.should_fetch_url(link, force=self.force):
+                        pbar.update(1)
+                        self.metrics.increment('urls_skipped')
+                        continue
+
+                    # Use TimedRequest for adaptive rate limiting
+                    with TimedRequest(self.rate_limiter) as timer:
+                        try:
+                            # Scrape article with conditional headers
+                            article = self._scrape_article(session, link)
+
+                            if article and article.get('text'):
+                                # Process duplicates with combined exact and near-duplicate detection
+                                is_dup, similar_url, text_hash, minhash_sig = self.dedup.process_document(
+                                    article['text'],
+                                    link
+                                )
+
+                                if is_dup:
+                                    self.logger.info(f"Duplicate detected: {link} (similar to {similar_url})")
+                                    self.ledger.mark_duplicate(link, similar_url)
+                                    if similar_url == "exact_duplicate":
+                                        self.metrics.increment('urls_deduplicated')
+                                    else:
+                                        self.metrics.increment('near_duplicates')
+                                    pbar.update(1)
+                                    continue
+
+                                # Store hash and signature in article
+                                article['text_hash'] = text_hash
+                                article['minhash_signature'] = minhash_sig
+
+                                # Mark as fetched in ledger
+                                self.ledger.mark_fetched(
+                                    url=link,
+                                    http_status=200,
+                                    content_length=len(article['text'])
+                                )
+                                self.metrics.increment('urls_fetched')
+                                self.metrics.record_http_status(200)
+                                self.metrics.record_text_length(len(article['text']))
+
+                                # Write to staging JSONL (streaming to avoid memory spike)
+                                staging_out.write(json.dumps(article, ensure_ascii=False) + '\n')
+                                articles_count += 1
+
+                                # Save incrementally (resilience against failures)
+                                # Pattern: {source_slug}_{run_id}_raw_article-{num}.json
+                                individual_file = self.raw_dir / f"bbc-somali_{self.run_id}_raw_article-{i:04d}.json"
+                                with open(individual_file, 'w', encoding='utf-8') as f:
+                                    json.dump(article, f, ensure_ascii=False, indent=2)
+                            else:
+                                # Mark as failed
+                                self.ledger.mark_failed(link, "Failed to scrape or empty text")
+                                self.metrics.increment('urls_failed')
+                                self.metrics.record_error("scrape_failed")
+
+                        except requests.HTTPError as e:
+                            # Handle HTTP 429 (Too Many Requests)
+                            if e.response.status_code == 429:
+                                retry_after = e.response.headers.get('Retry-After')
+                                self.rate_limiter.handle_429(retry_after)
+                                self.metrics.record_http_status(429)
+                                self.metrics.increment('rate_limit_errors')
+                                pbar.update(1)
+                                continue
+                            else:
+                                # Other HTTP errors
+                                self.ledger.mark_failed(link, f"HTTP {e.response.status_code}")
+                                self.metrics.record_http_status(e.response.status_code)
+                                self.metrics.increment('urls_failed')
+                                pbar.update(1)
+                                continue
+
+                    # Record fetch duration
+                    self.metrics.record_fetch_duration(timer.get_elapsed_ms())
+
+                    # Update progress bar
                     pbar.update(1)
-                    self.metrics.increment('urls_skipped')
-                    continue
-
-                # Use TimedRequest for adaptive rate limiting
-                with TimedRequest(self.rate_limiter) as timer:
-                    try:
-                        # Scrape article with conditional headers
-                        article = self._scrape_article(session, link)
-
-                        if article and article.get('text'):
-                            # Compute hash and check duplicates
-                            text_hash = self._compute_text_hash(article['text'], link)
-
-                            # Check if exact duplicate
-                            if self.dedup.is_duplicate_hash(text_hash):
-                                self.logger.info(f"Duplicate article detected: {link}")
-                                self.ledger.mark_duplicate(link, "exact_duplicate")
-                                self.metrics.increment('urls_deduplicated')
-                                pbar.update(1)
-                                continue
-
-                            # Process near-duplicates with MinHash
-                            is_dup, similar_url, minhash_sig = self.dedup.process_document(
-                                article['text'],
-                                link
-                            )
-
-                            if is_dup:
-                                self.logger.info(f"Near-duplicate detected: {link} (similar to {similar_url})")
-                                self.ledger.mark_duplicate(link, similar_url)
-                                self.metrics.increment('near_duplicates')
-                                pbar.update(1)
-                                continue
-
-                            # Store hash and signature in article
-                            article['text_hash'] = text_hash
-                            article['minhash_signature'] = minhash_sig
-
-                            # Mark as fetched in ledger
-                            self.ledger.mark_fetched(
-                                url=link,
-                                http_status=200,
-                                content_length=len(article['text'])
-                            )
-                            self.metrics.increment('urls_fetched')
-                            self.metrics.record_http_status(200)
-                            self.metrics.record_text_length(len(article['text']))
-
-                            articles.append(article)
-
-                            # Save incrementally (resilience against failures)
-                            # Pattern: {source_slug}_{run_id}_raw_article-{num}.json
-                            individual_file = self.raw_dir / f"bbc-somali_{self.run_id}_raw_article-{i:04d}.json"
-                            with open(individual_file, 'w', encoding='utf-8') as f:
-                                json.dump(article, f, ensure_ascii=False, indent=2)
-                        else:
-                            # Mark as failed
-                            self.ledger.mark_failed(link, "Failed to scrape or empty text")
-                            self.metrics.increment('urls_failed')
-                            self.metrics.record_error("scrape_failed")
-
-                    except requests.HTTPError as e:
-                        # Handle HTTP 429 (Too Many Requests)
-                        if e.response.status_code == 429:
-                            retry_after = e.response.headers.get('Retry-After')
-                            self.rate_limiter.handle_429(retry_after)
-                            self.metrics.record_http_status(429)
-                            self.metrics.increment('rate_limit_errors')
-                            pbar.update(1)
-                            continue
-                        else:
-                            # Other HTTP errors
-                            self.ledger.mark_failed(link, f"HTTP {e.response.status_code}")
-                            self.metrics.record_http_status(e.response.status_code)
-                            self.metrics.increment('urls_failed')
-                            pbar.update(1)
-                            continue
-
-                # Record fetch duration
-                self.metrics.record_fetch_duration(timer.get_elapsed_ms())
-
-                # Update progress bar
-                pbar.update(1)
-                pbar.set_postfix({"extracted": len(articles)})
-
-        # Save combined
-        with open(self.staging_file, 'w', encoding='utf-8') as f:
-            json.dump(articles, f, ensure_ascii=False, indent=2)
+                    pbar.set_postfix({"extracted": articles_count})
 
         self.logger.info("=" * 60)
-        self.logger.info(f"Extraction complete: {len(articles)}/{len(links)} articles extracted")
+        self.logger.info(f"Extraction complete: {articles_count}/{len(links)} articles extracted")
         self.logger.info("=" * 60)
 
         # Export metrics and generate extraction quality report
@@ -464,42 +456,74 @@ class BBCSomaliProcessor(BasePipeline):
 
     def _extract_records(self) -> Iterator[RawRecord]:
         """
-        Extract records from staging file.
+        Extract records from staging file (JSONL format).
 
         Yields RawRecord objects for each BBC article.
         BasePipeline.process() handles the rest (cleaning, writing, logging).
         """
-        # Load articles from staging
+        # Stream articles from JSONL staging file
         with open(self.staging_file, 'r', encoding='utf-8') as f:
-            articles = json.load(f)
+            for line in f:
+                if not line.strip():
+                    continue
 
-        # Yield RawRecord for each article
-        for article in articles:
-            yield RawRecord(
-                title=article['title'],
-                text=article['text'],
-                url=article['url'],
-                metadata={
-                    "date_published": article.get('date'),
-                    "category": article.get('category', 'news'),
-                    "scraped_at": article.get('scraped_at'),
-                },
-            )
+                article = json.loads(line)
+                yield RawRecord(
+                    title=article['title'],
+                    text=article['text'],
+                    url=article['url'],
+                    metadata={
+                        "date_published": article.get('date'),
+                        "category": article.get('category', 'news'),
+                        "scraped_at": article.get('scraped_at'),
+                        "minhash_signature": article.get('minhash_signature'),  # Pass through for ledger
+                    },
+                )
 
     def _check_robots_txt(self):
-        """Check robots.txt for scraping permissions."""
+        """
+        Check robots.txt for scraping permissions.
+
+        Raises:
+            ValueError: If robots.txt disallows scraping BBC Somali paths
+        """
+        from urllib.robotparser import RobotFileParser
+
         robots_url = f"{self.base_url}/robots.txt"
         try:
-            response = requests.get(robots_url, timeout=10)
-            self.logger.info(f"Checked robots.txt: {robots_url}")
-            # Log if there are any specific restrictions
-            if 'Disallow' in response.text and '/somali' in response.text:
-                self.logger.warning(
-                    "robots.txt contains restrictions. Please review before scraping: "
-                    f"{robots_url}"
+            # Use RobotFileParser for proper robots.txt parsing
+            robot_parser = RobotFileParser()
+            robot_parser.set_url(robots_url)
+            robot_parser.read()
+
+            # Check if our user agent can fetch Somali pages
+            test_paths = ['/somali/', '/somali/topics/', '/somali/articles/']
+            user_agent = self.headers.get('User-Agent', '*')
+
+            disallowed_paths = []
+            for path in test_paths:
+                if not robot_parser.can_fetch(user_agent, f"{self.base_url}{path}"):
+                    disallowed_paths.append(path)
+
+            if disallowed_paths:
+                error_msg = (
+                    f"robots.txt disallows scraping for user agent '{user_agent}' on paths: {disallowed_paths}. "
+                    f"Please review {robots_url} and ensure ethical compliance."
                 )
+                self.logger.error(error_msg)
+                raise ValueError(error_msg)
+
+            self.logger.info(f"✓ robots.txt compliance check passed: {robots_url}")
+
+        except ValueError:
+            # Re-raise ValueError for robots.txt violations
+            raise
         except (requests.RequestException, OSError) as e:
-            self.logger.warning(f"Could not fetch robots.txt: {e}")
+            # Log warning but don't fail (robots.txt might be temporarily unavailable)
+            self.logger.warning(
+                f"Could not fetch robots.txt: {e}. "
+                "Proceeding with scraping but please ensure manual compliance."
+            )
 
     def _discover_topic_sections(self, soup: BeautifulSoup) -> List[tuple]:
         """

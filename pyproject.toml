@@ -17,6 +17,7 @@ dependencies = [
   "beautifulsoup4>=4.12",
   "lxml>=4.9",  # XML parser for sitemap
   "feedparser>=6.0",  # RSS feed parsing for BBC scraping
+  "datasketch>=1.6",  # MinHash LSH for near-duplicate detection
 ]
 
 [project.optional-dependencies]
@@ -133,6 +134,8 @@ module = [
   "tqdm",
   "pyarrow.*",
   "bs4",
+  "datasketch",
+  "feedparser",
 ]
 ignore_missing_imports = true
 

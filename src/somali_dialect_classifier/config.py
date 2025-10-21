@@ -69,6 +69,16 @@ if PYDANTIC_AVAILABLE:
             description='Directory for processed text files'
         )
 
+        # Retention policy
+        raw_retention_days: Optional[int] = Field(
+            default=None,
+            description='Number of days to retain raw files (None = keep forever)'
+        )
+        enable_auto_cleanup: bool = Field(
+            default=False,
+            description='Automatically cleanup old raw files after processing'
+        )
+
 
     class BBCScrapingConfig(BaseSettings):
         """BBC scraping configuration."""
