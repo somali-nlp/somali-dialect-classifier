@@ -1874,11 +1874,15 @@ jobs:
                       const navLinks = document.querySelectorAll('.nav-menu a');
 
                       let current = '';
+                      const scrollPosition = window.scrollY + 100; // Account for fixed header
 
+                      // Find the section currently in viewport
                       sections.forEach(section => {
                           const sectionTop = section.offsetTop;
-                          const sectionHeight = section.clientHeight;
-                          if (window.scrollY >= (sectionTop - 200)) {
+                          const sectionBottom = sectionTop + section.clientHeight;
+
+                          // Check if current scroll position is within this section
+                          if (scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
                               current = section.getAttribute('id');
                           }
                       });
