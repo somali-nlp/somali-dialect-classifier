@@ -427,14 +427,18 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                     # Check for duplicates via hash
                     if text and url:
                         # Process duplicates with combined exact and near-duplicate detection
-                        is_dup, similar_url, text_hash, minhash_sig = self.dedup.process_document(text, url)
+                        is_dup, dup_type, similar_url, text_hash, minhash_sig = self.dedup.process_document(text, url)
 
                         if is_dup:
-                            self.logger.debug(f"Duplicate detected: {url} (similar to {similar_url})")
+                            self.logger.debug(
+                                f"{dup_type.capitalize()} duplicate detected: {url} "
+                                f"(similar to {similar_url})"
+                            )
                             self.ledger.mark_duplicate(url, similar_url)
-                            if similar_url == "exact_duplicate":
+                            # Increment correct metric based on duplicate type
+                            if dup_type == "exact":
                                 self.metrics.increment('records_deduplicated')
-                            else:
+                            elif dup_type == "near":
                                 self.metrics.increment('near_duplicates')
                             continue
 

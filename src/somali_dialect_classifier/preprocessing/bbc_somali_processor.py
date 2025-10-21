@@ -367,17 +367,21 @@ class BBCSomaliProcessor(BasePipeline):
 
                             if article and article.get('text'):
                                 # Process duplicates with combined exact and near-duplicate detection
-                                is_dup, similar_url, text_hash, minhash_sig = self.dedup.process_document(
+                                is_dup, dup_type, similar_url, text_hash, minhash_sig = self.dedup.process_document(
                                     article['text'],
                                     link
                                 )
 
                                 if is_dup:
-                                    self.logger.info(f"Duplicate detected: {link} (similar to {similar_url})")
+                                    self.logger.info(
+                                        f"{dup_type.capitalize()} duplicate detected: {link} "
+                                        f"(similar to {similar_url})"
+                                    )
                                     self.ledger.mark_duplicate(link, similar_url)
-                                    if similar_url == "exact_duplicate":
+                                    # Increment correct metric based on duplicate type
+                                    if dup_type == "exact":
                                         self.metrics.increment('urls_deduplicated')
-                                    else:
+                                    elif dup_type == "near":
                                         self.metrics.increment('near_duplicates')
                                     pbar.update(1)
                                     continue

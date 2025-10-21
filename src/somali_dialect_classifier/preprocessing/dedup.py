@@ -374,13 +374,14 @@ class DedupEngine:
         text: str,
         url: str,
         **kwargs
-    ) -> Tuple[bool, Optional[str], str, Optional[str]]:
+    ) -> Tuple[bool, Optional[str], Optional[str], str, Optional[str]]:
         """
         Process document for deduplication.
 
         Returns:
-            (is_duplicate, similar_url, text_hash, minhash_signature)
+            (is_duplicate, duplicate_type, similar_url, text_hash, minhash_signature)
             - is_duplicate: True if duplicate found
+            - duplicate_type: "exact", "near", or None
             - similar_url: URL of similar document (if duplicate found), None otherwise
             - text_hash: SHA256 hash of content
             - minhash_signature: MinHash signature (if enabled and not duplicate)
@@ -396,7 +397,7 @@ class DedupEngine:
                 f"Exact duplicate found: {url} matches {canonical_url} "
                 f"(hash: {text_hash[:16]}...)"
             )
-            return (True, canonical_url, text_hash, None)
+            return (True, "exact", canonical_url, text_hash, None)
 
         # Compute MinHash signature if enabled
         minhash_signature = None
@@ -409,7 +410,7 @@ class DedupEngine:
                     f"Near-duplicate found: {url} similar to {similar_url} "
                     f"(similarity: {similarity:.2f})"
                 )
-                return (True, similar_url, text_hash, None)
+                return (True, "near", similar_url, text_hash, None)
 
             # Not a duplicate, add to index
             minhash_signature = self.minhash.add_document(url, text)
@@ -418,7 +419,7 @@ class DedupEngine:
         self.seen_hashes.add(text_hash)
         self.hash_to_url[text_hash] = url  # Map hash to first URL seen
 
-        return (False, None, text_hash, minhash_signature)
+        return (False, None, None, text_hash, minhash_signature)
 
     def is_duplicate_hash(self, text_hash: str) -> bool:
         """Check if hash was already seen."""
@@ -490,7 +491,7 @@ def deduplicate_batch(
         text = record.get(text_field, "")
         url = record.get(url_field, "")
 
-        is_dup, similar_url, text_hash, minhash_sig = dedup_engine.process_document(text, url)
+        is_dup, dup_type, similar_url, text_hash, minhash_sig = dedup_engine.process_document(text, url)
 
         # Add dedup fields to record
         record["text_hash"] = text_hash
@@ -498,6 +499,7 @@ def deduplicate_batch(
             record["minhash_signature"] = minhash_sig
         if is_dup and similar_url:
             record["duplicate_of"] = similar_url
+            record["duplicate_type"] = dup_type
 
         if is_dup:
             duplicates.append(record)
@@ -527,8 +529,8 @@ if __name__ == "__main__":
     ]
 
     for url, text in docs:
-        is_dup, similar_url, hash_val, minhash_sig = engine.process_document(text, url)
+        is_dup, dup_type, similar_url, hash_val, minhash_sig = engine.process_document(text, url)
         if is_dup:
-            print(f"{url}: duplicate of {similar_url}, hash={hash_val[:16]}...")
+            print(f"{url}: {dup_type} duplicate of {similar_url}, hash={hash_val[:16]}...")
         else:
             print(f"{url}: unique, hash={hash_val[:16]}...")

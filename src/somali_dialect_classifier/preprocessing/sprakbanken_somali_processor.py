@@ -449,7 +449,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
                         text_content = " ".join(sentences)
 
                         # Process duplicates with combined exact and near-duplicate detection
-                        is_dup, similar_url, text_hash, minhash_sig = self.dedup.process_document(text_content, url)
+                        is_dup, dup_type, similar_url, text_hash, minhash_sig = self.dedup.process_document(text_content, url)
 
                         if not is_dup:
                             # Create record for this text
@@ -474,10 +474,13 @@ class SprakbankenSomaliProcessor(BasePipeline):
                             self.metrics.record_text_length(len(text_content))
                         else:
                             # Duplicate detected
-                            self.logger.debug(f"Duplicate detected in {corpus_id}: {similar_url}")
-                            if similar_url == "exact_duplicate":
+                            self.logger.debug(
+                                f"{dup_type.capitalize()} duplicate detected in {corpus_id}: {similar_url}"
+                            )
+                            # Increment correct metric based on duplicate type
+                            if dup_type == "exact":
                                 self.metrics.increment('texts_deduplicated')
-                            else:
+                            elif dup_type == "near":
                                 self.metrics.increment('near_duplicates')
 
         except Exception as e:
