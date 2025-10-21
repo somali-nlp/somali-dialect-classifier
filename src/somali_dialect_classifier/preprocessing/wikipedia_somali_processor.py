@@ -293,12 +293,22 @@ class WikipediaSomaliProcessor(BasePipeline):
 
                                     # Check if exact duplicate
                                     if not self.dedup.is_duplicate_hash(text_hash):
+                                        # Not a duplicate - write and record
                                         fout.write(f"{self.page_marker_prefix} {title}\n{text}\n\n")
                                         page_count += 1
                                         self.metrics.record_text_length(len(text))
+                                        # Store hash→URL mapping for future duplicate detection
+                                        self.dedup.add_known_hash(text_hash, page_url)
                                     else:
-                                        self.logger.debug(f"Duplicate page detected: {title}")
-                                        self.ledger.mark_duplicate(page_url, "exact_duplicate")
+                                        # Duplicate found - get canonical URL
+                                        canonical_url = self.dedup.get_canonical_url(text_hash)
+                                        self.logger.debug(
+                                            f"Duplicate page detected: {title} matches {canonical_url}"
+                                        )
+                                        self.ledger.mark_duplicate(
+                                            page_url,
+                                            canonical_url or page_url  # Fallback to self if not found
+                                        )
                                         self.metrics.increment('urls_deduplicated')
 
                         # Remove processed pages from buffer

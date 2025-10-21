@@ -820,6 +820,12 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         metadata["hf_config"] = self.dataset_config
         metadata["hf_split"] = self.split
 
+        # Preserve dedup metadata if present (for ledger tracking)
+        if '_minhash_signature' in record:
+            metadata['minhash_signature'] = record['_minhash_signature']
+        if '_text_hash' in record:
+            metadata['text_hash'] = record['_text_hash']
+
         return RawRecord(
             title=title,
             text=text,

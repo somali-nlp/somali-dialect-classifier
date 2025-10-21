@@ -192,26 +192,29 @@ class TestDeduplication:
         engine = DedupEngine(config)
 
         # Process first document
-        is_dup1, hash1, _ = engine.process_document(
+        is_dup1, similar_url1, hash1, _ = engine.process_document(
             text="Hello world",
             url="https://example.com/1"
         )
         assert is_dup1 is False
+        assert similar_url1 is None
 
         # Process exact duplicate
-        is_dup2, hash2, _ = engine.process_document(
+        is_dup2, similar_url2, hash2, _ = engine.process_document(
             text="Hello world",
             url="https://example.com/2"
         )
         assert is_dup2 is True
+        assert similar_url2 == "https://example.com/1"  # Should point to first URL
         assert hash1 == hash2
 
         # Process different document
-        is_dup3, hash3, _ = engine.process_document(
+        is_dup3, similar_url3, hash3, _ = engine.process_document(
             text="Different text",
             url="https://example.com/3"
         )
         assert is_dup3 is False
+        assert similar_url3 is None
         assert hash3 != hash1
 
     def test_near_duplicate_detection(self):
@@ -233,26 +236,29 @@ class TestDeduplication:
             pytest.skip("datasketch not available")
 
         # Process first document
-        is_dup1, _, _ = engine.process_document(
+        is_dup1, similar_url1, _, _ = engine.process_document(
             text="The quick brown fox jumps over the lazy dog",
             url="https://example.com/1"
         )
         assert is_dup1 is False
+        assert similar_url1 is None
 
         # Process near-duplicate (similar but not exact)
-        is_dup2, _, _ = engine.process_document(
+        is_dup2, similar_url2, _, _ = engine.process_document(
             text="The quick brown fox leaps over the lazy dog",
             url="https://example.com/2"
         )
         # Should be detected as near-duplicate
         assert is_dup2 is True
+        assert similar_url2 == "https://example.com/1"  # Should point to similar URL
 
         # Process very different document
-        is_dup3, _, _ = engine.process_document(
+        is_dup3, similar_url3, _, _ = engine.process_document(
             text="A completely different sentence about cats and mice",
             url="https://example.com/3"
         )
         assert is_dup3 is False
+        assert similar_url3 is None
 
 
 class TestMetrics:
@@ -419,7 +425,7 @@ def test_full_pipeline_integration(tmp_path):
             collector.increment("urls_discovered")
 
         # Deduplication
-        is_dup, text_hash, minhash_sig = dedup_engine.process_document(text, url)
+        is_dup, similar_url, text_hash, minhash_sig = dedup_engine.process_document(text, url)
 
         if is_dup:
             collector.increment("urls_deduplicated")

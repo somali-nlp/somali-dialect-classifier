@@ -366,6 +366,8 @@ class DedupEngine:
 
         # Track seen hashes for exact dedup
         self.seen_hashes = set()
+        # Track hash→URL mapping for exact duplicate traceability
+        self.hash_to_url = {}  # text_hash -> canonical_url
 
     def process_document(
         self,
@@ -388,9 +390,13 @@ class DedupEngine:
 
         # Check exact duplicate
         if text_hash in self.seen_hashes:
-            logger.debug(f"Exact duplicate found: {url} (hash: {text_hash[:16]}...)")
-            # Return with "exact_duplicate" as similar_url marker
-            return (True, "exact_duplicate", text_hash, None)
+            # Get the canonical URL from hash→URL mapping
+            canonical_url = self.hash_to_url.get(text_hash, url)
+            logger.debug(
+                f"Exact duplicate found: {url} matches {canonical_url} "
+                f"(hash: {text_hash[:16]}...)"
+            )
+            return (True, canonical_url, text_hash, None)
 
         # Compute MinHash signature if enabled
         minhash_signature = None
@@ -408,8 +414,9 @@ class DedupEngine:
             # Not a duplicate, add to index
             minhash_signature = self.minhash.add_document(url, text)
 
-        # Record hash as seen
+        # Record hash as seen and store canonical URL
         self.seen_hashes.add(text_hash)
+        self.hash_to_url[text_hash] = url  # Map hash to first URL seen
 
         return (False, None, text_hash, minhash_signature)
 
@@ -417,9 +424,29 @@ class DedupEngine:
         """Check if hash was already seen."""
         return text_hash in self.seen_hashes
 
-    def add_known_hash(self, text_hash: str):
-        """Add hash to seen set (from ledger)."""
+    def get_canonical_url(self, text_hash: str) -> Optional[str]:
+        """
+        Get the canonical URL for a given hash.
+
+        Args:
+            text_hash: Hash of the content
+
+        Returns:
+            Canonical URL if hash is known, None otherwise
+        """
+        return self.hash_to_url.get(text_hash)
+
+    def add_known_hash(self, text_hash: str, url: Optional[str] = None):
+        """
+        Add hash to seen set (from ledger).
+
+        Args:
+            text_hash: Hash to mark as seen
+            url: Optional URL to associate with this hash
+        """
         self.seen_hashes.add(text_hash)
+        if url:
+            self.hash_to_url[text_hash] = url
 
     def get_statistics(self) -> dict:
         """Get deduplication statistics."""
@@ -463,12 +490,14 @@ def deduplicate_batch(
         text = record.get(text_field, "")
         url = record.get(url_field, "")
 
-        is_dup, text_hash, minhash_sig = dedup_engine.process_document(text, url)
+        is_dup, similar_url, text_hash, minhash_sig = dedup_engine.process_document(text, url)
 
         # Add dedup fields to record
         record["text_hash"] = text_hash
         if minhash_sig:
             record["minhash_signature"] = minhash_sig
+        if is_dup and similar_url:
+            record["duplicate_of"] = similar_url
 
         if is_dup:
             duplicates.append(record)
@@ -498,5 +527,8 @@ if __name__ == "__main__":
     ]
 
     for url, text in docs:
-        is_dup, hash_val, minhash_sig = engine.process_document(text, url)
-        print(f"{url}: duplicate={is_dup}, hash={hash_val[:16]}...")
+        is_dup, similar_url, hash_val, minhash_sig = engine.process_document(text, url)
+        if is_dup:
+            print(f"{url}: duplicate of {similar_url}, hash={hash_val[:16]}...")
+        else:
+            print(f"{url}: unique, hash={hash_val[:16]}...")
