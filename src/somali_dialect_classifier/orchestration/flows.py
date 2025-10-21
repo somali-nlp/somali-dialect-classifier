@@ -51,7 +51,7 @@ def run_wikipedia_task(force: bool = False) -> Dict[str, Any]:
     processor = WikipediaSomaliProcessor(force=force)
 
     try:
-        silver_path = processor.process()
+        silver_path = processor.run()
 
         # Get statistics from ledger
         stats = processor.ledger.get_statistics("wikipedia")
@@ -89,7 +89,7 @@ def run_bbc_task(max_articles: Optional[int] = None, force: bool = False) -> Dic
     processor = BBCSomaliProcessor(max_articles=max_articles, force=force)
 
     try:
-        silver_path = processor.process()
+        silver_path = processor.run()
 
         # Get statistics from ledger
         stats = processor.ledger.get_statistics("bbc")
@@ -139,7 +139,7 @@ def run_huggingface_task(
     )
 
     try:
-        silver_path = processor.process()
+        silver_path = processor.run()
 
         # Get statistics
         dataset_slug = dataset_name.split('/')[-1]
@@ -179,7 +179,7 @@ def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> Dict[st
     processor = SprakbankenSomaliProcessor(corpus_id=corpus_id, force=force)
 
     try:
-        silver_path = processor.process()
+        silver_path = processor.run()
 
         # Get statistics
         source = f"Sprakbanken-Somali-{corpus_id}"
