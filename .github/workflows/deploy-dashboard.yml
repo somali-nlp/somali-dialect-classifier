@@ -1882,8 +1882,8 @@ jobs:
                       </h1>
 
                       <p class="hero-subtitle">
-                          Track how data moves through collection, validation, and processing stages—with
-                          <strong>130,000+ high-quality records</strong> from trusted sources across the web.
+                          Track how Wikipedia, BBC Somali, HuggingFace MC4, and Språkbanken sources contribute to
+                          <strong>130,000+ deduplicated Somali language records</strong>—Africa's largest open dialect corpus.
                       </p>
 
                       <div class="hero-stats" id="heroStats" role="region" aria-label="Key metrics overview">
@@ -1931,22 +1931,21 @@ jobs:
 
                   <!-- Data Visualizations Section -->
                   <section id="visualizations" aria-labelledby="viz-heading">
-                      <h2 id="viz-heading">How Data Moves Through the Pipeline</h2>
+                      <h2 id="viz-heading">Data Collection & Processing Insights</h2>
 
                       <div class="section-intro">
                           <p>
-                              These visualizations reveal how raw web content transforms into structured language datasets.
-                              Each chart shows patterns in source performance, processing efficiency, and data quality
-                              across the collection of Somali text.
+                              Watch how raw web content transforms into structured language datasets. These interactive
+                              visualizations track source performance, processing speed, and quality metrics across
+                              130,000+ Somali text records.
                           </p>
                       </div>
 
                       <!-- Bubble Timeline -->
                       <div class="viz-container">
-                          <h3 class="viz-title">Processing activity over time</h3>
+                          <h3 class="viz-title">Collection Timeline: When Did We Gather Data?</h3>
                           <p class="viz-subtitle">
-                              Larger bubbles indicate higher volume periods, color shows source identity. Track when
-                              data collection accelerates or pauses across different sources.
+                              Track collection velocity across Wikipedia, BBC Somali, HuggingFace, and Språkbanken. Larger bubbles show higher-volume periods, colors distinguish sources.
                           </p>
                           <div id="d3-bubble-timeline" class="d3-viz-container" role="img" aria-label="Timeline visualization showing data collection activity by source"></div>
                       </div>
@@ -1954,17 +1953,17 @@ jobs:
                       <!-- Radial Comparison & Streamgraph -->
                       <div class="viz-grid-2">
                           <div class="viz-container">
-                              <h3 class="viz-title">Source Performance Snapshot</h3>
+                              <h3 class="viz-title">Which Sources Deliver the Most Data?</h3>
                               <p class="viz-subtitle">
-                                  A radial view comparing total contributions from each data source, with embedded trend indicators.
+                                  Radial comparison of total record contributions by source, with embedded trend sparklines showing collection momentum.
                               </p>
                               <div id="d3-radial-comparison" class="d3-viz-container" role="img" aria-label="Radial chart comparing performance across data sources"></div>
                           </div>
 
                           <div class="viz-container">
-                              <h3 class="viz-title">Processing Flow</h3>
+                              <h3 class="viz-title">Dataset Growth: Cumulative Records Over Time</h3>
                               <p class="viz-subtitle">
-                                  Visualize how record processing fluctuates across time, showing the ebb and flow of each source's contribution.
+                                  Watch the dataset expand as each source contributes records. Hover to see exact counts, dates, and cumulative totals at any point in the timeline.
                               </p>
                               <div id="d3-streamgraph" class="d3-viz-container" role="img" aria-label="Streamgraph showing processing volume changes over time"></div>
                           </div>
@@ -1972,10 +1971,9 @@ jobs:
 
                       <!-- Horizon Charts -->
                       <div class="viz-container">
-                          <h3 class="viz-title">Success Rate Trends</h3>
+                          <h3 class="viz-title">Success Rate Trends: Performance Against 90% Baseline</h3>
                           <p class="viz-subtitle">
-                              Compact horizon charts reveal success rate patterns relative to a 90% baseline.
-                              Green indicates above-target performance, red shows areas needing attention.
+                              Horizon charts reveal how each source performs against the 90% success threshold. Green areas exceed targets, red areas signal processing issues requiring attention.
                           </p>
                           <div id="d3-horizon-charts" class="d3-viz-container" role="img" aria-label="Horizon charts showing success rate trends for each source" style="min-height: 250px;"></div>
                       </div>
@@ -1983,17 +1981,17 @@ jobs:
                       <!-- Hexbin Heatmap & Health Matrix -->
                       <div class="viz-grid-2">
                           <div class="viz-container">
-                              <h3 class="viz-title">Quality vs. Efficiency</h3>
+                              <h3 class="viz-title">Speed vs. Quality: How Sources Compare</h3>
                               <p class="viz-subtitle">
-                                  Explore the relationship between data quality and deduplication rates using hexagonal binning to reveal density patterns.
+                                  Scatter plot correlating success rates with deduplication rates. Bubble size represents total records collected. Zoomed to actual data range for clarity.
                               </p>
                               <div id="d3-hexbin-heatmap" class="d3-viz-container" role="img" aria-label="Hexbin heatmap showing correlation between quality and deduplication"></div>
                           </div>
 
                           <div class="viz-container">
-                              <h3 class="viz-title">Source Health Matrix</h3>
+                              <h3 class="viz-title">Source Quality at a Glance: Uptime, Success, Records, Dedup</h3>
                               <p class="viz-subtitle">
-                                  A comprehensive health dashboard showing uptime, latency, error rates, and quality scores for each source with sparkline trends.
+                                  Quick health check across all sources. Each cell shows current value, status indicator, and sparkline trend. Color-coded for rapid diagnostics.
                               </p>
                               <div id="d3-health-matrix" class="d3-viz-container" role="img" aria-label="Health matrix showing key performance indicators for each source" style="min-height: 500px;"></div>
                           </div>
@@ -2674,7 +2672,56 @@ jobs:
                           .attr('d', area)
                           .on('mouseover', function(event, d) {
                               d3.select(this).attr('opacity', 1);
-                              d3Tooltip.show(`<strong>${d.key}</strong>`, event);
+
+                              // Find closest data point immediately on hover
+                              const [mouseX] = d3.pointer(event);
+                              const timestamp = xScale.invert(mouseX);
+                              const bisect = d3.bisector(p => p.data.timestamp).left;
+                              const index = Math.min(bisect(d, timestamp), d.length - 1);
+
+                              if (index >= 0 && index < d.length) {
+                                  const point = d[index];
+                                  const records = point.data[d.key] || 0;
+                                  const date = point.data.timestamp;
+
+                                  // Calculate cumulative total up to this point
+                                  const cumulativeRecords = d.slice(0, index + 1)
+                                      .reduce((sum, p) => sum + (p.data[d.key] || 0), 0);
+
+                                  d3Tooltip.show(`
+                                      <strong>${d.key}</strong>
+                                      <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.2);">
+                                          <div><strong>Date:</strong> ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                          <div><strong>Records:</strong> ${records.toLocaleString()}</div>
+                                          <div><strong>Cumulative:</strong> ${cumulativeRecords.toLocaleString()}</div>
+                                      </div>
+                                  `, event);
+                              }
+                          })
+                          .on('mousemove', function(event, d) {
+                              // Update tooltip as mouse moves
+                              const [mouseX] = d3.pointer(event);
+                              const timestamp = xScale.invert(mouseX);
+                              const bisect = d3.bisector(p => p.data.timestamp).left;
+                              const index = Math.min(bisect(d, timestamp), d.length - 1);
+
+                              if (index >= 0 && index < d.length) {
+                                  const point = d[index];
+                                  const records = point.data[d.key] || 0;
+                                  const date = point.data.timestamp;
+                                  const cumulativeRecords = d.slice(0, index + 1)
+                                      .reduce((sum, p) => sum + (p.data[d.key] || 0), 0);
+
+                                  d3Tooltip.show(`
+                                      <strong>${d.key}</strong>
+                                      <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.2);">
+                                          <div><strong>Date:</strong> ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                          <div><strong>Records:</strong> ${records.toLocaleString()}</div>
+                                          <div><strong>Cumulative:</strong> ${cumulativeRecords.toLocaleString()}</div>
+                                      </div>
+                                  `, event);
+                                  d3Tooltip.updatePosition(event);
+                              }
                           })
                           .on('mouseout', function() {
                               d3.select(this).attr('opacity', 0.8);
@@ -2702,74 +2749,203 @@ jobs:
 
                           container.innerHTML = '';
 
-                      const sources = [...new Set(data.map(d => d.source))];
-                      const margin = { top: 10, right: 40, bottom: 30, left: 100 };
-                      const width = container.clientWidth - margin.left - margin.right;
-                      const bandHeight = 40;
-                      const height = sources.length * bandHeight + margin.top + margin.bottom;
+                          const sources = [...new Set(data.map(d => d.source))];
+                          const margin = { top: 10, right: 120, bottom: 50, left: 120 };
+                          const width = container.clientWidth - margin.left - margin.right;
+                          const bandHeight = 50;
+                          const height = sources.length * bandHeight + margin.top + margin.bottom;
 
-                      const svg = d3.select(container)
-                          .append('svg')
-                          .attr('width', width + margin.left + margin.right)
-                          .attr('height', height)
-                          .append('g')
-                          .attr('transform', `translate(${margin.left},${margin.top})`);
+                          const svg = d3.select(container)
+                              .append('svg')
+                              .attr('width', width + margin.left + margin.right)
+                              .attr('height', height)
+                              .attr('role', 'img')
+                              .attr('aria-label', 'Horizon charts showing success rate trends')
+                              .append('g')
+                              .attr('transform', `translate(${margin.left},${margin.top})`);
 
-                      const baseline = 0.9; // 90% baseline
+                          const baseline = 0.9; // 90% baseline
 
-                      sources.forEach((source, i) => {
-                          const sourceData = data
-                              .filter(d => d.source === source)
-                              .map(d => ({
-                                  timestamp: new Date(d.timestamp),
-                                  successRate: d.success_rate || 0
-                              }))
-                              .sort((a, b) => a.timestamp - b.timestamp);
+                          sources.forEach((source, i) => {
+                              const sourceData = data
+                                  .filter(d => d.source === source)
+                                  .map(d => ({
+                                      timestamp: new Date(d.timestamp),
+                                      successRate: d.success_rate || 0
+                                  }))
+                                  .filter(d => !isNaN(d.timestamp.getTime()))
+                                  .sort((a, b) => a.timestamp - b.timestamp);
 
-                          if (sourceData.length === 0) return;
+                              if (sourceData.length === 0) return;
 
-                          const xScale = d3.scaleTime()
-                              .domain(d3.extent(sourceData, d => d.timestamp))
-                              .range([0, width]);
+                              const xScale = d3.scaleTime()
+                                  .domain(d3.extent(sourceData, d => d.timestamp))
+                                  .range([0, width])
+                                  .nice();
 
-                          const yScale = d3.scaleLinear()
-                              .domain([baseline - 0.1, 1])
-                              .range([bandHeight, 0]);
+                              // Calculate max deviation for proper scaling
+                              const maxDeviation = d3.max(sourceData, d => Math.abs(d.successRate - baseline)) || 0.1;
 
-                          const area = d3.area()
-                              .x(d => xScale(d.timestamp))
-                              .y0(bandHeight / 2)
-                              .y1(d => yScale(d.successRate))
-                              .curve(d3.curveMonotoneX);
+                              const yScale = d3.scaleLinear()
+                                  .domain([baseline - maxDeviation, baseline + maxDeviation])
+                                  .range([bandHeight, 0]);
 
-                          const g = svg.append('g')
-                              .attr('transform', `translate(0,${i * bandHeight})`);
+                              const g = svg.append('g')
+                                  .attr('transform', `translate(0,${i * bandHeight})`);
 
-                          // Baseline
-                          g.append('rect')
-                              .attr('width', width)
-                              .attr('height', bandHeight)
-                              .attr('fill', '#f3f4f6');
+                              // Background
+                              g.append('rect')
+                                  .attr('width', width)
+                                  .attr('height', bandHeight)
+                                  .attr('fill', '#f9fafb')
+                                  .attr('stroke', '#e5e7eb')
+                                  .attr('stroke-width', 1);
 
-                          // Area
-                          g.append('path')
-                              .datum(sourceData)
-                              .attr('d', area)
-                              .attr('fill', d3SourceColors[source] || d3SourceColors.default)
+                              // Baseline reference line
+                              g.append('line')
+                                  .attr('x1', 0)
+                                  .attr('x2', width)
+                                  .attr('y1', bandHeight / 2)
+                                  .attr('y2', bandHeight / 2)
+                                  .attr('stroke', '#9ca3af')
+                                  .attr('stroke-width', 1)
+                                  .attr('stroke-dasharray', '2,2')
+                                  .attr('opacity', 0.5);
+
+                              // Area for success rates ABOVE baseline (green)
+                              const areaAbove = d3.area()
+                                  .x(d => xScale(d.timestamp))
+                                  .y0(bandHeight / 2)
+                                  .y1(d => {
+                                      const val = d.successRate >= baseline ?
+                                          yScale(d.successRate) : bandHeight / 2;
+                                      return Math.max(0, Math.min(bandHeight, val));
+                                  })
+                                  .curve(d3.curveMonotoneX);
+
+                              g.append('path')
+                                  .datum(sourceData)
+                                  .attr('d', areaAbove)
+                                  .attr('fill', '#10b981')
+                                  .attr('opacity', 0.7);
+
+                              // Area for success rates BELOW baseline (red)
+                              const areaBelow = d3.area()
+                                  .x(d => xScale(d.timestamp))
+                                  .y0(bandHeight / 2)
+                                  .y1(d => {
+                                      const val = d.successRate < baseline ?
+                                          yScale(d.successRate) : bandHeight / 2;
+                                      return Math.max(0, Math.min(bandHeight, val));
+                                  })
+                                  .curve(d3.curveMonotoneX);
+
+                              g.append('path')
+                                  .datum(sourceData)
+                                  .attr('d', areaBelow)
+                                  .attr('fill', '#ef4444')
+                                  .attr('opacity', 0.7);
+
+                              // Line for actual values
+                              const line = d3.line()
+                                  .x(d => xScale(d.timestamp))
+                                  .y(d => {
+                                      const val = yScale(d.successRate);
+                                      return Math.max(0, Math.min(bandHeight, val));
+                                  })
+                                  .curve(d3.curveMonotoneX);
+
+                              g.append('path')
+                                  .datum(sourceData)
+                                  .attr('d', line)
+                                  .attr('fill', 'none')
+                                  .attr('stroke', d3SourceColors[source] || d3SourceColors.default)
+                                  .attr('stroke-width', 2);
+
+                              // Source label (left)
+                              g.append('text')
+                                  .attr('x', -10)
+                                  .attr('y', bandHeight / 2)
+                                  .attr('text-anchor', 'end')
+                                  .attr('dominant-baseline', 'middle')
+                                  .style('font-size', '11px')
+                                  .style('font-weight', '600')
+                                  .style('fill', d3SourceColors[source])
+                                  .text(source.split('-')[0]);
+
+                              // Average success rate (right)
+                              const avgRate = d3.mean(sourceData, d => d.successRate);
+                              g.append('text')
+                                  .attr('x', width + 10)
+                                  .attr('y', bandHeight / 2)
+                                  .attr('text-anchor', 'start')
+                                  .attr('dominant-baseline', 'middle')
+                                  .style('font-size', '11px')
+                                  .style('font-weight', '600')
+                                  .style('fill', avgRate >= baseline ? '#10b981' : '#ef4444')
+                                  .text(`${(avgRate * 100).toFixed(1)}%`);
+
+                              // Add X-axis only for the last chart
+                              if (i === sources.length - 1) {
+                                  const xAxis = d3.axisBottom(xScale)
+                                      .ticks(5)
+                                      .tickFormat(d3.timeFormat('%b %d'));
+
+                                  g.append('g')
+                                      .attr('transform', `translate(0,${bandHeight})`)
+                                      .call(xAxis)
+                                      .style('font-size', '11px')
+                                      .style('color', '#6b7280');
+                              }
+                          });
+
+                          // Add legend
+                          const legend = svg.append('g')
+                              .attr('transform', `translate(0, ${sources.length * bandHeight + 10})`);
+
+                          legend.append('text')
+                              .attr('x', 0)
+                              .attr('y', 0)
+                              .style('font-size', '11px')
+                              .style('fill', '#6b7280')
+                              .text('Baseline: 90% |');
+
+                          legend.append('rect')
+                              .attr('x', 70)
+                              .attr('y', -8)
+                              .attr('width', 15)
+                              .attr('height', 10)
+                              .attr('fill', '#10b981')
                               .attr('opacity', 0.7);
 
-                          // Label
-                          g.append('text')
-                              .attr('x', -10)
-                              .attr('y', bandHeight / 2)
-                              .attr('text-anchor', 'end')
-                              .attr('dominant-baseline', 'middle')
+                          legend.append('text')
+                              .attr('x', 90)
+                              .attr('y', 0)
                               .style('font-size', '11px')
-                              .style('font-weight', '600')
-                              .text(source.split('-')[0]);
-                      });
+                              .style('fill', '#6b7280')
+                              .text('Above baseline |');
+
+                          legend.append('rect')
+                              .attr('x', 190)
+                              .attr('y', -8)
+                              .attr('width', 15)
+                              .attr('height', 10)
+                              .attr('fill', '#ef4444')
+                              .attr('opacity', 0.7);
+
+                          legend.append('text')
+                              .attr('x', 210)
+                              .attr('y', 0)
+                              .style('font-size', '11px')
+                              .style('fill', '#6b7280')
+                              .text('Below baseline');
+
                       } catch (error) {
                           console.error('Error creating horizon charts:', error);
+                          const container = document.getElementById('d3-horizon-charts');
+                          if (container) {
+                              container.innerHTML = '<div style="padding: 2rem; text-align: center; color: #ef4444;">Error rendering visualization</div>';
+                          }
                       }
                   }
 
@@ -2784,114 +2960,188 @@ jobs:
 
                           container.innerHTML = '';
 
-                      const margin = { top: 40, right: 40, bottom: 60, left: 70 };
-                      const width = container.clientWidth - margin.left - margin.right;
-                      const height = 400 - margin.top - margin.bottom;
+                          const margin = { top: 40, right: 80, bottom: 70, left: 80 };
+                          const width = container.clientWidth - margin.left - margin.right;
+                          const height = 400 - margin.top - margin.bottom;
 
-                      const svg = d3.select(container)
-                          .append('svg')
-                          .attr('width', width + margin.left + margin.right)
-                          .attr('height', height + margin.top + margin.bottom)
-                          .append('g')
-                          .attr('transform', `translate(${margin.left},${margin.top})`);
+                          const svg = d3.select(container)
+                              .append('svg')
+                              .attr('width', width + margin.left + margin.right)
+                              .attr('height', height + margin.top + margin.bottom)
+                              .attr('role', 'img')
+                              .attr('aria-label', 'Scatter plot showing correlation between success rate and deduplication rate')
+                              .append('g')
+                              .attr('transform', `translate(${margin.left},${margin.top})`);
 
-                      // Process data - add slight jitter to separate overlapping points
-                      const processedData = data.map(d => ({
-                          successRate: (d.success_rate || 0) * 100 + (Math.random() - 0.5) * 2,
-                          dedupRate: (d.deduplication_rate || 0) * 100 + (Math.random() - 0.5) * 2,
-                          source: d.source,
-                          records: d.records_written || 0
-                      }));
+                          // Process data
+                          const processedData = data
+                              .filter(d =>
+                                  d.success_rate !== undefined &&
+                                  d.deduplication_rate !== undefined &&
+                                  !isNaN(d.success_rate) &&
+                                  !isNaN(d.deduplication_rate)
+                              )
+                              .map(d => ({
+                                  successRate: (d.success_rate || 0) * 100,
+                                  dedupRate: (d.deduplication_rate || 0) * 100,
+                                  source: d.source,
+                                  records: d.records_written || 0
+                              }));
 
-                      // Scales
-                      const xScale = d3.scaleLinear()
-                          .domain([0, 100])
-                          .range([0, width]);
+                          if (processedData.length === 0) {
+                              container.innerHTML = '<div style="padding: 2rem; text-align: center; color: #6b7280;">Insufficient data for correlation analysis</div>';
+                              return;
+                          }
 
-                      const yScale = d3.scaleLinear()
-                          .domain([0, 100])
-                          .range([height, 0]);
+                          // Calculate actual data ranges
+                          const successExtent = d3.extent(processedData, d => d.successRate);
+                          const dedupExtent = d3.extent(processedData, d => d.dedupRate);
 
-                      const sizeScale = d3.scaleSqrt()
-                          .domain([0, d3.max(processedData, d => d.records)])
-                          .range([8, 40]);
+                          // Add 10% padding to ranges for better visualization
+                          const successRange = successExtent[1] - successExtent[0];
+                          const dedupRange = dedupExtent[1] - dedupExtent[0];
 
-                      // Add reference grid
-                      const gridLines = svg.append('g')
-                          .attr('class', 'grid')
-                          .attr('opacity', 0.1);
+                          const successPadding = Math.max(successRange * 0.1, 5);
+                          const dedupPadding = Math.max(dedupRange * 0.1, 5);
 
-                      for (let i = 0; i <= 100; i += 20) {
-                          gridLines.append('line')
-                              .attr('x1', 0).attr('x2', width)
-                              .attr('y1', yScale(i)).attr('y2', yScale(i))
-                              .attr('stroke', '#666');
-                          gridLines.append('line')
-                              .attr('x1', xScale(i)).attr('x2', xScale(i))
-                              .attr('y1', 0).attr('y2', height)
-                              .attr('stroke', '#666');
-                      }
+                          // ADAPTIVE SCALES: Zoom to actual data range
+                          const xScale = d3.scaleLinear()
+                              .domain([
+                                  Math.max(0, successExtent[0] - successPadding),
+                                  Math.min(100, successExtent[1] + successPadding)
+                              ])
+                              .range([0, width])
+                              .nice();
 
-                      // Render data points
-                      svg.selectAll('.data-point')
-                          .data(processedData)
-                          .join('circle')
-                          .attr('class', 'data-point')
-                          .attr('cx', d => xScale(d.successRate))
-                          .attr('cy', d => yScale(d.dedupRate))
-                          .attr('r', 0)
-                          .attr('fill', d => d3SourceColors[d.source] || d3SourceColors.default)
-                          .attr('opacity', 0.7)
-                          .attr('stroke', '#fff')
-                          .attr('stroke-width', 2)
-                          .on('mouseover', function(event, d) {
-                              d3.select(this)
-                                  .attr('opacity', 1)
-                                  .attr('stroke-width', 3);
-                              d3Tooltip.show(`
-                                  <strong>${d.source}</strong>
-                                  <div>Success: ${d.successRate.toFixed(1)}%</div>
-                                  <div>Dedup: ${d.dedupRate.toFixed(1)}%</div>
-                                  <div>Records: ${d.records.toLocaleString()}</div>
-                              `, event);
-                          })
-                          .on('mouseout', function() {
-                              d3.select(this)
-                                  .attr('opacity', 0.7)
-                                  .attr('stroke-width', 2);
-                              d3Tooltip.hide();
-                          })
-                          .transition()
-                          .duration(800)
-                          .attr('r', d => sizeScale(d.records));
+                          const yScale = d3.scaleLinear()
+                              .domain([
+                                  Math.max(0, dedupExtent[0] - dedupPadding),
+                                  Math.min(100, dedupExtent[1] + dedupPadding)
+                              ])
+                              .range([height, 0])
+                              .nice();
 
-                      // Axes
-                      svg.append('g')
-                          .attr('transform', `translate(0,${height})`)
-                          .call(d3.axisBottom(xScale).ticks(5))
-                          .style('font-size', '11px');
+                          const sizeScale = d3.scaleSqrt()
+                              .domain([0, d3.max(processedData, d => d.records)])
+                              .range([6, 30]);
 
-                      svg.append('g')
-                          .call(d3.axisLeft(yScale).ticks(5))
-                          .style('font-size', '11px');
+                          // Reference grid
+                          const gridLines = svg.append('g')
+                              .attr('class', 'grid')
+                              .attr('opacity', 0.1);
 
-                      // Labels
-                      svg.append('text')
-                          .attr('x', width / 2)
-                          .attr('y', height + 40)
-                          .attr('text-anchor', 'middle')
-                          .style('font-size', '12px')
-                          .text('Success Rate (%)');
+                          xScale.ticks(5).forEach(tick => {
+                              gridLines.append('line')
+                                  .attr('x1', xScale(tick))
+                                  .attr('x2', xScale(tick))
+                                  .attr('y1', 0)
+                                  .attr('y2', height)
+                                  .attr('stroke', '#666');
+                          });
 
-                      svg.append('text')
-                          .attr('transform', 'rotate(-90)')
-                          .attr('x', -height / 2)
-                          .attr('y', -50)
-                          .attr('text-anchor', 'middle')
-                          .style('font-size', '12px')
-                          .text('Deduplication Rate (%)');
+                          yScale.ticks(5).forEach(tick => {
+                              gridLines.append('line')
+                                  .attr('x1', 0)
+                                  .attr('x2', width)
+                                  .attr('y1', yScale(tick))
+                                  .attr('y2', yScale(tick))
+                                  .attr('stroke', '#666');
+                          });
+
+                          // Data points
+                          svg.selectAll('.data-point')
+                              .data(processedData)
+                              .join('circle')
+                              .attr('class', 'data-point')
+                              .attr('cx', d => xScale(d.successRate))
+                              .attr('cy', d => yScale(d.dedupRate))
+                              .attr('r', 0)
+                              .attr('fill', d => d3SourceColors[d.source] || d3SourceColors.default)
+                              .attr('opacity', 0.7)
+                              .attr('stroke', '#fff')
+                              .attr('stroke-width', 2)
+                              .style('cursor', 'pointer')
+                              .on('mouseover', function(event, d) {
+                                  d3.select(this)
+                                      .attr('opacity', 1)
+                                      .attr('stroke-width', 3);
+                                  d3Tooltip.show(`
+                                      <strong>${d.source}</strong>
+                                      <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.2);">
+                                          <div><strong>Success Rate:</strong> ${d.successRate.toFixed(1)}%</div>
+                                          <div><strong>Dedup Rate:</strong> ${d.dedupRate.toFixed(1)}%</div>
+                                          <div><strong>Records:</strong> ${d.records.toLocaleString()}</div>
+                                      </div>
+                                  `, event);
+                              })
+                              .on('mousemove', (event) => d3Tooltip.updatePosition(event))
+                              .on('mouseout', function() {
+                                  d3.select(this)
+                                      .attr('opacity', 0.7)
+                                      .attr('stroke-width', 2);
+                                  d3Tooltip.hide();
+                              })
+                              .transition()
+                              .duration(800)
+                              .delay((d, i) => i * 30)
+                              .attr('r', d => sizeScale(d.records));
+
+                          // Axes
+                          const xAxis = d3.axisBottom(xScale)
+                              .ticks(5)
+                              .tickFormat(d => `${d}%`);
+
+                          const yAxis = d3.axisLeft(yScale)
+                              .ticks(5)
+                              .tickFormat(d => `${d}%`);
+
+                          svg.append('g')
+                              .attr('transform', `translate(0,${height})`)
+                              .call(xAxis)
+                              .style('font-size', '11px')
+                              .style('color', '#374151');
+
+                          svg.append('g')
+                              .call(yAxis)
+                              .style('font-size', '11px')
+                              .style('color', '#374151');
+
+                          // Axis labels
+                          svg.append('text')
+                              .attr('x', width / 2)
+                              .attr('y', height + 50)
+                              .attr('text-anchor', 'middle')
+                              .style('font-size', '13px')
+                              .style('font-weight', '600')
+                              .style('fill', '#374151')
+                              .text('Success Rate (%)');
+
+                          svg.append('text')
+                              .attr('transform', 'rotate(-90)')
+                              .attr('x', -height / 2)
+                              .attr('y', -55)
+                              .attr('text-anchor', 'middle')
+                              .style('font-size', '13px')
+                              .style('font-weight', '600')
+                              .style('fill', '#374151')
+                              .text('Deduplication Rate (%)');
+
+                          // Add zoom info label
+                          svg.append('text')
+                              .attr('x', width)
+                              .attr('y', -10)
+                              .attr('text-anchor', 'end')
+                              .style('font-size', '10px')
+                              .style('fill', '#6b7280')
+                              .style('font-style', 'italic')
+                              .text(`Zoomed to data range: ${successExtent[0].toFixed(0)}-${successExtent[1].toFixed(0)}% × ${dedupExtent[0].toFixed(0)}-${dedupExtent[1].toFixed(0)}%`);
+
                       } catch (error) {
                           console.error('Error creating hexbin heatmap:', error);
+                          const container = document.getElementById('d3-hexbin-heatmap');
+                          if (container) {
+                              container.innerHTML = '<div style="padding: 2rem; text-align: center; color: #ef4444;">Error rendering visualization</div>';
+                          }
                       }
                   }
 
@@ -2906,129 +3156,213 @@ jobs:
 
                           container.innerHTML = '';
 
-                      // Generate synthetic health data
-                      const sources = [...new Set(data.map(d => d.source))];
-                      const metrics = ['Uptime', 'Latency', 'Errors', 'Quality'];
+                          const sources = [...new Set(data.map(d => d.source))];
+                          const metrics = ['Uptime', 'Avg Success', 'Total Records', 'Dedup Rate'];
 
-                      const healthData = sources.map(source => {
-                          const sourceMetrics = data.filter(d => d.source === source);
-                          const avgSuccess = d3.mean(sourceMetrics, d => d.success_rate || 0);
+                          const healthData = sources.map(source => {
+                              const sourceMetrics = data.filter(d => d.source === source);
+                              const avgSuccess = d3.mean(sourceMetrics, d => d.success_rate || 0) || 0;
+                              const totalRecords = d3.sum(sourceMetrics, d => d.records_written || 0);
+                              const avgDedup = d3.mean(sourceMetrics, d => d.deduplication_rate || 0) || 0;
+                              const uptime = sourceMetrics.length > 0 ?
+                                  (sourceMetrics.filter(m => m.success_rate > 0.8).length / sourceMetrics.length) : 0;
 
-                          return {
-                              source,
-                              metrics: {
-                                  'Uptime': avgSuccess * 100,
-                                  'Latency': Math.random() * 200 + 50,
-                                  'Errors': Math.random() * 3,
-                                  'Quality': avgSuccess * 100
-                              },
-                              trends: {
-                                  uptime: Array.from({length: 10}, () => 95 + Math.random() * 5),
-                                  latency: Array.from({length: 10}, () => 100 + Math.random() * 50),
-                                  errors: Array.from({length: 10}, () => Math.random() * 2),
-                                  quality: Array.from({length: 10}, () => 90 + Math.random() * 10)
-                              }
-                          };
-                      });
-
-                      const margin = { top: 60, right: 40, bottom: 40, left: 120 };
-                      const cellWidth = 180;
-                      const cellHeight = 120;
-                      const width = metrics.length * cellWidth + margin.left + margin.right;
-                      const height = sources.length * cellHeight + margin.top + margin.bottom;
-
-                      const svg = d3.select(container)
-                          .append('svg')
-                          .attr('width', width)
-                          .attr('height', height)
-                          .append('g')
-                          .attr('transform', `translate(${margin.left},${margin.top})`);
-
-                      // Render matrix
-                      healthData.forEach((sourceData, row) => {
-                          metrics.forEach((metric, col) => {
-                              const value = sourceData.metrics[metric];
-                              const cellG = svg.append('g')
-                                  .attr('transform', `translate(${col * cellWidth},${row * cellHeight})`);
-
-                              // Cell background
-                              cellG.append('rect')
-                                  .attr('width', cellWidth - 4)
-                                  .attr('height', cellHeight - 4)
-                                  .attr('fill', '#fff')
-                                  .attr('stroke', '#e5e7eb')
-                                  .attr('stroke-width', 1)
-                                  .attr('rx', 4);
-
-                              // Metric name
-                              if (row === 0) {
-                                  svg.append('text')
-                                      .attr('x', col * cellWidth + cellWidth / 2)
-                                      .attr('y', -15)
-                                      .attr('text-anchor', 'middle')
-                                      .style('font-size', '13px')
-                                      .style('font-weight', '600')
-                                      .style('fill', '#374151')
-                                      .text(metric);
-                              }
-
-                              // Source label
-                              if (col === 0) {
-                                  svg.append('text')
-                                      .attr('x', -10)
-                                      .attr('y', row * cellHeight + cellHeight / 2)
-                                      .attr('text-anchor', 'end')
-                                      .attr('dominant-baseline', 'middle')
-                                      .style('font-size', '12px')
-                                      .style('font-weight', '600')
-                                      .style('fill', d3SourceColors[sourceData.source])
-                                      .text(sourceData.source.split('-')[0]);
-                              }
-
-                              // Value
-                              const valueText = metric === 'Latency'
-                                  ? `${value.toFixed(0)}ms`
-                                  : metric === 'Errors'
-                                  ? value.toFixed(1)
-                                  : `${value.toFixed(1)}%`;
-
-                              cellG.append('text')
-                                  .attr('x', cellWidth / 2)
-                                  .attr('y', 30)
-                                  .attr('text-anchor', 'middle')
-                                  .style('font-size', '20px')
-                                  .style('font-weight', '700')
-                                  .style('fill', '#111827')
-                                  .text(valueText);
-
-                              // Mini sparkline
-                              const sparkData = sourceData.trends[metric.toLowerCase()];
-                              const sparkWidth = cellWidth - 24;
-                              const sparkHeight = 30;
-                              const sparkX = d3.scaleLinear()
-                                  .domain([0, sparkData.length - 1])
-                                  .range([0, sparkWidth]);
-                              const sparkY = d3.scaleLinear()
-                                  .domain(d3.extent(sparkData))
-                                  .range([sparkHeight, 0]);
-
-                              const line = d3.line()
-                                  .x((d, i) => sparkX(i))
-                                  .y(d => sparkY(d))
-                                  .curve(d3.curveMonotoneX);
-
-                              cellG.append('path')
-                                  .datum(sparkData)
-                                  .attr('d', line)
-                                  .attr('transform', `translate(12,70)`)
-                                  .attr('fill', 'none')
-                                  .attr('stroke', d3SourceColors[sourceData.source])
-                                  .attr('stroke-width', 1.5)
-                                  .attr('opacity', 0.7);
+                              return {
+                                  source,
+                                  color: d3SourceColors[source] || d3SourceColors.default,
+                                  metrics: {
+                                      'Uptime': uptime * 100,
+                                      'Avg Success': avgSuccess * 100,
+                                      'Total Records': totalRecords,
+                                      'Dedup Rate': avgDedup * 100
+                                  },
+                                  trends: {
+                                      uptime: sourceMetrics.slice(-10).map(m => (m.success_rate || 0) * 100),
+                                      'avg success': sourceMetrics.slice(-10).map(m => (m.success_rate || 0) * 100),
+                                      'total records': sourceMetrics.slice(-10).map(m => m.records_written || 0),
+                                      'dedup rate': sourceMetrics.slice(-10).map(m => (m.deduplication_rate || 0) * 100)
+                                  }
+                              };
                           });
-                      });
+
+                          // RESPONSIVE SIZING
+                          const availableWidth = Math.min(container.clientWidth, 1200);
+                          const margin = { top: 80, right: 20, bottom: 20, left: 20 };
+                          const cellWidth = Math.min(180, (availableWidth - margin.left - margin.right) / metrics.length);
+                          const cellHeight = 140;
+
+                          const width = metrics.length * cellWidth;
+                          const height = sources.length * cellHeight + margin.top + margin.bottom;
+
+                          const svg = d3.select(container)
+                              .append('svg')
+                              .attr('width', width + margin.left + margin.right)
+                              .attr('height', height)
+                              .attr('role', 'img')
+                              .attr('aria-label', 'Health matrix showing key performance indicators')
+                              .style('display', 'block')
+                              .style('margin', '0 auto')
+                              .append('g')
+                              .attr('transform', `translate(${margin.left},${margin.top})`);
+
+                          // Legend at top (replaces Y-axis labels)
+                          const legend = svg.append('g')
+                              .attr('class', 'source-legend')
+                              .attr('transform', `translate(0, -50)`);
+
+                          legend.append('text')
+                              .attr('x', 0)
+                              .attr('y', -10)
+                              .style('font-size', '12px')
+                              .style('font-weight', '600')
+                              .style('fill', '#374151')
+                              .text('Data Sources:');
+
+                          const legendItemWidth = width / sources.length;
+                          sources.forEach((source, i) => {
+                              const legendItem = legend.append('g')
+                                  .attr('transform', `translate(${i * legendItemWidth}, 5)`);
+
+                              legendItem.append('rect')
+                                  .attr('x', 0)
+                                  .attr('y', 0)
+                                  .attr('width', 12)
+                                  .attr('height', 12)
+                                  .attr('fill', d3SourceColors[source] || d3SourceColors.default)
+                                  .attr('rx', 2);
+
+                              legendItem.append('text')
+                                  .attr('x', 18)
+                                  .attr('y', 6)
+                                  .attr('dominant-baseline', 'middle')
+                                  .style('font-size', '11px')
+                                  .style('fill', '#374151')
+                                  .text(source);
+                          });
+
+                          // Matrix cells
+                          healthData.forEach((sourceData, row) => {
+                              metrics.forEach((metric, col) => {
+                                  const value = sourceData.metrics[metric];
+                                  const cellG = svg.append('g')
+                                      .attr('transform', `translate(${col * cellWidth},${row * cellHeight})`);
+
+                                  // Color indicator on LEFT EDGE
+                                  cellG.append('rect')
+                                      .attr('x', 0)
+                                      .attr('y', 0)
+                                      .attr('width', 4)
+                                      .attr('height', cellHeight - 8)
+                                      .attr('fill', sourceData.color)
+                                      .attr('rx', 2);
+
+                                  // Cell background
+                                  cellG.append('rect')
+                                      .attr('x', 6)
+                                      .attr('y', 0)
+                                      .attr('width', cellWidth - 10)
+                                      .attr('height', cellHeight - 8)
+                                      .attr('fill', '#fff')
+                                      .attr('stroke', '#e5e7eb')
+                                      .attr('stroke-width', 1)
+                                      .attr('rx', 4);
+
+                                  // Metric name (column header - only on first row)
+                                  if (row === 0) {
+                                      svg.append('text')
+                                          .attr('x', col * cellWidth + cellWidth / 2)
+                                          .attr('y', -20)
+                                          .attr('text-anchor', 'middle')
+                                          .style('font-size', '13px')
+                                          .style('font-weight', '600')
+                                          .style('fill', '#374151')
+                                          .text(metric);
+                                  }
+
+                                  // Value display
+                                  const valueText = metric === 'Total Records'
+                                      ? value.toLocaleString()
+                                      : `${value.toFixed(1)}%`;
+
+                                  cellG.append('text')
+                                      .attr('x', cellWidth / 2)
+                                      .attr('y', 35)
+                                      .attr('text-anchor', 'middle')
+                                      .style('font-size', '20px')
+                                      .style('font-weight', '700')
+                                      .style('fill', '#111827')
+                                      .text(valueText);
+
+                                  // Status indicator
+                                  let status, statusColor;
+                                  if (metric === 'Total Records') {
+                                      status = value > 1000 ? 'High' : value > 100 ? 'Medium' : 'Low';
+                                      statusColor = value > 1000 ? '#10b981' : value > 100 ? '#f59e0b' : '#6b7280';
+                                  } else {
+                                      status = value >= 90 ? 'Excellent' : value >= 75 ? 'Good' : 'Needs Attention';
+                                      statusColor = value >= 90 ? '#10b981' : value >= 75 ? '#f59e0b' : '#ef4444';
+                                  }
+
+                                  cellG.append('text')
+                                      .attr('x', cellWidth / 2)
+                                      .attr('y', 55)
+                                      .attr('text-anchor', 'middle')
+                                      .style('font-size', '11px')
+                                      .style('font-weight', '600')
+                                      .style('fill', statusColor)
+                                      .text(status);
+
+                                  // Sparkline
+                                  const trendKey = metric.toLowerCase();
+                                  const sparkData = sourceData.trends[trendKey] || [];
+
+                                  if (sparkData.length > 0) {
+                                      const sparkWidth = cellWidth - 40;
+                                      const sparkHeight = 35;
+                                      const sparkX = d3.scaleLinear()
+                                          .domain([0, sparkData.length - 1])
+                                          .range([0, sparkWidth]);
+                                      const sparkY = d3.scaleLinear()
+                                          .domain([0, d3.max(sparkData) || 1])
+                                          .range([sparkHeight, 0]);
+
+                                      const line = d3.line()
+                                          .x((d, i) => sparkX(i))
+                                          .y(d => sparkY(d))
+                                          .curve(d3.curveMonotoneX);
+
+                                      cellG.append('path')
+                                          .datum(sparkData)
+                                          .attr('d', line)
+                                          .attr('transform', `translate(20,${cellHeight - 50})`)
+                                          .attr('fill', 'none')
+                                          .attr('stroke', sourceData.color)
+                                          .attr('stroke-width', 2)
+                                          .attr('opacity', 0.7);
+
+                                      // Sparkline area fill
+                                      const area = d3.area()
+                                          .x((d, i) => sparkX(i))
+                                          .y0(sparkHeight)
+                                          .y1(d => sparkY(d))
+                                          .curve(d3.curveMonotoneX);
+
+                                      cellG.append('path')
+                                          .datum(sparkData)
+                                          .attr('d', area)
+                                          .attr('transform', `translate(20,${cellHeight - 50})`)
+                                          .attr('fill', sourceData.color)
+                                          .attr('opacity', 0.15);
+                                  }
+                              });
+                          });
+
                       } catch (error) {
                           console.error('Error creating health matrix:', error);
+                          const container = document.getElementById('d3-health-matrix');
+                          if (container) {
+                              container.innerHTML = '<div style="padding: 2rem; text-align: center; color: #ef4444;">Error rendering visualization</div>';
+                          }
                       }
                   }
 
