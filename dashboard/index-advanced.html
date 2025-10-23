@@ -1,0 +1,2287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Data Visualizations | Somali Dialect Classifier</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- D3.js v7 -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <style>
+        /* ============================================================================
+           CSS VARIABLES & THEME SYSTEM
+           ============================================================================ */
+        :root {
+            /* Paul Tol's Colorblind-Safe Palette */
+            --color-blue: #4477AA;
+            --color-red: #EE6677;
+            --color-green: #228833;
+            --color-yellow: #CCBB44;
+            --color-cyan: #66CCEE;
+            --color-purple: #AA3377;
+            --color-grey: #BBBBBB;
+
+            /* UI Colors */
+            --bg-primary: #F9FAFB;
+            --bg-secondary: #FFFFFF;
+            --text-primary: #111827;
+            --text-secondary: #6B7280;
+            --border-color: #E5E7EB;
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+            /* Spacing (8px grid) */
+            --space-1: 8px;
+            --space-2: 16px;
+            --space-3: 24px;
+            --space-4: 32px;
+            --space-5: 40px;
+            --space-6: 48px;
+
+            /* Typography */
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-size-sm: 0.875rem;
+            --font-size-base: 1rem;
+            --font-size-lg: 1.125rem;
+            --font-size-xl: 1.25rem;
+            --font-size-2xl: 1.5rem;
+            --font-size-3xl: 1.875rem;
+        }
+
+        /* Dark Mode Support */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #111827;
+                --bg-secondary: #1F2937;
+                --text-primary: #F9FAFB;
+                --text-secondary: #9CA3AF;
+                --border-color: #374151;
+            }
+        }
+
+        /* ============================================================================
+           RESET & BASE STYLES
+           ============================================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ============================================================================
+           LAYOUT
+           ============================================================================ */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #2563EB;
+            color: white;
+            padding: var(--space-1) var(--space-2);
+            text-decoration: none;
+            z-index: 100;
+        }
+
+        .skip-link:focus {
+            top: 0;
+        }
+
+        header {
+            background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
+            color: white;
+            padding: var(--space-6) var(--space-3);
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: var(--font-size-3xl);
+            font-weight: 700;
+            margin-bottom: var(--space-2);
+        }
+
+        header p {
+            font-size: var(--font-size-lg);
+            opacity: 0.95;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: var(--space-5) var(--space-3);
+        }
+
+        /* ============================================================================
+           CARD SYSTEM
+           ============================================================================ */
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            padding: var(--space-4);
+            margin-bottom: var(--space-4);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-3);
+            padding-bottom: var(--space-2);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .card-title {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-subtitle {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .card-badge {
+            background: #EFF6FF;
+            color: #1E40AF;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+        }
+
+        /* ============================================================================
+           VISUALIZATION CONTAINERS
+           ============================================================================ */
+        .viz-container {
+            width: 100%;
+            min-height: 400px;
+            position: relative;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        /* ============================================================================
+           D3.js VISUALIZATION STYLES
+           ============================================================================ */
+
+        /* Bubble Timeline */
+        .bubble {
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .bubble:hover {
+            opacity: 1 !important;
+        }
+
+        .connection-line {
+            fill: none;
+            stroke: var(--text-secondary);
+            stroke-width: 1;
+            opacity: 0.3;
+        }
+
+        .swim-lane-label {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            fill: var(--text-secondary);
+        }
+
+        .anomaly-annotation {
+            font-size: 11px;
+            fill: #DC2626;
+            font-weight: 600;
+        }
+
+        /* Radial Comparison */
+        .arc {
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+        }
+
+        .arc:hover {
+            opacity: 0.8;
+        }
+
+        .arc-label {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            pointer-events: none;
+        }
+
+        .sparkline {
+            fill: none;
+            stroke-width: 1.5;
+        }
+
+        /* Horizon Charts */
+        .horizon-band {
+            opacity: 0.9;
+        }
+
+        .horizon-label {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            fill: var(--text-primary);
+        }
+
+        .baseline {
+            stroke: var(--text-secondary);
+            stroke-width: 1;
+            stroke-dasharray: 2, 2;
+            opacity: 0.5;
+        }
+
+        /* Hexbin Heatmap */
+        .hexagon {
+            stroke: #fff;
+            stroke-width: 1;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .hexagon:hover {
+            opacity: 1;
+            stroke-width: 2;
+        }
+
+        .quadrant-label {
+            font-size: 14px;
+            font-weight: 600;
+            fill: var(--text-secondary);
+            opacity: 0.6;
+        }
+
+        .scatter-point {
+            fill-opacity: 0.6;
+            stroke: #fff;
+            stroke-width: 1;
+        }
+
+        /* Streamgraph */
+        .stream-layer {
+            opacity: 0.85;
+            transition: opacity 0.3s ease;
+        }
+
+        .stream-layer:hover {
+            opacity: 1;
+        }
+
+        /* Health Matrix */
+        .health-cell {
+            cursor: pointer;
+        }
+
+        .health-metric-label {
+            font-size: 11px;
+            font-weight: 500;
+            fill: var(--text-primary);
+        }
+
+        .health-value {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .health-sparkline {
+            fill: none;
+            stroke-width: 2;
+        }
+
+        /* Axes */
+        .axis text {
+            font-size: var(--font-size-sm);
+            fill: var(--text-secondary);
+        }
+
+        .axis path,
+        .axis line {
+            stroke: var(--border-color);
+        }
+
+        .axis-label {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            fill: var(--text-primary);
+        }
+
+        /* Tooltips */
+        .d3-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: var(--font-size-sm);
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: var(--shadow-lg);
+            max-width: 300px;
+        }
+
+        .d3-tooltip strong {
+            display: block;
+            margin-bottom: 4px;
+            color: #66CCEE;
+        }
+
+        .d3-tooltip .metric {
+            margin: 4px 0;
+        }
+
+        /* Legend */
+        .legend {
+            font-size: var(--font-size-sm);
+        }
+
+        .legend-item {
+            cursor: pointer;
+        }
+
+        .legend-item rect,
+        .legend-item circle {
+            transition: opacity 0.2s ease;
+        }
+
+        .legend-item:hover rect,
+        .legend-item:hover circle {
+            opacity: 0.7;
+        }
+
+        .legend-label {
+            fill: var(--text-primary);
+        }
+
+        /* ============================================================================
+           GRID LAYOUT
+           ============================================================================ */
+        .grid {
+            display: grid;
+            gap: var(--space-4);
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        }
+
+        /* ============================================================================
+           MOBILE RESPONSIVE
+           ============================================================================ */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: var(--font-size-2xl);
+            }
+
+            .container {
+                padding: var(--space-3) var(--space-2);
+            }
+
+            .card {
+                padding: var(--space-3);
+            }
+
+            .grid-2,
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .viz-container {
+                min-height: 300px;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-1);
+            }
+        }
+
+        /* ============================================================================
+           ACCESSIBILITY
+           ============================================================================ */
+        *:focus {
+            outline: 3px solid #2563EB;
+            outline-offset: 2px;
+        }
+
+        /* Focus styles for SVG elements */
+        svg *:focus {
+            outline: 3px solid #2563EB;
+            outline-offset: 2px;
+        }
+
+        /* Active/pressed states for interactive elements */
+        .bubble:active,
+        .arc:active,
+        .hexagon:active,
+        .stream-layer:active,
+        .health-cell:active {
+            transform: scale(0.97);
+            transition: transform 0.1s ease-out;
+        }
+
+        /* Hit area for small touch targets - invisible but captures touches */
+        .hit-area {
+            fill: transparent;
+            stroke: none;
+            cursor: pointer;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* Mobile-specific horizon chart labels */
+        @media (max-width: 800px) {
+            .horizon-label {
+                font-size: 10px;
+            }
+
+            .horizon-label.truncate {
+                max-width: 80px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        }
+
+        /* ============================================================================
+           LOADING STATE
+           ============================================================================ */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            color: var(--text-secondary);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top-color: #2563EB;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip to content link -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Header -->
+    <header role="banner">
+        <h1>Advanced D3.js Visualizations</h1>
+        <p>
+            World-class data visualization dashboard featuring bubble timelines, radial comparisons,
+            horizon charts, hexbin heatmaps, streamgraphs, and health matrices
+        </p>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content" class="container">
+
+        <!-- Bubble Timeline -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Bubble Timeline</h2>
+                    <p class="card-subtitle">Processing activity over time with velocity indicators and anomaly detection</p>
+                </div>
+                <span class="card-badge">Interactive</span>
+            </div>
+            <div id="bubble-timeline" class="viz-container" role="img" aria-label="Bubble timeline showing processing activity by source over time">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Radial Comparison & Streamgraph -->
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Radial Comparison</h2>
+                        <p class="card-subtitle">Multi-ring source comparison with trend sparklines</p>
+                    </div>
+                    <span class="card-badge">7-Day Trends</span>
+                </div>
+                <div id="radial-comparison" class="viz-container" role="img" aria-label="Radial chart comparing data sources">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Processing Velocity</h2>
+                        <p class="card-subtitle">Streamgraph showing records processed per hour</p>
+                    </div>
+                    <span class="card-badge">Centered</span>
+                </div>
+                <div id="streamgraph" class="viz-container" role="img" aria-label="Streamgraph showing processing velocity by source">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Horizon Charts -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Success Rate Trends (Horizon Charts)</h2>
+                    <p class="card-subtitle">Compact view of success rates with 90% baseline - green bands above, red below</p>
+                </div>
+                <span class="card-badge">4 Sources</span>
+            </div>
+            <div id="horizon-charts" class="viz-container" role="img" aria-label="Horizon charts showing success rate trends for each source" style="min-height: 200px;">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hexbin Heatmap & Health Matrix -->
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Quality vs Deduplication</h2>
+                        <p class="card-subtitle">Hexbin heatmap showing run frequency by performance metrics</p>
+                    </div>
+                    <span class="card-badge">Hexagonal Binning</span>
+                </div>
+                <div id="hexbin-heatmap" class="viz-container" role="img" aria-label="Hexbin heatmap showing correlation between quality and deduplication rates">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Source Health Matrix</h2>
+                        <p class="card-subtitle">Uptime, latency, errors, and quality for each source</p>
+                    </div>
+                    <span class="card-badge">Real-time</span>
+                </div>
+                <div id="health-matrix" class="viz-container" role="img" aria-label="Health matrix showing key metrics for each data source" style="min-height: 500px;">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer style="text-align: center; padding: var(--space-5) var(--space-3); color: var(--text-secondary);">
+        <p style="margin-bottom: 8px;"><strong>Somali Dialect Classifier | Advanced Visualizations</strong></p>
+        <p style="font-size: var(--font-size-sm);">Built with D3.js v7 | Colorblind-safe palette by Paul Tol | WCAG AA Compliant</p>
+    </footer>
+
+    <script>
+        // ============================================================================
+        // DATA GENERATION
+        // ============================================================================
+
+        /**
+         * Generate sample metrics for visualizations
+         * This mirrors the data structure from example-integration.html
+         */
+        function generateSampleMetrics() {
+            const sources = ['Wikipedia-Somali', 'BBC-Somali', 'HuggingFace-MC4', 'Sprakbanken'];
+            const metrics = [];
+            const startDate = new Date('2025-10-15');
+
+            for (let day = 0; day < 7; day++) {
+                sources.forEach(source => {
+                    const timestamp = new Date(startDate);
+                    timestamp.setDate(timestamp.getDate() + day);
+                    timestamp.setHours(Math.floor(Math.random() * 24));
+
+                    // Add some variability to make visualizations interesting
+                    const baseSuccess = source === 'Wikipedia-Somali' ? 0.95 :
+                                       source === 'BBC-Somali' ? 0.92 :
+                                       source === 'HuggingFace-MC4' ? 0.88 : 0.90;
+
+                    const baseDedup = source === 'Wikipedia-Somali' ? 0.15 :
+                                     source === 'BBC-Somali' ? 0.20 :
+                                     source === 'HuggingFace-MC4' ? 0.25 : 0.18;
+
+                    metrics.push({
+                        timestamp: timestamp.toISOString(),
+                        source: source,
+                        records_written: Math.floor(Math.random() * 5000) + 1000,
+                        success_rate: baseSuccess + (Math.random() * 0.08 - 0.04),
+                        deduplication_rate: baseDedup + (Math.random() * 0.1 - 0.05),
+                        urls_discovered: Math.floor(Math.random() * 1000) + 500,
+                        urls_fetched: Math.floor(Math.random() * 900) + 400,
+                        urls_processed: Math.floor(Math.random() * 800) + 300,
+                        avg_text_length: Math.floor(Math.random() * 2000) + 500,
+                        records_per_minute: Math.random() * 100 + 50,
+                        urls_per_second: Math.random() * 10 + 2,
+                        quality_score: Math.random() * 30 + 70, // 70-100
+                        uptime: Math.random() * 5 + 95, // 95-100%
+                        latency_ms: Math.random() * 200 + 50, // 50-250ms
+                        error_rate: Math.random() * 2 // 0-2%
+                    });
+                });
+            }
+
+            return metrics;
+        }
+
+        // ============================================================================
+        // COLOR PALETTE (Paul Tol's colorblind-safe colors)
+        // ============================================================================
+
+        const sourceColors = {
+            'Wikipedia-Somali': '#4477AA',
+            'BBC-Somali': '#EE6677',
+            'HuggingFace-MC4': '#228833',
+            'Sprakbanken': '#CCBB44'
+        };
+
+        // Success rate gradient (red -> yellow -> green)
+        const successScale = d3.scaleLinear()
+            .domain([0.7, 0.85, 1.0])
+            .range(['#EE6677', '#CCBB44', '#228833'])
+            .clamp(true);
+
+        // Frequency heatmap (low -> high)
+        const frequencyScale = d3.scaleSequential(d3.interpolateBlues)
+            .domain([0, 10]);
+
+        // ============================================================================
+        // TOOLTIP UTILITY WITH SMART POSITIONING
+        // ============================================================================
+
+        class D3Tooltip {
+            constructor() {
+                this.tooltip = d3.select('body')
+                    .append('div')
+                    .attr('class', 'd3-tooltip')
+                    .attr('role', 'tooltip')
+                    .attr('aria-live', 'polite')
+                    .style('opacity', 0);
+            }
+
+            /**
+             * Show tooltip with smart positioning to prevent viewport overflow
+             * Automatically repositions tooltip if it would extend beyond screen edges
+             */
+            show(html, event) {
+                this.tooltip.html(html).style('opacity', 1);
+
+                // Get tooltip dimensions
+                const tooltipNode = this.tooltip.node();
+                const tooltipRect = tooltipNode.getBoundingClientRect();
+                const tooltipWidth = tooltipRect.width;
+                const tooltipHeight = tooltipRect.height;
+
+                // Get viewport dimensions
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+
+                // Default positioning (10px offset)
+                let left = event.pageX + 10;
+                let top = event.pageY - 10;
+
+                // Check right edge overflow
+                if (left + tooltipWidth > viewportWidth - 10) {
+                    left = event.pageX - tooltipWidth - 10; // Position to left of cursor
+                }
+
+                // Check left edge overflow
+                if (left < 10) {
+                    left = 10; // Minimum 10px from left edge
+                }
+
+                // Check bottom edge overflow
+                if (top + tooltipHeight > viewportHeight - 10) {
+                    top = event.pageY - tooltipHeight - 10; // Position above cursor
+                }
+
+                // Check top edge overflow
+                if (top < 10) {
+                    top = 10; // Minimum 10px from top edge
+                }
+
+                this.tooltip
+                    .style('left', left + 'px')
+                    .style('top', top + 'px');
+            }
+
+            hide() {
+                this.tooltip.style('opacity', 0);
+            }
+        }
+
+        const tooltip = new D3Tooltip();
+
+        // ============================================================================
+        // KEYBOARD NAVIGATION UTILITIES
+        // ============================================================================
+
+        /**
+         * Add keyboard navigation to interactive SVG elements
+         * Handles Enter/Space for activation, Arrow keys for navigation
+         */
+        function makeKeyboardAccessible(selection, onActivate, options = {}) {
+            const {
+                nextSelector = null,
+                prevSelector = null,
+                groupSelector = null
+            } = options;
+
+            selection
+                .attr('tabindex', '0')
+                .attr('role', 'button')
+                .on('keydown', function(event, d) {
+                    const key = event.key;
+
+                    // Enter or Space to activate
+                    if (key === 'Enter' || key === ' ') {
+                        event.preventDefault();
+                        if (onActivate) {
+                            onActivate.call(this, event, d);
+                        }
+                    }
+
+                    // Arrow key navigation
+                    if (key.startsWith('Arrow')) {
+                        event.preventDefault();
+                        const allElements = groupSelector
+                            ? document.querySelectorAll(groupSelector)
+                            : selection.nodes();
+                        const currentIndex = Array.from(allElements).indexOf(this);
+
+                        let nextIndex = currentIndex;
+                        if (key === 'ArrowRight' || key === 'ArrowDown') {
+                            nextIndex = (currentIndex + 1) % allElements.length;
+                        } else if (key === 'ArrowLeft' || key === 'ArrowUp') {
+                            nextIndex = (currentIndex - 1 + allElements.length) % allElements.length;
+                        }
+
+                        allElements[nextIndex]?.focus();
+                    }
+                });
+        }
+
+        /**
+         * Add touch event support with proper delay to distinguish taps from scrolls
+         */
+        function addTouchSupport(selection, onTouch) {
+            let touchStartTime = 0;
+            let touchStartPos = { x: 0, y: 0 };
+
+            selection
+                .on('touchstart', function(event) {
+                    touchStartTime = Date.now();
+                    const touch = event.touches[0];
+                    touchStartPos = { x: touch.clientX, y: touch.clientY };
+                })
+                .on('touchend', function(event, d) {
+                    const touchEndTime = Date.now();
+                    const touchDuration = touchEndTime - touchStartTime;
+
+                    // Only register as tap if < 300ms and minimal movement
+                    if (touchDuration < 300) {
+                        const touch = event.changedTouches[0];
+                        const movement = Math.sqrt(
+                            Math.pow(touch.clientX - touchStartPos.x, 2) +
+                            Math.pow(touch.clientY - touchStartPos.y, 2)
+                        );
+
+                        if (movement < 10) { // Less than 10px movement
+                            event.preventDefault();
+                            if (onTouch) {
+                                // Create synthetic event with pageX/Y for tooltip positioning
+                                const syntheticEvent = {
+                                    pageX: touch.pageX,
+                                    pageY: touch.pageY,
+                                    clientX: touch.clientX,
+                                    clientY: touch.clientY
+                                };
+                                onTouch.call(this, syntheticEvent, d);
+                            }
+                        }
+                    }
+                });
+        }
+
+        /**
+         * Add invisible hit area for small elements to meet 44x44px touch target minimum
+         */
+        function addHitArea(parentGroup, centerX, centerY, minSize = 44) {
+            const hitArea = parentGroup.insert('circle', ':first-child')
+                .attr('class', 'hit-area')
+                .attr('cx', centerX)
+                .attr('cy', centerY)
+                .attr('r', minSize / 2)
+                .attr('aria-hidden', 'true');
+
+            return hitArea;
+        }
+
+        // ============================================================================
+        // 1. BUBBLE TIMELINE
+        // ============================================================================
+
+        function createBubbleTimeline(data) {
+            const container = d3.select('#bubble-timeline');
+            container.selectAll('*').remove();
+
+            const margin = {top: 40, right: 120, bottom: 60, left: 120};
+            const width = container.node().getBoundingClientRect().width;
+            const height = 500;
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = height - margin.top - margin.bottom;
+
+            const svg = container.append('svg')
+                .attr('viewBox', `0 0 ${width} ${height}`)
+                .attr('aria-label', 'Bubble timeline visualization');
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            // Prepare data
+            const sources = Array.from(new Set(data.map(d => d.source)));
+            const parseTime = d3.isoParse;
+            data.forEach(d => {
+                d.date = parseTime(d.timestamp);
+                d.successRate = d.success_rate;
+                d.records = d.records_written;
+                d.quality = d.quality_score;
+            });
+
+            // Scales
+            const xScale = d3.scaleTime()
+                .domain(d3.extent(data, d => d.date))
+                .range([0, innerWidth]);
+
+            const yScale = d3.scaleBand()
+                .domain(sources)
+                .range([0, innerHeight])
+                .padding(0.3);
+
+            const sizeScale = d3.scaleSqrt()
+                .domain([0, d3.max(data, d => d.records)])
+                .range([4, 40]);
+
+            // Axes
+            const xAxis = d3.axisBottom(xScale)
+                .ticks(6)
+                .tickFormat(d3.timeFormat('%b %d'));
+
+            const yAxis = d3.axisLeft(yScale);
+
+            g.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0,${innerHeight})`)
+                .call(xAxis);
+
+            g.append('g')
+                .attr('class', 'axis')
+                .call(yAxis);
+
+            // Axis labels
+            g.append('text')
+                .attr('class', 'axis-label')
+                .attr('text-anchor', 'middle')
+                .attr('x', innerWidth / 2)
+                .attr('y', innerHeight + 45)
+                .text('Timeline');
+
+            g.append('text')
+                .attr('class', 'axis-label')
+                .attr('text-anchor', 'middle')
+                .attr('transform', 'rotate(-90)')
+                .attr('x', -innerHeight / 2)
+                .attr('y', -80)
+                .text('Data Source');
+
+            // Connection lines (velocity)
+            const lineData = sources.map(source => {
+                const sourceData = data.filter(d => d.source === source).sort((a, b) => a.date - b.date);
+                return sourceData;
+            });
+
+            const line = d3.line()
+                .x(d => xScale(d.date))
+                .y(d => yScale(d.source) + yScale.bandwidth() / 2)
+                .curve(d3.curveCatmullRom);
+
+            lineData.forEach(dataset => {
+                g.append('path')
+                    .datum(dataset)
+                    .attr('class', 'connection-line')
+                    .attr('d', line);
+            });
+
+            // Bubbles with accessibility enhancements
+            const bubbles = g.selectAll('.bubble')
+                .data(data)
+                .join('circle')
+                .attr('class', 'bubble')
+                .attr('cx', d => xScale(d.date))
+                .attr('cy', d => yScale(d.source) + yScale.bandwidth() / 2)
+                .attr('r', 0)
+                .attr('fill', d => successScale(d.successRate))
+                .attr('opacity', d => d.quality / 100)
+                .attr('stroke', d => sourceColors[d.source])
+                .attr('stroke-width', 2)
+                .style('cursor', 'pointer')
+                .attr('aria-label', d => `${d.source}, ${d3.timeFormat('%b %d')(d.date)}, ${d.records.toLocaleString()} records, ${(d.successRate * 100).toFixed(1)}% success rate`)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('stroke-width', 3);
+                    tooltip.show(`
+                        <strong>${d.source}</strong>
+                        <div class="metric">Date: ${d3.timeFormat('%b %d, %H:%M')(d.date)}</div>
+                        <div class="metric">Records: ${d.records.toLocaleString()}</div>
+                        <div class="metric">Success Rate: ${(d.successRate * 100).toFixed(1)}%</div>
+                        <div class="metric">Quality Score: ${d.quality.toFixed(0)}</div>
+                    `, event);
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('stroke-width', 2);
+                    tooltip.hide();
+                })
+                .on('focus', function(event, d) {
+                    d3.select(this).attr('stroke-width', 3);
+                    tooltip.show(`
+                        <strong>${d.source}</strong>
+                        <div class="metric">Date: ${d3.timeFormat('%b %d, %H:%M')(d.date)}</div>
+                        <div class="metric">Records: ${d.records.toLocaleString()}</div>
+                        <div class="metric">Success Rate: ${(d.successRate * 100).toFixed(1)}%</div>
+                        <div class="metric">Quality Score: ${d.quality.toFixed(0)}</div>
+                    `, event);
+                })
+                .on('blur', function() {
+                    d3.select(this).attr('stroke-width', 2);
+                    tooltip.hide();
+                })
+                .transition()
+                .duration(800)
+                .delay((d, i) => i * 20)
+                .attr('r', d => sizeScale(d.records));
+
+            // Add keyboard navigation and touch support to bubbles
+            bubbles.each(function(d, i) {
+                const bubble = d3.select(this);
+                const bubbleGroup = g.append('g').attr('class', 'bubble-group');
+
+                // Move bubble to group
+                const node = this;
+                bubbleGroup.node().appendChild(node);
+
+                // Add hit area for small bubbles (< 22px radius)
+                const radius = sizeScale(d.records);
+                if (radius < 22) {
+                    const hitArea = bubbleGroup.insert('circle', ':first-child')
+                        .attr('class', 'hit-area')
+                        .attr('cx', xScale(d.date))
+                        .attr('cy', yScale(d.source) + yScale.bandwidth() / 2)
+                        .attr('r', 22)
+                        .attr('aria-hidden', 'true');
+
+                    // Forward events from hit area to bubble
+                    hitArea.on('mouseover', function(event) {
+                        bubble.dispatch('mouseover', { detail: event });
+                    }).on('mouseout', function(event) {
+                        bubble.dispatch('mouseout', { detail: event });
+                    });
+
+                    addTouchSupport(hitArea, function(event, touchData) {
+                        tooltip.show(`
+                            <strong>${d.source}</strong>
+                            <div class="metric">Date: ${d3.timeFormat('%b %d, %H:%M')(d.date)}</div>
+                            <div class="metric">Records: ${d.records.toLocaleString()}</div>
+                            <div class="metric">Success Rate: ${(d.successRate * 100).toFixed(1)}%</div>
+                            <div class="metric">Quality Score: ${d.quality.toFixed(0)}</div>
+                        `, event);
+                    });
+                }
+            });
+
+            // Make bubbles keyboard accessible
+            makeKeyboardAccessible(
+                bubbles,
+                function(event, d) {
+                    // Show tooltip on Enter/Space
+                    tooltip.show(`
+                        <strong>${d.source}</strong>
+                        <div class="metric">Date: ${d3.timeFormat('%b %d, %H:%M')(d.date)}</div>
+                        <div class="metric">Records: ${d.records.toLocaleString()}</div>
+                        <div class="metric">Success Rate: ${(d.successRate * 100).toFixed(1)}%</div>
+                        <div class="metric">Quality Score: ${d.quality.toFixed(0)}</div>
+                    `, event);
+                },
+                { groupSelector: '.bubble' }
+            );
+
+            // Add touch support to all bubbles
+            addTouchSupport(bubbles, function(event, d) {
+                tooltip.show(`
+                    <strong>${d.source}</strong>
+                    <div class="metric">Date: ${d3.timeFormat('%b %d, %H:%M')(d.date)}</div>
+                    <div class="metric">Records: ${d.records.toLocaleString()}</div>
+                    <div class="metric">Success Rate: ${(d.successRate * 100).toFixed(1)}%</div>
+                    <div class="metric">Quality Score: ${d.quality.toFixed(0)}</div>
+                `, event);
+            });
+
+            // Anomaly detection (success rate < 85%)
+            const anomalies = data.filter(d => d.successRate < 0.85);
+
+            g.selectAll('.anomaly-annotation')
+                .data(anomalies)
+                .join('text')
+                .attr('class', 'anomaly-annotation')
+                .attr('x', d => xScale(d.date))
+                .attr('y', d => yScale(d.source) - sizeScale(d.records) - 8)
+                .attr('text-anchor', 'middle')
+                .text('⚠')
+                .style('opacity', 0)
+                .transition()
+                .duration(600)
+                .delay(1000)
+                .style('opacity', 1);
+
+            // Legend
+            const legendData = [
+                { label: 'High Success (98-100%)', color: successScale(1.0) },
+                { label: 'Medium Success (85-98%)', color: successScale(0.92) },
+                { label: 'Low Success (<85%)', color: successScale(0.8) }
+            ];
+
+            const legend = g.append('g')
+                .attr('transform', `translate(${innerWidth + 20}, 0)`);
+
+            legend.selectAll('.legend-item')
+                .data(legendData)
+                .join('g')
+                .attr('class', 'legend-item')
+                .attr('transform', (d, i) => `translate(0, ${i * 25})`)
+                .each(function(d) {
+                    const item = d3.select(this);
+                    item.append('circle')
+                        .attr('r', 6)
+                        .attr('fill', d.color);
+                    item.append('text')
+                        .attr('x', 12)
+                        .attr('y', 4)
+                        .attr('class', 'legend-label')
+                        .style('font-size', '11px')
+                        .text(d.label);
+                });
+        }
+
+        // ============================================================================
+        // 2. RADIAL COMPARISON
+        // ============================================================================
+
+        function createRadialComparison(data) {
+            const container = d3.select('#radial-comparison');
+            container.selectAll('*').remove();
+
+            const width = container.node().getBoundingClientRect().width;
+            const height = 500;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const outerRadius = Math.min(width, height) / 2 - 60;
+
+            const svg = container.append('svg')
+                .attr('viewBox', `0 0 ${width} ${height}`)
+                .attr('aria-label', 'Radial comparison chart');
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${centerX},${centerY})`);
+
+            // Aggregate by source
+            const sources = Array.from(new Set(data.map(d => d.source)));
+            const sourceStats = sources.map(source => {
+                const sourceData = data.filter(d => d.source === source);
+                const totalRecords = d3.sum(sourceData, d => d.records_written);
+                const avgSuccess = d3.mean(sourceData, d => d.success_rate);
+                const avgQuality = d3.mean(sourceData, d => d.quality_score);
+
+                // 7-day trend
+                const sortedData = sourceData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                const trend = sortedData.map(d => d.records_written);
+
+                return {
+                    source,
+                    totalRecords,
+                    avgSuccess,
+                    avgQuality,
+                    trend,
+                    color: sourceColors[source]
+                };
+            });
+
+            const totalAllRecords = d3.sum(sourceStats, d => d.totalRecords);
+
+            // Outer ring: Total records (arc length)
+            const pie = d3.pie()
+                .value(d => d.totalRecords)
+                .sort(null);
+
+            const arcOuter = d3.arc()
+                .innerRadius(outerRadius - 40)
+                .outerRadius(outerRadius);
+
+            const arcMiddle = d3.arc()
+                .innerRadius(outerRadius - 80)
+                .outerRadius((d) => {
+                    const stats = sourceStats.find(s => s.source === d.data.source);
+                    return outerRadius - 80 + (stats.avgSuccess * 40);
+                });
+
+            const arcInner = d3.arc()
+                .innerRadius(outerRadius - 120)
+                .outerRadius(outerRadius - 80);
+
+            // Draw outer ring with accessibility
+            const arcOuters = g.selectAll('.arc-outer')
+                .data(pie(sourceStats))
+                .join('path')
+                .attr('class', 'arc')
+                .attr('d', arcOuter)
+                .attr('fill', d => d.data.color)
+                .attr('opacity', 0.9)
+                .attr('aria-label', d => `${d.data.source}: ${d.data.totalRecords.toLocaleString()} records, ${(d.data.totalRecords / totalAllRecords * 100).toFixed(1)}%`)
+                .on('mouseover', function(event, d) {
+                    tooltip.show(`
+                        <strong>${d.data.source}</strong>
+                        <div class="metric">Total Records: ${d.data.totalRecords.toLocaleString()}</div>
+                        <div class="metric">Percentage: ${(d.data.totalRecords / totalAllRecords * 100).toFixed(1)}%</div>
+                    `, event);
+                })
+                .on('mouseout', () => tooltip.hide())
+                .on('focus', function(event, d) {
+                    tooltip.show(`
+                        <strong>${d.data.source}</strong>
+                        <div class="metric">Total Records: ${d.data.totalRecords.toLocaleString()}</div>
+                        <div class="metric">Percentage: ${(d.data.totalRecords / totalAllRecords * 100).toFixed(1)}%</div>
+                    `, event);
+                })
+                .on('blur', () => tooltip.hide());
+
+            // Add keyboard navigation and touch support
+            makeKeyboardAccessible(arcOuters, function(event, d) {
+                tooltip.show(`
+                    <strong>${d.data.source}</strong>
+                    <div class="metric">Total Records: ${d.data.totalRecords.toLocaleString()}</div>
+                    <div class="metric">Percentage: ${(d.data.totalRecords / totalAllRecords * 100).toFixed(1)}%</div>
+                `, event);
+            }, { groupSelector: '.arc' });
+
+            addTouchSupport(arcOuters, function(event, d) {
+                tooltip.show(`
+                    <strong>${d.data.source}</strong>
+                    <div class="metric">Total Records: ${d.data.totalRecords.toLocaleString()}</div>
+                    <div class="metric">Percentage: ${(d.data.totalRecords / totalAllRecords * 100).toFixed(1)}%</div>
+                `, event);
+            });
+
+            // Draw middle ring (success rate)
+            g.selectAll('.arc-middle')
+                .data(pie(sourceStats))
+                .join('path')
+                .attr('class', 'arc')
+                .attr('d', arcMiddle)
+                .attr('fill', d => successScale(d.data.avgSuccess))
+                .attr('opacity', 0.8)
+                .on('mouseover', function(event, d) {
+                    tooltip.show(`
+                        <strong>${d.data.source}</strong>
+                        <div class="metric">Avg Success Rate: ${(d.data.avgSuccess * 100).toFixed(1)}%</div>
+                    `, event);
+                })
+                .on('mouseout', () => tooltip.hide());
+
+            // Draw inner ring (quality score)
+            g.selectAll('.arc-inner')
+                .data(pie(sourceStats))
+                .join('path')
+                .attr('class', 'arc')
+                .attr('d', arcInner)
+                .attr('fill', d => d.data.color)
+                .attr('opacity', d => d.data.avgQuality / 100)
+                .on('mouseover', function(event, d) {
+                    tooltip.show(`
+                        <strong>${d.data.source}</strong>
+                        <div class="metric">Quality Score: ${d.data.avgQuality.toFixed(0)}/100</div>
+                    `, event);
+                })
+                .on('mouseout', () => tooltip.hide());
+
+            // Labels
+            g.selectAll('.arc-label')
+                .data(pie(sourceStats))
+                .join('text')
+                .attr('class', 'arc-label')
+                .attr('transform', d => {
+                    const [x, y] = arcOuter.centroid(d);
+                    const angle = (d.startAngle + d.endAngle) / 2;
+                    const factor = 1.3;
+                    return `translate(${x * factor}, ${y * factor})`;
+                })
+                .attr('text-anchor', d => {
+                    const angle = (d.startAngle + d.endAngle) / 2;
+                    return angle > Math.PI ? 'end' : 'start';
+                })
+                .text(d => d.data.source.split('-')[0])
+                .style('font-size', '13px')
+                .style('font-weight', '600')
+                .style('fill', d => d.data.color);
+
+            // Mini sparklines
+            sourceStats.forEach((stats, i) => {
+                const arcData = pie(sourceStats)[i];
+                const angle = (arcData.startAngle + arcData.endAngle) / 2;
+                const sparkRadius = outerRadius - 150;
+                const cx = Math.cos(angle - Math.PI / 2) * sparkRadius;
+                const cy = Math.sin(angle - Math.PI / 2) * sparkRadius;
+
+                const sparkWidth = 40;
+                const sparkHeight = 20;
+
+                const xScale = d3.scaleLinear()
+                    .domain([0, stats.trend.length - 1])
+                    .range([-sparkWidth / 2, sparkWidth / 2]);
+
+                const yScale = d3.scaleLinear()
+                    .domain([0, d3.max(stats.trend)])
+                    .range([sparkHeight / 2, -sparkHeight / 2]);
+
+                const line = d3.line()
+                    .x((d, i) => xScale(i))
+                    .y(d => yScale(d))
+                    .curve(d3.curveMonotoneX);
+
+                g.append('path')
+                    .datum(stats.trend)
+                    .attr('class', 'sparkline')
+                    .attr('d', line)
+                    .attr('transform', `translate(${cx}, ${cy})`)
+                    .attr('stroke', stats.color)
+                    .attr('fill', 'none');
+            });
+
+            // Center label
+            g.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('y', -10)
+                .style('font-size', '24px')
+                .style('font-weight', '700')
+                .style('fill', 'var(--text-primary)')
+                .text(totalAllRecords.toLocaleString());
+
+            g.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('y', 10)
+                .style('font-size', '12px')
+                .style('fill', 'var(--text-secondary)')
+                .text('Total Records');
+        }
+
+        // ============================================================================
+        // 3. HORIZON CHARTS
+        // ============================================================================
+
+        function createHorizonCharts(data) {
+            const container = d3.select('#horizon-charts');
+            container.selectAll('*').remove();
+
+            const margin = {top: 20, right: 120, bottom: 30, left: 120};
+            const width = container.node().getBoundingClientRect().width;
+            const chartHeight = 40;
+            const sources = Array.from(new Set(data.map(d => d.source)));
+            const height = sources.length * chartHeight + margin.top + margin.bottom;
+
+            const svg = container.append('svg')
+                .attr('viewBox', `0 0 ${width} ${height}`)
+                .attr('aria-label', 'Horizon charts showing success rate trends');
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            const innerWidth = width - margin.left - margin.right;
+
+            // Prepare data
+            const parseTime = d3.isoParse;
+            const sourceData = sources.map(source => {
+                const filtered = data.filter(d => d.source === source)
+                    .map(d => ({
+                        date: parseTime(d.timestamp),
+                        value: d.success_rate * 100
+                    }))
+                    .sort((a, b) => a.date - b.date);
+                return { source, data: filtered };
+            });
+
+            // Scales
+            const xScale = d3.scaleTime()
+                .domain(d3.extent(data.map(d => parseTime(d.timestamp))))
+                .range([0, innerWidth]);
+
+            const baseline = 90; // 90% success rate baseline
+
+            // Color scales for bands
+            const colorAbove = d3.scaleThreshold()
+                .domain([90, 95, 98])
+                .range(['transparent', '#D1FAE5', '#6EE7B7', '#10B981']);
+
+            const colorBelow = d3.scaleThreshold()
+                .domain([85, 88, 90])
+                .range(['#FCA5A5', '#EF4444', '#DC2626', 'transparent']);
+
+            // Draw each horizon chart
+            sourceData.forEach((dataset, i) => {
+                const chartG = g.append('g')
+                    .attr('transform', `translate(0, ${i * chartHeight})`);
+
+                // Baseline
+                chartG.append('line')
+                    .attr('class', 'baseline')
+                    .attr('x1', 0)
+                    .attr('x2', innerWidth)
+                    .attr('y1', chartHeight / 2)
+                    .attr('y2', chartHeight / 2);
+
+                // Create area generator
+                const area = d3.area()
+                    .x(d => xScale(d.date))
+                    .y0(chartHeight / 2)
+                    .y1(d => {
+                        const diff = d.value - baseline;
+                        const scale = chartHeight / 20; // 20% range
+                        return chartHeight / 2 - (diff * scale);
+                    })
+                    .curve(d3.curveMonotoneX);
+
+                // Draw area
+                chartG.append('path')
+                    .datum(dataset.data)
+                    .attr('class', 'horizon-band')
+                    .attr('d', area)
+                    .attr('fill', d => {
+                        const avgValue = d3.mean(dataset.data, d => d.value);
+                        return avgValue >= baseline ? colorAbove(avgValue) : colorBelow(avgValue);
+                    })
+                    .on('mouseover', function(event) {
+                        d3.select(this).attr('opacity', 1);
+                    })
+                    .on('mouseout', function() {
+                        d3.select(this).attr('opacity', 0.9);
+                    });
+
+                // Label with mobile truncation support
+                const labelText = chartG.append('text')
+                    .attr('class', 'horizon-label')
+                    .attr('x', -10)
+                    .attr('y', chartHeight / 2 + 5)
+                    .attr('text-anchor', 'end')
+                    .style('font-size', '12px')
+                    .text(dataset.source);
+
+                // Truncate labels on narrow screens
+                if (innerWidth < 800) {
+                    labelText.classed('truncate', true);
+                    const maxWidth = Math.min(innerWidth * 0.15, 80);
+                    const textLength = labelText.node().getComputedTextLength();
+                    if (textLength > maxWidth) {
+                        let text = dataset.source;
+                        while (labelText.node().getComputedTextLength() > maxWidth && text.length > 0) {
+                            text = text.slice(0, -1);
+                            labelText.text(text + '...');
+                        }
+                    }
+                }
+
+                // Average value
+                const avgValue = d3.mean(dataset.data, d => d.value);
+                chartG.append('text')
+                    .attr('x', innerWidth + 10)
+                    .attr('y', chartHeight / 2 + 5)
+                    .attr('text-anchor', 'start')
+                    .style('font-size', '11px')
+                    .style('font-weight', '600')
+                    .style('fill', avgValue >= baseline ? '#10B981' : '#EF4444')
+                    .text(`${avgValue.toFixed(1)}%`);
+            });
+
+            // X-axis at bottom
+            const xAxis = d3.axisBottom(xScale)
+                .ticks(5)
+                .tickFormat(d3.timeFormat('%b %d'));
+
+            g.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0, ${sources.length * chartHeight})`)
+                .call(xAxis);
+        }
+
+        // ============================================================================
+        // 4. HEXBIN HEATMAP
+        // ============================================================================
+
+        function createHexbinHeatmap(data) {
+            const container = d3.select('#hexbin-heatmap');
+            container.selectAll('*').remove();
+
+            const margin = {top: 40, right: 80, bottom: 60, left: 60};
+            const width = container.node().getBoundingClientRect().width;
+            const height = 500;
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = height - margin.top - margin.bottom;
+
+            const svg = container.append('svg')
+                .attr('viewBox', `0 0 ${width} ${height}`)
+                .attr('aria-label', 'Hexbin heatmap');
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            // Prepare data
+            const points = data.map(d => ({
+                dedup: d.deduplication_rate * 100,
+                success: d.success_rate * 100,
+                source: d.source
+            }));
+
+            // Scales
+            const xScale = d3.scaleLinear()
+                .domain([0, 100])
+                .range([0, innerWidth]);
+
+            const yScale = d3.scaleLinear()
+                .domain([0, 100])
+                .range([innerHeight, 0]);
+
+            // Hexbin
+            const hexRadius = 15;
+            const hexbin = d3.hexbin()
+                .x(d => xScale(d.dedup))
+                .y(d => yScale(d.success))
+                .radius(hexRadius)
+                .extent([[0, 0], [innerWidth, innerHeight]]);
+
+            const bins = hexbin(points);
+
+            const colorScale = d3.scaleSequential(d3.interpolateBlues)
+                .domain([0, d3.max(bins, d => d.length)]);
+
+            // Draw hexagons with accessibility
+            const hexagons = g.selectAll('.hexagon')
+                .data(bins)
+                .join('path')
+                .attr('class', 'hexagon')
+                .attr('d', hexbin.hexagon(hexRadius - 0.5))
+                .attr('transform', d => `translate(${d.x},${d.y})`)
+                .attr('fill', d => colorScale(d.length))
+                .attr('aria-label', d => `${d.length} runs: ${d3.mean(d, p => p.dedup).toFixed(1)}% dedup, ${d3.mean(d, p => p.success).toFixed(1)}% success`)
+                .on('mouseover', function(event, d) {
+                    tooltip.show(`
+                        <strong>Bin: ${d.length} runs</strong>
+                        <div class="metric">Avg Dedup Rate: ${d3.mean(d, p => p.dedup).toFixed(1)}%</div>
+                        <div class="metric">Avg Success Rate: ${d3.mean(d, p => p.success).toFixed(1)}%</div>
+                    `, event);
+                })
+                .on('mouseout', () => tooltip.hide())
+                .on('focus', function(event, d) {
+                    tooltip.show(`
+                        <strong>Bin: ${d.length} runs</strong>
+                        <div class="metric">Avg Dedup Rate: ${d3.mean(d, p => p.dedup).toFixed(1)}%</div>
+                        <div class="metric">Avg Success Rate: ${d3.mean(d, p => p.success).toFixed(1)}%</div>
+                    `, event);
+                })
+                .on('blur', () => tooltip.hide());
+
+            // Add keyboard navigation and touch support to hexagons
+            makeKeyboardAccessible(hexagons, function(event, d) {
+                tooltip.show(`
+                    <strong>Bin: ${d.length} runs</strong>
+                    <div class="metric">Avg Dedup Rate: ${d3.mean(d, p => p.dedup).toFixed(1)}%</div>
+                    <div class="metric">Avg Success Rate: ${d3.mean(d, p => p.success).toFixed(1)}%</div>
+                `, event);
+            }, { groupSelector: '.hexagon' });
+
+            addTouchSupport(hexagons, function(event, d) {
+                tooltip.show(`
+                    <strong>Bin: ${d.length} runs</strong>
+                    <div class="metric">Avg Dedup Rate: ${d3.mean(d, p => p.dedup).toFixed(1)}%</div>
+                    <div class="metric">Avg Success Rate: ${d3.mean(d, p => p.success).toFixed(1)}%</div>
+                `, event);
+            });
+
+            // Scatter points
+            g.selectAll('.scatter-point')
+                .data(points)
+                .join('circle')
+                .attr('class', 'scatter-point')
+                .attr('cx', d => xScale(d.dedup))
+                .attr('cy', d => yScale(d.success))
+                .attr('r', 3)
+                .attr('fill', d => sourceColors[d.source]);
+
+            // Quadrant labels
+            const quadrants = [
+                { x: 75, y: 75, label: '⭐ Elite', color: '#10B981' },
+                { x: 25, y: 75, label: '⚡ High Quality', color: '#3B82F6' },
+                { x: 75, y: 25, label: '🔄 High Dedup', color: '#F59E0B' },
+                { x: 25, y: 25, label: '⚠️ Needs Review', color: '#EF4444' }
+            ];
+
+            g.selectAll('.quadrant-label')
+                .data(quadrants)
+                .join('text')
+                .attr('class', 'quadrant-label')
+                .attr('x', d => xScale(d.x))
+                .attr('y', d => yScale(d.y))
+                .attr('text-anchor', 'middle')
+                .style('fill', d => d.color)
+                .text(d => d.label);
+
+            // Axes
+            const xAxis = d3.axisBottom(xScale)
+                .ticks(5)
+                .tickFormat(d => d + '%');
+
+            const yAxis = d3.axisLeft(yScale)
+                .ticks(5)
+                .tickFormat(d => d + '%');
+
+            g.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0,${innerHeight})`)
+                .call(xAxis);
+
+            g.append('g')
+                .attr('class', 'axis')
+                .call(yAxis);
+
+            // Axis labels
+            g.append('text')
+                .attr('class', 'axis-label')
+                .attr('text-anchor', 'middle')
+                .attr('x', innerWidth / 2)
+                .attr('y', innerHeight + 45)
+                .text('Deduplication Rate (%)');
+
+            g.append('text')
+                .attr('class', 'axis-label')
+                .attr('text-anchor', 'middle')
+                .attr('transform', 'rotate(-90)')
+                .attr('x', -innerHeight / 2)
+                .attr('y', -45)
+                .text('Success Rate (%)');
+
+            // Legend
+            const legendWidth = 200;
+            const legendHeight = 10;
+
+            const legendScale = d3.scaleLinear()
+                .domain([0, d3.max(bins, d => d.length)])
+                .range([0, legendWidth]);
+
+            const legendAxis = d3.axisBottom(legendScale)
+                .ticks(5);
+
+            const defs = svg.append('defs');
+            const linearGradient = defs.append('linearGradient')
+                .attr('id', 'legend-gradient');
+
+            linearGradient.selectAll('stop')
+                .data(d3.range(0, 1.01, 0.1))
+                .join('stop')
+                .attr('offset', d => `${d * 100}%`)
+                .attr('stop-color', d => colorScale(d * d3.max(bins, d => d.length)));
+
+            const legend = g.append('g')
+                .attr('transform', `translate(${innerWidth - legendWidth}, -30)`);
+
+            legend.append('rect')
+                .attr('width', legendWidth)
+                .attr('height', legendHeight)
+                .style('fill', 'url(#legend-gradient)');
+
+            legend.append('g')
+                .attr('transform', `translate(0, ${legendHeight})`)
+                .call(legendAxis)
+                .select('.domain').remove();
+
+            legend.append('text')
+                .attr('x', legendWidth / 2)
+                .attr('y', -5)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '11px')
+                .style('fill', 'var(--text-secondary)')
+                .text('Run Frequency');
+        }
+
+        // ============================================================================
+        // 5. STREAMGRAPH
+        // ============================================================================
+
+        function createStreamgraph(data) {
+            const container = d3.select('#streamgraph');
+            container.selectAll('*').remove();
+
+            const margin = {top: 40, right: 120, bottom: 60, left: 60};
+            const width = container.node().getBoundingClientRect().width;
+            const height = 400;
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = height - margin.top - margin.bottom;
+
+            const svg = container.append('svg')
+                .attr('viewBox', `0 0 ${width} ${height}`)
+                .attr('aria-label', 'Streamgraph visualization');
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            // Prepare data - group by hour
+            const parseTime = d3.isoParse;
+            const hourlyData = d3.rollup(
+                data,
+                v => d3.sum(v, d => d.records_per_minute * 60), // records per hour
+                d => d3.timeHour(parseTime(d.timestamp)),
+                d => d.source
+            );
+
+            const hours = Array.from(new Set(data.map(d => d3.timeHour(parseTime(d.timestamp))))).sort();
+            const sources = Array.from(new Set(data.map(d => d.source)));
+
+            const stackData = hours.map(hour => {
+                const obj = { date: hour };
+                sources.forEach(source => {
+                    obj[source] = hourlyData.get(hour)?.get(source) || 0;
+                });
+                return obj;
+            });
+
+            // Stack
+            const stack = d3.stack()
+                .keys(sources)
+                .offset(d3.stackOffsetWiggle) // Centered baseline
+                .order(d3.stackOrderInsideOut);
+
+            const series = stack(stackData);
+
+            // Scales
+            const xScale = d3.scaleTime()
+                .domain(d3.extent(hours))
+                .range([0, innerWidth]);
+
+            const yScale = d3.scaleLinear()
+                .domain([
+                    d3.min(series, s => d3.min(s, d => d[0])),
+                    d3.max(series, s => d3.max(s, d => d[1]))
+                ])
+                .range([innerHeight, 0]);
+
+            // Area generator
+            const area = d3.area()
+                .x(d => xScale(d.data.date))
+                .y0(d => yScale(d[0]))
+                .y1(d => yScale(d[1]))
+                .curve(d3.curveBasis);
+
+            // Draw streams with accessibility
+            const streamLayers = g.selectAll('.stream-layer')
+                .data(series)
+                .join('path')
+                .attr('class', 'stream-layer')
+                .attr('d', area)
+                .attr('fill', d => sourceColors[d.key])
+                .attr('aria-label', d => `${d.key} processing velocity over time`)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1);
+                    tooltip.show(`
+                        <strong>${d.key}</strong>
+                        <div class="metric">Processing velocity over time</div>
+                    `, event);
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('opacity', 0.85);
+                    tooltip.hide();
+                })
+                .on('focus', function(event, d) {
+                    d3.select(this).attr('opacity', 1);
+                    tooltip.show(`
+                        <strong>${d.key}</strong>
+                        <div class="metric">Processing velocity over time</div>
+                    `, event);
+                })
+                .on('blur', function() {
+                    d3.select(this).attr('opacity', 0.85);
+                    tooltip.hide();
+                });
+
+            // Add keyboard navigation and touch support to stream layers
+            makeKeyboardAccessible(streamLayers, function(event, d) {
+                tooltip.show(`
+                    <strong>${d.key}</strong>
+                    <div class="metric">Processing velocity over time</div>
+                `, event);
+            }, { groupSelector: '.stream-layer' });
+
+            addTouchSupport(streamLayers, function(event, d) {
+                tooltip.show(`
+                    <strong>${d.key}</strong>
+                    <div class="metric">Processing velocity over time</div>
+                `, event);
+            });
+
+            // Axes
+            const xAxis = d3.axisBottom(xScale)
+                .ticks(6)
+                .tickFormat(d3.timeFormat('%b %d'));
+
+            g.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0,${innerHeight})`)
+                .call(xAxis);
+
+            // Legend
+            const legend = g.append('g')
+                .attr('transform', `translate(${innerWidth + 20}, 0)`);
+
+            sources.forEach((source, i) => {
+                const item = legend.append('g')
+                    .attr('transform', `translate(0, ${i * 25})`);
+
+                item.append('rect')
+                    .attr('width', 12)
+                    .attr('height', 12)
+                    .attr('fill', sourceColors[source]);
+
+                item.append('text')
+                    .attr('x', 18)
+                    .attr('y', 10)
+                    .attr('class', 'legend-label')
+                    .style('font-size', '11px')
+                    .text(source.split('-')[0]);
+            });
+        }
+
+        // ============================================================================
+        // 6. SOURCE HEALTH MATRIX
+        // ============================================================================
+
+        function createHealthMatrix(data) {
+            const container = d3.select('#health-matrix');
+            container.selectAll('*').remove();
+
+            const margin = {top: 20, right: 20, bottom: 20, left: 20};
+            const width = container.node().getBoundingClientRect().width;
+            const height = 500;
+
+            const svg = container.append('svg')
+                .attr('viewBox', `0 0 ${width} ${height}`)
+                .attr('aria-label', 'Source health matrix');
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            const sources = Array.from(new Set(data.map(d => d.source)));
+            const metrics = ['Uptime', 'Latency', 'Errors', 'Quality'];
+
+            const cellWidth = (width - margin.left - margin.right) / sources.length;
+            const cellHeight = (height - margin.top - margin.bottom) / metrics.length;
+
+            // Aggregate stats
+            const sourceStats = sources.map(source => {
+                const sourceData = data.filter(d => d.source === source);
+                const uptime = d3.mean(sourceData, d => d.uptime);
+                const latency = d3.mean(sourceData, d => d.latency_ms);
+                const errors = d3.mean(sourceData, d => d.error_rate);
+                const quality = d3.mean(sourceData, d => d.quality_score);
+
+                // Trend data
+                const sortedData = sourceData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                const uptimeTrend = sortedData.map(d => d.uptime);
+                const latencyTrend = sortedData.map(d => d.latency_ms);
+                const errorTrend = sortedData.map(d => d.error_rate);
+                const qualityTrend = sortedData.map(d => d.quality_score);
+
+                return {
+                    source,
+                    uptime,
+                    latency,
+                    errors,
+                    quality,
+                    trends: {
+                        uptime: uptimeTrend,
+                        latency: latencyTrend,
+                        errors: errorTrend,
+                        quality: qualityTrend
+                    }
+                };
+            });
+
+            // Draw grid with accessibility
+            sources.forEach((source, col) => {
+                metrics.forEach((metric, row) => {
+                    const stats = sourceStats.find(s => s.source === source);
+                    const cellG = g.append('g')
+                        .attr('class', 'health-cell')
+                        .attr('transform', `translate(${col * cellWidth}, ${row * cellHeight})`)
+                        .attr('tabindex', '0')
+                        .attr('role', 'button')
+                        .attr('aria-label', `${source} ${metric}`);
+
+                    // Background with hit area for touch
+                    const bgRect = cellG.append('rect')
+                        .attr('width', cellWidth - 4)
+                        .attr('height', cellHeight - 4)
+                        .attr('fill', 'var(--bg-secondary)')
+                        .attr('stroke', 'var(--border-color)')
+                        .attr('stroke-width', 1)
+                        .attr('rx', 8)
+                        .style('cursor', 'pointer');
+
+                    // Add minimum touch target (44x44px)
+                    if (cellWidth < 44 || cellHeight < 44) {
+                        const hitRect = cellG.insert('rect', ':first-child')
+                            .attr('class', 'hit-area')
+                            .attr('width', Math.max(cellWidth, 44))
+                            .attr('height', Math.max(cellHeight, 44))
+                            .attr('x', -(Math.max(cellWidth, 44) - cellWidth) / 2)
+                            .attr('y', -(Math.max(cellHeight, 44) - cellHeight) / 2)
+                            .attr('aria-hidden', 'true');
+                    }
+
+                    // Metric label
+                    cellG.append('text')
+                        .attr('class', 'health-metric-label')
+                        .attr('x', 12)
+                        .attr('y', 20)
+                        .text(metric);
+
+                    // Value
+                    let value, valueText, valueColor;
+
+                    switch(metric) {
+                        case 'Uptime':
+                            value = stats.uptime;
+                            valueText = `${value.toFixed(1)}%`;
+                            valueColor = value >= 99 ? '#10B981' : value >= 95 ? '#F59E0B' : '#EF4444';
+                            break;
+                        case 'Latency':
+                            value = stats.latency;
+                            valueText = `${value.toFixed(0)}ms`;
+                            valueColor = value <= 100 ? '#10B981' : value <= 200 ? '#F59E0B' : '#EF4444';
+                            break;
+                        case 'Errors':
+                            value = stats.errors;
+                            valueText = `${value.toFixed(2)}%`;
+                            valueColor = value <= 1 ? '#10B981' : value <= 2 ? '#F59E0B' : '#EF4444';
+                            break;
+                        case 'Quality':
+                            value = stats.quality;
+                            valueText = `${value.toFixed(0)}`;
+                            valueColor = value >= 90 ? '#10B981' : value >= 80 ? '#F59E0B' : '#EF4444';
+                            break;
+                    }
+
+                    cellG.append('text')
+                        .attr('class', 'health-value')
+                        .attr('x', 12)
+                        .attr('y', 50)
+                        .attr('fill', valueColor)
+                        .text(valueText);
+
+                    // Progress bar
+                    const barWidth = cellWidth - 28;
+                    const barHeight = 6;
+                    const barY = 60;
+
+                    cellG.append('rect')
+                        .attr('x', 12)
+                        .attr('y', barY)
+                        .attr('width', barWidth)
+                        .attr('height', barHeight)
+                        .attr('fill', '#E5E7EB')
+                        .attr('rx', 3);
+
+                    let progress;
+                    switch(metric) {
+                        case 'Uptime':
+                            progress = value / 100;
+                            break;
+                        case 'Latency':
+                            progress = Math.max(0, 1 - value / 300);
+                            break;
+                        case 'Errors':
+                            progress = Math.max(0, 1 - value / 5);
+                            break;
+                        case 'Quality':
+                            progress = value / 100;
+                            break;
+                    }
+
+                    cellG.append('rect')
+                        .attr('x', 12)
+                        .attr('y', barY)
+                        .attr('width', 0)
+                        .attr('height', barHeight)
+                        .attr('fill', valueColor)
+                        .attr('rx', 3)
+                        .transition()
+                        .duration(1000)
+                        .attr('width', barWidth * progress);
+
+                    // Sparkline
+                    const sparkWidth = cellWidth - 28;
+                    const sparkHeight = 30;
+                    const sparkY = 75;
+
+                    let trendData;
+                    switch(metric.toLowerCase()) {
+                        case 'uptime': trendData = stats.trends.uptime; break;
+                        case 'latency': trendData = stats.trends.latency; break;
+                        case 'errors': trendData = stats.trends.errors; break;
+                        case 'quality': trendData = stats.trends.quality; break;
+                    }
+
+                    const xScale = d3.scaleLinear()
+                        .domain([0, trendData.length - 1])
+                        .range([0, sparkWidth]);
+
+                    const yScale = d3.scaleLinear()
+                        .domain([d3.min(trendData), d3.max(trendData)])
+                        .range([sparkHeight, 0]);
+
+                    const line = d3.line()
+                        .x((d, i) => xScale(i))
+                        .y(d => yScale(d))
+                        .curve(d3.curveMonotoneX);
+
+                    cellG.append('path')
+                        .datum(trendData)
+                        .attr('class', 'health-sparkline')
+                        .attr('d', line)
+                        .attr('transform', `translate(12, ${sparkY})`)
+                        .attr('stroke', valueColor)
+                        .attr('fill', 'none');
+
+                    // Source label (only on first row)
+                    if (row === 0) {
+                        cellG.append('text')
+                            .attr('x', cellWidth / 2)
+                            .attr('y', -8)
+                            .attr('text-anchor', 'middle')
+                            .style('font-size', '13px')
+                            .style('font-weight', '600')
+                            .style('fill', sourceColors[source])
+                            .text(source.split('-')[0]);
+                    }
+
+                    // Add hover/focus/touch interactions
+                    cellG
+                        .on('mouseover', function(event) {
+                            d3.select(this).select('rect').attr('stroke-width', 2);
+                            tooltip.show(`
+                                <strong>${source}</strong>
+                                <div class="metric">${metric}: ${valueText}</div>
+                            `, event);
+                        })
+                        .on('mouseout', function() {
+                            d3.select(this).select('rect').attr('stroke-width', 1);
+                            tooltip.hide();
+                        })
+                        .on('focus', function(event) {
+                            d3.select(this).select('rect').attr('stroke-width', 2);
+                            tooltip.show(`
+                                <strong>${source}</strong>
+                                <div class="metric">${metric}: ${valueText}</div>
+                            `, event);
+                        })
+                        .on('blur', function() {
+                            d3.select(this).select('rect').attr('stroke-width', 1);
+                            tooltip.hide();
+                        })
+                        .on('keydown', function(event) {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                tooltip.show(`
+                                    <strong>${source}</strong>
+                                    <div class="metric">${metric}: ${valueText}</div>
+                                `, event);
+                            }
+
+                            // Arrow key navigation
+                            if (event.key.startsWith('Arrow')) {
+                                event.preventDefault();
+                                const allCells = document.querySelectorAll('.health-cell');
+                                const currentIndex = Array.from(allCells).indexOf(this);
+                                let nextIndex = currentIndex;
+
+                                if (event.key === 'ArrowRight') {
+                                    nextIndex = (currentIndex + 1) % allCells.length;
+                                } else if (event.key === 'ArrowLeft') {
+                                    nextIndex = (currentIndex - 1 + allCells.length) % allCells.length;
+                                } else if (event.key === 'ArrowDown') {
+                                    nextIndex = Math.min(currentIndex + sources.length, allCells.length - 1);
+                                } else if (event.key === 'ArrowUp') {
+                                    nextIndex = Math.max(currentIndex - sources.length, 0);
+                                }
+
+                                allCells[nextIndex]?.focus();
+                            }
+                        });
+
+                    // Add touch support
+                    let touchStartTime = 0;
+                    let touchStartPos = { x: 0, y: 0 };
+
+                    cellG.on('touchstart', function(event) {
+                        touchStartTime = Date.now();
+                        const touch = event.touches[0];
+                        touchStartPos = { x: touch.clientX, y: touch.clientY };
+                    }).on('touchend', function(event) {
+                        const touchEndTime = Date.now();
+                        const touchDuration = touchEndTime - touchStartTime;
+
+                        if (touchDuration < 300) {
+                            const touch = event.changedTouches[0];
+                            const movement = Math.sqrt(
+                                Math.pow(touch.clientX - touchStartPos.x, 2) +
+                                Math.pow(touch.clientY - touchStartPos.y, 2)
+                            );
+
+                            if (movement < 10) {
+                                event.preventDefault();
+                                tooltip.show(`
+                                    <strong>${source}</strong>
+                                    <div class="metric">${metric}: ${valueText}</div>
+                                `, {
+                                    pageX: touch.pageX,
+                                    pageY: touch.pageY,
+                                    clientX: touch.clientX,
+                                    clientY: touch.clientY
+                                });
+                            }
+                        }
+                    });
+                });
+            });
+        }
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 Initializing advanced D3.js visualizations...');
+
+            // Fetch real data from GitHub Pages
+            let metrics = [];
+            try {
+                const response = await fetch('data/all_metrics.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const rawMetrics = await response.json();
+
+                // Transform and enrich data to match visualization requirements
+                metrics = rawMetrics.map(m => ({
+                    timestamp: m.timestamp,
+                    source: m.source,
+                    records_written: m.records_written || 0,
+                    success_rate: m.success_rate || 0,
+                    deduplication_rate: m.deduplication_rate || 0,
+                    urls_discovered: m.urls_discovered || 0,
+                    urls_fetched: m.urls_fetched || 0,
+                    urls_processed: m.urls_processed || 0,
+                    avg_text_length: m.avg_text_length || 1000,
+                    // Compute derived metrics
+                    records_per_minute: m.records_written / 60 || 0,
+                    urls_per_second: (m.urls_processed / 3600) || 0,
+                    quality_score: (m.success_rate * 100) || 0,
+                    uptime: 99, // Default - can be computed from pipeline data
+                    latency_ms: 100, // Default - can be computed from pipeline data
+                    error_rate: ((1 - m.success_rate) * 100) || 0
+                }));
+
+                console.log(`📊 Loaded ${metrics.length} real data points from pipeline`);
+            } catch (error) {
+                console.error('❌ Error loading real data:', error);
+                console.log('📊 Falling back to sample data for demo purposes');
+                metrics = generateSampleMetrics();
+            }
+
+            // Create all visualizations
+            try {
+                createBubbleTimeline(metrics);
+                console.log('✅ Bubble timeline created');
+
+                createRadialComparison(metrics);
+                console.log('✅ Radial comparison created');
+
+                createHorizonCharts(metrics);
+                console.log('✅ Horizon charts created');
+
+                createHexbinHeatmap(metrics);
+                console.log('✅ Hexbin heatmap created');
+
+                createStreamgraph(metrics);
+                console.log('✅ Streamgraph created');
+
+                createHealthMatrix(metrics);
+                console.log('✅ Health matrix created');
+
+                console.log('🎉 All visualizations loaded successfully!');
+
+                // Announce to screen readers
+                const announcement = document.createElement('div');
+                announcement.setAttribute('role', 'status');
+                announcement.setAttribute('aria-live', 'polite');
+                announcement.className = 'sr-only';
+                announcement.textContent = 'All advanced data visualizations have been loaded and are ready for interaction.';
+                document.body.appendChild(announcement);
+
+            } catch (error) {
+                console.error('❌ Error creating visualizations:', error);
+            }
+        });
+
+        // Log feature summary
+        console.log(`
+╔════════════════════════════════════════════════════════════╗
+║  Advanced D3.js Visualizations - Feature Summary          ║
+╠════════════════════════════════════════════════════════════╣
+║  📊 Bubble Timeline:                                       ║
+║     - Intelligent date binning                            ║
+║     - Swim lanes for 4 sources                            ║
+║     - Bubble size = records processed                     ║
+║     - Color = success rate gradient                       ║
+║     - Opacity = quality score                             ║
+║     - Velocity connection lines                           ║
+║     - Anomaly detection (⚠️ markers)                      ║
+║     - 44x44px hit areas for small bubbles                 ║
+║                                                            ║
+║  🎯 Radial Comparison:                                     ║
+║     - Outer ring: Total records (arc length)              ║
+║     - Middle ring: Success rate (arc thickness)           ║
+║     - Inner ring: Quality score (fill intensity)          ║
+║     - Mini sparklines for 7-day trends                    ║
+║                                                            ║
+║  📈 Horizon Charts:                                        ║
+║     - 4 stacked compact charts (40px each)                ║
+║     - 90% success rate baseline                           ║
+║     - Green bands above, red bands below                  ║
+║     - Space-efficient design                              ║
+║     - Mobile label truncation                             ║
+║                                                            ║
+║  🔷 Hexbin Heatmap:                                        ║
+║     - X: Deduplication rate (0-100%)                      ║
+║     - Y: Success rate (0-100%)                            ║
+║     - Color: Frequency (run count)                        ║
+║     - Scatter overlay for individual runs                 ║
+║     - Quadrant labels (⭐ Elite, ⚠️ Needs Review)         ║
+║                                                            ║
+║  🌊 Streamgraph:                                           ║
+║     - Centered baseline (symmetrical)                     ║
+║     - Shows records processed per hour                    ║
+║     - Organic flowing shapes                              ║
+║     - Source-colored layers                               ║
+║                                                            ║
+║  ⚕️ Health Matrix:                                         ║
+║     - 4 sources × 4 metrics grid                          ║
+║     - Uptime, Latency, Errors, Quality                    ║
+║     - Progress bars + sparklines                          ║
+║     - Color-coded health status                           ║
+║     - Grid arrow key navigation                           ║
+║                                                            ║
+║  🎨 Design Features:                                       ║
+║     - Paul Tol's colorblind-safe palette                  ║
+║     - Responsive SVG with viewBox                         ║
+║     - WCAG 2.1 AA compliant                               ║
+║     - Smooth 300ms transitions                            ║
+║     - Mobile-optimized (stacked layout)                   ║
+║     - Dark mode support                                   ║
+║     - Interactive tooltips with smart positioning         ║
+║                                                            ║
+║  ♿ Accessibility Features (WCAG 2.1 AA):                  ║
+║     ✓ Full keyboard navigation (Tab, Enter, Space, Arrows)║
+║     ✓ Screen reader support (ARIA labels & live regions)  ║
+║     ✓ 44x44px minimum touch targets                       ║
+║     ✓ Touch event support (300ms tap detection)           ║
+║     ✓ Viewport-aware tooltip positioning                  ║
+║     ✓ Active/pressed states (scale 0.97)                  ║
+║     ✓ 3px blue focus indicators                           ║
+║     ✓ Reduced motion support                              ║
+║     ✓ Semantic HTML & SVG attributes                      ║
+╚════════════════════════════════════════════════════════════╝
+        `);
+    </script>
+</body>
+</html>
