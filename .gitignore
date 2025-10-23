@@ -58,3 +58,12 @@ logs/*
 
 # GitHub Pages build artifacts
 _site/
+
+# Local testing artifacts (Playwright, etc.)
+playwright.config.js
+test-results/
+tests/screenshots/
+tests/*-navigation.js
+tests/test_dashboard_calculation_unit.py
+scripts/analyze_success_rate.py
+dashboard/index-advanced.html
