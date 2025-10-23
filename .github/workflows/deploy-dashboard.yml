@@ -223,6 +223,12 @@ jobs:
                       background: var(--primary-50);
                   }
 
+                  .nav-menu a.active {
+                      color: var(--primary-600);
+                      background: var(--primary-100);
+                      font-weight: 600;
+                  }
+
                   .nav-cta {
                       background: var(--primary-600) !important;
                       color: white !important;
@@ -762,7 +768,7 @@ jobs:
                           <li><a href="#visualizations">Insights</a></li>
                           <li><a href="#about">About</a></li>
                           <li><a href="#reports">Reports</a></li>
-                          <li><a href="#understanding">Understanding the Data</a></li>
+                          <li><a href="#understanding">Understanding the Metrics</a></li>
                           <li><a href="#contribute" class="nav-cta">Contribute</a></li>
                       </ul>
                   </div>
@@ -939,9 +945,9 @@ jobs:
                       </div>
                   </section>
 
-                  <!-- Understanding the Data Section -->
+                  <!-- Understanding the Metrics Section -->
                   <section id="understanding" aria-labelledby="understanding-heading">
-                      <h2 id="understanding-heading">Understanding the Data</h2>
+                      <h2 id="understanding-heading">Understanding the Metrics</h2>
                       <div class="faq-container">
                           <div class="faq-item">
                               <button class="faq-question" onclick="toggleFAQ(this)" aria-expanded="false">
@@ -1189,25 +1195,21 @@ jobs:
                           {
                               title: 'Total Records',
                               value: summaryData.total_records?.toLocaleString() || '0',
-                              icon: '📊',
-                              footer: 'Deduplicated records'
+                              footer: 'Deduplicated and validated'
                           },
                           {
                               title: 'Success Rate',
                               value: ((summaryData.avg_success_rate || 0) * 100).toFixed(1) + '%',
-                              icon: '✓',
                               footer: 'Processing efficiency'
                           },
                           {
                               title: 'Data Sources',
                               value: summaryData.sources?.length || '0',
-                              icon: '🌐',
                               footer: summaryData.sources?.join(', ') || 'No sources'
                           },
                           {
                               title: 'Pipeline Runs',
                               value: summaryData.total_runs || '0',
-                              icon: '🔄',
                               footer: 'Total executions'
                           }
                       ];
@@ -1216,7 +1218,6 @@ jobs:
                           <div class="metric-card">
                               <div class="metric-card-header">
                                   <span class="metric-card-title">${m.title}</span>
-                                  <span class="metric-card-icon">${m.icon}</span>
                               </div>
                               <div class="metric-card-value">${m.value}</div>
                               <div class="metric-card-footer">${m.footer}</div>
@@ -1284,7 +1285,7 @@ jobs:
 
                           container.innerHTML = '';
 
-                      const margin = { top: 40, right: 40, bottom: 60, left: 80 };
+                      const margin = { top: 40, right: 40, bottom: 100, left: 40 };
                       const width = container.clientWidth - margin.left - margin.right;
                       const height = 400 - margin.top - margin.bottom;
 
@@ -1308,6 +1309,7 @@ jobs:
                           .domain(d3.extent(processedData, d => d.timestamp))
                           .range([0, width]);
 
+                      // Create vertical bands for each source (no axis labels)
                       const sources = [...new Set(processedData.map(d => d.source))];
                       const yScale = d3.scaleBand()
                           .domain(sources)
@@ -1318,14 +1320,10 @@ jobs:
                           .domain([0, d3.max(processedData, d => d.records)])
                           .range([3, 30]);
 
-                      // Axes
+                      // X-axis only (no Y-axis)
                       svg.append('g')
                           .attr('transform', `translate(0,${height})`)
                           .call(d3.axisBottom(xScale).ticks(6))
-                          .style('font-size', '12px');
-
-                      svg.append('g')
-                          .call(d3.axisLeft(yScale))
                           .style('font-size', '12px');
 
                       // Bubbles
@@ -1360,6 +1358,33 @@ jobs:
                           .transition()
                           .duration(800)
                           .attr('r', d => radiusScale(d.records));
+
+                      // Add color legend below chart
+                      const legendY = height + 50;
+                      const legend = svg.append('g')
+                          .attr('class', 'legend')
+                          .attr('transform', `translate(0, ${legendY})`);
+
+                      const legendItemWidth = width / sources.length;
+                      sources.forEach((source, i) => {
+                          const legendItem = legend.append('g')
+                              .attr('transform', `translate(${i * legendItemWidth}, 0)`);
+
+                          legendItem.append('circle')
+                              .attr('cx', 0)
+                              .attr('cy', 0)
+                              .attr('r', 6)
+                              .attr('fill', d3SourceColors[source] || d3SourceColors.default)
+                              .attr('stroke', '#fff')
+                              .attr('stroke-width', 2);
+
+                          legendItem.append('text')
+                              .attr('x', 12)
+                              .attr('y', 4)
+                              .text(source)
+                              .style('font-size', '12px')
+                              .style('fill', '#374151');
+                      });
                       } catch (error) {
                           console.error('Error creating bubble timeline:', error);
                       }
@@ -1651,11 +1676,13 @@ jobs:
                           .append('g')
                           .attr('transform', `translate(${margin.left},${margin.top})`);
 
-                      // Process data
-                      const points = data.map(d => [
-                          (d.success_rate || 0) * 100,
-                          (d.deduplication_rate || 0) * 100
-                      ]);
+                      // Process data - add slight jitter to separate overlapping points
+                      const processedData = data.map(d => ({
+                          successRate: (d.success_rate || 0) * 100 + (Math.random() - 0.5) * 2,
+                          dedupRate: (d.deduplication_rate || 0) * 100 + (Math.random() - 0.5) * 2,
+                          source: d.source,
+                          records: d.records_written || 0
+                      }));
 
                       // Scales
                       const xScale = d3.scaleLinear()
@@ -1666,48 +1693,58 @@ jobs:
                           .domain([0, 100])
                           .range([height, 0]);
 
-                      // Create a simple grid-based heatmap
-                      const gridSize = 20;
-                      const grid = {};
+                      const sizeScale = d3.scaleSqrt()
+                          .domain([0, d3.max(processedData, d => d.records)])
+                          .range([8, 40]);
 
-                      points.forEach(([x, y]) => {
-                          const gridX = Math.floor(x / gridSize) * gridSize;
-                          const gridY = Math.floor(y / gridSize) * gridSize;
-                          const key = `${gridX},${gridY}`;
-                          grid[key] = (grid[key] || 0) + 1;
-                      });
+                      // Add reference grid
+                      const gridLines = svg.append('g')
+                          .attr('class', 'grid')
+                          .attr('opacity', 0.1);
 
-                      const gridData = Object.entries(grid).map(([key, count]) => {
-                          const [x, y] = key.split(',').map(Number);
-                          return { x, y, count };
-                      });
+                      for (let i = 0; i <= 100; i += 20) {
+                          gridLines.append('line')
+                              .attr('x1', 0).attr('x2', width)
+                              .attr('y1', yScale(i)).attr('y2', yScale(i))
+                              .attr('stroke', '#666');
+                          gridLines.append('line')
+                              .attr('x1', xScale(i)).attr('x2', xScale(i))
+                              .attr('y1', 0).attr('y2', height)
+                              .attr('stroke', '#666');
+                      }
 
-                      const colorScale = d3.scaleSequential(d3.interpolateBlues)
-                          .domain([0, d3.max(gridData, d => d.count)]);
-
-                      // Render grid
-                      svg.selectAll('.grid-cell')
-                          .data(gridData)
-                          .join('rect')
-                          .attr('class', 'grid-cell')
-                          .attr('x', d => xScale(d.x))
-                          .attr('y', d => yScale(d.y + gridSize))
-                          .attr('width', xScale(gridSize) - xScale(0))
-                          .attr('height', yScale(0) - yScale(gridSize))
-                          .attr('fill', d => colorScale(d.count))
-                          .attr('opacity', 0.8)
+                      // Render data points
+                      svg.selectAll('.data-point')
+                          .data(processedData)
+                          .join('circle')
+                          .attr('class', 'data-point')
+                          .attr('cx', d => xScale(d.successRate))
+                          .attr('cy', d => yScale(d.dedupRate))
+                          .attr('r', 0)
+                          .attr('fill', d => d3SourceColors[d.source] || d3SourceColors.default)
+                          .attr('opacity', 0.7)
+                          .attr('stroke', '#fff')
+                          .attr('stroke-width', 2)
                           .on('mouseover', function(event, d) {
-                              d3.select(this).attr('opacity', 1);
+                              d3.select(this)
+                                  .attr('opacity', 1)
+                                  .attr('stroke-width', 3);
                               d3Tooltip.show(`
-                                  <strong>${d.count} runs</strong>
-                                  <div>Success: ${d.x}-${d.x + gridSize}%</div>
-                                  <div>Dedup: ${d.y}-${d.y + gridSize}%</div>
+                                  <strong>${d.source}</strong>
+                                  <div>Success: ${d.successRate.toFixed(1)}%</div>
+                                  <div>Dedup: ${d.dedupRate.toFixed(1)}%</div>
+                                  <div>Records: ${d.records.toLocaleString()}</div>
                               `, event);
                           })
                           .on('mouseout', function() {
-                              d3.select(this).attr('opacity', 0.8);
+                              d3.select(this)
+                                  .attr('opacity', 0.7)
+                                  .attr('stroke-width', 2);
                               d3Tooltip.hide();
-                          });
+                          })
+                          .transition()
+                          .duration(800)
+                          .attr('r', d => sizeScale(d.records));
 
                       // Axes
                       svg.append('g')
@@ -1910,6 +1947,32 @@ jobs:
                       this.setAttribute('aria-expanded', !isExpanded);
                       menu.classList.toggle('active');
                   });
+
+                  // ========== Scroll-Spy Navigation ==========
+                  const sections = document.querySelectorAll('section[id]');
+                  const navLinks = document.querySelectorAll('.nav-menu a[href^="#"]');
+
+                  const observerOptions = {
+                      root: null,
+                      rootMargin: '-20% 0px -70% 0px',
+                      threshold: 0
+                  };
+
+                  const observer = new IntersectionObserver((entries) => {
+                      entries.forEach(entry => {
+                          if (entry.isIntersecting) {
+                              const id = entry.target.getAttribute('id');
+                              navLinks.forEach(link => {
+                                  link.classList.remove('active');
+                                  if (link.getAttribute('href') === `#${id}`) {
+                                      link.classList.add('active');
+                                  }
+                              });
+                          }
+                      });
+                  }, observerOptions);
+
+                  sections.forEach(section => observer.observe(section));
 
                   // ========== Initialize ==========
                   document.addEventListener('DOMContentLoaded', () => {
