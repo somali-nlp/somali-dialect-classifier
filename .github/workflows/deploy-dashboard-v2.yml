@@ -1,0 +1,185 @@
+name: Deploy Enhanced Dashboard to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'data/metrics/**'
+      - 'data/reports/**'
+      - 'dashboard/**'
+      - '.github/workflows/deploy-dashboard-v2.yml'
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install streamlit pandas plotly numpy
+
+      - name: Build dashboard site
+        run: |
+          # Use the build script
+          chmod +x dashboard/build-site.sh
+          ./dashboard/build-site.sh
+
+      - name: Generate metrics data
+        run: |
+          python << 'PYTHON_SCRIPT'
+          import json
+          from pathlib import Path
+          from datetime import datetime
+
+          # Create data directory
+          site_data = Path("_site/data")
+          site_data.mkdir(parents=True, exist_ok=True)
+
+          # Load all metrics (only processing phase for accurate success rates)
+          metrics_dir = Path("data/metrics")
+          all_metrics = []
+
+          if metrics_dir.exists():
+              for metrics_file in metrics_dir.glob("*_processing.json"):
+                  try:
+                      with open(metrics_file) as f:
+                          data = json.load(f)
+                          snapshot = data.get("snapshot", {})
+                          stats = data.get("statistics", {})
+                          perf = snapshot.get("performance", {})
+                          quality = snapshot.get("quality_stats", {})
+
+                          all_metrics.append({
+                              "run_id": snapshot.get("run_id", ""),
+                              "source": snapshot.get("source", ""),
+                              "timestamp": snapshot.get("timestamp", ""),
+                              "duration_seconds": snapshot.get("duration_seconds", 0),
+                              "urls_discovered": snapshot.get("urls_discovered", 0),
+                              "urls_fetched": snapshot.get("urls_fetched", 0),
+                              "urls_processed": snapshot.get("urls_processed", 0),
+                              "records_written": snapshot.get("records_written", 0),
+                              "bytes_downloaded": snapshot.get("bytes_downloaded", 0),
+                              "success_rate": stats.get("fetch_success_rate", 0),
+                              "deduplication_rate": stats.get("deduplication_rate", 0),
+                              "performance": {
+                                  "urls_per_second": perf.get("urls_per_second", 0),
+                                  "bytes_per_second": perf.get("bytes_per_second", 0),
+                                  "records_per_minute": perf.get("records_per_minute", 0)
+                              },
+                              "quality": {
+                                  "min": quality.get("min", 0),
+                                  "max": quality.get("max", 0),
+                                  "mean": quality.get("mean", 0),
+                                  "median": quality.get("median", 0),
+                                  "total_chars": quality.get("total_chars", 0)
+                              }
+                          })
+                  except Exception as e:
+                      print(f"Error loading {metrics_file}: {e}")
+
+          # Calculate aggregates
+          if all_metrics:
+              total_records = sum(m["records_written"] for m in all_metrics)
+              avg_success_rate = sum(m["success_rate"] for m in all_metrics) / len(all_metrics)
+              sources = sorted(list(set(m["source"] for m in all_metrics)))
+
+              # Generate summary
+              summary = {
+                  "total_runs": len(all_metrics),
+                  "total_records": total_records,
+                  "avg_success_rate": avg_success_rate,
+                  "sources": sources,
+                  "last_update": max(m["timestamp"] for m in all_metrics)
+              }
+
+              # Save summary
+              with open("_site/data/summary.json", "w") as f:
+                  json.dump(summary, f, indent=2)
+
+              # Save all metrics
+              output = {
+                  "count": len(all_metrics),
+                  "records": total_records,
+                  "sources": sources,
+                  "metrics": all_metrics
+              }
+
+              with open("_site/data/all_metrics.json", "w") as f:
+                  json.dump(output, f, indent=2)
+
+              print(f"✅ Generated metrics: {len(all_metrics)} runs, {total_records:,} records")
+              print(f"✅ Sources: {', '.join(sources)}")
+          else:
+              print("⚠️  No metrics found!")
+          PYTHON_SCRIPT
+
+      - name: Copy additional assets
+        run: |
+          # Copy favicon if it exists
+          if [ -f "dashboard/favicon.svg" ]; then
+            cp dashboard/favicon.svg _site/favicon.svg
+          elif [ -f "data/favicon.svg" ]; then
+            cp data/favicon.svg _site/favicon.svg
+          fi
+
+          # Copy any reports
+          if [ -d "data/reports" ]; then
+            mkdir -p _site/data/reports
+            cp -r data/reports/* _site/data/reports/ 2>/dev/null || true
+          fi
+
+      - name: Verify build
+        run: |
+          echo "📦 Build verification:"
+          echo ""
+          echo "📄 Site structure:"
+          ls -lh _site/
+          echo ""
+          echo "📁 Data directory:"
+          ls -lh _site/data/
+          echo ""
+          if [ -f "_site/data/all_metrics.json" ]; then
+            echo "✅ all_metrics.json exists"
+            head -20 _site/data/all_metrics.json
+          else
+            echo "❌ ERROR: all_metrics.json not found!"
+            exit 1
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Summary
+        run: |
+          echo "🚀 Deployment complete!"
+          echo "📊 Dashboard URL: https://somali-nlp.github.io/somali-dialect-classifier/"
