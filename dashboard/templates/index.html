@@ -235,20 +235,37 @@
             outline: none;
         }
 
+        .nav-links a.active {
+            color: var(--brand-primary);
+            position: relative;
+        }
+
+        .nav-links a.active::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--brand-primary);
+            border-radius: 2px;
+        }
+
         .nav-cta {
             background: var(--brand-primary);
-            color: white;
-            padding: 0.5rem var(--space-4);
+            color: white !important;
+            padding: 0.5rem 1.5rem;
             border-radius: var(--radius-md);
             font-weight: 600;
             transition: all var(--transition-base);
         }
 
-        .nav-cta:hover {
-            background: #1d4ed8;
+        .nav-cta:hover,
+        .nav-cta:focus {
+            background: var(--brand-secondary);
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
-            color: white;
+            color: white !important;
         }
 
         /* Mobile Menu Toggle */
@@ -414,7 +431,7 @@
         }
 
         /* ========================================
-           ML LIFECYCLE NAVIGATOR
+           ML LIFECYCLE NAVIGATOR - PROFESSIONAL REDESIGN
            ======================================== */
         .ml-lifecycle {
             background: white;
@@ -431,7 +448,7 @@
 
         .lifecycle-header {
             text-align: center;
-            margin-bottom: var(--space-8);
+            margin-bottom: var(--space-12);
         }
 
         .lifecycle-header h2 {
@@ -447,53 +464,114 @@
             font-size: var(--text-sm);
         }
 
+        /* Pipeline Container with Connectors */
         .lifecycle-stages {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: var(--space-4);
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            gap: 0;
             position: relative;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
+        /* Connector Lines Between Stages */
+        .lifecycle-stage::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: -24px;
+            width: 24px;
+            height: 2px;
+            background: var(--gray-300);
+            transform: translateY(-50%);
+            z-index: 0;
+        }
+
+        .lifecycle-stage:last-child::after {
+            display: none;
+        }
+
+        .lifecycle-stage.completed::after {
+            background: var(--success);
+            animation: connectorGrow 400ms ease-out;
+        }
+
+        @keyframes connectorGrow {
+            from {
+                width: 0;
+            }
+            to {
+                width: 24px;
+            }
+        }
+
+        /* Stage Cards - Minimal & Professional */
         .lifecycle-stage {
-            background: var(--gray-50);
+            flex: 1;
+            background: white;
             border: 2px solid var(--gray-200);
             border-radius: var(--radius-lg);
             padding: var(--space-6);
             text-align: center;
-            transition: all var(--transition-base);
+            transition: transform 150ms ease-out,
+                        box-shadow 150ms ease-out,
+                        border-color 150ms ease-out;
             cursor: pointer;
             position: relative;
+            min-width: 160px;
+            max-width: 200px;
         }
 
+        /* Hover State - Subtle Lift */
         .lifecycle-stage:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             border-color: var(--brand-primary);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
         }
 
-        .lifecycle-stage.current {
-            background: linear-gradient(135deg, var(--brand-primary), #3b82f6);
-            border-color: var(--brand-primary);
-            color: white;
-            box-shadow: var(--shadow-lg);
+        .lifecycle-stage:focus {
+            outline: 2px solid var(--brand-primary);
+            outline-offset: 2px;
         }
 
+        /* Completed Stage */
         .lifecycle-stage.completed {
             border-color: var(--success);
+            background: linear-gradient(to bottom, #f0fdf4 0%, white 100%);
         }
 
-        .lifecycle-stage-icon {
-            font-size: var(--text-4xl);
-            margin-bottom: var(--space-4);
+        /* Current/Active Stage */
+        .lifecycle-stage.current {
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+            border-color: var(--brand-primary);
+            color: white;
+            box-shadow: 0 8px 16px rgba(37, 99, 235, 0.2);
         }
 
+        /* Subtle Pulse Animation for Active Stage */
+        .lifecycle-stage.current {
+            animation: subtlePulse 2.5s ease-in-out infinite;
+        }
+
+        @keyframes subtlePulse {
+            0%, 100% {
+                box-shadow: 0 8px 16px rgba(37, 99, 235, 0.2);
+            }
+            50% {
+                box-shadow: 0 8px 20px rgba(37, 99, 235, 0.28);
+            }
+        }
+
+        /* Stage Number Badge */
         .lifecycle-stage-number {
             position: absolute;
-            top: var(--space-4);
-            left: var(--space-4);
-            width: 28px;
-            height: 28px;
-            background: var(--gray-200);
+            top: 12px;
+            left: 12px;
+            width: 32px;
+            height: 32px;
+            background: white;
+            border: 2px solid var(--gray-200);
             border-radius: var(--radius-full);
             display: flex;
             align-items: center;
@@ -501,57 +579,175 @@
             font-size: var(--text-xs);
             font-weight: 700;
             color: var(--gray-700);
-        }
-
-        .lifecycle-stage.current .lifecycle-stage-number {
-            background: rgba(255, 255, 255, 0.3);
-            color: white;
+            transition: all 200ms ease-out;
         }
 
         .lifecycle-stage.completed .lifecycle-stage-number {
             background: var(--success);
+            border-color: var(--success);
             color: white;
         }
 
+        .lifecycle-stage.completed .lifecycle-stage-number::before {
+            content: '✓';
+            font-size: 14px;
+        }
+
+        .lifecycle-stage.current .lifecycle-stage-number {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.4);
+            color: white;
+            backdrop-filter: blur(8px);
+        }
+
+        /* Hide number text when completed (show checkmark instead) */
+        .lifecycle-stage.completed .lifecycle-stage-number {
+            font-size: 0;
+        }
+
+        /* Icon Styling */
+        .lifecycle-stage-icon {
+            font-size: 3rem;
+            margin-bottom: var(--space-4);
+            filter: grayscale(0.3);
+            opacity: 0.9;
+            transition: all 200ms ease-out;
+        }
+
+        .lifecycle-stage:hover .lifecycle-stage-icon {
+            transform: scale(1.05);
+            filter: grayscale(0);
+            opacity: 1;
+        }
+
+        .lifecycle-stage.current .lifecycle-stage-icon {
+            filter: grayscale(0);
+            opacity: 1;
+        }
+
+        /* Stage Name */
         .lifecycle-stage-name {
             font-weight: 600;
             font-size: var(--text-base);
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.01em;
         }
 
+        /* Status Label */
         .lifecycle-stage-status {
-            font-size: var(--text-xs);
-            opacity: 0.8;
+            font-size: 11px;
+            opacity: 0.7;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
             font-weight: 600;
         }
 
         .lifecycle-stage.current .lifecycle-stage-status {
-            opacity: 1;
+            opacity: 0.95;
         }
 
+        /* Progress Bar - Only show on current stage */
         .lifecycle-stage-progress {
             margin-top: var(--space-4);
-            height: 4px;
-            background: rgba(0, 0, 0, 0.1);
+            height: 3px;
+            background: rgba(0, 0, 0, 0.08);
             border-radius: var(--radius-full);
             overflow: hidden;
+            opacity: 0;
+            transition: opacity 200ms ease-out;
         }
 
         .lifecycle-stage.current .lifecycle-stage-progress {
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.25);
+            opacity: 1;
         }
 
         .lifecycle-stage-progress-bar {
             height: 100%;
             background: var(--success);
             border-radius: var(--radius-full);
-            transition: width var(--transition-slow);
+            transition: width 800ms cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .lifecycle-stage.current .lifecycle-stage-progress-bar {
             background: white;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Overall Progress Indicator */
+        .lifecycle-overall-progress {
+            margin-top: var(--space-8);
+            text-align: center;
+        }
+
+        .lifecycle-overall-progress-label {
+            font-size: var(--text-sm);
+            color: var(--gray-600);
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+        }
+
+        .lifecycle-overall-progress-bar {
+            height: 6px;
+            background: var(--gray-200);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .lifecycle-overall-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--brand-primary) 0%, var(--success) 100%);
+            border-radius: var(--radius-full);
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Mobile Responsive Design */
+        @media (max-width: 1024px) {
+            .lifecycle-stages {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: var(--space-4);
+            }
+
+            .lifecycle-stage {
+                max-width: none;
+            }
+
+            .lifecycle-stage::after {
+                display: none;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .lifecycle-stages {
+                grid-template-columns: 1fr;
+            }
+
+            .lifecycle-stage {
+                padding: var(--space-6);
+            }
+
+            .lifecycle-stage-icon {
+                font-size: 2.5rem;
+            }
+        }
+
+        /* Accessibility: Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            .lifecycle-stage,
+            .lifecycle-stage-icon,
+            .lifecycle-stage-number,
+            .lifecycle-stage-progress-bar,
+            .lifecycle-overall-progress-fill {
+                animation: none !important;
+                transition-duration: 0.01ms !important;
+            }
+
+            .lifecycle-stage:hover {
+                transform: none;
+            }
         }
 
         /* ========================================
@@ -1302,10 +1498,10 @@
                 </div>
             </a>
             <ul class="nav-links">
-                <li><a href="#overview">Dashboard</a></li>
-                <li><a href="#data-story">Data Story</a></li>
-                <li><a href="https://github.com/somali-nlp" target="_blank" rel="noopener">GitHub</a></li>
-                <li><a href="#contribute" class="nav-cta">Contribute</a></li>
+                <li><a href="#overview" class="nav-link">Overview</a></li>
+                <li><a href="#story" class="nav-link">Story</a></li>
+                <li><a href="https://github.com/somali-nlp/somali-dialect-classifier" target="_blank" class="nav-link">GitHub</a></li>
+                <li><a href="#get-involved" class="nav-cta">Get Involved</a></li>
             </ul>
             <button class="mobile-menu-toggle" aria-label="Toggle mobile menu">☰</button>
         </div>
@@ -1316,7 +1512,7 @@
         <div class="container">
             <div class="hero-badge">
                 <span>🇸🇴</span>
-                <span>Part of Somali NLP Initiative</span>
+                <span>Fully Open Source</span>
             </div>
             <h1>Somali Dialect Classifier</h1>
             <p class="hero-tagline">Building Africa's Largest Open Somali Language Corpus</p>
@@ -1350,11 +1546,11 @@
                     <span>View Dashboard</span>
                     <span>↓</span>
                 </a>
-                <a href="https://github.com/somali-nlp" class="hero-cta hero-cta-secondary" target="_blank" rel="noopener">
+                <a href="https://github.com/somali-nlp/somali-dialect-classifier" class="hero-cta hero-cta-secondary" target="_blank" rel="noopener">
                     <span>GitHub</span>
                     <span>→</span>
                 </a>
-                <a href="#contribute" class="hero-cta hero-cta-secondary">
+                <a href="#get-involved" class="hero-cta hero-cta-secondary">
                     <span>Contribute</span>
                 </a>
             </div>
@@ -1365,8 +1561,8 @@
     <section class="ml-lifecycle" aria-label="Machine Learning Pipeline Stages">
         <div class="container">
             <div class="lifecycle-header">
-                <h2>ML Pipeline Progress</h2>
-                <p>Comprehensive machine learning workflow from data collection to production deployment</p>
+                <h2>The Pipeline</h2>
+                <p>Track progress from collection to deployment</p>
             </div>
             <div class="lifecycle-stages">
                 <!-- Stage 1: Data Ingestion (CURRENT) -->
@@ -1433,6 +1629,14 @@
                     <div class="lifecycle-stage-progress">
                         <div class="lifecycle-stage-progress-bar" style="width: 0%"></div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Overall Progress Indicator -->
+            <div class="lifecycle-overall-progress" role="progressbar" aria-valuenow="17" aria-valuemin="0" aria-valuemax="100" aria-label="Overall pipeline progress: 17% complete">
+                <div class="lifecycle-overall-progress-label">Overall Progress: 17% Complete</div>
+                <div class="lifecycle-overall-progress-bar">
+                    <div class="lifecycle-overall-progress-fill" style="width: 17%"></div>
                 </div>
             </div>
         </div>
@@ -1984,7 +2188,7 @@
                         <p class="report-card-description">
                             REST API endpoints for programmatic access to the corpus, including authentication and rate limits.
                         </p>
-                        <a href="https://github.com/somali-nlp" target="_blank" rel="noopener" class="report-card-action">
+                        <a href="https://github.com/somali-nlp/somali-dialect-classifier/blob/main/docs/reference/api.md" target="_blank" rel="noopener" class="report-card-action">
                             <span>View API Docs</span>
                             <span>→</span>
                         </a>
@@ -2008,7 +2212,7 @@
                         <p class="report-card-description">
                             Step-by-step guide for loading and using the corpus in popular ML frameworks like PyTorch and TensorFlow.
                         </p>
-                        <a href="https://github.com/somali-nlp" target="_blank" rel="noopener" class="report-card-action">
+                        <a href="https://github.com/somali-nlp/somali-dialect-classifier/tree/main/docs" target="_blank" rel="noopener" class="report-card-action">
                             <span>Read Guide</span>
                             <span>→</span>
                         </a>
@@ -2020,7 +2224,7 @@
                         <p class="report-card-description">
                             Academic citation information for referencing this corpus in research papers and publications.
                         </p>
-                        <a href="#" class="report-card-action" onclick="alert('Citation format:\n\nSomali NLP Initiative. (2025). Somali Dialect Classifier Corpus. Available at: https://github.com/somali-nlp'); return false;">
+                        <a href="#" class="report-card-action" onclick="alert('Citation format:\n\nSomali NLP Initiative. (2025). Somali Dialect Classifier Corpus. Available at: https://github.com/somali-nlp/somali-dialect-classifier'); return false;">
                             <span>Copy Citation</span>
                             <span>→</span>
                         </a>
@@ -2031,7 +2235,7 @@
     </main>
 
     <!-- Data Story Section -->
-    <section class="data-story" id="data-story">
+    <section class="data-story" id="story">
         <div class="container">
             <div class="data-story-header">
                 <h2>The Journey From Raw Data to AI-Ready Corpus</h2>
@@ -2084,7 +2288,7 @@
     </section>
 
     <!-- Contribute Section -->
-    <section class="contribute" id="contribute">
+    <section class="contribute" id="get-involved">
         <div class="container">
             <h2>Help Build the Future of Somali NLP</h2>
             <p class="contribute-text">
@@ -2127,7 +2331,7 @@
                 </div>
             </div>
 
-            <a href="https://github.com/somali-nlp" target="_blank" rel="noopener" class="contribute-cta">
+            <a href="https://github.com/somali-nlp/somali-dialect-classifier" target="_blank" rel="noopener" class="contribute-cta">
                 <span>View on GitHub</span>
                 <span>→</span>
             </a>
@@ -2147,32 +2351,32 @@
                 </div>
 
                 <div class="footer-section">
-                    <h3>Projects</h3>
+                    <h3>Project</h3>
                     <ul class="footer-links">
-                        <li><a href="#">Dialect Classifier</a></li>
-                        <li><a href="#">Translation Engine</a></li>
-                        <li><a href="#">Speech Recognition</a></li>
-                        <li><a href="#">Sentiment Analysis</a></li>
+                        <li><a href="https://github.com/somali-nlp/somali-dialect-classifier" target="_blank" rel="noopener">GitHub Repository</a></li>
+                        <li><a href="https://github.com/somali-nlp/somali-dialect-classifier/blob/main/docs/roadmap/lifecycle.md" target="_blank" rel="noopener">Roadmap</a></li>
+                        <li><a href="https://github.com/somali-nlp/somali-dialect-classifier/issues" target="_blank" rel="noopener">Issues</a></li>
+                        <li><a href="https://github.com/somali-nlp/somali-dialect-classifier/releases" target="_blank" rel="noopener">Releases</a></li>
                     </ul>
                 </div>
 
                 <div class="footer-section">
                     <h3>Resources</h3>
                     <ul class="footer-links">
-                        <li><a href="https://github.com/somali-nlp" target="_blank" rel="noopener">GitHub</a></li>
-                        <li><a href="#">Documentation</a></li>
-                        <li><a href="#">API Reference</a></li>
-                        <li><a href="#">Research Papers</a></li>
+                        <li><a href="https://github.com/somali-nlp/somali-dialect-classifier/tree/main/docs" target="_blank" rel="noopener">Documentation</a></li>
+                        <li><a href="https://github.com/somali-nlp/somali-dialect-classifier/blob/main/docs/reference/api.md" target="_blank" rel="noopener">API Reference</a></li>
+                        <li><a href="https://github.com/somali-nlp/somali-dialect-classifier/blob/main/docs/reference/silver-schema.md" target="_blank" rel="noopener">Data Schema</a></li>
+                        <li><a href="https://github.com/somali-nlp/somali-dialect-classifier/tree/main/docs/howto" target="_blank" rel="noopener">How-To Guides</a></li>
                     </ul>
                 </div>
 
                 <div class="footer-section">
                     <h3>Community</h3>
                     <ul class="footer-links">
-                        <li><a href="#">Contributing Guide</a></li>
-                        <li><a href="#">Code of Conduct</a></li>
-                        <li><a href="#">Discussions</a></li>
-                        <li><a href="#">Contact</a></li>
+                        <li><a href="https://github.com/somali-nlp/somali-dialect-classifier/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing Guide</a></li>
+                        <li><a href="https://github.com/somali-nlp/somali-dialect-classifier/blob/main/CODE_OF_CONDUCT.md" target="_blank" rel="noopener">Code of Conduct</a></li>
+                        <li><a href="https://github.com/somali-nlp/somali-dialect-classifier/discussions" target="_blank" rel="noopener">Discussions</a></li>
+                        <li><a href="https://github.com/somali-nlp/somali-dialect-classifier#contact" target="_blank" rel="noopener">Contact</a></li>
                     </ul>
                 </div>
             </div>
@@ -2740,6 +2944,54 @@
         }
 
         // ========================================
+        // SCROLL SPY
+        // ========================================
+        function initScrollSpy() {
+            const sections = document.querySelectorAll('section[id], main[id]');
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            // Height of sticky header for offset
+            const navHeight = document.querySelector('.global-nav').offsetHeight;
+
+            function updateActiveLink() {
+                let currentSection = '';
+
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.offsetHeight;
+                    const scrollPosition = window.scrollY + navHeight + 100; // Offset for better UX
+
+                    if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                        currentSection = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    const href = link.getAttribute('href');
+                    if (href === `#${currentSection}`) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+
+            // Update on scroll with throttling for performance
+            let ticking = false;
+            window.addEventListener('scroll', () => {
+                if (!ticking) {
+                    window.requestAnimationFrame(() => {
+                        updateActiveLink();
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            });
+
+            // Initial update
+            updateActiveLink();
+        }
+
+        // ========================================
         // INITIALIZATION
         // ========================================
         async function init() {
@@ -2754,6 +3006,7 @@
             populateSourceTable();
             initSmoothScroll();
             initKeyboardNav();
+            initScrollSpy();
 
             // Animate counts
             animateCountUp();
