@@ -14,16 +14,23 @@ cp dashboard/templates/index.html _site/index.html
 
 # Copy data files
 mkdir -p _site/data
-if [ -f "data/all_metrics.json" ]; then
+
+# Try to find and copy metrics data from various locations
+if [ -f "_site/data/all_metrics.json" ]; then
+    # Data already exists in _site, keep it
+    echo "✓ Found existing all_metrics.json"
+elif [ -f "data/all_metrics.json" ]; then
     cp data/all_metrics.json _site/data/
-    echo "✓ Copied all_metrics.json"
+    echo "✓ Copied all_metrics.json from data/"
 else
     echo "⚠ Warning: all_metrics.json not found"
 fi
 
-if [ -f "data/summary.json" ]; then
+if [ -f "_site/data/summary.json" ]; then
+    echo "✓ Found existing summary.json"
+elif [ -f "data/summary.json" ]; then
     cp data/summary.json _site/data/
-    echo "✓ Copied summary.json"
+    echo "✓ Copied summary.json from data/"
 fi
 
 # Copy favicon
