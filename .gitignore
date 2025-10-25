@@ -60,6 +60,7 @@ logs/*
 _site/
 
 # Local testing artifacts (Playwright, etc.)
+.playwright-mcp/
 playwright.config.js
 test-results/
 tests/screenshots/
