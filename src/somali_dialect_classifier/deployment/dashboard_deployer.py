@@ -40,8 +40,10 @@ class MetricsValidator:
     @staticmethod
     def extract_metrics_data(data: dict) -> Tuple[dict, dict]:
         """
-        Extract snapshot and statistics from metrics file, supporting both
-        v3.0 (nested) and legacy (top-level) schemas.
+        Extract snapshot and statistics from v3.0 metrics files.
+
+        v3.0 schema nests snapshot/statistics under 'legacy_metrics' wrapper
+        for backward compatibility with older tooling.
 
         Args:
             data: Parsed metrics JSON
@@ -49,13 +51,13 @@ class MetricsValidator:
         Returns:
             Tuple of (snapshot, statistics)
         """
-        # Check for v3.0 schema with legacy_metrics wrapper
-        if "_schema_version" in data and data.get("_schema_version") == "3.0":
-            legacy_metrics = data.get("legacy_metrics", {})
-            snapshot = legacy_metrics.get("snapshot", {})
-            statistics = legacy_metrics.get("statistics", {})
+        # v3.0 schema structure
+        if "_schema_version" in data:
+            legacy_wrapper = data.get("legacy_metrics", {})
+            snapshot = legacy_wrapper.get("snapshot", {})
+            statistics = legacy_wrapper.get("statistics", {})
         else:
-            # Legacy schema with top-level fields
+            # Fallback for files without schema version (shouldn't happen)
             snapshot = data.get("snapshot", {})
             statistics = data.get("statistics", {})
 
