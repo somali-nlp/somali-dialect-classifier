@@ -82,8 +82,8 @@ class BBCSomaliProcessor(BasePipeline):
         # Configure adaptive rate limiter from config
         bbc_config = config.scraping.bbc
         rate_config = RateLimitConfig(
-            min_delay=bbc_config.delay_range[0],
-            max_delay=bbc_config.delay_range[1],
+            min_delay=self.delay_range[0],
+            max_delay=self.delay_range[1],
             backoff_multiplier=bbc_config.backoff_multiplier,
             max_backoff=bbc_config.max_backoff,
             requests_per_hour=bbc_config.max_requests_per_hour,
