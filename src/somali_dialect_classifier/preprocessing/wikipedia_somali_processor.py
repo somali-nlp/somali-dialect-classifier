@@ -213,7 +213,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.logger.info(f"Download completed: {self.dump_file}")
 
         # Export metrics
-        metrics_path = Path("data/metrics") / f"{self.run_id}_download.json"
+        metrics_path = Path("data/metrics") / f"{self.run_id}_discovery.json"
         metrics_path.parent.mkdir(parents=True, exist_ok=True)
         self.metrics.export_json(metrics_path)
 

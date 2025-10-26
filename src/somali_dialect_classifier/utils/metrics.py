@@ -64,6 +64,9 @@ class MetricSnapshot:
     bytes_downloaded: int = 0
     records_written: int = 0
 
+    # NEW: Quality filtering counters (separate from fetch success)
+    records_filtered: int = 0  # Total records filtered out by quality checks
+
     # Distributions
     http_status_codes: Dict[int, int] = field(default_factory=dict)
     filter_reasons: Dict[str, int] = field(default_factory=dict)
@@ -91,16 +94,36 @@ class MetricSnapshot:
 
         # Calculate success rate based on pipeline type
         if self.pipeline_type == PipelineType.WEB_SCRAPING.value:
-            # Web scraping: success based on URLs fetched vs failed
-            total_attempts = self.urls_fetched
+            # Web scraping: HTTP fetch success vs failed
+            # Count only HTTP-level failures (not content extraction issues)
+            total_attempts = self.urls_discovered
             if total_attempts > 0:
-                stats["fetch_success_rate"] = ((self.urls_fetched - self.urls_failed) / self.urls_fetched)
-                stats["fetch_failure_rate"] = (self.urls_failed / total_attempts)
-                stats["deduplication_rate"] = (self.urls_deduplicated / total_attempts)
+                # HTTP fetch success: successfully retrieved content (200 OK)
+                http_success_count = self.http_status_codes.get(200, 0)
+                if http_success_count > 0:
+                    stats["fetch_success_rate"] = http_success_count / total_attempts
+                else:
+                    # Fallback: use urls_fetched if HTTP status not tracked
+                    stats["fetch_success_rate"] = self.urls_fetched / total_attempts
+
+                stats["fetch_failure_rate"] = self.urls_failed / total_attempts if total_attempts > 0 else 0
+
+                # Quality pass rate: records that passed quality filters
+                # quality_pass_rate = records_processed / (records_fetched - duplicates)
+                # For BBC: urls_processed / (urls_fetched - urls_deduplicated)
+                processable_urls = self.urls_fetched - self.urls_deduplicated
+                if processable_urls > 0:
+                    stats["quality_pass_rate"] = self.urls_processed / processable_urls
+                else:
+                    stats["quality_pass_rate"] = 0
+
+                stats["deduplication_rate"] = (self.urls_deduplicated / total_attempts) if total_attempts > 0 else 0
             else:
                 stats["fetch_success_rate"] = 0
                 stats["fetch_failure_rate"] = 0
+                stats["quality_pass_rate"] = 0
                 stats["deduplication_rate"] = 0
+
         elif self.pipeline_type == PipelineType.FILE_PROCESSING.value:
             # File processing: success based on files processed
             if self.files_discovered > 0:
@@ -114,33 +137,49 @@ class MetricSnapshot:
                 stats["fetch_success_rate"] = 0
                 stats["fetch_failure_rate"] = 0
 
+            # Quality pass rate for file processing
+            total_extracted = self.records_extracted if self.records_extracted > 0 else 0
+            if total_extracted > 0:
+                # quality_pass_rate = records_written / (records_extracted - duplicates)
+                non_dup_records = total_extracted - (self.duplicate_hashes + self.near_duplicates)
+                if non_dup_records > 0:
+                    stats["quality_pass_rate"] = self.records_written / non_dup_records
+                else:
+                    stats["quality_pass_rate"] = 0
+            else:
+                stats["quality_pass_rate"] = 0
+
             # Add deduplication rate for file processing
             total_records = self.records_extracted if self.records_extracted > 0 else self.records_written
             if total_records > 0:
                 stats["deduplication_rate"] = (self.duplicate_hashes + self.near_duplicates) / total_records
             else:
                 stats["deduplication_rate"] = 0
+
         elif self.pipeline_type == PipelineType.STREAM_PROCESSING.value:
-            # Stream processing: success based on records processed vs fetched
-            if self.records_fetched > 0 and self.records_processed > 0:
-                # Processing phase: actual success rate based on processing
-                stats["fetch_success_rate"] = (self.records_processed / self.records_fetched)
-                stats["fetch_failure_rate"] = 1 - stats["fetch_success_rate"]
-            elif self.records_fetched > 0 and self.records_processed == 0:
-                # Extraction phase: fetching succeeded, processing hasn't started yet
-                stats["fetch_success_rate"] = 1.0  # 100% - extraction was successful
+            # Stream processing: HTTP fetch success is separate from quality filtering
+            if self.records_fetched > 0:
+                # HTTP fetch success: ALL records were successfully fetched from HuggingFace
+                # (if we reached this point, the dataset stream didn't fail)
+                stats["fetch_success_rate"] = 1.0  # 100% - all records successfully fetched
                 stats["fetch_failure_rate"] = 0.0
-            elif self.records_processed > 0:
-                # If no tracking but records processed, assume high success
-                stats["fetch_success_rate"] = 0.96  # Default to 96% for HuggingFace
-                stats["fetch_failure_rate"] = 0.04
+
+                # Quality pass rate: how many fetched records passed quality filters
+                # quality_pass_rate = records_processed / (records_fetched - duplicates)
+                non_dup_records = self.records_fetched - (self.duplicate_hashes + self.near_duplicates)
+                if non_dup_records > 0:
+                    stats["quality_pass_rate"] = self.records_processed / non_dup_records
+                else:
+                    stats["quality_pass_rate"] = 0
             else:
+                # No records fetched
                 stats["fetch_success_rate"] = 0
-                stats["fetch_failure_rate"] = 0
+                stats["fetch_failure_rate"] = 1.0
+                stats["quality_pass_rate"] = 0
 
             # Add deduplication rate for streaming
-            if self.records_processed > 0:
-                stats["deduplication_rate"] = (self.duplicate_hashes + self.near_duplicates) / self.records_processed
+            if self.records_fetched > 0:
+                stats["deduplication_rate"] = (self.duplicate_hashes + self.near_duplicates) / self.records_fetched
             else:
                 stats["deduplication_rate"] = 0
         else:
@@ -149,10 +188,12 @@ class MetricSnapshot:
             if total_attempts > 0:
                 stats["fetch_success_rate"] = (self.urls_processed / total_attempts)
                 stats["fetch_failure_rate"] = (self.urls_failed / total_attempts)
+                stats["quality_pass_rate"] = (self.urls_processed / total_attempts)
                 stats["deduplication_rate"] = (self.urls_deduplicated / total_attempts)
             else:
                 stats["fetch_success_rate"] = 0
                 stats["fetch_failure_rate"] = 0
+                stats["quality_pass_rate"] = 0
                 stats["deduplication_rate"] = 0
 
         # Timing statistics
@@ -327,6 +368,7 @@ class MetricsCollector:
             # Common counters
             bytes_downloaded=self.counters["bytes_downloaded"],
             records_written=self.counters["records_written"],
+            records_filtered=self.counters["records_filtered"],
             http_status_codes=dict(self.distributions["http_status_codes"]),
             filter_reasons=dict(self.distributions["filter_reasons"]),
             error_types=dict(self.distributions["error_types"]),
@@ -443,13 +485,14 @@ class QualityReporter:
         """Generate executive summary section."""
         lines = ["## Executive Summary", ""]
 
-        success_rate = self.stats.get("fetch_success_rate", 0) * 100
+        fetch_success_rate = self.stats.get("fetch_success_rate", 0) * 100
+        quality_pass_rate = self.stats.get("quality_pass_rate", 0) * 100
         dedup_rate = self.stats.get("deduplication_rate", 0) * 100
 
-        # Status indicator
-        if success_rate >= 90:
+        # Status indicator based on fetch success
+        if fetch_success_rate >= 90:
             status = "✅ **HEALTHY**"
-        elif success_rate >= 70:
+        elif fetch_success_rate >= 70:
             status = "⚠️ **DEGRADED**"
         else:
             status = "❌ **UNHEALTHY**"
@@ -457,7 +500,8 @@ class QualityReporter:
         lines.extend([
             f"**Pipeline Status:** {status}",
             "",
-            f"- **Success Rate:** {success_rate:.1f}%",
+            f"- **HTTP Fetch Success Rate:** {fetch_success_rate:.1f}%",
+            f"- **Quality Filter Pass Rate:** {quality_pass_rate:.1f}%",
             f"- **Deduplication Rate:** {dedup_rate:.1f}%",
             f"- **Total Records Processed:** {self.snapshot.records_written:,}",
             f"- **Data Downloaded:** {self._format_bytes(self.snapshot.bytes_downloaded)}",
@@ -693,12 +737,20 @@ class QualityReporter:
 
         recommendations = []
 
-        # Check success rate
-        success_rate = self.stats.get("fetch_success_rate", 0)
-        if success_rate < 0.8:
+        # Check fetch success rate
+        fetch_success_rate = self.stats.get("fetch_success_rate", 0)
+        if fetch_success_rate < 0.8:
             recommendations.append(
-                "⚠️ **Low success rate detected.** Consider reviewing error logs and "
+                "⚠️ **Low HTTP fetch success rate detected.** Consider reviewing error logs and "
                 "adjusting retry logic or timeout settings."
+            )
+
+        # Check quality pass rate
+        quality_pass_rate = self.stats.get("quality_pass_rate", 0)
+        if quality_pass_rate < 0.5:
+            recommendations.append(
+                "⚠️ **Low quality filter pass rate.** Many records are being filtered out. "
+                "Review filter configurations or consider adjusting quality thresholds."
             )
 
         # Check deduplication rate

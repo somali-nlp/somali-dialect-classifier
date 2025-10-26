@@ -122,7 +122,14 @@ def main():
 
     # Setup logging
     log_level = logging.DEBUG if args.verbose else logging.INFO
-    setup_logging(level=log_level, log_file=args.log_file)
+    logging.basicConfig(
+        level=log_level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(args.log_file) if args.log_file else logging.NullHandler()
+        ]
+    )
     logger = logging.getLogger(__name__)
 
     try:

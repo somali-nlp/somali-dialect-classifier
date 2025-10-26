@@ -206,7 +206,7 @@ class SQLiteLedger(LedgerBackend):
 
             if current_version < 1:
                 self._apply_schema_v1(conn)
-                conn.execute("INSERT INTO schema_version (version) VALUES (1)")
+                conn.execute("INSERT OR IGNORE INTO schema_version (version) VALUES (1)")
                 logger.info("Applied schema version 1")
 
     def _apply_schema_v1(self, conn: sqlite3.Connection) -> None:

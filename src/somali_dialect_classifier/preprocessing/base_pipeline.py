@@ -48,8 +48,8 @@ class RawRecord:
         Args:
             title: Document title
             text: Raw text content (will be cleaned)
-            url: Source URL
-            metadata: Additional source-specific metadata
+            url: Source URL or identifier
+            metadata: Additional source-specific metadata (date_published, category, etc.)
         """
         self.title = title
         self.text = text
@@ -59,76 +59,55 @@ class RawRecord:
 
 class BasePipeline(DataProcessor, ABC):
     """
-    Reusable orchestration layer for all data sources.
+    Base class for all data pipeline processors.
 
     Provides:
-    - Consistent directory structure
-    - Shared processing flow (no duplication!)
-    - Standardized logging
-    - Silver dataset writing
+    - Common directory structure (raw/, staging/, processed/)
+    - Shared orchestration logic in process()
+    - Logging and progress tracking
+    - Filter execution framework
 
     Subclasses implement:
-    - download() - Source-specific data acquisition
-    - extract() - Source-specific parsing to staging
-    - _extract_records() - Yield RawRecords from staging
-    - _create_cleaner() - Which text cleaner to use
-    - _get_source_type() - Source type (wiki, news, social, etc.)
-    - _get_license() - License information
-    - _get_language() - Language code
-    - _get_source_metadata() - Source-specific metadata for silver records
+    - download() - Fetch raw data
+    - extract() - Parse into staging format
+    - _extract_records() - Yield RawRecords for processing
+    - _register_filters() - Add quality filters
+    - _create_cleaner() - Create text cleaner instance
+    - _get_source_metadata() - Return source-specific metadata
+    - _get_source_type() - Return source type (news, web, etc.)
+    - _get_license() - Return license information
+    - _get_language() - Return language code (default: "so")
+    - _get_domain() - Return content domain
+    - _get_register() - Return linguistic register
     """
 
     def __init__(
         self,
         source: str,
-        log_frequency: int = 1000,
-        batch_size: Optional[int] = 5000,
+        log_frequency: int = 100,
+        batch_size: Optional[int] = None,
         force: bool = False,
     ):
         """
         Initialize base pipeline.
 
         Args:
-            source: Source name (e.g., "Wikipedia-Somali", "BBC-Somali")
-            log_frequency: Log progress every N records (default: 1000)
-            batch_size: Write silver dataset in batches of N records (default: 5000, prevents OOM for large sources)
-            force: Force reprocessing even if output files exist (default: False)
+            source: Source identifier (e.g., "BBC-Somali", "Wikipedia-Somali")
+            log_frequency: Log progress every N records (default: 100)
+            batch_size: Optional batch size for incremental silver writes
+            force: Force reprocessing even if output exists (default: False)
         """
-        self.source = source
+        super().__init__(source)
+
+        # Logging configuration
         self.log_frequency = log_frequency
         self.batch_size = batch_size
         self.force = force
 
-        # Timestamp for partitioning
-        self.date_accessed = datetime.now(timezone.utc).date().isoformat()
-
-        # Generate run_id for file naming and traceability
-        from ..utils.logging_utils import generate_run_id
-        self.run_id = generate_run_id(source.lower().replace("-", "_"))
-
-        # Initialize StructuredLogger with run_id for JSON logging
-        # This will be used by all subclasses instead of plain logger
-        from ..utils.logging_utils import StructuredLogger
-        self.structured_logger = StructuredLogger(
-            name=source,
-            level="INFO",
-            log_file=Path(f"logs/{source.lower().replace(' ', '-')}_{self.run_id}_pipeline.log"),
-            json_format=True
-        )
-        # Get the actual logger instance for use in methods
-        self.logger = self.structured_logger.get_logger()
-
-        # Load config for directory paths
-        config = get_config()
-
-        # Consistent directory structure using config paths
-        # NOTE: Using date_accessed for ALL layers (fixed inconsistency)
-        self.raw_dir = config.data.raw_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
-        self.staging_dir = config.data.staging_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
-        self.processed_dir = config.data.processed_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
-
-        # Initialize shared utilities
+        # Text cleaner (created by subclass via _create_cleaner)
         self.text_cleaner = self._create_cleaner()
+
+        # Silver dataset writer
         self.silver_writer = SilverDatasetWriter()
 
         # Record filters for quality control
@@ -138,8 +117,8 @@ class BasePipeline(DataProcessor, ABC):
         self._register_filters()  # Subclasses override to add filters
 
         # Subclasses set these paths
-        self.staging_file = None
-        self.processed_file = None
+        self.staging_file: Optional[Path] = None
+        self.processed_file: Optional[Path] = None
 
     def _register_filters(self) -> None:
         """
@@ -163,120 +142,117 @@ class BasePipeline(DataProcessor, ABC):
         pass
 
     @abstractmethod
-    def _create_cleaner(self) -> TextCleaningPipeline:
+    def _extract_records(self) -> Iterator[RawRecord]:
         """
-        Create source-specific text cleaner.
+        Extract records from staging format.
 
-        Returns:
-            TextCleaningPipeline configured for this source
+        Subclasses implement this to yield RawRecord objects from staging data.
+        Called by process() to get records for cleaning and filtering.
+
+        Yields:
+            RawRecord objects with title, text, url, metadata
 
         Example:
-            return create_wikipedia_cleaner()  # or create_html_cleaner()
+            def _extract_records(self):
+                with open(self.staging_file, 'r') as f:
+                    for line in f:
+                        data = json.loads(line)
+                        yield RawRecord(
+                            title=data['title'],
+                            text=data['text'],
+                            url=data['url'],
+                            metadata={'date': data.get('date')}
+                        )
         """
         pass
 
     @abstractmethod
-    def _extract_records(self) -> Iterator[RawRecord]:
+    def _create_cleaner(self) -> TextCleaningPipeline:
         """
-        Extract records from staging file (source-specific).
+        Create text cleaner instance.
 
-        This is the key method where source-specific logic lives.
-        The base class handles everything else.
+        Subclasses implement this to return appropriate cleaner.
+        Common options: create_html_cleaner(), create_wiki_cleaner()
 
-        Yields:
-            RawRecord objects with title, text, url, and metadata
+        Returns:
+            TextCleaningPipeline instance
 
-        Example (Wikipedia):
-            for page in self._parse_xml():
-                yield RawRecord(
-                    title=page.title,
-                    text=page.text,
-                    url=self._title_to_url(page.title),
-                    metadata={}
-                )
+        Example:
+            def _create_cleaner(self):
+                from .text_cleaners import create_html_cleaner
+                return create_html_cleaner()
         """
         pass
 
     @abstractmethod
     def _get_source_type(self) -> str:
         """
-        Get source type for silver records.
+        Return source type for silver records.
 
         Returns:
-            Source type (e.g., "wiki", "news", "social")
+            Source type string (e.g., "news", "web", "social", "encyclopedia")
         """
         pass
 
     @abstractmethod
     def _get_license(self) -> str:
         """
-        Get license information for silver records.
+        Return license information for silver records.
 
         Returns:
-            License string (e.g., "CC-BY-SA-3.0", "BBC Terms of Use")
+            License string (e.g., "CC-BY-SA-3.0", "ODC-BY-1.0")
         """
         pass
 
     @abstractmethod
     def _get_language(self) -> str:
         """
-        Get language code for silver records.
+        Return ISO 639-1 language code.
 
         Returns:
-            ISO 639-1 language code (e.g., "so" for Somali)
+            Language code (default: "so" for Somali)
         """
-        pass
+        return "so"
 
     @abstractmethod
     def _get_source_metadata(self) -> Dict[str, Any]:
         """
-        Get source-specific metadata for silver records.
+        Return source-specific metadata for silver records.
 
         Returns:
-            Dictionary with source-specific metadata
-
-        Example (Wikipedia):
-            return {"wiki_code": "sowiki", "dump_url": self.dump_url}
+            Dictionary with source-specific metadata (URLs, configs, etc.)
         """
         pass
 
     @abstractmethod
     def _get_domain(self) -> str:
         """
-        Get content domain for silver records.
+        Return content domain for silver records.
 
         Returns:
-            Domain string (e.g., "news", "encyclopedia", "literature", "science")
-
-        Example:
-            return "encyclopedia"  # for Wikipedia
-            return "news"  # for BBC Somali
+            Domain string (e.g., "news", "encyclopedia", "web", "social_media")
         """
         pass
 
     @abstractmethod
     def _get_register(self) -> str:
         """
-        Get linguistic register for silver records.
+        Return linguistic register for silver records.
 
         Returns:
-            Register string ("formal", "informal", "colloquial")
-
-        Example:
-            return "formal"  # for Wikipedia, BBC, HuggingFace MC4, Språkbanken
-            return "informal"  # for TikTok (future)
+            Register string (e.g., "formal", "informal", "colloquial")
         """
         pass
 
     def process(self) -> Path:
         """
-        Shared processing orchestration (NO MORE DUPLICATION!).
+        Shared processing logic for all pipelines.
 
-        This method:
-        1. Iterates through records from _extract_records()
-        2. Cleans text using self.text_cleaner
-        3. Builds silver records
-        4. Logs progress consistently
+        Orchestrates:
+        1. Reads from staging (via _extract_records)
+        2. Applies text cleaning
+        3. Executes filters
+        4. Enriches with metadata
         5. Writes to silver dataset
 
         Subclasses don't override this - they implement _extract_records() instead.
@@ -316,6 +292,10 @@ class BasePipeline(DataProcessor, ABC):
                 if not cleaned:
                     records_filtered += 1
                     filter_stats["empty_after_cleaning"] += 1
+
+                    # Record filter reason in metrics if available
+                    if hasattr(self, 'metrics') and self.metrics is not None:
+                        self.metrics.record_filter_reason("empty_after_cleaning")
                     continue
 
                 # Execute record filters
@@ -332,6 +312,10 @@ class BasePipeline(DataProcessor, ABC):
                             filter_stats[f"filtered_by_{filter_name}"] += 1
                             records_filtered += 1
                             passed_all_filters = False
+
+                            # Record filter reason in metrics if available
+                            if hasattr(self, 'metrics') and self.metrics is not None:
+                                self.metrics.record_filter_reason(filter_name)
 
                             # Debug log for filter rejections
                             self.logger.debug(
@@ -437,6 +421,7 @@ class BasePipeline(DataProcessor, ABC):
             # Update metrics with processing stats
             self.metrics.increment('urls_processed', records_processed)
             self.metrics.increment('records_written', records_processed)
+            self.metrics.increment('records_filtered', records_filtered)
 
             # Export final metrics after processing
             from pathlib import Path
@@ -478,85 +463,34 @@ class BasePipeline(DataProcessor, ABC):
 
         # Auto-cleanup old raw files if enabled
         config = get_config()
-        if config.data.enable_auto_cleanup:
-            self.cleanup_old_raw_files()
+        if hasattr(config.preprocessing, 'auto_cleanup_raw') and config.preprocessing.auto_cleanup_raw:
+            self._cleanup_old_raw_files()
 
         return processed_file
 
-    def save(self, processed_data: str) -> None:
+    def _cleanup_old_raw_files(self):
         """
-        Save processed data.
+        Clean up old raw files to save disk space.
 
-        Note: In the current architecture, saving is handled by process().
-        This method is kept for DataProcessor interface compatibility.
-        """
-        with open(self.processed_file, 'w', encoding='utf-8') as f:
-            f.write(processed_data)
-
-    def cleanup_old_raw_files(self, retention_days: Optional[int] = None) -> int:
-        """
-        Clean up old raw files based on retention policy.
-
-        Args:
-            retention_days: Number of days to retain files (None = use config)
-
-        Returns:
-            Number of files deleted
-
-        Example:
-            # Clean up files older than 7 days
-            processor.cleanup_old_raw_files(retention_days=7)
+        Keeps only the most recent N files (configurable via config).
         """
         config = get_config()
+        keep_n = getattr(config.preprocessing, 'raw_files_to_keep', 3)
 
-        # Use provided retention_days or fall back to config
-        if retention_days is None:
-            retention_days = config.data.raw_retention_days
+        if not self.raw_dir.exists():
+            return
 
-        # If no retention policy set, don't delete anything
-        if retention_days is None:
-            self.logger.info("No retention policy set, skipping cleanup")
-            return 0
+        # Find all raw files sorted by modification time
+        raw_files = sorted(
+            [f for f in self.raw_dir.iterdir() if f.is_file()],
+            key=lambda p: p.stat().st_mtime,
+            reverse=True
+        )
 
-        from datetime import datetime, timedelta, timezone
-        import os
-
-        cutoff_time = datetime.now(timezone.utc) - timedelta(days=retention_days)
-        deleted_count = 0
-
-        self.logger.info(f"Cleaning up raw files older than {retention_days} days...")
-
-        # Only clean up raw directory for this source
-        source_raw_dir = config.data.raw_dir / f"source={self.source}"
-        if not source_raw_dir.exists():
-            return 0
-
-        # Walk through all date_accessed partitions
-        for date_partition in source_raw_dir.iterdir():
-            if not date_partition.is_dir():
-                continue
-
-            # Check all files in this partition
-            for file_path in date_partition.glob("**/*.json"):
-                try:
-                    # Get file modification time
-                    file_mtime = datetime.fromtimestamp(
-                        file_path.stat().st_mtime,
-                        tz=timezone.utc
-                    )
-
-                    # Delete if older than retention period
-                    if file_mtime < cutoff_time:
-                        file_path.unlink()
-                        deleted_count += 1
-                        self.logger.debug(f"Deleted old raw file: {file_path}")
-
-                except (OSError, PermissionError) as e:
-                    self.logger.warning(f"Failed to delete {file_path}: {e}")
-
-        if deleted_count > 0:
-            self.logger.info(f"Cleaned up {deleted_count} old raw files")
-        else:
-            self.logger.info("No old files found to clean up")
-
-        return deleted_count
+        # Remove files beyond keep_n threshold
+        for old_file in raw_files[keep_n:]:
+            try:
+                old_file.unlink()
+                self.logger.debug(f"Cleaned up old raw file: {old_file.name}")
+            except Exception as e:
+                self.logger.warning(f"Failed to delete {old_file.name}: {e}")
