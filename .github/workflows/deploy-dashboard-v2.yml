@@ -41,18 +41,27 @@ jobs:
 
       - name: Build dashboard site
         run: |
-          # Use the build script
+          # Step 1: Create site structure and copy static assets
+          # - Creates _site/ and _site/data/ directories
+          # - Copies index.html template
+          # - Copies favicon, metrics/, and reports/ directories
+          # - Does NOT generate all_metrics.json (done in next step)
           chmod +x dashboard/build-site.sh
           ./dashboard/build-site.sh
 
       - name: Generate metrics data
         run: |
+          # Step 2: Process raw metrics and generate aggregated JSON
+          # - Reads all *_processing.json files from data/metrics/
+          # - Calculates aggregates (total records, sources, etc.)
+          # - Generates _site/data/all_metrics.json for dashboard consumption
+          # - This step MUST run after build-site.sh to ensure directories exist
           python << 'PYTHON_SCRIPT'
           import json
           from pathlib import Path
           from datetime import datetime
 
-          # Create data directory
+          # Create data directory (redundant with build-site.sh, but ensures it exists)
           site_data = Path("_site/data")
           site_data.mkdir(parents=True, exist_ok=True)
 
@@ -101,21 +110,7 @@ jobs:
           # Calculate aggregates
           if all_metrics:
               total_records = sum(m["records_written"] for m in all_metrics)
-              avg_success_rate = sum(m["success_rate"] for m in all_metrics) / len(all_metrics)
               sources = sorted(list(set(m["source"] for m in all_metrics)))
-
-              # Generate summary
-              summary = {
-                  "total_runs": len(all_metrics),
-                  "total_records": total_records,
-                  "avg_success_rate": avg_success_rate,
-                  "sources": sources,
-                  "last_update": max(m["timestamp"] for m in all_metrics)
-              }
-
-              # Save summary
-              with open("_site/data/summary.json", "w") as f:
-                  json.dump(summary, f, indent=2)
 
               # Save all metrics
               output = {
@@ -134,14 +129,6 @@ jobs:
               # No metrics found - create empty files
               print("⚠️  No metrics found - creating empty state")
 
-              empty_summary = {
-                  "total_runs": 0,
-                  "total_records": 0,
-                  "avg_success_rate": 0,
-                  "sources": [],
-                  "last_update": None
-              }
-
               empty_output = {
                   "count": 0,
                   "records": 0,
@@ -149,32 +136,17 @@ jobs:
                   "metrics": []
               }
 
-              with open("_site/data/summary.json", "w") as f:
-                  json.dump(empty_summary, f, indent=2)
-
               with open("_site/data/all_metrics.json", "w") as f:
                   json.dump(empty_output, f, indent=2)
 
               print("✅ Created empty metrics files")
           PYTHON_SCRIPT
 
-      - name: Copy additional assets
-        run: |
-          # Copy favicon if it exists
-          if [ -f "dashboard/favicon.svg" ]; then
-            cp dashboard/favicon.svg _site/favicon.svg
-          elif [ -f "data/favicon.svg" ]; then
-            cp data/favicon.svg _site/favicon.svg
-          fi
-
-          # Copy any reports
-          if [ -d "data/reports" ]; then
-            mkdir -p _site/data/reports
-            cp -r data/reports/* _site/data/reports/ 2>/dev/null || true
-          fi
-
       - name: Verify build
         run: |
+          # Step 3: Verify all required files are present before deployment
+          # - Ensures _site/data/all_metrics.json exists (critical for dashboard)
+          # - Displays structure and content preview
           echo "📦 Build verification:"
           echo ""
           echo "📄 Site structure:"
