@@ -358,7 +358,7 @@ class TestBackwardCompatibility:
                 assert stats["fetch_success_rate"] == stats["stream_connection_success_rate"]
 
     def test_quality_pass_rate_unchanged(self):
-        """Test that quality_pass_rate calculation is unchanged."""
+        """Test that quality_pass_rate calculation uses new correct formula."""
         collector = MetricsCollector(
             run_id="test_quality",
             source="Test",
@@ -367,14 +367,15 @@ class TestBackwardCompatibility:
 
         collector.increment("urls_fetched", 100)
         collector.increment("urls_deduplicated", 10)
-        collector.increment("urls_processed", 80)  # 80 passed, 10 filtered
+        collector.increment("urls_processed", 80)  # 80 passed quality
+        collector.increment("records_filtered", 10)  # 10 failed quality
 
         snapshot = collector.get_snapshot()
         stats = snapshot.calculate_statistics()
 
-        # Quality pass rate should be: processed / (fetched - duplicates)
-        non_dup = 100 - 10
-        expected_quality_rate = 80 / non_dup
+        # Quality pass rate should be: records_written / (records_written + records_filtered)
+        # Note: urls_processed = records_written for web scraping
+        expected_quality_rate = 80 / (80 + 10)  # 80 / 90 = 0.8888
         assert stats["quality_pass_rate"] == expected_quality_rate
 
 

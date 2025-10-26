@@ -567,11 +567,14 @@ class MetricSnapshot:
                 stats["http_request_failure_rate"] = self.urls_failed / total_attempted if total_attempted > 0 else 0
 
                 # Quality pass rate: records that passed quality filters
-                # quality_pass_rate = records_processed / (records_fetched - duplicates)
-                # For BBC: urls_processed / (urls_fetched - urls_deduplicated)
-                processable_urls = self.urls_fetched - self.urls_deduplicated
-                if processable_urls > 0:
-                    stats["quality_pass_rate"] = self.urls_processed / processable_urls
+                # Percentage of non-duplicate records that passed quality filters
+                # Formula: records_written / (records_written + records_filtered)
+                # BACKWARD COMPATIBILITY: For web scraping, if records_written is not set,
+                # fall back to urls_processed (they're equivalent for web scraping)
+                records_written = self.records_written if self.records_written > 0 else self.urls_processed
+                total_non_dup_records = records_written + self.records_filtered
+                if total_non_dup_records > 0:
+                    stats["quality_pass_rate"] = records_written / total_non_dup_records
                 else:
                     stats["quality_pass_rate"] = 0
 
@@ -617,13 +620,11 @@ class MetricSnapshot:
                 stats["record_parsing_success_rate"] = 0.0
 
             # Quality pass rate for file processing
-            if total_extracted > 0:
-                # quality_pass_rate = records_written / (records_extracted - duplicates)
-                non_dup_records = total_extracted - (self.duplicate_hashes + self.near_duplicates)
-                if non_dup_records > 0:
-                    stats["quality_pass_rate"] = self.records_written / non_dup_records
-                else:
-                    stats["quality_pass_rate"] = 0
+            # Percentage of non-duplicate records that passed quality filters
+            # Formula: records_written / (records_written + records_filtered)
+            total_non_dup_records = self.records_written + self.records_filtered
+            if total_non_dup_records > 0:
+                stats["quality_pass_rate"] = self.records_written / total_non_dup_records
             else:
                 stats["quality_pass_rate"] = 0
 
@@ -662,14 +663,15 @@ class MetricSnapshot:
             # For now, set to None (unknown) - can be enhanced when dataset size is tracked
             stats["dataset_coverage_rate"] = None  # Unknown - needs dataset metadata
 
-            # Quality pass rate: how many fetched records passed quality filters
-            if self.records_fetched > 0:
-                # quality_pass_rate = records_processed / (records_fetched - duplicates)
-                non_dup_records = self.records_fetched - (self.duplicate_hashes + self.near_duplicates)
-                if non_dup_records > 0:
-                    stats["quality_pass_rate"] = self.records_processed / non_dup_records
-                else:
-                    stats["quality_pass_rate"] = 0
+            # Quality pass rate: records that passed quality filters
+            # Percentage of non-duplicate records that passed quality filters
+            # Formula: records_written / (records_written + records_filtered)
+            # BACKWARD COMPATIBILITY: For streaming, if records_written is not set,
+            # fall back to records_processed (they're equivalent for streaming)
+            records_written = self.records_written if self.records_written > 0 else self.records_processed
+            total_non_dup_records = records_written + self.records_filtered
+            if total_non_dup_records > 0:
+                stats["quality_pass_rate"] = records_written / total_non_dup_records
             else:
                 stats["quality_pass_rate"] = 0
 
@@ -688,13 +690,18 @@ class MetricSnapshot:
             if total_attempts > 0:
                 stats["fetch_success_rate"] = (self.urls_processed / total_attempts)
                 stats["fetch_failure_rate"] = (self.urls_failed / total_attempts)
-                stats["quality_pass_rate"] = (self.urls_processed / total_attempts)
                 stats["deduplication_rate"] = (self.urls_deduplicated / total_attempts)
             else:
                 stats["fetch_success_rate"] = 0
                 stats["fetch_failure_rate"] = 0
-                stats["quality_pass_rate"] = 0
                 stats["deduplication_rate"] = 0
+
+            # Quality pass rate: consistent formula across all pipeline types
+            total_non_dup_records = self.records_written + self.records_filtered
+            if total_non_dup_records > 0:
+                stats["quality_pass_rate"] = self.records_written / total_non_dup_records
+            else:
+                stats["quality_pass_rate"] = 0
 
         # Timing statistics
         if self.fetch_durations_ms:
@@ -738,6 +745,24 @@ class MetricSnapshot:
         # Add metric semantics metadata for clarity
         stats["_metric_semantics"] = self._get_metric_semantics()
         stats["_deprecation_warnings"] = self._get_deprecation_warnings()
+
+        # Validate quality_pass_rate is between 0 and 1
+        if "quality_pass_rate" in stats:
+            qpr = stats["quality_pass_rate"]
+            if qpr < 0 or qpr > 1:
+                self.logger.error(
+                    f"VALIDATION ERROR: quality_pass_rate out of range: {qpr} "
+                    f"(should be 0-1). This indicates a bug in metric calculation. "
+                    f"Pipeline: {self.pipeline_type}, "
+                    f"records_written={self.records_written}, "
+                    f"records_filtered={self.records_filtered}"
+                )
+                # Clamp to valid range to prevent downstream errors
+                stats["quality_pass_rate"] = max(0.0, min(1.0, qpr))
+                stats["_validation_warnings"] = stats.get("_validation_warnings", [])
+                stats["_validation_warnings"].append(
+                    f"quality_pass_rate clamped from {qpr} to {stats['quality_pass_rate']}"
+                )
 
         return stats
 
