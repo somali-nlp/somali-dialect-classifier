@@ -97,17 +97,37 @@ class BasePipeline(DataProcessor, ABC):
             batch_size: Optional batch size for incremental silver writes
             force: Force reprocessing even if output exists (default: False)
         """
-        super().__init__(source)
-
-        # Logging configuration
+        self.source = source
         self.log_frequency = log_frequency
         self.batch_size = batch_size
         self.force = force
 
-        # Text cleaner (created by subclass via _create_cleaner)
-        self.text_cleaner = self._create_cleaner()
+        # Generate unique run_id for this pipeline execution
+        from ..utils.logging_utils import generate_run_id, StructuredLogger
+        self.run_id = generate_run_id(source)
 
-        # Silver dataset writer
+        # Initialize structured logger with file output
+        log_file = Path("logs") / f"{self.run_id}.log"
+        structured_logger = StructuredLogger(
+            name=source,
+            log_file=log_file,
+            json_format=True
+        )
+        self.logger = structured_logger.get_logger()  # Get actual logger instance
+
+        # Timestamp for partitioning
+        self.date_accessed = datetime.now(timezone.utc).date().isoformat()
+
+        # Load config for directory paths
+        config = get_config()
+
+        # Consistent directory structure using config paths
+        self.raw_dir = config.data.raw_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
+        self.staging_dir = config.data.staging_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
+        self.processed_dir = config.data.processed_dir / f"source={source}" / f"date_processed={self.date_accessed}"
+
+        # Initialize shared utilities
+        self.text_cleaner = self._create_cleaner()
         self.silver_writer = SilverDatasetWriter()
 
         # Record filters for quality control
@@ -450,6 +470,19 @@ class BasePipeline(DataProcessor, ABC):
                 run_id=self.run_id,
             )
 
+    def save(self, processed_data: str) -> None:
+        """
+        Save processed data (required by DataProcessor abstract class).
+
+        In this architecture, saving is handled by the process() method
+        through the SilverDatasetWriter, so this method is a no-op placeholder.
+
+        Args:
+            processed_data: Path to processed data (not used)
+        """
+        # Saving is already handled by process() method via silver_writer
+        pass
+
     def run(self) -> Path:
         """
         Template method - orchestrates full pipeline.
@@ -460,11 +493,6 @@ class BasePipeline(DataProcessor, ABC):
         self.download()
         self.extract()
         processed_file = self.process()
-
-        # Auto-cleanup old raw files if enabled
-        config = get_config()
-        if hasattr(config.preprocessing, 'auto_cleanup_raw') and config.preprocessing.auto_cleanup_raw:
-            self._cleanup_old_raw_files()
 
         return processed_file
 
