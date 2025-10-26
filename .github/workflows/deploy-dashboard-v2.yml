@@ -76,8 +76,8 @@ jobs:
                           data = json.load(f)
                           snapshot = data.get("snapshot", {})
                           stats = data.get("statistics", {})
-                          perf = snapshot.get("performance", {})
-                          quality = snapshot.get("quality_stats", {})
+                          perf = stats.get("throughput", {})
+                          quality = stats.get("text_length_stats", {})
 
                           all_metrics.append({
                               "run_id": snapshot.get("run_id", ""),
