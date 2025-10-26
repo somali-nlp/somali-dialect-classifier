@@ -1,0 +1,63 @@
+{
+  "snapshot": {
+    "timestamp": "2025-10-26T06:50:28.481588+00:00",
+    "run_id": "20251026_065026_sprakbanken_somali_28648628",
+    "source": "Sprakbanken-Somali",
+    "duration_seconds": 2.0875840187072754,
+    "pipeline_type": "file_processing",
+    "urls_discovered": 0,
+    "urls_fetched": 0,
+    "urls_processed": 1,
+    "urls_failed": 0,
+    "urls_skipped": 0,
+    "urls_deduplicated": 0,
+    "files_discovered": 1,
+    "files_processed": 1,
+    "records_extracted": 1,
+    "datasets_opened": 0,
+    "records_fetched": 0,
+    "records_processed": 0,
+    "batches_completed": 0,
+    "bytes_downloaded": 0,
+    "records_written": 1,
+    "http_status_codes": {},
+    "filter_reasons": {},
+    "error_types": {},
+    "fetch_durations_ms": [],
+    "process_durations_ms": [
+      163,
+      166
+    ],
+    "text_lengths": [
+      99
+    ],
+    "unique_hashes": 0,
+    "duplicate_hashes": 0,
+    "near_duplicates": 0
+  },
+  "statistics": {
+    "fetch_success_rate": 1.0,
+    "fetch_failure_rate": 0.0,
+    "deduplication_rate": 0.0,
+    "process_duration_stats": {
+      "min": 163,
+      "max": 166,
+      "mean": 164.5,
+      "median": 164.5,
+      "p95": 166,
+      "p99": 166
+    },
+    "text_length_stats": {
+      "min": 99,
+      "max": 99,
+      "mean": 99,
+      "median": 99,
+      "total_chars": 99
+    },
+    "throughput": {
+      "urls_per_second": 0.47902263623346014,
+      "bytes_per_second": 0.0,
+      "records_per_minute": 28.74135817400761
+    }
+  }
+}
