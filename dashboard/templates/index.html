@@ -1524,15 +1524,15 @@
             <!-- Hero Stats (4 KPIs) -->
             <div class="hero-stats">
                 <div class="hero-stat">
-                    <span class="hero-stat-value" data-count="13735">0</span>
+                    <span class="hero-stat-value" id="total-records" data-count="0">0</span>
                     <span class="hero-stat-label">Total Records</span>
                 </div>
                 <div class="hero-stat">
-                    <span class="hero-stat-value" data-count="4">0</span>
+                    <span class="hero-stat-value" id="total-sources" data-count="0">0</span>
                     <span class="hero-stat-label">Data Sources</span>
                 </div>
                 <div class="hero-stat">
-                    <span class="hero-stat-value" data-count="98.5" data-suffix="%">0%</span>
+                    <span class="hero-stat-value" id="success-rate" data-count="0" data-suffix="%">0%</span>
                     <span class="hero-stat-label">Success Rate</span>
                 </div>
                 <div class="hero-stat">
@@ -2265,25 +2265,25 @@
             <div class="story-cards">
                 <div class="story-card">
                     <div class="story-card-icon">🎯</div>
-                    <h3 class="story-card-title">13,735+ Records Collected</h3>
+                    <h3 class="story-card-title"><span id="story-records">0</span> Records Collected</h3>
                     <p class="story-card-text">
-                        Through systematic crawling and API integration, we've assembled Africa's largest open
-                        Somali language corpus, providing researchers with unprecedented access to diverse linguistic data.
+                        Through systematic crawling and API integration, we're assembling an open
+                        Somali language corpus, providing researchers with access to diverse linguistic data.
                     </p>
                 </div>
 
                 <div class="story-card">
                     <div class="story-card-icon">⚡</div>
-                    <h3 class="story-card-title">98.5% Success Rate</h3>
+                    <h3 class="story-card-title"><span id="story-success">0</span>% Success Rate</h3>
                     <p class="story-card-text">
-                        Our robust pipeline architecture achieves near-perfect reliability through intelligent error
+                        Our robust pipeline architecture achieves high reliability through intelligent error
                         handling, retry mechanisms, and source-specific optimization strategies.
                     </p>
                 </div>
 
                 <div class="story-card">
                     <div class="story-card-icon">🔍</div>
-                    <h3 class="story-card-title">4 Diverse Sources</h3>
+                    <h3 class="story-card-title"><span id="story-sources">0</span> Data Sources</h3>
                     <p class="story-card-text">
                         By combining encyclopedic knowledge, journalism, ML datasets, and academic corpora,
                         we ensure comprehensive coverage of Somali dialects, registers, and domains.
@@ -2412,13 +2412,33 @@
 
         async function loadMetrics() {
             try {
-                const response = await fetch('data/all_metrics.json');
-                metricsData = await response.json();
+                // Try both paths to support different serving contexts
+                const paths = ['../data/all_metrics.json', 'data/all_metrics.json'];
+                let metricsResponse = null;
+
+                for (const path of paths) {
+                    try {
+                        const response = await fetch(path);
+                        if (response.ok) {
+                            metricsResponse = response;
+                            break;
+                        }
+                    } catch (e) {
+                        continue;
+                    }
+                }
+
+                if (!metricsResponse) {
+                    console.warn('⚠ Could not load metrics from any path, using empty state');
+                    return { metrics: [] };
+                }
+
+                metricsData = await metricsResponse.json();
                 console.log('✓ Metrics loaded successfully:', metricsData);
                 return metricsData;
             } catch (error) {
                 console.error('✗ Error loading metrics:', error);
-                return null;
+                return { metrics: [] };
             }
         }
 
@@ -2478,6 +2498,46 @@
         }
 
         // ========================================
+        // UPDATE STATS FROM DATA
+        // ========================================
+        function updateStats() {
+            if (!metricsData || !metricsData.metrics || metricsData.metrics.length === 0) {
+                // Empty state - set all to 0
+                console.log('No metrics data - displaying empty state');
+
+                // Update hero stats
+                document.getElementById('total-records').setAttribute('data-count', '0');
+                document.getElementById('total-sources').setAttribute('data-count', '0');
+                document.getElementById('success-rate').setAttribute('data-count', '0');
+
+                // Update story cards
+                document.getElementById('story-records').textContent = '0';
+                document.getElementById('story-success').textContent = '0';
+                document.getElementById('story-sources').textContent = '0';
+
+                return;
+            }
+
+            // Calculate real metrics
+            const metrics = metricsData.metrics;
+            const totalRecords = metrics.reduce((sum, m) => sum + m.records_written, 0);
+            const totalSources = new Set(metrics.map(m => m.source.split('-')[0])).size;
+            const avgSuccessRate = metrics.reduce((sum, m) => sum + m.success_rate, 0) / metrics.length * 100;
+
+            console.log('Calculated stats:', { totalRecords, totalSources, avgSuccessRate });
+
+            // Update hero stats
+            document.getElementById('total-records').setAttribute('data-count', totalRecords);
+            document.getElementById('total-sources').setAttribute('data-count', totalSources);
+            document.getElementById('success-rate').setAttribute('data-count', avgSuccessRate.toFixed(1));
+
+            // Update story cards
+            document.getElementById('story-records').textContent = totalRecords.toLocaleString();
+            document.getElementById('story-success').textContent = avgSuccessRate.toFixed(1);
+            document.getElementById('story-sources').textContent = totalSources;
+        }
+
+        // ========================================
         // TAB NAVIGATION
         // ========================================
         function initTabs() {
@@ -2527,19 +2587,29 @@
 
             // Source Distribution (Donut)
             const sourceDistCtx = document.getElementById('sourceDistributionChart');
-            if (sourceDistCtx) {
+            if (sourceDistCtx && metricsData.metrics && metricsData.metrics.length > 0) {
+                const sourceMap = new Map();
+                metricsData.metrics.forEach(m => {
+                    const name = m.source.replace(/-Somali|_Somali_c4-so|-Somali/, '').replace('Sprakbanken', 'Språkbanken').replace('HuggingFace', 'HuggingFace');
+                    sourceMap.set(name, (sourceMap.get(name) || 0) + m.records_written);
+                });
+
+                const labels = Array.from(sourceMap.keys());
+                const data = Array.from(sourceMap.values());
+                const colors = labels.map(label => {
+                    if (label.includes('Wikipedia')) return '#3b82f6';
+                    if (label.includes('BBC')) return '#ef4444';
+                    if (label.includes('HuggingFace')) return '#10b981';
+                    return '#f59e0b';
+                });
+
                 new Chart(sourceDistCtx, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Wikipedia', 'BBC Somali', 'HuggingFace', 'Språkbanken'],
+                        labels: labels,
                         datasets: [{
-                            data: [9623, 49, 48, 4015],
-                            backgroundColor: [
-                                '#3b82f6',
-                                '#ef4444',
-                                '#10b981',
-                                '#f59e0b'
-                            ],
+                            data: data,
+                            backgroundColor: colors,
                             borderWidth: 2,
                             borderColor: '#fff'
                         }]
@@ -2575,20 +2645,24 @@
 
             // Success Rate (Bar)
             const successRateCtx = document.getElementById('successRateChart');
-            if (successRateCtx) {
+            if (successRateCtx && metricsData.metrics && metricsData.metrics.length > 0) {
+                const labels = metricsData.metrics.map(m => m.source.replace(/-Somali|_Somali_c4-so/, '').replace('Sprakbanken', 'Språkbanken'));
+                const data = metricsData.metrics.map(m => m.success_rate * 100);
+                const colors = metricsData.metrics.map(m => {
+                    if (m.source.includes('Wikipedia')) return '#3b82f6';
+                    if (m.source.includes('BBC')) return '#ef4444';
+                    if (m.source.includes('HuggingFace')) return '#10b981';
+                    return '#f59e0b';
+                });
+
                 new Chart(successRateCtx, {
                     type: 'bar',
                     data: {
-                        labels: ['Wikipedia', 'BBC Somali', 'HuggingFace', 'Språkbanken'],
+                        labels: labels,
                         datasets: [{
                             label: 'Success Rate',
-                            data: [100, 98.0, 96.0, 100],
-                            backgroundColor: [
-                                '#3b82f6',
-                                '#ef4444',
-                                '#10b981',
-                                '#f59e0b'
-                            ],
+                            data: data,
+                            backgroundColor: colors,
                             borderRadius: 6
                         }]
                     },
@@ -2625,20 +2699,24 @@
 
             // Source Comparison (Horizontal Bar)
             const sourceCompCtx = document.getElementById('sourceComparisonChart');
-            if (sourceCompCtx) {
+            if (sourceCompCtx && metricsData.metrics && metricsData.metrics.length > 0) {
+                const labels = metricsData.metrics.map(m => m.source.replace(/-Somali|_Somali_c4-so/, '').replace('Sprakbanken', 'Språkbanken'));
+                const data = metricsData.metrics.map(m => m.records_written);
+                const colors = metricsData.metrics.map(m => {
+                    if (m.source.includes('Wikipedia')) return '#3b82f6';
+                    if (m.source.includes('BBC')) return '#ef4444';
+                    if (m.source.includes('HuggingFace')) return '#10b981';
+                    return '#f59e0b';
+                });
+
                 new Chart(sourceCompCtx, {
                     type: 'bar',
                     data: {
-                        labels: ['Wikipedia', 'BBC Somali', 'HuggingFace', 'Språkbanken'],
+                        labels: labels,
                         datasets: [{
                             label: 'Records',
-                            data: [9623, 49, 48, 4015],
-                            backgroundColor: [
-                                '#3b82f6',
-                                '#ef4444',
-                                '#10b981',
-                                '#f59e0b'
-                            ],
+                            data: data,
+                            backgroundColor: colors,
                             borderRadius: 6
                         }]
                     },
@@ -2675,20 +2753,24 @@
 
             // Text Length Distribution
             const textLengthCtx = document.getElementById('textLengthChart');
-            if (textLengthCtx) {
+            if (textLengthCtx && metricsData.metrics && metricsData.metrics.length > 0) {
+                const labels = metricsData.metrics.map(m => m.source.replace(/-Somali|_Somali_c4-so/, '').replace('Sprakbanken', 'Språkbanken'));
+                const data = metricsData.metrics.map(m => m.quality?.avg_text_length || 0);
+                const colors = metricsData.metrics.map(m => {
+                    if (m.source.includes('Wikipedia')) return '#3b82f6';
+                    if (m.source.includes('BBC')) return '#ef4444';
+                    if (m.source.includes('HuggingFace')) return '#10b981';
+                    return '#f59e0b';
+                });
+
                 new Chart(textLengthCtx, {
                     type: 'bar',
                     data: {
-                        labels: ['Wikipedia', 'BBC Somali', 'HuggingFace', 'Språkbanken'],
+                        labels: labels,
                         datasets: [{
                             label: 'Avg Text Length (chars)',
-                            data: [4416, 4933, 5980, 132],
-                            backgroundColor: [
-                                '#3b82f6',
-                                '#ef4444',
-                                '#10b981',
-                                '#f59e0b'
-                            ],
+                            data: data,
+                            backgroundColor: colors,
                             borderRadius: 6
                         }]
                     },
@@ -2783,7 +2865,7 @@
 
             // CHART 1: Performance Efficiency Bullet Graph
             const bulletCtx = document.getElementById('performanceBulletChart');
-            if (bulletCtx && metricsData.metrics) {
+            if (bulletCtx && metricsData.metrics && metricsData.metrics.length > 0) {
                 const metrics = metricsData.metrics;
                 const sources = metrics.map(m => m.source.replace(/-Somali|_Somali_c4-so|-Somali/, '').replace('HuggingFace', 'HF').replace('Sprakbanken', 'Språk'));
                 const recordsPerMin = metrics.map(m => m.performance.records_per_minute);
@@ -2797,15 +2879,22 @@
                     return (speedScore * 0.6 + qualityScore * 0.4);
                 });
 
+                // Create threshold arrays based on actual data length
+                const numSources = sources.length;
+                const poorThreshold = Array(numSources).fill(40);
+                const fairThreshold = Array(numSources).fill(60);
+                const goodThreshold = Array(numSources).fill(80);
+                const excellentThreshold = Array(numSources).fill(100);
+
                 new Chart(bulletCtx, {
                     type: 'bar',
                     data: {
                         labels: sources,
                         datasets: [
-                            { label: 'Poor', data: [40, 40, 40, 40], backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 0, barPercentage: 1.0, order: 4 },
-                            { label: 'Fair', data: [60, 60, 60, 60], backgroundColor: 'rgba(251, 146, 60, 0.1)', borderWidth: 0, barPercentage: 1.0, order: 3 },
-                            { label: 'Good', data: [80, 80, 80, 80], backgroundColor: 'rgba(250, 204, 21, 0.1)', borderWidth: 0, barPercentage: 1.0, order: 2 },
-                            { label: 'Excellent', data: [100, 100, 100, 100], backgroundColor: 'rgba(34, 197, 94, 0.1)', borderWidth: 0, barPercentage: 1.0, order: 1 },
+                            { label: 'Poor', data: poorThreshold, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 0, barPercentage: 1.0, order: 4 },
+                            { label: 'Fair', data: fairThreshold, backgroundColor: 'rgba(251, 146, 60, 0.1)', borderWidth: 0, barPercentage: 1.0, order: 3 },
+                            { label: 'Good', data: goodThreshold, backgroundColor: 'rgba(250, 204, 21, 0.1)', borderWidth: 0, barPercentage: 1.0, order: 2 },
+                            { label: 'Excellent', data: excellentThreshold, backgroundColor: 'rgba(34, 197, 94, 0.1)', borderWidth: 0, barPercentage: 1.0, order: 1 },
                             { label: 'Performance Score', data: performanceScores, backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'], borderColor: '#1f2937', borderWidth: 2, barPercentage: 0.5, order: 0 }
                         ]
                     },
@@ -3098,6 +3187,9 @@
             // Load data
             await loadMetrics();
 
+            // Update all stats from loaded data
+            updateStats();
+
             // Initialize components
             initTabs();
             initCharts();
@@ -3106,7 +3198,7 @@
             initKeyboardNav();
             initScrollSpy();
 
-            // Animate counts
+            // Animate counts (after stats are updated)
             animateCountUp();
 
             console.log('✓ Dashboard initialized successfully');
