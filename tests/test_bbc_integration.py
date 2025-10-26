@@ -16,6 +16,24 @@ import pyarrow.parquet as pq
 from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
 
 
+def read_parquet_file_safely(path):
+    """
+    Read a Parquet file, handling both file and directory paths.
+
+    Uses ParquetFile to read individual files to avoid schema merging issues
+    when multiple Parquet files exist in the same directory with slightly
+    different schemas (e.g., dictionary vs string types).
+    """
+    if path.is_dir():
+        parquet_files = list(path.rglob("*.parquet"))
+        if len(parquet_files) == 0:
+            raise FileNotFoundError(f"No parquet files found in {path}")
+        # Read only the first file to avoid schema conflicts
+        return pq.ParquetFile(parquet_files[0]).read()
+    else:
+        return pq.ParquetFile(path).read()
+
+
 @pytest.fixture
 def temp_data_dir(tmp_path):
     """Create temporary data directory structure."""
@@ -49,9 +67,12 @@ class TestBBCIntegration:
         # Verify processed file was created
         assert processed_file.exists()
 
-        # Read and verify content
-        with open(processed_file, 'r', encoding='utf-8') as f:
-            content = f.read()
+        # Read and verify content from Parquet file
+        table = read_parquet_file_safely(processed_file)
+        df = table.to_pandas()
+
+        # Convert all text content to a single string for assertion
+        content = ' '.join(df['text'].astype(str).tolist() + df['title'].astype(str).tolist())
 
         # Should contain the 3 valid articles (4th is empty)
         assert "Soomaaliya: Xaalada Amniga" in content
@@ -80,13 +101,14 @@ class TestBBCIntegration:
         assert len(parquet_files) > 0, "No parquet files created"
 
         # Read and verify parquet
-        table = pq.read_table(parquet_files[0])
+        table = pq.ParquetFile(parquet_files[0]).read()
 
-        # Verify schema
+        # Verify schema (updated to include enhanced schema fields)
         expected_columns = [
             'id', 'text', 'title', 'source', 'source_type', 'url', 'source_id',
             'date_published', 'date_accessed', 'language', 'license', 'topic',
-            'tokens', 'text_hash', 'pipeline_version', 'source_metadata'
+            'tokens', 'text_hash', 'pipeline_version', 'source_metadata',
+            'domain', 'register', 'embedding'  # Enhanced schema fields
         ]
         actual_columns = table.column_names
         assert set(expected_columns) == set(actual_columns)
@@ -124,7 +146,7 @@ class TestBBCIntegration:
         # Read silver dataset
         silver_base = Path("data/processed/silver")
         parquet_files = list(silver_base.rglob("*.parquet"))
-        table = pq.read_table(parquet_files[0])
+        table = pq.ParquetFile(parquet_files[0]).read()
         df = table.to_pandas()
 
         # Check that HTML is removed
@@ -159,7 +181,7 @@ class TestBBCIntegration:
         # Read silver dataset
         silver_base = Path("data/processed/silver")
         parquet_files = list(silver_base.rglob("*.parquet"))
-        table = pq.read_table(parquet_files[0])
+        table = pq.ParquetFile(parquet_files[0]).read()
         df = table.to_pandas()
 
         # Check URLs are preserved
@@ -183,7 +205,7 @@ class TestBBCIntegration:
         # Read silver dataset
         silver_base = Path("data/processed/silver")
         parquet_files = list(silver_base.rglob("*.parquet"))
-        table = pq.read_table(parquet_files[0])
+        table = pq.ParquetFile(parquet_files[0]).read()
         df = table.to_pandas()
 
         # Fixture has 4 articles, but 1 is empty
@@ -207,7 +229,7 @@ class TestBBCIntegration:
         # Read silver dataset
         silver_base = Path("data/processed/silver")
         parquet_files = list(silver_base.rglob("*.parquet"))
-        table = pq.read_table(parquet_files[0])
+        table = pq.ParquetFile(parquet_files[0]).read()
         df = table.to_pandas()
 
         ids = df['id'].tolist()
@@ -226,7 +248,7 @@ class TestBBCIntegration:
         # Read silver dataset
         silver_base = Path("data/processed/silver")
         parquet_files = list(silver_base.rglob("*.parquet"))
-        table = pq.read_table(parquet_files[0])
+        table = pq.ParquetFile(parquet_files[0]).read()
         df = table.to_pandas()
 
         # All records should have positive token counts
@@ -245,7 +267,7 @@ class TestBBCIntegration:
         # Read silver dataset
         silver_base = Path("data/processed/silver")
         parquet_files = list(silver_base.rglob("*.parquet"))
-        table = pq.read_table(parquet_files[0])
+        table = pq.ParquetFile(parquet_files[0]).read()
 
         # Verify schema matches expected (same as Wikipedia)
         from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
@@ -288,6 +310,8 @@ class TestBBCIntegration:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.content = mock_html.encode('utf-8')
+            # Add headers to avoid Mock objects being passed to SQLite
+            mock_response.headers = {}  # Empty headers dict instead of Mock
             mock_session.get.return_value = mock_response
             mock_session_class.return_value = mock_session
 

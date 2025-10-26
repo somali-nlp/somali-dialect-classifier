@@ -1,34 +1,4 @@
-[
-  {
-    "url": "https://www.bbc.com/somali/articles/c1234567890",
-    "title": "Soomaaliya: Xaalada Amniga",
-    "text": "<p>Xaalada amniga ee Soomaaliya waxay tahay mid hagaagsan.</p>\n\n<p>Dowladda federaalka ayaa sheegtay in ay sii wadayso dadaalka nabadgelyo.</p>\n\n<p>Shacabka Soomaaliyeed ayaa rajaynaya mustaqbal wanaagsan.</p>",
-    "date": "2025-10-13T10:30:00Z",
-    "scraped_at": "2025-10-13T12:00:00Z",
-    "category": "news"
-  },
-  {
-    "url": "https://www.bbc.com/somali/articles/c0987654321",
-    "title": "Caafimaadka: Tallaalka Cusub",
-    "text": "<p>Wasaaradda caafimaadku waxay bilaabaysaa tallaal cusub oo loogu talagalay carruurta yaryar.</p>\n\n<p>Talaalkan waxa uu ka hortagayaa cudurrada caruurta sida jaadka iyo xanuunka qaarka.</p>\n\n<p>&amp;ldquo;Waa guul weyn oo caafimaad qaabka Soomaaliyeed,&amp;rdquo; ayay tidhi wasiirada caafimaadka qaranka.</p>\n\n<p>Carruurta waxay heli doonaan tallaalkan bilaashka ah xarumaha caafimaadka guud ahaan dalka oo dhan.</p>",
-    "date": "2025-10-12T14:20:00Z",
-    "scraped_at": "2025-10-13T12:05:00Z",
-    "category": "health"
-  },
-  {
-    "url": "https://www.bbc.com/somali/articles/c5555555555",
-    "title": "Ciyaaraha: Kooxda Qaranka",
-    "text": "<div class='ad'>Advertisement</div>\n<p>Kooxda qaranka Soomaaliya ayaa ku guulaysatay ciyaartii shalay.</p>\n\n<script>tracking.js</script>\n<p>Taageerayaashu way farxeen.</p>",
-    "date": "2025-10-11T18:00:00Z",
-    "scraped_at": "2025-10-13T12:10:00Z",
-    "category": "sports"
-  },
-  {
-    "url": "https://www.bbc.com/somali/articles/c9999999999",
-    "title": "Maqaal Banaan",
-    "text": "   \n\n   \n\n   ",
-    "date": null,
-    "scraped_at": "2025-10-13T12:15:00Z",
-    "category": "news"
-  }
-]
+{"url": "https://www.bbc.com/somali/articles/c1234567890", "title": "Soomaaliya: Xaalada Amniga", "text": "<p>Xaalada amniga ee Soomaaliya waxay tahay mid hagaagsan.</p>\n\n<p>Dowladda federaalka ayaa sheegtay in ay sii wadayso dadaalka nabadgelyo.</p>\n\n<p>Shacabka Soomaaliyeed ayaa rajaynaya mustaqbal wanaagsan.</p>", "date": "2025-10-13T10:30:00Z", "scraped_at": "2025-10-13T12:00:00Z", "category": "news"}
+{"url": "https://www.bbc.com/somali/articles/c0987654321", "title": "Caafimaadka: Tallaalka Cusub", "text": "<p>Wasaaradda caafimaadku waxay bilaabaysaa tallaal cusub oo loogu talagalay carruurta yaryar.</p>\n\n<p>Talaalkan waxa uu ka hortagayaa cudurrada caruurta sida jaadka iyo xanuunka qaarka.</p>\n\n<p>&amp;ldquo;Waa guul weyn oo caafimaad qaabka Soomaaliyeed,&amp;rdquo; ayay tidhi wasiirada caafimaadka qaranka.</p>\n\n<p>Carruurta waxay heli doonaan tallaalkan bilaashka ah xarumaha caafimaadka guud ahaan dalka oo dhan.</p>", "date": "2025-10-12T14:20:00Z", "scraped_at": "2025-10-13T12:05:00Z", "category": "health"}
+{"url": "https://www.bbc.com/somali/articles/c5555555555", "title": "Ciyaaraha: Kooxda Qaranka", "text": "<div class='ad'>Advertisement</div>\n<p>Kooxda qaranka Soomaaliya ayaa ku guulaysatay ciyaartii shalay.</p>\n\n<script>tracking.js</script>\n<p>Taageerayaashu way farxeen.</p>", "date": "2025-10-11T18:00:00Z", "scraped_at": "2025-10-13T12:10:00Z", "category": "sports"}
+{"url": "https://www.bbc.com/somali/articles/c9999999999", "title": "Maqaal Banaan", "text": "   \n\n   \n\n   ", "date": null, "scraped_at": "2025-10-13T12:15:00Z", "category": "news"}

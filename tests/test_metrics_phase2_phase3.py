@@ -9,7 +9,7 @@ Tests:
 import pytest
 import json
 from pathlib import Path
-from src.somali_dialect_classifier.utils.metrics import (
+from somali_dialect_classifier.utils.metrics import (
     MetricsCollector,
     PipelineType,
     ConnectivityMetrics,
