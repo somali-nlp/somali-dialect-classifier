@@ -9,6 +9,7 @@ Provides coordinated execution of all four data sources with:
 """
 
 import logging
+import sys
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import timedelta
@@ -505,6 +506,10 @@ def main():
             print(f"\n❌ Failed pipelines:")
             for r in result['failed']:
                 print(f"  - {r['source']}: {r.get('error', 'Unknown')}")
+            print(f"\n{'='*80}")
+            print("PIPELINE EXECUTION FAILED")
+            print(f"{'='*80}")
+            sys.exit(1)
     else:
         print(f"\n{'='*80}")
         print(f"Pipeline completed: {result.get('source', 'Unknown')}")
@@ -513,6 +518,10 @@ def main():
             print(f"Output: {result.get('silver_path', 'Unknown')}")
         else:
             print(f"Error: {result.get('error', 'Unknown')}")
+            print(f"\n{'='*80}")
+            print("PIPELINE EXECUTION FAILED")
+            print(f"{'='*80}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
