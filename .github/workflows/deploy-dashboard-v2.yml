@@ -131,7 +131,31 @@ jobs:
               print(f"✅ Generated metrics: {len(all_metrics)} runs, {total_records:,} records")
               print(f"✅ Sources: {', '.join(sources)}")
           else:
-              print("⚠️  No metrics found!")
+              # No metrics found - create empty files
+              print("⚠️  No metrics found - creating empty state")
+
+              empty_summary = {
+                  "total_runs": 0,
+                  "total_records": 0,
+                  "avg_success_rate": 0,
+                  "sources": [],
+                  "last_update": None
+              }
+
+              empty_output = {
+                  "count": 0,
+                  "records": 0,
+                  "sources": [],
+                  "metrics": []
+              }
+
+              with open("_site/data/summary.json", "w") as f:
+                  json.dump(empty_summary, f, indent=2)
+
+              with open("_site/data/all_metrics.json", "w") as f:
+                  json.dump(empty_output, f, indent=2)
+
+              print("✅ Created empty metrics files")
           PYTHON_SCRIPT
 
       - name: Copy additional assets
@@ -161,11 +185,14 @@ jobs:
           echo ""
           if [ -f "_site/data/all_metrics.json" ]; then
             echo "✅ all_metrics.json exists"
+            echo "📊 Metrics preview:"
             head -20 _site/data/all_metrics.json
           else
             echo "❌ ERROR: all_metrics.json not found!"
             exit 1
           fi
+          echo ""
+          echo "✅ Build verification complete"
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
