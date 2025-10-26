@@ -53,7 +53,8 @@ jobs:
         run: |
           # Step 2: Process raw metrics and generate aggregated JSON
           # - Reads all *_processing.json files from data/metrics/
-          # - Calculates aggregates (total records, sources, etc.)
+          # - Detects pipeline type and extracts appropriate metrics
+          # - Supports both old (fetch_success_rate) and new pipeline-specific metric names
           # - Generates _site/data/all_metrics.json for dashboard consumption
           # - This step MUST run after build-site.sh to ensure directories exist
           python << 'PYTHON_SCRIPT'
@@ -64,6 +65,48 @@ jobs:
           # Create data directory (redundant with build-site.sh, but ensures it exists)
           site_data = Path("_site/data")
           site_data.mkdir(parents=True, exist_ok=True)
+
+          def extract_pipeline_metrics(snapshot, stats):
+              """Extract metrics based on pipeline type with backward compatibility."""
+              pipeline_type = snapshot.get("pipeline_type", "unknown")
+
+              # Base metrics structure
+              metrics = {
+                  "pipeline_type": pipeline_type,
+                  "quality_pass_rate": stats.get("quality_pass_rate", 0),
+                  "deduplication_rate": stats.get("deduplication_rate", 0),
+              }
+
+              # Pipeline-specific metrics with backward compatibility
+              if pipeline_type == "web_scraping":
+                  # Try new names first, fall back to old generic name
+                  metrics["http_success_rate"] = stats.get("http_request_success_rate",
+                                                           stats.get("fetch_success_rate", 0))
+                  metrics["extraction_rate"] = stats.get("content_extraction_success_rate",
+                                                         stats.get("fetch_success_rate", 0))
+
+              elif pipeline_type == "file_processing":
+                  # Try new names first, fall back to old generic name
+                  metrics["file_extraction_rate"] = stats.get("file_extraction_success_rate",
+                                                              stats.get("fetch_success_rate", 0))
+                  metrics["parsing_rate"] = stats.get("record_parsing_success_rate",
+                                                      stats.get("fetch_success_rate", 0))
+
+              elif pipeline_type == "stream_processing":
+                  # Try new names first, fall back to old generic name
+                  metrics["connection_success"] = stats.get("stream_connection_success_rate",
+                                                           stats.get("fetch_success_rate", 0))
+                  metrics["retrieval_rate"] = stats.get("record_retrieval_success_rate",
+                                                        stats.get("fetch_success_rate", 0))
+                  metrics["coverage_rate"] = stats.get("dataset_coverage_rate", 0)
+              else:
+                  # Unknown pipeline type - use generic fallback
+                  metrics["success_rate"] = stats.get("fetch_success_rate", 0)
+
+              # Keep old success_rate for backward compatibility (deprecated)
+              metrics["success_rate_deprecated"] = stats.get("fetch_success_rate", 0)
+
+              return metrics
 
           # Load all metrics (only processing phase for accurate success rates)
           metrics_dir = Path("data/metrics")
@@ -79,23 +122,37 @@ jobs:
                           perf = stats.get("throughput", {})
                           quality = stats.get("text_length_stats", {})
 
-                          all_metrics.append({
+                          # Extract pipeline-specific metrics
+                          pipeline_metrics = extract_pipeline_metrics(snapshot, stats)
+
+                          metric_entry = {
                               "run_id": snapshot.get("run_id", ""),
                               "source": snapshot.get("source", ""),
                               "timestamp": snapshot.get("timestamp", ""),
                               "duration_seconds": snapshot.get("duration_seconds", 0),
+                              "pipeline_type": snapshot.get("pipeline_type", "unknown"),
+
+                              # Volume metrics
                               "urls_discovered": snapshot.get("urls_discovered", 0),
                               "urls_fetched": snapshot.get("urls_fetched", 0),
                               "urls_processed": snapshot.get("urls_processed", 0),
+                              "files_discovered": snapshot.get("files_discovered", 0),
+                              "files_processed": snapshot.get("files_processed", 0),
+                              "records_fetched": snapshot.get("records_fetched", 0),
                               "records_written": snapshot.get("records_written", 0),
                               "bytes_downloaded": snapshot.get("bytes_downloaded", 0),
-                              "success_rate": stats.get("fetch_success_rate", 0),
-                              "deduplication_rate": stats.get("deduplication_rate", 0),
+
+                              # Pipeline-specific success metrics
+                              "pipeline_metrics": pipeline_metrics,
+
+                              # Performance metrics
                               "performance": {
                                   "urls_per_second": perf.get("urls_per_second", 0),
                                   "bytes_per_second": perf.get("bytes_per_second", 0),
                                   "records_per_minute": perf.get("records_per_minute", 0)
                               },
+
+                              # Quality metrics
                               "quality": {
                                   "min": quality.get("min", 0),
                                   "max": quality.get("max", 0),
@@ -103,21 +160,28 @@ jobs:
                                   "median": quality.get("median", 0),
                                   "total_chars": quality.get("total_chars", 0)
                               }
-                          })
+                          }
+
+                          all_metrics.append(metric_entry)
+
                   except Exception as e:
-                      print(f"Error loading {metrics_file}: {e}")
+                      print(f"⚠️  Error loading {metrics_file}: {e}")
 
           # Calculate aggregates
           if all_metrics:
               total_records = sum(m["records_written"] for m in all_metrics)
               sources = sorted(list(set(m["source"] for m in all_metrics)))
+              pipeline_types = sorted(list(set(m["pipeline_type"] for m in all_metrics)))
 
               # Save all metrics
               output = {
                   "count": len(all_metrics),
                   "records": total_records,
                   "sources": sources,
-                  "metrics": all_metrics
+                  "pipeline_types": pipeline_types,
+                  "metrics": all_metrics,
+                  "schema_version": "2.0",  # Indicates new pipeline-specific structure
+                  "backward_compatible": True  # Indicates old fields still present
               }
 
               with open("_site/data/all_metrics.json", "w") as f:
@@ -125,6 +189,8 @@ jobs:
 
               print(f"✅ Generated metrics: {len(all_metrics)} runs, {total_records:,} records")
               print(f"✅ Sources: {', '.join(sources)}")
+              print(f"✅ Pipeline types: {', '.join(pipeline_types)}")
+              print(f"📊 Schema version: 2.0 (pipeline-specific metrics)")
           else:
               # No metrics found - create empty files
               print("⚠️  No metrics found - creating empty state")
@@ -133,7 +199,10 @@ jobs:
                   "count": 0,
                   "records": 0,
                   "sources": [],
-                  "metrics": []
+                  "pipeline_types": [],
+                  "metrics": [],
+                  "schema_version": "2.0",
+                  "backward_compatible": True
               }
 
               with open("_site/data/all_metrics.json", "w") as f:

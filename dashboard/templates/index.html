@@ -1532,8 +1532,8 @@
                     <span class="hero-stat-label">Data Sources</span>
                 </div>
                 <div class="hero-stat">
-                    <span class="hero-stat-value" id="success-rate" data-count="0" data-suffix="%">0%</span>
-                    <span class="hero-stat-label">Success Rate</span>
+                    <span class="hero-stat-value" id="pipeline-types" data-count="0">0</span>
+                    <span class="hero-stat-label">Pipeline Types</span>
                 </div>
                 <div class="hero-stat">
                     <span class="hero-stat-value">Stage 1</span>
@@ -1724,7 +1724,7 @@
                                 <span class="source-metric-value">0%</span>
                             </div>
                             <div class="source-metric">
-                                <span class="source-metric-label">Success Rate</span>
+                                <span class="source-metric-label">Quality Rate</span>
                                 <span class="source-metric-value">0%</span>
                             </div>
                         </div>
@@ -1753,7 +1753,7 @@
                                 <span class="source-metric-value">0%</span>
                             </div>
                             <div class="source-metric">
-                                <span class="source-metric-label">Success Rate</span>
+                                <span class="source-metric-label">Quality Rate</span>
                                 <span class="source-metric-value">0%</span>
                             </div>
                         </div>
@@ -1782,7 +1782,7 @@
                                 <span class="source-metric-value">0%</span>
                             </div>
                             <div class="source-metric">
-                                <span class="source-metric-label">Success Rate</span>
+                                <span class="source-metric-label">Quality Rate</span>
                                 <span class="source-metric-value">0%</span>
                             </div>
                         </div>
@@ -1811,7 +1811,7 @@
                                 <span class="source-metric-value">0%</span>
                             </div>
                             <div class="source-metric">
-                                <span class="source-metric-label">Success Rate</span>
+                                <span class="source-metric-label">Quality Rate</span>
                                 <span class="source-metric-value">0%</span>
                             </div>
                         </div>
@@ -1836,10 +1836,10 @@
                         </div>
                         <div class="chart-card">
                             <div class="chart-header">
-                                <h4 class="chart-title">Success Rate by Source</h4>
+                                <h4 class="chart-title">Quality Pass Rate by Source</h4>
                             </div>
                             <div class="chart-canvas">
-                                <canvas id="successRateChart" aria-label="Bar chart showing success rates for each data source"></canvas>
+                                <canvas id="qualityRateChart" aria-label="Bar chart showing quality pass rates for each data source"></canvas>
                             </div>
                         </div>
                     </div>
@@ -1879,7 +1879,7 @@
                                 <tr>
                                     <th>Source</th>
                                     <th>Records</th>
-                                    <th>Success Rate</th>
+                                    <th>Quality Rate</th>
                                     <th>Avg Length</th>
                                     <th>Total Chars</th>
                                 </tr>
@@ -2284,10 +2284,10 @@
                     <div class="story-card-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                     </div>
-                    <h3 class="story-card-title"><span id="story-success">0</span>% Success Rate</h3>
+                    <h3 class="story-card-title"><span id="story-quality">0</span>% Avg Quality Rate</h3>
                     <p class="story-card-text">
-                        Our robust pipeline architecture achieves high reliability through intelligent error
-                        handling, retry mechanisms, and source-specific optimization strategies.
+                        Our robust pipeline architecture ensures high-quality data through intelligent filtering,
+                        validation, and source-specific quality checks across all pipeline types.
                     </p>
                 </div>
 
@@ -2530,11 +2530,11 @@
                 // Update hero stats
                 document.getElementById('total-records').setAttribute('data-count', '0');
                 document.getElementById('total-sources').setAttribute('data-count', '0');
-                document.getElementById('success-rate').setAttribute('data-count', '0');
+                document.getElementById('pipeline-types').setAttribute('data-count', '0');
 
                 // Update story cards
                 document.getElementById('story-records').textContent = '0';
-                document.getElementById('story-success').textContent = '0';
+                document.getElementById('story-quality').textContent = '0';
                 document.getElementById('story-sources').textContent = '0';
 
                 return;
@@ -2544,18 +2544,26 @@
             const metrics = metricsData.metrics;
             const totalRecords = metrics.reduce((sum, m) => sum + m.records_written, 0);
             const totalSources = new Set(metrics.map(m => m.source.split('-')[0])).size;
-            const avgSuccessRate = metrics.reduce((sum, m) => sum + m.success_rate, 0) / metrics.length * 100;
 
-            console.log('Calculated stats:', { totalRecords, totalSources, avgSuccessRate });
+            // Calculate average quality pass rate (meaningful across all pipeline types)
+            const avgQualityRate = metrics.reduce((sum, m) => {
+                const quality = m.pipeline_metrics?.quality_pass_rate || 0;
+                return sum + quality;
+            }, 0) / metrics.length * 100;
+
+            // Count unique pipeline types
+            const pipelineTypes = new Set(metrics.map(m => m.pipeline_type || 'unknown')).size;
+
+            console.log('Calculated stats:', { totalRecords, totalSources, pipelineTypes, avgQualityRate });
 
             // Update hero stats
             document.getElementById('total-records').setAttribute('data-count', totalRecords);
             document.getElementById('total-sources').setAttribute('data-count', totalSources);
-            document.getElementById('success-rate').setAttribute('data-count', avgSuccessRate.toFixed(1));
+            document.getElementById('pipeline-types').setAttribute('data-count', pipelineTypes);
 
             // Update story cards
             document.getElementById('story-records').textContent = totalRecords.toLocaleString();
-            document.getElementById('story-success').textContent = avgSuccessRate.toFixed(1);
+            document.getElementById('story-quality').textContent = avgQualityRate.toFixed(1);
             document.getElementById('story-sources').textContent = totalSources;
         }
 
@@ -2665,11 +2673,14 @@
                 });
             }
 
-            // Success Rate (Bar)
-            const successRateCtx = document.getElementById('successRateChart');
-            if (successRateCtx && metricsData.metrics && metricsData.metrics.length > 0) {
+            // Quality Pass Rate (Bar)
+            const qualityRateCtx = document.getElementById('qualityRateChart');
+            if (qualityRateCtx && metricsData.metrics && metricsData.metrics.length > 0) {
                 const labels = metricsData.metrics.map(m => m.source.replace(/-Somali|_Somali_c4-so/, '').replace('Sprakbanken', 'Språkbanken'));
-                const data = metricsData.metrics.map(m => m.success_rate * 100);
+                const data = metricsData.metrics.map(m => {
+                    const qualityRate = m.pipeline_metrics?.quality_pass_rate || 0;
+                    return qualityRate * 100;
+                });
                 const colors = metricsData.metrics.map(m => {
                     if (m.source.includes('Wikipedia')) return '#3b82f6';
                     if (m.source.includes('BBC')) return '#ef4444';
@@ -2677,12 +2688,12 @@
                     return '#f59e0b';
                 });
 
-                new Chart(successRateCtx, {
+                new Chart(qualityRateCtx, {
                     type: 'bar',
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: 'Success Rate',
+                            label: 'Quality Pass Rate',
                             data: data,
                             backgroundColor: colors,
                             borderRadius: 6
@@ -2891,13 +2902,16 @@
                 const metrics = metricsData.metrics;
                 const sources = metrics.map(m => m.source.replace(/-Somali|_Somali_c4-so|-Somali/, '').replace('HuggingFace', 'HF').replace('Sprakbanken', 'Språk'));
                 const recordsPerMin = metrics.map(m => m.performance.records_per_minute);
-                const successRates = metrics.map(m => m.success_rate * 100);
+                const qualityRates = metrics.map(m => {
+                    const quality = m.pipeline_metrics?.quality_pass_rate || 0;
+                    return quality * 100;
+                });
                 const maxRPM = Math.max(...recordsPerMin);
 
                 // Calculate composite performance score (60% speed + 40% quality)
                 const performanceScores = metrics.map((m, i) => {
                     const speedScore = (recordsPerMin[i] / maxRPM) * 100;
-                    const qualityScore = successRates[i];
+                    const qualityScore = qualityRates[i];
                     return (speedScore * 0.6 + qualityScore * 0.4);
                 });
 
@@ -2926,7 +2940,7 @@
                         maintainAspectRatio: true,
                         plugins: {
                             title: { display: true, text: 'Performance Efficiency Score', font: { size: 16, weight: 700 }, padding: { bottom: 20 } },
-                            subtitle: { display: true, text: 'Composite: 60% processing speed + 40% success rate', font: { size: 11 }, color: '#6b7280' },
+                            subtitle: { display: true, text: 'Composite: 60% processing speed + 40% quality rate', font: { size: 11 }, color: '#6b7280' },
                             legend: {
                                 labels: {
                                     filter: (item) => ['Performance Score', 'Excellent', 'Good'].includes(item.text),
@@ -2943,7 +2957,7 @@
                                             return [
                                                 `Overall Score: ${ctx.parsed.x.toFixed(1)}%`,
                                                 `Speed: ${recordsPerMin[idx].toLocaleString()} RPM`,
-                                                `Success: ${successRates[idx].toFixed(1)}%`,
+                                                `Quality: ${qualityRates[idx].toFixed(1)}%`,
                                                 ctx.parsed.x >= 80 ? '✓ Exceeds target' : '⚠ Below 80% target'
                                             ];
                                         }
@@ -2969,12 +2983,13 @@
                                 m.source.includes('BBC') ? '#ef4444' :
                                 m.source.includes('HuggingFace') ? '#10b981' : '#f59e0b';
                     const bubbleSize = Math.log10(m.records_written + 1) * 7 + 5;
+                    const qualityRate = m.pipeline_metrics?.quality_pass_rate || 0;
 
                     return {
                         label: `${sourceShort} (${m.records_written.toLocaleString()})`,
                         data: [{
                             x: m.performance.records_per_minute,
-                            y: m.success_rate * 100,
+                            y: qualityRate * 100,
                             r: bubbleSize
                         }],
                         backgroundColor: color + 'aa',
@@ -3008,7 +3023,7 @@
                         },
                         scales: {
                             x: { type: 'logarithmic', title: { display: true, text: 'Processing Speed (RPM) - Log Scale', font: { size: 12, weight: 600 } }, ticks: { callback: (v) => v >= 1000 ? (v/1000).toFixed(0) + 'K' : v }, grid: { color: 'rgba(0,0,0,0.05)' } },
-                            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Success Rate (%)', font: { size: 12, weight: 600 } }, ticks: { callback: (v) => v + '%' }, grid: { color: 'rgba(0,0,0,0.05)' } }
+                            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Quality Pass Rate (%)', font: { size: 12, weight: 600 } }, ticks: { callback: (v) => v + '%' }, grid: { color: 'rgba(0,0,0,0.05)' } }
                         }
                     }
                 });
@@ -3103,7 +3118,8 @@
                     .replace('HuggingFace', 'HuggingFace MC4');
 
                 const records = metric.records_written;
-                const successRate = (metric.success_rate * 100).toFixed(1) + '%';
+                const qualityRate = metric.pipeline_metrics?.quality_pass_rate || 0;
+                const qualityRateFormatted = (qualityRate * 100).toFixed(1) + '%';
                 const avgLength = metric.quality?.mean ? Math.round(metric.quality.mean).toLocaleString() : '0';
 
                 // Format total chars
@@ -3117,7 +3133,7 @@
                 return {
                     name: sourceName,
                     records,
-                    success: successRate,
+                    quality: qualityRateFormatted,
                     avgLength,
                     totalChars: formattedChars
                 };
@@ -3127,7 +3143,7 @@
                 <tr>
                     <td style="font-weight: 600;">${row.name}</td>
                     <td>${row.records.toLocaleString()}</td>
-                    <td>${row.success}</td>
+                    <td>${row.quality}</td>
                     <td>${row.avgLength}</td>
                     <td>${row.totalChars}</td>
                 </tr>
@@ -3346,9 +3362,9 @@
                 const percentage = totalRecords > 0 ? (records / totalRecords * 100) : 0;
                 metrics[1].textContent = percentage.toFixed(1) + '%';
 
-                // Success Rate
-                const successRate = (metric.success_rate * 100) || 0;
-                metrics[2].textContent = successRate.toFixed(1) + '%';
+                // Quality Rate (pipeline-specific)
+                const qualityRate = metric.pipeline_metrics?.quality_pass_rate || 0;
+                metrics[2].textContent = (qualityRate * 100).toFixed(1) + '%';
             }
 
             // Update last run date

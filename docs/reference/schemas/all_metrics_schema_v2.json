@@ -1,0 +1,186 @@
+{
+  "_EXAMPLE_DISCLAIMER": {
+    "type": "DYNAMIC SNAPSHOT - NOT HARDCODED REQUIREMENTS",
+    "note": "This file represents metrics from ONE specific analysis run on 2025-10-26",
+    "warning": "ALL VALUES ARE EXAMPLES and will differ based on:",
+    "variability_factors": [
+      "Data sources available at analysis time",
+      "Test limits applied (--max-bbc-articles, --max-hf-records, etc.)",
+      "Actual data collection success rates",
+      "Quality filter configurations",
+      "Time of execution"
+    ],
+    "do_not_assume": [
+      "Total records will always be 9662",
+      "BBC will always discover 187 URLs",
+      "Wikipedia will always have 9623 records",
+      "Success rates are 'expected' values"
+    ],
+    "usage": "Use this schema to understand the OUTPUT STRUCTURE, not as expected values",
+    "generated_by": "metrics_analysis.py - processes actual data/metrics/*.json files",
+    "future_proof": "This schema adapts to any pipeline type, source, and data volume"
+  },
+  "last_updated": "2025-10-26T11:20:20.751955Z",
+  "format_version": "2.0",
+  "total_records": 9662,
+  "sources": [
+    {
+      "name": "Sprakbanken-Somali",
+      "pipeline_type": "file_processing",
+      "last_run": "2025-10-26T10:00:50.364857+00:00",
+      "run_id": "20251026_100048_sprakbanken-somali_da9de894",
+      "metrics": {
+        "volume": {
+          "records_written": 0,
+          "bytes_downloaded": 0,
+          "duration_seconds": 2.2911489009857178
+        },
+        "discovery": {
+          "files_discovered": 1
+        },
+        "extraction": {
+          "file_extraction_success_rate": 1.0,
+          "files_processed": 1,
+          "record_parsing_success_rate": 0,
+          "records_parsed": 0,
+          "records_filtered": 0
+        },
+        "quality": {
+          "quality_pass_rate": 0,
+          "filter_reasons": {}
+        },
+        "performance": {
+          "urls_per_second": 0.0,
+          "bytes_per_second": 0.0,
+          "records_per_minute": 0.0
+        }
+      }
+    },
+    {
+      "name": "Wikipedia-Somali",
+      "pipeline_type": "file_processing",
+      "last_run": "2025-10-26T10:01:00.863679+00:00",
+      "run_id": "20251026_100048_wikipedia-somali_ea9538ee",
+      "metrics": {
+        "volume": {
+          "records_written": 9623,
+          "bytes_downloaded": 14280506,
+          "duration_seconds": 12.790035963058472
+        },
+        "discovery": {
+          "files_discovered": 1
+        },
+        "extraction": {
+          "file_extraction_success_rate": 1.0,
+          "files_processed": 1,
+          "record_parsing_success_rate": 0.6357690274841438,
+          "records_parsed": 9623,
+          "records_filtered": 5513
+        },
+        "quality": {
+          "quality_pass_rate": 70.75735294117646,
+          "filter_reasons": {
+            "min_length_filter": 4128,
+            "langid_filter": 1185,
+            "empty_after_cleaning": 200
+          }
+        },
+        "text_statistics": {
+          "min": 10,
+          "max": 122020,
+          "mean": 4415.74,
+          "median": 1917.0,
+          "total_chars": 4415740
+        },
+        "performance": {
+          "urls_per_second": 752.3825599704459,
+          "bytes_per_second": 1116533.6861637027,
+          "records_per_minute": 45142.953598226755
+        }
+      }
+    },
+    {
+      "name": "BBC-Somali",
+      "pipeline_type": "web_scraping",
+      "last_run": "2025-10-26T10:20:49.875532+00:00",
+      "run_id": "20251026_100048_bbc-somali_9589c2c5",
+      "metrics": {
+        "volume": {
+          "records_written": 20,
+          "bytes_downloaded": 0,
+          "duration_seconds": 1201.750482082367
+        },
+        "discovery": {
+          "urls_discovered": 187
+        },
+        "extraction": {
+          "http_request_success_rate": 1.0,
+          "http_requests_attempted": 20,
+          "http_requests_successful": 20,
+          "content_extraction_success_rate": 1.0,
+          "content_extracted": 20
+        },
+        "quality": {
+          "quality_pass_rate": 1.0,
+          "records_received": 20,
+          "records_passed": 20
+        },
+        "text_statistics": {
+          "min": 129,
+          "max": 12724,
+          "mean": 4958.8,
+          "median": 4175.0,
+          "total_chars": 99176
+        },
+        "performance": {
+          "urls_per_second": 0.016642389828997146,
+          "bytes_per_second": 0.0,
+          "records_per_minute": 0.9985433897398287
+        }
+      },
+      "_test_run_limited": true,
+      "_limit_applied": 20,
+      "_note": "This BBC run was LIMITED to 20 articles for testing. Production runs would fetch all 187 discovered URLs."
+    },
+    {
+      "name": "HuggingFace-Somali_c4-so",
+      "pipeline_type": "stream_processing",
+      "last_run": "2025-10-26T10:02:54.692273+00:00",
+      "run_id": "20251026_100048_huggingface-somali_c4-so_736d3a14",
+      "metrics": {
+        "volume": {
+          "records_written": 19,
+          "bytes_downloaded": 0,
+          "duration_seconds": 126.60392880439758
+        },
+        "discovery": {
+          "datasets_opened": 1
+        },
+        "extraction": {
+          "stream_connection_success_rate": 1.0,
+          "record_retrieval_success_rate": 1.0,
+          "records_fetched": 20,
+          "records_retrieved": 19
+        },
+        "quality": {
+          "quality_pass_rate": 0.95,
+          "records_received": 19,
+          "records_passed": 19
+        },
+        "text_statistics": {
+          "min": 103,
+          "max": 15312,
+          "mean": 3145,
+          "median": 2037.0,
+          "total_chars": 62900
+        },
+        "performance": {
+          "urls_per_second": 0.0,
+          "bytes_per_second": 0.0,
+          "records_per_minute": 9.00445989919708
+        }
+      },
+      "_note": "This HuggingFace run was LIMITED to 20 records for testing. Production runs would fetch larger samples."
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "_EXAMPLE_DISCLAIMER": {
+    "type": "BACKWARD COMPATIBILITY EXAMPLE - NOT PRODUCTION DATA",
+    "purpose": "Demonstrates the backward compatibility format for web_scraping pipeline",
+    "source_run": "20251026_100048_bbc-somali_9589c2c5",
+    "test_configuration": {
+      "bbc_articles_limit": 20,
+      "note": "This run was LIMITED for testing - not a full production run"
+    },
+    "warning": "These specific values (187 URLs discovered, 20 fetched, etc.) are from ONE test run",
+    "variability": "Your actual runs will show different values based on:",
+    "factors": [
+      "Number of URLs discovered at runtime",
+      "Test limits applied (--max-bbc-articles=N)",
+      "Network conditions and HTTP success rates",
+      "Content extraction success",
+      "Quality filter results"
+    ],
+    "do_not_expect": [
+      "187 URLs will always be discovered",
+      "Success rates will match these percentages",
+      "Text lengths will be in this range"
+    ],
+    "usage": "Use this to understand the JSON STRUCTURE, not as expected values"
+  },
+  "snapshot": {
+    "timestamp": "2025-10-26T10:20:49.875532+00:00",
+    "run_id": "20251026_100048_bbc-somali_9589c2c5",
+    "source": "BBC-Somali",
+    "duration_seconds": 1201.750482082367,
+    "pipeline_type": "web_scraping",
+    "urls_discovered": 187,
+    "urls_fetched": 20,
+    "urls_processed": 20,
+    "urls_failed": 0,
+    "urls_skipped": 0,
+    "urls_deduplicated": 0,
+    "files_discovered": 0,
+    "files_processed": 0,
+    "records_extracted": 0,
+    "datasets_opened": 0,
+    "records_fetched": 0,
+    "records_processed": 0,
+    "batches_completed": 0,
+    "bytes_downloaded": 0,
+    "records_written": 20,
+    "records_filtered": 0,
+    "http_status_codes": {
+      "200": 20
+    },
+    "filter_reasons": {},
+    "error_types": {},
+    "fetch_durations_ms": [
+      1927.1769523620605,
+      672.3337173461914,
+      756.7319869995117,
+      1034.9071025848389,
+      614.952802658081,
+      752.5038719177246,
+      496.98734283447266,
+      2046.7078685760498,
+      613.9719486236572,
+      579.5912742614746,
+      583.9259624481201,
+      641.8728828430176,
+      663.7308597564697,
+      656.5501689910889,
+      560.1470470428467,
+      561.8329048156738,
+      602.9491424560547,
+      489.69197273254395,
+      588.4139537811279,
+      531.9421291351318
+    ],
+    "process_durations_ms": [],
+    "text_lengths": [
+      7183,
+      8032,
+      4465,
+      10338,
+      3885,
+      12724,
+      515,
+      5410,
+      3414,
+      2703,
+      3026,
+      6457,
+      4639,
+      4690,
+      3337,
+      2809,
+      11325,
+      639,
+      3456,
+      129
+    ],
+    "unique_hashes": 0,
+    "duplicate_hashes": 0,
+    "near_duplicates": 0
+  },
+  "statistics": {
+    "fetch_success_rate": 0.10695187165775401,
+    "fetch_failure_rate": 0.0,
+    "quality_pass_rate": 1.0,
+    "deduplication_rate": 0.0,
+    "fetch_duration_stats": {
+      "min": 489.69197273254395,
+      "max": 2046.7078685760498,
+      "mean": 768.8460946083069,
+      "median": 614.4623756408691,
+      "p95": 2046.7078685760498,
+      "p99": 2046.7078685760498
+    },
+    "text_length_stats": {
+      "min": 129,
+      "max": 12724,
+      "mean": 4958.8,
+      "median": 4175.0,
+      "total_chars": 99176
+    },
+    "throughput": {
+      "urls_per_second": 0.016642389828997146,
+      "bytes_per_second": 0.0,
+      "records_per_minute": 0.9985433897398287
+    },
+    "_legacy_fetch_success_rate": 0.10695187165775401,
+    "_migration_timestamp": "2025-10-26T11:08:40.528494Z",
+    "_format_version": "2.0",
+    "http_request_success_rate": 1.0,
+    "content_extraction_success_rate": 1.0,
+    "_migration_note": "fetch_success_rate (10.7%) is MISLEADING due to test limit. True HTTP success is 100%."
+  }
+}
