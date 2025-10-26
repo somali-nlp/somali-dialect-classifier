@@ -61,6 +61,7 @@ Task-oriented guides for common workflows:
 Technical specifications and API reference:
 
 - **[API Reference](reference/api.md)** - Complete API documentation with examples
+- **[Metrics Reference](reference/metrics.md)** - Pipeline metrics collection and interpretation
 - **[Silver Schema](reference/silver-schema.md)** - Silver dataset schema specification
 - **[Filters Reference](reference/filters.md)** - Built-in filter documentation
 - **[Text Cleaning](reference/text-cleaning.md)** - Cleaning pipeline reference (coming soon)
