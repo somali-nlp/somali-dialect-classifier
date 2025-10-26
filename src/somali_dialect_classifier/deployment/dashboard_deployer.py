@@ -35,8 +35,31 @@ class DeploymentConfig:
 class MetricsValidator:
     """Validates metrics files before deployment."""
 
-    REQUIRED_FIELDS = ["snapshot", "statistics"]
     REQUIRED_SNAPSHOT_FIELDS = ["run_id", "source", "timestamp"]
+
+    @staticmethod
+    def extract_metrics_data(data: dict) -> Tuple[dict, dict]:
+        """
+        Extract snapshot and statistics from metrics file, supporting both
+        v3.0 (nested) and legacy (top-level) schemas.
+
+        Args:
+            data: Parsed metrics JSON
+
+        Returns:
+            Tuple of (snapshot, statistics)
+        """
+        # Check for v3.0 schema with legacy_metrics wrapper
+        if "_schema_version" in data and data.get("_schema_version") == "3.0":
+            legacy_metrics = data.get("legacy_metrics", {})
+            snapshot = legacy_metrics.get("snapshot", {})
+            statistics = legacy_metrics.get("statistics", {})
+        else:
+            # Legacy schema with top-level fields
+            snapshot = data.get("snapshot", {})
+            statistics = data.get("statistics", {})
+
+        return snapshot, statistics
 
     @staticmethod
     def validate_metrics_file(file_path: Path) -> Tuple[bool, Optional[str]]:
@@ -53,13 +76,13 @@ class MetricsValidator:
             with open(file_path) as f:
                 data = json.load(f)
 
-            # Check required top-level fields
-            for field in MetricsValidator.REQUIRED_FIELDS:
-                if field not in data:
-                    return False, f"Missing required field: {field}"
+            # Extract snapshot and statistics (handles both v3.0 and legacy)
+            snapshot, statistics = MetricsValidator.extract_metrics_data(data)
 
-            # Check snapshot fields
-            snapshot = data.get("snapshot", {})
+            # Check snapshot exists and has required fields
+            if not snapshot:
+                return False, "Missing required field: snapshot"
+
             for field in MetricsValidator.REQUIRED_SNAPSHOT_FIELDS:
                 if field not in snapshot:
                     return False, f"Missing snapshot field: {field}"
@@ -72,8 +95,9 @@ class MetricsValidator:
                 return False, f"Invalid timestamp format: {timestamp}"
 
             # Check for reasonable data values
-            stats = data.get("statistics", {})
-            if not isinstance(stats, dict):
+            if not statistics:
+                return False, "Missing required field: statistics"
+            if not isinstance(statistics, dict):
                 return False, "Statistics must be a dictionary"
 
             return True, None
@@ -320,7 +344,8 @@ class DashboardDeployer:
             try:
                 with open(file_path) as f:
                     data = json.load(f)
-                    snapshot = data.get("snapshot", {})
+                    # Use helper to extract snapshot (handles both v3.0 and legacy)
+                    snapshot, _ = MetricsValidator.extract_metrics_data(data)
                     sources.add(snapshot.get("source", "unknown"))
                     total_records += snapshot.get("records_written", 0)
                     timestamps.append(snapshot.get("timestamp", ""))
