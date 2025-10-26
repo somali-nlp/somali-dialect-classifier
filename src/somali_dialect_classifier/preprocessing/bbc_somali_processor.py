@@ -394,7 +394,8 @@ class BBCSomaliProcessor(BasePipeline):
                                 self.ledger.mark_fetched(
                                     url=link,
                                     http_status=200,
-                                    content_length=len(article['text'])
+                                    content_length=len(article['text']),
+                                    source=self.source
                                 )
                                 self.metrics.increment('urls_fetched')
                                 self.metrics.record_http_status(200)
@@ -804,7 +805,8 @@ class BBCSomaliProcessor(BasePipeline):
                     http_status=200,
                     etag=etag,
                     last_modified=last_modified,
-                    content_length=len(text)
+                    content_length=len(text),
+                    source=self.source
                 )
 
             return article_data

@@ -139,6 +139,7 @@ class BasePipeline(DataProcessor, ABC):
         # Subclasses set these paths
         self.staging_file: Optional[Path] = None
         self.processed_file: Optional[Path] = None
+        self.silver_path: Optional[Path] = None  # Parquet file from silver_writer.write()
 
     def _register_filters(self) -> None:
         """
@@ -400,7 +401,8 @@ class BasePipeline(DataProcessor, ABC):
                         url=raw_record.url,
                         text_hash=record["text_hash"],
                         silver_id=record["id"],
-                        minhash_signature=minhash_sig
+                        minhash_signature=minhash_sig,
+                        source=self.source
                     )
 
                 # Consistent progress logging
@@ -428,12 +430,14 @@ class BasePipeline(DataProcessor, ABC):
 
         # Write final batch to silver dataset
         if records:
-            self.silver_writer.write(
+            silver_path = self.silver_writer.write(
                 records=records,
                 source=self.source,
                 date_accessed=self.date_accessed,
                 run_id=self.run_id,
             )
+            if silver_path:
+                self.silver_path = silver_path
 
         # Export processing metrics and generate final quality report
         # Only do this if metrics collector is available (passed from subclass)
@@ -457,18 +461,21 @@ class BasePipeline(DataProcessor, ABC):
             QualityReporter(self.metrics).generate_markdown_report(report_path)
             self.logger.info(f"Final quality report: {report_path}")
 
-        return self.processed_file
+        # Return Parquet path if available, otherwise fall back to debug .txt file
+        return self.silver_path if self.silver_path else self.processed_file
 
     def _write_batch(self, records: list) -> None:
         """Write a batch of records to silver dataset."""
         if records:
             self.logger.info(f"Writing batch of {len(records)} records...")
-            self.silver_writer.write(
+            silver_path = self.silver_writer.write(
                 records=records,
                 source=self.source,
                 date_accessed=self.date_accessed,
                 run_id=self.run_id,
             )
+            if silver_path:
+                self.silver_path = silver_path
 
     def save(self, processed_data: str) -> None:
         """
@@ -488,12 +495,13 @@ class BasePipeline(DataProcessor, ABC):
         Template method - orchestrates full pipeline.
 
         Returns:
-            Path to processed file
+            Path to silver Parquet file (or debug .txt file as fallback)
         """
         self.download()
         self.extract()
         processed_file = self.process()
 
+        # process() now returns Parquet path (self.silver_path) if available
         return processed_file
 
     def _cleanup_old_raw_files(self):

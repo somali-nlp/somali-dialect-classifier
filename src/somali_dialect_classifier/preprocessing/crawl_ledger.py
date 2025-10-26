@@ -701,12 +701,13 @@ class CrawlLedger:
         http_status: int,
         etag: Optional[str] = None,
         last_modified: Optional[str] = None,
-        content_length: Optional[int] = None
+        content_length: Optional[int] = None,
+        source: Optional[str] = None
     ) -> None:
         """Mark URL as successfully fetched with HTTP metadata."""
         self.backend.upsert_url(
             url=url,
-            source="",  # Source already set
+            source=source or "",  # Use provided source or empty
             state=CrawlState.FETCHED,
             http_status=http_status,
             etag=etag,
@@ -719,23 +720,24 @@ class CrawlLedger:
         url: str,
         text_hash: str,
         silver_id: str,
-        minhash_signature: Optional[str] = None
+        minhash_signature: Optional[str] = None,
+        source: Optional[str] = None
     ) -> None:
         """Mark URL as successfully processed."""
         self.backend.upsert_url(
             url=url,
-            source="",  # Source already set
+            source=source or "",  # Use provided source or empty
             state=CrawlState.PROCESSED,
             text_hash=text_hash,
             silver_id=silver_id,
             minhash_signature=minhash_signature
         )
 
-    def mark_duplicate(self, url: str, original_url: str) -> None:
+    def mark_duplicate(self, url: str, original_url: str, source: Optional[str] = None) -> None:
         """Mark URL as duplicate of another URL."""
         self.backend.upsert_url(
             url=url,
-            source="",  # Source already set
+            source=source or "",  # Use provided source or empty
             state=CrawlState.DUPLICATE,
             metadata={"original_url": original_url}
         )

@@ -69,7 +69,8 @@ class TestCrawlLedger:
             url=url,
             http_status=200,
             etag="abc123",
-            content_length=5000
+            content_length=5000,
+            source="bbc"
         )
 
         state = ledger.backend.get_url_state(url)
@@ -77,6 +78,7 @@ class TestCrawlLedger:
         assert state['state'] == CrawlState.FETCHED.value
         assert state['http_status'] == 200
         assert state['etag'] == "abc123"
+        assert state['source'] == "bbc"
 
     def test_mark_processed(self, tmp_path):
         """Test marking URL as processed."""
@@ -88,13 +90,15 @@ class TestCrawlLedger:
         ledger.mark_processed(
             url=url,
             text_hash="abc123hash",
-            silver_id="silver_001"
+            silver_id="silver_001",
+            source="bbc"
         )
 
         state = ledger.backend.get_url_state(url)
         assert state['state'] == CrawlState.PROCESSED.value
         assert state['text_hash'] == "abc123hash"
         assert state['silver_id'] == "silver_001"
+        assert state['source'] == "bbc"
 
     def test_duplicate_detection(self, tmp_path):
         """Test duplicate hash detection."""
@@ -103,7 +107,7 @@ class TestCrawlLedger:
         # Process first URL
         url1 = "https://example.com/article1"
         ledger.discover_url(url1, "bbc")
-        ledger.mark_processed(url1, text_hash="hash123", silver_id="silver_001")
+        ledger.mark_processed(url1, text_hash="hash123", silver_id="silver_001", source="bbc")
 
         # Check for duplicate
         duplicate_url = ledger.is_duplicate("hash123")
@@ -143,7 +147,8 @@ class TestCrawlLedger:
             ledger.mark_processed(
                 f"https://example.com/article{i}",
                 text_hash=f"hash{i}",
-                silver_id=f"silver_{i}"
+                silver_id=f"silver_{i}",
+                source="bbc"
             )
 
         # Get statistics
@@ -435,7 +440,7 @@ def test_full_pipeline_integration(tmp_path):
 
         if is_dup:
             collector.increment("urls_deduplicated")
-            ledger.mark_duplicate(url, original_url="https://example.com/1")
+            ledger.mark_duplicate(url, original_url="https://example.com/1", source="test")
         else:
             # Simulated fetch and process
             collector.increment("urls_fetched")
@@ -444,7 +449,8 @@ def test_full_pipeline_integration(tmp_path):
             ledger.mark_processed(
                 url=url,
                 text_hash=text_hash,
-                silver_id=f"silver_{url.split('/')[-1]}"
+                silver_id=f"silver_{url.split('/')[-1]}",
+                source="test"
             )
 
     # Get statistics

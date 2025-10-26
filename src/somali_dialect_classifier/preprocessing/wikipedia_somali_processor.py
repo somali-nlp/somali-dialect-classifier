@@ -207,7 +207,8 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.ledger.mark_fetched(
             url=self.dump_url,
             http_status=200,
-            content_length=total_size
+            content_length=total_size,
+            source=self.source
         )
 
         self.logger.info(f"Download completed: {self.dump_file}")
