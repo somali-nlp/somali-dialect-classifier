@@ -22,6 +22,7 @@ The Somali Dialect Classifier includes a professional data quality monitoring da
 ## Table of Contents
 
 - [Quick Start (5 Minutes)](#quick-start-5-minutes)
+- [Automated Deployment](#automated-deployment)
 - [Dashboard Architecture](#dashboard-architecture)
 - [Local Development](#local-development)
 - [Dashboard Features](#dashboard-features)
@@ -105,6 +106,172 @@ git push origin main
 4. Visit: `https://YOUR-USERNAME.github.io/somali-dialect-classifier/`
 
 **Your dashboard is now live!**
+
+---
+
+## Automated Deployment
+
+The project includes automated deployment tools to streamline the process of updating the dashboard after pipeline runs.
+
+### Installation
+
+The deployment tools are included in the package:
+
+```bash
+pip install -e .
+```
+
+Verify commands are available:
+
+```bash
+somali-deploy-dashboard --help
+somali-orchestrate --help
+```
+
+### Common Commands
+
+#### 1. Automated Deployment (Recommended)
+
+Run pipelines and deploy automatically:
+
+```bash
+somali-orchestrate --pipeline all --auto-deploy
+```
+
+This automatically:
+- Collects data from all sources
+- Validates metrics files
+- Commits to git
+- Pushes to GitHub
+- Triggers dashboard rebuild
+
+#### 2. Manual Deployment
+
+Deploy existing metrics:
+
+```bash
+somali-deploy-dashboard
+```
+
+#### 3. Preview Before Deploying
+
+Check what will be deployed:
+
+```bash
+somali-deploy-dashboard --dry-run
+```
+
+#### 4. Verbose Mode
+
+Debug deployment issues:
+
+```bash
+somali-deploy-dashboard --verbose
+```
+
+### Typical Workflows
+
+**Daily Data Collection:**
+
+```bash
+# Morning: collect data with auto-deploy
+somali-orchestrate --pipeline all --auto-deploy
+
+# Verify deployment
+# Visit: https://YOUR-USERNAME.github.io/somali-dialect-classifier/
+```
+
+**Development Testing:**
+
+```bash
+# Test pipeline without deploying
+somali-orchestrate --pipeline wikipedia --max-articles 10
+
+# Preview deployment
+somali-deploy-dashboard --dry-run
+
+# Deploy if satisfied
+somali-deploy-dashboard
+```
+
+**Batch Collection:**
+
+```bash
+# Run pipelines individually
+somali-orchestrate --pipeline wikipedia
+somali-orchestrate --pipeline bbc
+somali-orchestrate --pipeline huggingface
+somali-orchestrate --pipeline sprakbanken
+
+# Deploy all at once
+somali-deploy-dashboard --min-sources 4
+```
+
+### Configuration Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--dry-run` | Preview without deploying | False |
+| `--no-push` | Commit locally only | Push enabled |
+| `--no-validate` | Skip validation | Validation on |
+| `--no-batch` | Deploy immediately | Batch mode on |
+| `--min-sources N` | Min sources for batch | 1 |
+| `--verbose` | Detailed logging | Normal logging |
+| `--log-file FILE` | Save logs to file | Console only |
+
+### Troubleshooting Quick Fixes
+
+**"No valid metrics files found":**
+
+```bash
+# Run pipelines first
+somali-orchestrate --pipeline all
+```
+
+**"Failed to push changes":**
+
+```bash
+# Check authentication
+git push origin main
+
+# If fails, setup SSH key or token
+```
+
+**"Not in a git repository":**
+
+```bash
+# Navigate to project root
+cd /path/to/somali-dialect-classifier
+```
+
+**Dashboard not updating:**
+
+1. Check GitHub Actions: https://github.com/YOUR-USERNAME/somali-dialect-classifier/actions
+2. Wait 2-3 minutes for build
+3. Hard refresh browser (Cmd+Shift+R or Ctrl+Shift+R)
+
+### When Things Go Wrong
+
+```bash
+# 1. Check git status
+git status
+
+# 2. Check metrics exist
+ls -lh data/metrics/*.json
+
+# 3. Validate deployment environment
+somali-deploy-dashboard --dry-run --verbose
+
+# 4. Check GitHub Actions
+# Visit: https://github.com/YOUR-USERNAME/somali-dialect-classifier/actions
+
+# 5. Manual deployment
+git add data/metrics/*_processing.json
+git commit -m "chore(metrics): manual metrics update"
+git push origin main
+```
+
+For detailed API documentation and programmatic usage, see the [deployment module documentation](../../src/somali_dialect_classifier/deployment/README.md).
 
 ---
 

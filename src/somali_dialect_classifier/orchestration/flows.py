@@ -295,6 +295,7 @@ def run_all_pipelines(
     run_bbc: bool = True,
     run_huggingface: bool = True,
     run_sprakbanken: bool = True,
+    auto_deploy: bool = False,
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
     Flow to orchestrate all data collection pipelines in parallel.
@@ -310,6 +311,7 @@ def run_all_pipelines(
         run_bbc: Enable BBC pipeline
         run_huggingface: Enable HuggingFace pipeline
         run_sprakbanken: Enable Språkbanken pipeline
+        auto_deploy: Automatically deploy dashboard after pipeline completes
 
     Returns:
         Dictionary with results from all pipelines
@@ -318,28 +320,50 @@ def run_all_pipelines(
     logger.info("STARTING COMPLETE DATA COLLECTION PIPELINE")
     logger.info("=" * 80)
 
-    # Submit all tasks in parallel (Prefect handles concurrency)
+    # Execute tasks either in parallel (with Prefect) or sequentially (without Prefect)
     results = []
 
-    if run_wikipedia:
-        results.append(run_wikipedia_task.submit(force=force))
+    if PREFECT_AVAILABLE:
+        # Submit all tasks in parallel (Prefect handles concurrency)
+        if run_wikipedia:
+            results.append(run_wikipedia_task.submit(force=force))
 
-    if run_bbc:
-        results.append(run_bbc_task.submit(max_articles=max_bbc_articles, force=force))
+        if run_bbc:
+            results.append(run_bbc_task.submit(max_articles=max_bbc_articles, force=force))
 
-    if run_huggingface:
-        results.append(run_huggingface_task.submit(
-            dataset_name="allenai/c4",
-            dataset_config="so",
-            max_records=max_hf_records,
-            force=force,
-        ))
+        if run_huggingface:
+            results.append(run_huggingface_task.submit(
+                dataset_name="allenai/c4",
+                dataset_config="so",
+                max_records=max_hf_records,
+                force=force,
+            ))
 
-    if run_sprakbanken:
-        results.append(run_sprakbanken_task.submit(corpus_id="all", force=force))
+        if run_sprakbanken:
+            results.append(run_sprakbanken_task.submit(corpus_id="all", force=force))
 
-    # Wait for all results
-    completed_results = [result.result() for result in results]
+        # Wait for all results
+        completed_results = [result.result() for result in results]
+    else:
+        # Run tasks sequentially without Prefect
+        completed_results = []
+
+        if run_wikipedia:
+            completed_results.append(run_wikipedia_task(force=force))
+
+        if run_bbc:
+            completed_results.append(run_bbc_task(max_articles=max_bbc_articles, force=force))
+
+        if run_huggingface:
+            completed_results.append(run_huggingface_task(
+                dataset_name="allenai/c4",
+                dataset_config="so",
+                max_records=max_hf_records,
+                force=force,
+            ))
+
+        if run_sprakbanken:
+            completed_results.append(run_sprakbanken_task(corpus_id="all", force=force))
 
     # Aggregate results
     successful = [r for r in completed_results if r["status"] == "success"]
@@ -355,6 +379,36 @@ def run_all_pipelines(
         logger.warning("Failed pipelines:")
         for result in failed:
             logger.warning(f"  - {result['source']}: {result.get('error', 'Unknown error')}")
+
+    # Auto-deploy dashboard if requested and pipelines succeeded
+    if auto_deploy and successful:
+        logger.info("")
+        logger.info("=" * 80)
+        logger.info("AUTO-DEPLOY ENABLED: Deploying dashboard metrics...")
+        logger.info("=" * 80)
+        try:
+            from ..deployment import DashboardDeployer, create_default_config
+
+            config = create_default_config()
+            # Set batch mode based on success count
+            config.batch_mode = True
+            config.min_sources_for_deploy = len(successful)
+
+            deployer = DashboardDeployer(config)
+            deploy_success = deployer.deploy(dry_run=False)
+
+            if deploy_success:
+                logger.info("Dashboard deployment successful!")
+            else:
+                logger.warning("Dashboard deployment was skipped or failed")
+        except ImportError:
+            logger.error(
+                "Dashboard deployment module not available. "
+                "Ensure deployment package is installed."
+            )
+        except Exception as e:
+            logger.error(f"Dashboard deployment failed: {e}")
+            logger.warning("Pipeline completed successfully but dashboard was not deployed")
 
     return {
         "successful": successful,
@@ -380,6 +434,11 @@ def main():
     parser.add_argument("--force", action="store_true", help="Force reprocessing")
     parser.add_argument("--max-bbc-articles", type=int, help="Max BBC articles")
     parser.add_argument("--max-hf-records", type=int, help="Max HuggingFace records")
+    parser.add_argument(
+        "--auto-deploy",
+        action="store_true",
+        help="Automatically deploy dashboard after pipeline completes",
+    )
 
     args = parser.parse_args()
 
@@ -394,6 +453,7 @@ def main():
             force=args.force,
             max_bbc_articles=args.max_bbc_articles,
             max_hf_records=args.max_hf_records,
+            auto_deploy=args.auto_deploy,
         )
     elif args.pipeline == "wikipedia":
         result = run_wikipedia_pipeline(force=args.force)

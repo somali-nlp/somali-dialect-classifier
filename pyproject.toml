@@ -77,6 +77,7 @@ bbcsom-download = "somali_dialect_classifier.cli.download_bbcsom:main"
 hfsom-download = "somali_dialect_classifier.cli.download_hfsom:main"
 spraksom-download = "somali_dialect_classifier.cli.download_sprakbankensom:main"
 somali-orchestrate = "somali_dialect_classifier.orchestration.flows:main"
+somali-deploy-dashboard = "somali_dialect_classifier.cli.deploy_dashboard:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/somali_dialect_classifier"]
