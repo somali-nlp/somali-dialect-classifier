@@ -291,6 +291,7 @@ def run_all_pipelines(
     force: bool = False,
     max_bbc_articles: Optional[int] = None,
     max_hf_records: Optional[int] = None,
+    sprakbanken_corpus: str = "all",
     run_wikipedia: bool = True,
     run_bbc: bool = True,
     run_huggingface: bool = True,
@@ -307,6 +308,7 @@ def run_all_pipelines(
         force: Force reprocessing of existing data
         max_bbc_articles: Maximum BBC articles to scrape
         max_hf_records: Maximum HuggingFace records to process
+        sprakbanken_corpus: Specific Språkbanken corpus ID or "all"
         run_wikipedia: Enable Wikipedia pipeline
         run_bbc: Enable BBC pipeline
         run_huggingface: Enable HuggingFace pipeline
@@ -340,7 +342,7 @@ def run_all_pipelines(
             ))
 
         if run_sprakbanken:
-            results.append(run_sprakbanken_task.submit(corpus_id="all", force=force))
+            results.append(run_sprakbanken_task.submit(corpus_id=sprakbanken_corpus, force=force))
 
         # Wait for all results
         completed_results = [result.result() for result in results]
@@ -363,7 +365,7 @@ def run_all_pipelines(
             ))
 
         if run_sprakbanken:
-            completed_results.append(run_sprakbanken_task(corpus_id="all", force=force))
+            completed_results.append(run_sprakbanken_task(corpus_id=sprakbanken_corpus, force=force))
 
     # Aggregate results
     successful = [r for r in completed_results if r["status"] == "success"]
@@ -439,6 +441,18 @@ def main():
         action="store_true",
         help="Automatically deploy dashboard after pipeline completes",
     )
+    parser.add_argument(
+        "--skip-sources",
+        nargs="+",
+        choices=["wikipedia", "bbc", "huggingface", "sprakbanken"],
+        help="Sources to skip when running 'all' pipelines",
+    )
+    parser.add_argument(
+        "--sprakbanken-corpus",
+        type=str,
+        default="all",
+        help="Specific Språkbanken corpus ID to download (default: all)",
+    )
 
     args = parser.parse_args()
 
@@ -449,10 +463,17 @@ def main():
         )
 
     if args.pipeline == "all":
+        # Determine which pipelines to run based on --skip-sources
+        skip_sources = args.skip_sources or []
         result = run_all_pipelines(
             force=args.force,
             max_bbc_articles=args.max_bbc_articles,
             max_hf_records=args.max_hf_records,
+            sprakbanken_corpus=args.sprakbanken_corpus,
+            run_wikipedia="wikipedia" not in skip_sources,
+            run_bbc="bbc" not in skip_sources,
+            run_huggingface="huggingface" not in skip_sources,
+            run_sprakbanken="sprakbanken" not in skip_sources,
             auto_deploy=args.auto_deploy,
         )
     elif args.pipeline == "wikipedia":
@@ -462,7 +483,9 @@ def main():
     elif args.pipeline == "huggingface":
         result = run_huggingface_pipeline(max_records=args.max_hf_records, force=args.force)
     elif args.pipeline == "sprakbanken":
-        result = run_sprakbanken_pipeline(force=args.force)
+        result = run_sprakbanken_pipeline(
+            corpus_id=args.sprakbanken_corpus, force=args.force
+        )
 
     # Print summary
     if isinstance(result, dict) and "successful" in result:
