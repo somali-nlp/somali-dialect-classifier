@@ -117,8 +117,15 @@ jobs:
                   try:
                       with open(metrics_file) as f:
                           data = json.load(f)
-                          snapshot = data.get("snapshot", {})
-                          stats = data.get("statistics", {})
+
+                          # Handle both v3.0 (nested) and legacy (top-level) schemas
+                          if "_schema_version" in data and data.get("_schema_version") == "3.0":
+                              legacy_metrics = data.get("legacy_metrics", {})
+                              snapshot = legacy_metrics.get("snapshot", {})
+                              stats = legacy_metrics.get("statistics", {})
+                          else:
+                              snapshot = data.get("snapshot", {})
+                              stats = data.get("statistics", {})
                           perf = stats.get("throughput", {})
                           quality = stats.get("text_length_stats", {})
 
