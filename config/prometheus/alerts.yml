@@ -1,0 +1,115 @@
+# Alert Rules for Somali NLP Data Pipelines
+# These rules define conditions that trigger alerts for pipeline health monitoring
+
+groups:
+  - name: pipeline_health
+    interval: 30s
+    rules:
+      # Pipeline execution alerts
+      - alert: PipelineNotRunning
+        expr: time() - pipeline_last_run_timestamp_seconds > 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pipeline {{ $labels.source }} has not run in 24+ hours"
+          description: "The {{ $labels.source }} pipeline last ran {{ $value | humanizeDuration }} ago."
+
+      - alert: HighFailureRate
+        expr: |
+          (
+            rate(pipeline_http_request_failures_total[15m]) /
+            (rate(pipeline_http_request_failures_total[15m]) + rate(pipeline_http_request_success_total[15m]))
+          ) > 0.2
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High failure rate for {{ $labels.source }}"
+          description: "Pipeline {{ $labels.source }} has a failure rate of {{ $value | humanizePercentage }} over the last 15 minutes."
+
+      - alert: LowQualityPassRate
+        expr: pipeline_quality_pass_rate < 0.5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low quality pass rate for {{ $labels.source }}"
+          description: "Pipeline {{ $labels.source }} quality pass rate is {{ $value | humanizePercentage }}. Many records are being filtered."
+
+      - alert: HighDeduplicationRate
+        expr: pipeline_deduplication_rate > 0.5
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: "High deduplication rate for {{ $labels.source }}"
+          description: "Pipeline {{ $labels.source }} is seeing {{ $value | humanizePercentage }} duplicate records."
+
+      # Performance alerts
+      - alert: SlowPipelineExecution
+        expr: pipeline_duration_seconds > 3600
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow pipeline execution for {{ $labels.source }}"
+          description: "Pipeline {{ $labels.source }} took {{ $value | humanizeDuration }} to complete."
+
+      - alert: SlowFetchTimes
+        expr: histogram_quantile(0.95, rate(pipeline_fetch_duration_seconds_bucket[10m])) > 5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow fetch times for {{ $labels.source }}"
+          description: "P95 fetch duration for {{ $labels.source }} is {{ $value }}s."
+
+      # Volume alerts
+      - alert: LowRecordThroughput
+        expr: rate(pipeline_records_written_total[1h]) < 10
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low record throughput for {{ $labels.source }}"
+          description: "Pipeline {{ $labels.source }} is writing only {{ $value }} records/second."
+
+      - alert: NoRecordsWritten
+        expr: increase(pipeline_records_written_total[2h]) == 0
+        for: 2h
+        labels:
+          severity: critical
+        annotations:
+          summary: "No records written for {{ $labels.source }}"
+          description: "Pipeline {{ $labels.source }} has not written any records in the last 2 hours."
+
+  - name: pipeline_errors
+    interval: 60s
+    rules:
+      - alert: HighErrorRate
+        expr: rate(pipeline_errors_total[15m]) > 10
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate for {{ $labels.source }}"
+          description: "Pipeline {{ $labels.source }} is experiencing {{ $value }} errors/second."
+
+      - alert: StreamConnectionFailure
+        expr: pipeline_stream_connection_success_rate < 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Stream connection failed for {{ $labels.source }}"
+          description: "Pipeline {{ $labels.source }} cannot connect to data stream."
+
+      - alert: FileExtractionFailure
+        expr: pipeline_file_extraction_success_rate < 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "File extraction issues for {{ $labels.source }}"
+          description: "Pipeline {{ $labels.source }} has file extraction success rate of {{ $value | humanizePercentage }}."

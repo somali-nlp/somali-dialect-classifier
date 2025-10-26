@@ -6,6 +6,8 @@ Provides:
 - QualityReporter for generating markdown reports
 - JSON export for metrics (Prometheus migration path)
 - Statistical analysis of pipeline performance
+- Layered metrics architecture for clear separation of concerns
+- Type-safe metric validation and factory functions
 
 PHASE 1 REFACTORING (2025-10-26):
 - Renamed metrics to be semantically accurate per pipeline type:
@@ -15,16 +17,33 @@ PHASE 1 REFACTORING (2025-10-26):
 - Fixed BBC test limit bug (only count attempted URLs, not discovered)
 - Added metric semantics metadata for clarity
 - Deprecated old 'fetch_success_rate' (backward compatible for 1 version)
+
+PHASE 2 REFACTORING (2025-10-26):
+- Implemented layered metrics architecture:
+  * Layer 1: Connectivity (can we reach the source?)
+  * Layer 2: Extraction (can we retrieve data? - pipeline-specific)
+  * Layer 3: Quality (does data meet standards?)
+  * Layer 4: Volume (how much data?)
+- Added pipeline-specific extraction metric classes (WebScraping, FileProcessing, Streaming)
+- Each layer has clear purpose and separation of concerns
+
+PHASE 3 REFACTORING (2025-10-26):
+- Added type safety with validation methods for each metric class
+- Created factory functions to prevent mixing metric types
+- Implemented Prometheus export format for observability
+- Added schema versioning for backward compatibility tracking
+- Validation catches logical inconsistencies before export
 """
 
 import json
 import time
+import logging
 from collections import Counter, defaultdict
 from dataclasses import dataclass, asdict, field
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional, Tuple, Union
 import statistics
 
 
@@ -39,6 +58,414 @@ class PipelineType(Enum):
     WEB_SCRAPING = "web_scraping"
     FILE_PROCESSING = "file_processing"
     STREAM_PROCESSING = "stream_processing"
+
+
+# ============================================================================
+# PHASE 2: LAYERED METRICS ARCHITECTURE
+# ============================================================================
+# Layer 1: Connectivity - Can we reach the source?
+# Layer 2: Extraction - Can we retrieve data? (pipeline-specific)
+# Layer 3: Quality - Does data meet standards?
+# Layer 4: Volume - How much data?
+# ============================================================================
+
+
+@dataclass
+class ConnectivityMetrics:
+    """
+    Layer 1: Source connectivity metrics.
+
+    Tracks whether we can establish a connection to the data source.
+    This is the first layer - without connectivity, nothing else matters.
+    """
+    connection_attempted: bool = False
+    connection_successful: bool = False
+    connection_duration_ms: float = 0.0
+    connection_error: Optional[str] = None
+
+    def validate(self) -> Tuple[bool, Optional[str]]:
+        """Validate logical consistency of connectivity metrics."""
+        if self.connection_successful and not self.connection_attempted:
+            return False, "Connection marked successful but not attempted"
+
+        if self.connection_duration_ms < 0:
+            return False, f"Connection duration cannot be negative: {self.connection_duration_ms}"
+
+        if self.connection_successful and self.connection_error:
+            return False, "Connection successful but error message present"
+
+        if not self.connection_successful and self.connection_attempted and not self.connection_error:
+            # Warning, not error - error message might not always be captured
+            pass
+
+        return True, None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return asdict(self)
+
+
+@dataclass
+class ExtractionMetrics:
+    """
+    Layer 2: Data extraction metrics (base class).
+
+    This is an abstract base class. Use pipeline-specific subclasses:
+    - WebScrapingExtractionMetrics for HTTP-based scraping
+    - FileProcessingExtractionMetrics for file I/O
+    - StreamProcessingExtractionMetrics for API streaming
+    """
+
+    def validate(self) -> Tuple[bool, Optional[str]]:
+        """Validate logical consistency. Subclasses should override."""
+        return True, None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return asdict(self)
+
+
+@dataclass
+class WebScrapingExtractionMetrics(ExtractionMetrics):
+    """
+    Extraction metrics for web scraping pipelines (BBC).
+
+    Tracks HTTP requests, response codes, and content extraction.
+    """
+    http_requests_attempted: int = 0
+    http_requests_successful: int = 0
+    http_status_distribution: Dict[int, int] = field(default_factory=dict)
+    pages_parsed: int = 0
+    content_extracted: int = 0
+
+    @property
+    def http_success_rate(self) -> float:
+        """Calculate HTTP request success rate."""
+        if self.http_requests_attempted == 0:
+            return 0.0
+        return self.http_requests_successful / self.http_requests_attempted
+
+    @property
+    def content_extraction_rate(self) -> float:
+        """Calculate content extraction success rate."""
+        if self.pages_parsed == 0:
+            return 0.0
+        return self.content_extracted / self.pages_parsed
+
+    def validate(self) -> Tuple[bool, Optional[str]]:
+        """Validate logical consistency of web scraping metrics."""
+        if self.http_requests_successful > self.http_requests_attempted:
+            return False, f"Successful requests ({self.http_requests_successful}) exceed attempted ({self.http_requests_attempted})"
+
+        if self.content_extracted > self.pages_parsed:
+            return False, f"Extracted content ({self.content_extracted}) exceeds parsed pages ({self.pages_parsed})"
+
+        if self.pages_parsed > self.http_requests_successful:
+            return False, f"Parsed pages ({self.pages_parsed}) exceed successful requests ({self.http_requests_successful})"
+
+        if self.http_success_rate < 0 or self.http_success_rate > 1:
+            return False, f"HTTP success rate out of bounds: {self.http_success_rate}"
+
+        # Validate status distribution
+        if self.http_status_distribution:
+            total_statuses = sum(self.http_status_distribution.values())
+            if total_statuses > self.http_requests_attempted:
+                return False, f"Status distribution total ({total_statuses}) exceeds attempted requests"
+
+        return True, None
+
+
+@dataclass
+class FileProcessingExtractionMetrics(ExtractionMetrics):
+    """
+    Extraction metrics for file processing pipelines (Wikipedia, Språkbanken).
+
+    Tracks file discovery, processing, and record extraction.
+    """
+    files_discovered: int = 0
+    files_processed: int = 0
+    files_failed: int = 0
+    records_extracted: int = 0
+    extraction_errors: Dict[str, int] = field(default_factory=dict)
+
+    @property
+    def file_extraction_rate(self) -> float:
+        """Calculate file extraction success rate."""
+        if self.files_discovered == 0:
+            return 0.0
+        return self.files_processed / self.files_discovered
+
+    @property
+    def extraction_efficiency(self) -> float:
+        """Calculate average records per file processed."""
+        if self.files_processed == 0:
+            return 0.0
+        return self.records_extracted / self.files_processed
+
+    def validate(self) -> Tuple[bool, Optional[str]]:
+        """Validate logical consistency of file processing metrics."""
+        if self.files_processed > self.files_discovered:
+            return False, f"Processed files ({self.files_processed}) exceed discovered ({self.files_discovered})"
+
+        if self.files_processed + self.files_failed > self.files_discovered:
+            return False, f"Processed + failed ({self.files_processed + self.files_failed}) exceed discovered ({self.files_discovered})"
+
+        if self.file_extraction_rate < 0 or self.file_extraction_rate > 1:
+            return False, f"File extraction rate out of bounds: {self.file_extraction_rate}"
+
+        if self.extraction_efficiency < 0:
+            return False, f"Extraction efficiency cannot be negative: {self.extraction_efficiency}"
+
+        return True, None
+
+
+@dataclass
+class StreamProcessingExtractionMetrics(ExtractionMetrics):
+    """
+    Extraction metrics for streaming pipelines (HuggingFace).
+
+    Tracks stream connection, batching, and record retrieval.
+    """
+    stream_opened: bool = False
+    total_records_available: Optional[int] = None
+    batches_attempted: int = 0
+    batches_completed: int = 0
+    batches_failed: int = 0
+    records_fetched: int = 0
+
+    @property
+    def stream_reliability(self) -> float:
+        """Calculate stream batch completion reliability."""
+        total = self.batches_completed + self.batches_failed
+        if total == 0:
+            return 0.0
+        return self.batches_completed / total
+
+    @property
+    def dataset_coverage_rate(self) -> Optional[float]:
+        """Calculate dataset coverage (if total size known)."""
+        if self.total_records_available is None or self.total_records_available == 0:
+            return None
+        return self.records_fetched / self.total_records_available
+
+    @property
+    def stream_completion_rate(self) -> float:
+        """Calculate batch completion rate."""
+        if self.batches_attempted == 0:
+            return 0.0
+        return self.batches_completed / self.batches_attempted
+
+    def validate(self) -> Tuple[bool, Optional[str]]:
+        """Validate logical consistency of stream processing metrics."""
+        if not self.stream_opened and self.records_fetched > 0:
+            return False, "Stream not opened but records were fetched"
+
+        if self.batches_completed > self.batches_attempted:
+            return False, f"Completed batches ({self.batches_completed}) exceed attempted ({self.batches_attempted})"
+
+        if self.batches_completed + self.batches_failed > self.batches_attempted:
+            return False, f"Completed + failed batches exceed attempted"
+
+        if self.stream_reliability < 0 or self.stream_reliability > 1:
+            return False, f"Stream reliability out of bounds: {self.stream_reliability}"
+
+        coverage = self.dataset_coverage_rate
+        if coverage is not None and (coverage < 0 or coverage > 1):
+            return False, f"Dataset coverage rate out of bounds: {coverage}"
+
+        return True, None
+
+
+@dataclass
+class QualityMetrics:
+    """
+    Layer 3: Data quality metrics (consistent across all pipelines).
+
+    Tracks quality filtering, validation, and filter reasons.
+    """
+    records_received: int = 0
+    records_passed_filters: int = 0
+    filter_breakdown: Dict[str, int] = field(default_factory=dict)
+
+    @property
+    def quality_pass_rate(self) -> float:
+        """Calculate quality filter pass rate."""
+        if self.records_received == 0:
+            return 0.0
+        return self.records_passed_filters / self.records_received
+
+    @property
+    def total_filtered(self) -> int:
+        """Calculate total records filtered out."""
+        return self.records_received - self.records_passed_filters
+
+    def validate(self) -> Tuple[bool, Optional[str]]:
+        """Validate logical consistency of quality metrics."""
+        if self.records_passed_filters > self.records_received:
+            return False, f"Passed records ({self.records_passed_filters}) exceed received ({self.records_received})"
+
+        if self.quality_pass_rate < 0 or self.quality_pass_rate > 1:
+            return False, f"Quality pass rate out of bounds: {self.quality_pass_rate}"
+
+        # Validate filter breakdown sums correctly
+        if self.filter_breakdown:
+            filter_sum = sum(self.filter_breakdown.values())
+            if filter_sum > self.total_filtered:
+                return False, f"Filter breakdown sum ({filter_sum}) exceeds total filtered ({self.total_filtered})"
+
+        return True, None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return asdict(self)
+
+
+@dataclass
+class VolumeMetrics:
+    """
+    Layer 4: Data volume metrics.
+
+    Tracks the amount of data processed, downloaded, and written.
+    """
+    records_written: int = 0
+    bytes_downloaded: int = 0
+    total_chars: int = 0
+
+    @property
+    def avg_record_size_bytes(self) -> float:
+        """Calculate average record size in bytes."""
+        if self.records_written == 0:
+            return 0.0
+        return self.bytes_downloaded / self.records_written
+
+    @property
+    def avg_record_length_chars(self) -> float:
+        """Calculate average record length in characters."""
+        if self.records_written == 0:
+            return 0.0
+        return self.total_chars / self.records_written
+
+    def validate(self) -> Tuple[bool, Optional[str]]:
+        """Validate logical consistency of volume metrics."""
+        if self.records_written < 0:
+            return False, f"Records written cannot be negative: {self.records_written}"
+
+        if self.bytes_downloaded < 0:
+            return False, f"Bytes downloaded cannot be negative: {self.bytes_downloaded}"
+
+        if self.total_chars < 0:
+            return False, f"Total chars cannot be negative: {self.total_chars}"
+
+        return True, None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return asdict(self)
+
+
+# ============================================================================
+# PHASE 3: TYPE SAFETY & FACTORY FUNCTIONS
+# ============================================================================
+
+
+def create_extraction_metrics(
+    pipeline_type: Union[str, PipelineType],
+    **kwargs
+) -> ExtractionMetrics:
+    """
+    Factory function to create appropriate extraction metrics for pipeline type.
+
+    Ensures type safety by preventing mixing of metric types across pipelines.
+
+    Args:
+        pipeline_type: Pipeline type (enum or string)
+        **kwargs: Metric-specific fields
+
+    Returns:
+        Appropriate ExtractionMetrics subclass instance
+
+    Raises:
+        ValueError: If pipeline type is unknown
+
+    Example:
+        >>> metrics = create_extraction_metrics(
+        ...     PipelineType.WEB_SCRAPING,
+        ...     http_requests_attempted=100,
+        ...     http_requests_successful=95
+        ... )
+        >>> assert isinstance(metrics, WebScrapingExtractionMetrics)
+    """
+    # Convert enum to string if needed
+    if isinstance(pipeline_type, PipelineType):
+        pipeline_type = pipeline_type.value
+
+    if pipeline_type == PipelineType.WEB_SCRAPING.value:
+        return WebScrapingExtractionMetrics(**kwargs)
+    elif pipeline_type == PipelineType.FILE_PROCESSING.value:
+        return FileProcessingExtractionMetrics(**kwargs)
+    elif pipeline_type == PipelineType.STREAM_PROCESSING.value:
+        return StreamProcessingExtractionMetrics(**kwargs)
+    else:
+        raise ValueError(f"Unknown pipeline type: {pipeline_type}. Must be one of: {[t.value for t in PipelineType]}")
+
+
+def validate_layered_metrics(
+    connectivity: ConnectivityMetrics,
+    extraction: ExtractionMetrics,
+    quality: QualityMetrics,
+    volume: VolumeMetrics
+) -> Tuple[bool, List[str]]:
+    """
+    Validate all layered metrics for consistency.
+
+    Args:
+        connectivity: Layer 1 metrics
+        extraction: Layer 2 metrics
+        quality: Layer 3 metrics
+        volume: Layer 4 metrics
+
+    Returns:
+        Tuple of (all_valid, list_of_errors)
+
+    Example:
+        >>> valid, errors = validate_layered_metrics(conn, extr, qual, vol)
+        >>> if not valid:
+        ...     print(f"Validation failed: {errors}")
+    """
+    errors = []
+
+    # Validate each layer
+    for layer_name, layer_metrics in [
+        ("Connectivity", connectivity),
+        ("Extraction", extraction),
+        ("Quality", quality),
+        ("Volume", volume)
+    ]:
+        is_valid, error = layer_metrics.validate()
+        if not is_valid:
+            errors.append(f"{layer_name}: {error}")
+
+    # Cross-layer validation
+    # Volume records written should not exceed quality records passed
+    if volume.records_written > quality.records_passed_filters:
+        errors.append(
+            f"Volume: Records written ({volume.records_written}) exceeds "
+            f"quality-passed records ({quality.records_passed_filters})"
+        )
+
+    # If no connection, extraction metrics should be zero
+    if not connectivity.connection_successful:
+        if isinstance(extraction, WebScrapingExtractionMetrics):
+            if extraction.http_requests_successful > 0:
+                errors.append("Connectivity failed but HTTP requests succeeded")
+        elif isinstance(extraction, FileProcessingExtractionMetrics):
+            if extraction.files_processed > 0:
+                errors.append("Connectivity failed but files were processed")
+        elif isinstance(extraction, StreamProcessingExtractionMetrics):
+            if extraction.stream_opened:
+                errors.append("Connectivity failed but stream was opened")
+
+    return len(errors) == 0, errors
 
 
 @dataclass
@@ -518,40 +945,458 @@ class MetricsCollector:
             near_duplicates=self.near_duplicate_count
         )
 
-    def export_json(self, output_path: Path):
-        """Export metrics to JSON file."""
+    def get_layered_metrics(self) -> Dict[str, Any]:
+        """
+        Export metrics in layered structure (Phase 2).
+
+        Returns a dictionary with four layers:
+        1. Connectivity: Can we reach the source?
+        2. Extraction: Can we retrieve data? (pipeline-specific)
+        3. Quality: Does data meet standards?
+        4. Volume: How much data?
+
+        Returns:
+            Dictionary with layered metrics that can be serialized to JSON
+
+        Example:
+            >>> collector = MetricsCollector("test", "BBC", PipelineType.WEB_SCRAPING)
+            >>> layered = collector.get_layered_metrics()
+            >>> assert "connectivity" in layered
+            >>> assert "extraction" in layered
+            >>> assert isinstance(layered["extraction"], WebScrapingExtractionMetrics)
+        """
+        snapshot = self.get_snapshot()
+        pipeline_type = snapshot.pipeline_type
+
+        # Layer 1: Connectivity
+        # Calculate connection duration from fetch durations if available
+        conn_duration_ms = 0.0
+        if self.timings["fetch_durations_ms"]:
+            conn_duration_ms = self.timings["fetch_durations_ms"][0] if len(self.timings["fetch_durations_ms"]) > 0 else 0.0
+
+        connectivity = ConnectivityMetrics(
+            connection_attempted=True,  # If we have any data, connection was attempted
+            connection_successful=True,  # Assume success if we have any successful operations
+            connection_duration_ms=conn_duration_ms,
+            connection_error=None
+        )
+
+        # Determine if connection was actually successful based on pipeline type
+        if pipeline_type == PipelineType.WEB_SCRAPING.value:
+            connectivity.connection_successful = snapshot.urls_fetched > 0 or snapshot.urls_processed > 0
+            if not connectivity.connection_successful and snapshot.error_types:
+                connectivity.connection_error = list(snapshot.error_types.keys())[0] if snapshot.error_types else None
+        elif pipeline_type == PipelineType.FILE_PROCESSING.value:
+            connectivity.connection_successful = snapshot.files_processed > 0 or snapshot.records_extracted > 0
+        elif pipeline_type == PipelineType.STREAM_PROCESSING.value:
+            connectivity.connection_successful = snapshot.datasets_opened > 0 or snapshot.records_fetched > 0
+
+        # Layer 2: Extraction (pipeline-specific)
+        extraction: ExtractionMetrics
+        if pipeline_type == PipelineType.WEB_SCRAPING.value:
+            total_attempted = snapshot.urls_fetched + snapshot.urls_failed
+            http_success_count = snapshot.http_status_codes.get(200, 0)
+            if http_success_count == 0:
+                # Fallback: assume all fetched URLs were successful
+                http_success_count = snapshot.urls_fetched
+
+            extraction = WebScrapingExtractionMetrics(
+                http_requests_attempted=total_attempted,
+                http_requests_successful=http_success_count,
+                http_status_distribution=snapshot.http_status_codes,
+                pages_parsed=snapshot.urls_fetched,
+                content_extracted=snapshot.urls_processed
+            )
+
+        elif pipeline_type == PipelineType.FILE_PROCESSING.value:
+            extraction = FileProcessingExtractionMetrics(
+                files_discovered=snapshot.files_discovered,
+                files_processed=snapshot.files_processed,
+                files_failed=snapshot.files_discovered - snapshot.files_processed if snapshot.files_discovered > 0 else 0,
+                records_extracted=snapshot.records_extracted,
+                extraction_errors=snapshot.error_types
+            )
+
+        elif pipeline_type == PipelineType.STREAM_PROCESSING.value:
+            extraction = StreamProcessingExtractionMetrics(
+                stream_opened=snapshot.datasets_opened > 0,
+                total_records_available=None,  # Unknown unless tracked
+                batches_attempted=snapshot.batches_completed,  # We only track completed for now
+                batches_completed=snapshot.batches_completed,
+                batches_failed=0,  # Not currently tracked
+                records_fetched=snapshot.records_fetched
+            )
+
+        else:
+            # Fallback for unknown pipeline types
+            extraction = ExtractionMetrics()
+
+        # Layer 3: Quality
+        # Calculate records received based on pipeline type
+        if pipeline_type == PipelineType.WEB_SCRAPING.value:
+            records_received = snapshot.urls_fetched - snapshot.urls_deduplicated
+        elif pipeline_type == PipelineType.FILE_PROCESSING.value:
+            records_received = snapshot.records_extracted - (snapshot.duplicate_hashes + snapshot.near_duplicates)
+        elif pipeline_type == PipelineType.STREAM_PROCESSING.value:
+            records_received = snapshot.records_fetched - (snapshot.duplicate_hashes + snapshot.near_duplicates)
+        else:
+            records_received = snapshot.records_written
+
+        quality = QualityMetrics(
+            records_received=max(records_received, 0),  # Ensure non-negative
+            records_passed_filters=snapshot.records_written,
+            filter_breakdown=snapshot.filter_reasons
+        )
+
+        # Layer 4: Volume
+        total_chars = sum(snapshot.text_lengths) if snapshot.text_lengths else 0
+
+        volume = VolumeMetrics(
+            records_written=snapshot.records_written,
+            bytes_downloaded=snapshot.bytes_downloaded,
+            total_chars=total_chars
+        )
+
+        return {
+            "connectivity": connectivity.to_dict(),
+            "extraction": extraction.to_dict(),
+            "quality": quality.to_dict(),
+            "volume": volume.to_dict()
+        }
+
+    def export_json(self, output_path: Path, include_layered: bool = True):
+        """
+        Export metrics to JSON file with schema versioning (Phase 3).
+
+        Args:
+            output_path: Path to save JSON file
+            include_layered: Whether to include Phase 2 layered metrics (default: True)
+
+        The exported JSON includes:
+        - Schema version for backward compatibility tracking
+        - Pipeline type metadata
+        - Layered metrics (Phase 2) - optional
+        - Legacy flat metrics (Phase 1) - for backward compatibility
+        - Validation warnings if metrics are inconsistent
+        """
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         snapshot = self.get_snapshot()
+        stats = snapshot.calculate_statistics()
+
+        # Build export data with schema versioning
         metrics_data = {
-            "snapshot": snapshot.to_dict(),
-            "statistics": snapshot.calculate_statistics()
+            "_schema_version": "3.0",  # Phase 2/3 schema
+            "_pipeline_type": snapshot.pipeline_type,
+            "_timestamp": snapshot.timestamp,
+            "_run_id": snapshot.run_id,
+            "_source": snapshot.source,
         }
 
+        # Add layered metrics if requested
+        if include_layered:
+            layered = self.get_layered_metrics()
+            metrics_data["layered_metrics"] = layered
+
+            # Validate layered metrics
+            try:
+                # Reconstruct metric objects for validation
+                connectivity = ConnectivityMetrics(**layered["connectivity"])
+                extraction_dict = layered["extraction"]
+                extraction = create_extraction_metrics(snapshot.pipeline_type, **extraction_dict)
+                quality = QualityMetrics(**layered["quality"])
+                volume = VolumeMetrics(**layered["volume"])
+
+                is_valid, errors = validate_layered_metrics(connectivity, extraction, quality, volume)
+                if not is_valid:
+                    metrics_data["_validation_warnings"] = errors
+                    # Log warnings
+                    logger = logging.getLogger(__name__)
+                    for error in errors:
+                        logger.warning(f"Metric validation warning: {error}")
+            except Exception as e:
+                metrics_data["_validation_error"] = str(e)
+
+        # Add legacy metrics for backward compatibility
+        metrics_data["legacy_metrics"] = {
+            "snapshot": snapshot.to_dict(),
+            "statistics": stats
+        }
+
+        # Write to file
         with open(output_path, 'w') as f:
             json.dump(metrics_data, f, indent=2, default=str)
 
     def export_prometheus(self, output_path: Path):
         """
-        Export metrics in Prometheus format.
+        Export metrics in Prometheus text format (Phase 3).
 
-        Note: This is a placeholder for future Prometheus integration.
+        Exports metrics in the standard Prometheus exposition format:
+        https://prometheus.io/docs/instrumenting/exposition_formats/
+
+        The format includes:
+        - HELP text describing each metric
+        - TYPE declarations (counter, gauge, histogram)
+        - Metric values with labels
+
+        Labels include:
+        - source: Data source name
+        - pipeline_type: Type of pipeline (web_scraping, file_processing, stream_processing)
+        - run_id: Unique run identifier
+
+        Example Prometheus scrape configuration:
+            scrape_configs:
+              - job_name: 'somali-nlp-pipeline'
+                static_configs:
+                  - targets: ['localhost:9090']
+                file_sd_configs:
+                  - files:
+                    - '/path/to/metrics/*.prom'
         """
-        # Prometheus text format example:
-        # metric_name{label1="value1",label2="value2"} metric_value timestamp
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         snapshot = self.get_snapshot()
+        stats = snapshot.calculate_statistics()
+        layered = self.get_layered_metrics()
         lines = []
 
-        # Add counters
-        lines.append(f'# HELP urls_discovered Total URLs discovered')
-        lines.append(f'# TYPE urls_discovered counter')
-        lines.append(f'urls_discovered{{source="{self.source}",run_id="{self.run_id}"}} {snapshot.urls_discovered}')
+        # Common labels for all metrics
+        labels = f'source="{self.source}",pipeline_type="{snapshot.pipeline_type}",run_id="{self.run_id}"'
 
-        # Add more metrics...
-        # This is a skeleton for future implementation
+        # ===================================================================
+        # CONNECTIVITY METRICS (Layer 1)
+        # ===================================================================
+        connectivity = layered["connectivity"]
 
+        lines.extend([
+            "# HELP pipeline_connection_attempted Whether connection to data source was attempted",
+            "# TYPE pipeline_connection_attempted gauge",
+            f'pipeline_connection_attempted{{{labels}}} {1 if connectivity["connection_attempted"] else 0}',
+            "",
+            "# HELP pipeline_connection_successful Whether connection to data source succeeded",
+            "# TYPE pipeline_connection_successful gauge",
+            f'pipeline_connection_successful{{{labels}}} {1 if connectivity["connection_successful"] else 0}',
+            "",
+            "# HELP pipeline_connection_duration_ms Connection establishment duration in milliseconds",
+            "# TYPE pipeline_connection_duration_ms gauge",
+            f'pipeline_connection_duration_ms{{{labels}}} {connectivity["connection_duration_ms"]}',
+            ""
+        ])
+
+        # ===================================================================
+        # EXTRACTION METRICS (Layer 2 - Pipeline-specific)
+        # ===================================================================
+        extraction = layered["extraction"]
+
+        if snapshot.pipeline_type == PipelineType.WEB_SCRAPING.value:
+            # Web scraping extraction metrics
+            lines.extend([
+                "# HELP pipeline_http_requests_attempted Total HTTP requests attempted",
+                "# TYPE pipeline_http_requests_attempted counter",
+                f'pipeline_http_requests_attempted{{{labels}}} {extraction["http_requests_attempted"]}',
+                "",
+                "# HELP pipeline_http_requests_successful Total successful HTTP requests (2xx)",
+                "# TYPE pipeline_http_requests_successful counter",
+                f'pipeline_http_requests_successful{{{labels}}} {extraction["http_requests_successful"]}',
+                "",
+                "# HELP pipeline_http_success_rate HTTP request success rate (0-1)",
+                "# TYPE pipeline_http_success_rate gauge",
+                f'pipeline_http_success_rate{{{labels}}} {stats.get("http_request_success_rate", 0)}',
+                "",
+                "# HELP pipeline_pages_parsed Total pages parsed",
+                "# TYPE pipeline_pages_parsed counter",
+                f'pipeline_pages_parsed{{{labels}}} {extraction["pages_parsed"]}',
+                "",
+                "# HELP pipeline_content_extracted Total content items extracted",
+                "# TYPE pipeline_content_extracted counter",
+                f'pipeline_content_extracted{{{labels}}} {extraction["content_extracted"]}',
+                ""
+            ])
+
+            # HTTP status distribution
+            for status_code, count in extraction.get("http_status_distribution", {}).items():
+                lines.extend([
+                    f'pipeline_http_status_total{{status_code="{status_code}",{labels}}} {count}'
+                ])
+            if extraction.get("http_status_distribution"):
+                lines.append("")
+
+        elif snapshot.pipeline_type == PipelineType.FILE_PROCESSING.value:
+            # File processing extraction metrics
+            lines.extend([
+                "# HELP pipeline_files_discovered Total files discovered",
+                "# TYPE pipeline_files_discovered counter",
+                f'pipeline_files_discovered{{{labels}}} {extraction["files_discovered"]}',
+                "",
+                "# HELP pipeline_files_processed Total files successfully processed",
+                "# TYPE pipeline_files_processed counter",
+                f'pipeline_files_processed{{{labels}}} {extraction["files_processed"]}',
+                "",
+                "# HELP pipeline_files_failed Total files that failed processing",
+                "# TYPE pipeline_files_failed counter",
+                f'pipeline_files_failed{{{labels}}} {extraction["files_failed"]}',
+                "",
+                "# HELP pipeline_file_extraction_rate File extraction success rate (0-1)",
+                "# TYPE pipeline_file_extraction_rate gauge",
+                f'pipeline_file_extraction_rate{{{labels}}} {stats.get("file_extraction_success_rate", 0)}',
+                "",
+                "# HELP pipeline_records_extracted Total records extracted from files",
+                "# TYPE pipeline_records_extracted counter",
+                f'pipeline_records_extracted{{{labels}}} {extraction["records_extracted"]}',
+                "",
+                "# HELP pipeline_extraction_efficiency Average records per file",
+                "# TYPE pipeline_extraction_efficiency gauge",
+                f'pipeline_extraction_efficiency{{{labels}}} {extraction["records_extracted"] / max(extraction["files_processed"], 1)}',
+                ""
+            ])
+
+        elif snapshot.pipeline_type == PipelineType.STREAM_PROCESSING.value:
+            # Stream processing extraction metrics
+            lines.extend([
+                "# HELP pipeline_stream_opened Whether stream was successfully opened",
+                "# TYPE pipeline_stream_opened gauge",
+                f'pipeline_stream_opened{{{labels}}} {1 if extraction["stream_opened"] else 0}',
+                "",
+                "# HELP pipeline_batches_attempted Total stream batches attempted",
+                "# TYPE pipeline_batches_attempted counter",
+                f'pipeline_batches_attempted{{{labels}}} {extraction["batches_attempted"]}',
+                "",
+                "# HELP pipeline_batches_completed Total stream batches completed",
+                "# TYPE pipeline_batches_completed counter",
+                f'pipeline_batches_completed{{{labels}}} {extraction["batches_completed"]}',
+                "",
+                "# HELP pipeline_batches_failed Total stream batches failed",
+                "# TYPE pipeline_batches_failed counter",
+                f'pipeline_batches_failed{{{labels}}} {extraction["batches_failed"]}',
+                "",
+                "# HELP pipeline_stream_reliability Batch completion reliability (0-1)",
+                "# TYPE pipeline_stream_reliability gauge",
+                f'pipeline_stream_reliability{{{labels}}} {stats.get("stream_connection_success_rate", 0)}',
+                "",
+                "# HELP pipeline_records_fetched Total records fetched from stream",
+                "# TYPE pipeline_records_fetched counter",
+                f'pipeline_records_fetched{{{labels}}} {extraction["records_fetched"]}',
+                ""
+            ])
+
+            # Dataset coverage if available
+            if extraction.get("total_records_available"):
+                coverage = extraction["records_fetched"] / extraction["total_records_available"]
+                lines.extend([
+                    "# HELP pipeline_dataset_coverage_rate Dataset coverage rate (0-1)",
+                    "# TYPE pipeline_dataset_coverage_rate gauge",
+                    f'pipeline_dataset_coverage_rate{{{labels}}} {coverage}',
+                    ""
+                ])
+
+        # ===================================================================
+        # QUALITY METRICS (Layer 3 - Common to all pipelines)
+        # ===================================================================
+        quality = layered["quality"]
+
+        lines.extend([
+            "# HELP pipeline_records_received Total records received for quality filtering",
+            "# TYPE pipeline_records_received counter",
+            f'pipeline_records_received{{{labels}}} {quality["records_received"]}',
+            "",
+            "# HELP pipeline_records_passed_filters Total records that passed quality filters",
+            "# TYPE pipeline_records_passed_filters counter",
+            f'pipeline_records_passed_filters{{{labels}}} {quality["records_passed_filters"]}',
+            "",
+            "# HELP pipeline_quality_pass_rate Quality filter pass rate (0-1)",
+            "# TYPE pipeline_quality_pass_rate gauge",
+            f'pipeline_quality_pass_rate{{{labels}}} {stats.get("quality_pass_rate", 0)}',
+            "",
+            "# HELP pipeline_records_filtered Total records filtered out",
+            "# TYPE pipeline_records_filtered counter",
+            f'pipeline_records_filtered{{{labels}}} {quality["records_received"] - quality["records_passed_filters"]}',
+            ""
+        ])
+
+        # Filter breakdown by reason
+        for reason, count in quality.get("filter_breakdown", {}).items():
+            # Sanitize reason for Prometheus label
+            safe_reason = reason.replace('"', '\\"').replace('\n', ' ')
+            lines.append(f'pipeline_filter_reason_total{{reason="{safe_reason}",{labels}}} {count}')
+        if quality.get("filter_breakdown"):
+            lines.append("")
+
+        # ===================================================================
+        # VOLUME METRICS (Layer 4 - Common to all pipelines)
+        # ===================================================================
+        volume = layered["volume"]
+
+        lines.extend([
+            "# HELP pipeline_records_written_total Total records written to output",
+            "# TYPE pipeline_records_written_total counter",
+            f'pipeline_records_written_total{{{labels}}} {volume["records_written"]}',
+            "",
+            "# HELP pipeline_bytes_downloaded_total Total bytes downloaded",
+            "# TYPE pipeline_bytes_downloaded_total counter",
+            f'pipeline_bytes_downloaded_total{{{labels}}} {volume["bytes_downloaded"]}',
+            "",
+            "# HELP pipeline_total_chars_total Total characters processed",
+            "# TYPE pipeline_total_chars_total counter",
+            f'pipeline_total_chars_total{{{labels}}} {volume["total_chars"]}',
+            "",
+            "# HELP pipeline_avg_record_size_bytes Average record size in bytes",
+            "# TYPE pipeline_avg_record_size_bytes gauge",
+            f'pipeline_avg_record_size_bytes{{{labels}}} {volume["bytes_downloaded"] / max(volume["records_written"], 1)}',
+            "",
+            "# HELP pipeline_avg_record_length_chars Average record length in characters",
+            "# TYPE pipeline_avg_record_length_chars gauge",
+            f'pipeline_avg_record_length_chars{{{labels}}} {volume["total_chars"] / max(volume["records_written"], 1)}',
+            ""
+        ])
+
+        # ===================================================================
+        # DEDUPLICATION METRICS
+        # ===================================================================
+        lines.extend([
+            "# HELP pipeline_deduplication_rate Deduplication rate (0-1)",
+            "# TYPE pipeline_deduplication_rate gauge",
+            f'pipeline_deduplication_rate{{{labels}}} {stats.get("deduplication_rate", 0)}',
+            "",
+            "# HELP pipeline_unique_hashes Total unique document hashes",
+            "# TYPE pipeline_unique_hashes counter",
+            f'pipeline_unique_hashes{{{labels}}} {snapshot.unique_hashes}',
+            "",
+            "# HELP pipeline_duplicate_hashes Total duplicate documents",
+            "# TYPE pipeline_duplicate_hashes counter",
+            f'pipeline_duplicate_hashes{{{labels}}} {snapshot.duplicate_hashes}',
+            ""
+        ])
+
+        # ===================================================================
+        # PERFORMANCE METRICS
+        # ===================================================================
+        if "fetch_duration_stats" in stats:
+            fetch_stats = stats["fetch_duration_stats"]
+            lines.extend([
+                "# HELP pipeline_fetch_duration_ms_mean Mean fetch duration in milliseconds",
+                "# TYPE pipeline_fetch_duration_ms_mean gauge",
+                f'pipeline_fetch_duration_ms_mean{{{labels}}} {fetch_stats["mean"]}',
+                "",
+                "# HELP pipeline_fetch_duration_ms_p95 95th percentile fetch duration",
+                "# TYPE pipeline_fetch_duration_ms_p95 gauge",
+                f'pipeline_fetch_duration_ms_p95{{{labels}}} {fetch_stats["p95"]}',
+                ""
+            ])
+
+        if "throughput" in stats:
+            throughput = stats["throughput"]
+            lines.extend([
+                "# HELP pipeline_records_per_minute Record processing throughput",
+                "# TYPE pipeline_records_per_minute gauge",
+                f'pipeline_records_per_minute{{{labels}}} {throughput["records_per_minute"]}',
+                "",
+                "# HELP pipeline_bytes_per_second Data download throughput",
+                "# TYPE pipeline_bytes_per_second gauge",
+                f'pipeline_bytes_per_second{{{labels}}} {throughput["bytes_per_second"]}',
+                ""
+            ])
+
+        # Write to file
         with open(output_path, 'w') as f:
             f.write('\n'.join(lines))
 

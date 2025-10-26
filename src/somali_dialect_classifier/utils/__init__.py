@@ -18,7 +18,27 @@ from .logging_utils import (
 from .metrics import (
     MetricsCollector,
     QualityReporter,
-    MetricSnapshot
+    MetricSnapshot,
+    PipelineType,
+    # Phase 2/3: Layered metrics
+    ConnectivityMetrics,
+    ExtractionMetrics,
+    WebScrapingExtractionMetrics,
+    FileProcessingExtractionMetrics,
+    StreamProcessingExtractionMetrics,
+    QualityMetrics,
+    VolumeMetrics,
+    create_extraction_metrics,
+    validate_layered_metrics
+)
+
+from .aggregation import (
+    calculate_volume_weighted_quality,
+    calculate_weighted_harmonic_mean,
+    aggregate_compatible_metrics,
+    validate_metric_compatibility,
+    calculate_aggregate_summary,
+    AggregationMethod
 )
 
 __all__ = [
@@ -33,8 +53,26 @@ __all__ = [
     "log_event",
     "Timer",
     "setup_logging",
-    # Metrics
+    # Metrics (Phase 1)
     "MetricsCollector",
     "QualityReporter",
-    "MetricSnapshot"
+    "MetricSnapshot",
+    "PipelineType",
+    # Metrics (Phase 2/3: Layered architecture)
+    "ConnectivityMetrics",
+    "ExtractionMetrics",
+    "WebScrapingExtractionMetrics",
+    "FileProcessingExtractionMetrics",
+    "StreamProcessingExtractionMetrics",
+    "QualityMetrics",
+    "VolumeMetrics",
+    "create_extraction_metrics",
+    "validate_layered_metrics",
+    # Aggregation
+    "calculate_volume_weighted_quality",
+    "calculate_weighted_harmonic_mean",
+    "aggregate_compatible_metrics",
+    "validate_metric_compatibility",
+    "calculate_aggregate_summary",
+    "AggregationMethod"
 ]
