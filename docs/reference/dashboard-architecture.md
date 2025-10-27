@@ -1,9 +1,9 @@
-# Dashboard Technical Documentation
+# Dashboard Architecture Reference
 
 **Technical reference for the Somali Dialect Classifier dashboard architecture, metrics pipeline, and data flow.**
 
 **Last Updated**: 2025-10-27
-**Audience**: Software engineers, DevOps engineers, system architects
+**Audience**: Software engineers, DevOps engineers, system architects, contributors
 
 ---
 
@@ -1544,11 +1544,11 @@ class RunComparator {
 
 ## Related Documentation
 
-- [Dashboard User Guide](dashboard-user-guide.md) - Interpreting dashboard metrics
-- [Dashboard Advanced Features](dashboard-advanced-features.md) - Detailed feature documentation
-- [Dashboard Configuration Guide](dashboard-configuration.md) - Customization options
-- [Metrics Reference](../reference/metrics.md) - Complete metrics API
-- [Filter Reference](../reference/filters.md) - Understanding quality filters
+- [Dashboard User Guide](../guides/dashboard-user-guide.md) - Interpreting dashboard metrics
+- [Dashboard Advanced Features](../guides/dashboard-advanced-features.md) - Detailed feature documentation
+- [Dashboard Configuration Guide](../guides/dashboard-configuration.md) - Customization options
+- [Metrics Reference](metrics.md) - Complete metrics API
+- [Filter Reference](filters.md) - Understanding quality filters
 - [Deployment Guide](../operations/deployment.md) - Deployment procedures
 
 ---

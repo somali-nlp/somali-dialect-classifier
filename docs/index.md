@@ -35,20 +35,9 @@ Start here for practical usage:
 - **[Portfolio Guide](guides/portfolio.md)** - **⭐ Showcasing this project in your portfolio, resume, and interviews**
 - **[Documentation Guide](guides/documentation-guide.md)** - Standards for writing and maintaining documentation
 
-#### Dashboard Documentation
+#### 📊 Dashboard - Metrics & Monitoring
 
-Comprehensive documentation for the interactive metrics dashboard:
-
-- **[Dashboard Guide](guides/dashboard.md)** - **⭐ Main dashboard deployment and usage guide**
-- **[Dashboard User Guide](guides/dashboard-user-guide.md)** - Interpreting metrics, visualizations, and insights
-- **[Dashboard Technical Architecture](guides/dashboard-technical.md)** - System design, data flow, and technical details
-- **[Dashboard Advanced Features](guides/dashboard-advanced-features.md)** - Sankey diagrams, ridge plots, dark mode, comparison tools
-- **[Dashboard Maintenance](guides/dashboard-maintenance.md)** - Troubleshooting, updates, and operational procedures
-- **[Dashboard Developer Onboarding](guides/dashboard-developer-onboarding.md)** - Contributing to dashboard development
-
-#### Data Quality & Filters
-
-- **[Filter Breakdown](guides/filter-breakdown.md)** - Understanding filter statistics and data quality metrics
+- **[Dashboard Guide](guides/dashboard.md)** - **⭐ Complete comprehensive guide: deployment, usage, metrics interpretation, and advanced features (Sankey diagrams, ridge plots, bullet charts, export)**
 
 ### 📖 Overview - Understanding the System
 
@@ -66,6 +55,7 @@ Task-oriented guides for common workflows:
 - **[BBC Integration](howto/bbc-integration.md)** - Ethical web scraping, topic enrichment, rate limiting
 - **[HuggingFace Integration](howto/huggingface-integration.md)** - Streaming datasets, manifests, JSONL batching (MC4)
 - **[Språkbanken Integration](howto/sprakbanken-integration.md)** - All 23 corpora, domain mapping, metadata extraction
+- **[Understanding Filter Statistics](howto/understanding-filter-statistics.md)** - Understanding quality filter impact and optimization
 - **[Custom Filters](howto/custom-filters.md)** - Writing and registering quality filters
 - **[Configuration](howto/configuration.md)** - Environment setup and config management
 - **[Troubleshooting](howto/troubleshooting.md)** - Common issues and solutions
@@ -75,6 +65,7 @@ Task-oriented guides for common workflows:
 Technical specifications and API reference:
 
 - **[API Reference](reference/api.md)** - Complete API documentation with examples
+- **[Dashboard Architecture](reference/dashboard-architecture.md)** - Dashboard architecture and metrics pipeline
 - **[Metrics Reference](reference/metrics.md)** - Pipeline metrics collection and interpretation
 - **[Metrics Schema](reference/metrics-schema.md)** - Metrics schema specification and contract
 - **[Silver Schema](reference/silver-schema.md)** - Silver dataset schema specification
@@ -87,6 +78,7 @@ Production deployment and operations:
 
 - **[Deployment](operations/deployment.md)** - Production deployment guide
 - **[Testing](operations/testing.md)** - Testing strategies and patterns
+- **[Dashboard Maintenance](operations/dashboard-maintenance.md)** - Dashboard maintenance and troubleshooting
 - **[CI/CD Dashboard](operations/cicd-dashboard.md)** - Continuous integration and deployment for dashboard
 - **[CI/CD Quick Reference](operations/cicd-quick-reference.md)** - Quick reference for dashboard operations and workflows
 - **[MLOps Playbook](../operations/mlops-playbook.md)** - MLflow, monitoring (coming soon)
@@ -350,6 +342,8 @@ See [Documentation Guide](guides/documentation-guide.md) for comprehensive writi
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.3.0 | 2025-10-27 | Final dashboard consolidation: merged all dashboard guides into single comprehensive guide |
+| 2.2.0 | 2025-10-27 | Dashboard documentation consolidation: merged guides, moved technical docs to reference/, relocated maintenance to operations/, cleaned advanced features |
 | 2.1.0 | 2025-10-27 | Added comprehensive dashboard docs, CI/CD operations, metrics schema, filter breakdown, and future ML pipeline documentation structure |
 | 2.0.0 | 2025-10-16 | Documentation restructure - hierarchical organization |
 | 1.0.0 | 2025-01-15 | Initial documentation release |

@@ -1,6 +1,6 @@
-# Filter Breakdown Explanation
+# Understanding Filter Statistics
 
-**Deep dive into understanding quality filter impact and optimization.**
+**How to interpret quality filter impact and optimize thresholds**
 
 **Last Updated**: 2025-10-27
 **Audience**: Data scientists, ML engineers, pipeline developers
@@ -744,7 +744,7 @@ Manual check: 88% acceptable (good)
 - [Filters API Reference](../reference/filters.md) - Complete filter documentation
 - [Custom Filters Guide](../howto/custom-filters.md) - Creating new filters
 - [Metrics Reference](../reference/metrics.md) - Understanding quality metrics
-- [Dashboard User Guide](dashboard-user-guide.md) - Interpreting dashboard
+- [Dashboard User Guide](../guides/dashboard-user-guide.md) - Interpreting dashboard
 
 ---
 
