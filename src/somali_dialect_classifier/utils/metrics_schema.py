@@ -33,7 +33,7 @@ class ExtractionMetrics(BaseModel):
     pages_parsed: int = Field(ge=0)
     content_extracted: int = Field(ge=0)
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="allow")
 
     @field_validator("http_requests_successful")
     @classmethod
@@ -119,9 +119,16 @@ class ThroughputMetrics(BaseModel):
 class Statistics(BaseModel):
     """Phase 3 statistics section."""
 
-    http_request_success_rate: float = Field(ge=0, le=1)
-    content_extraction_success_rate: float = Field(ge=0, le=1)
-    http_request_failure_rate: float = Field(ge=0, le=1)
+    # Pipeline-specific success rates (at least one must be present)
+    http_request_success_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    content_extraction_success_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    http_request_failure_rate: Optional[float] = Field(default=None, ge=0, le=1)
+
+    # Alternative success rates for different pipeline types
+    file_extraction_success_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    stream_connection_success_rate: Optional[float] = Field(default=None, ge=0, le=1)
+
+    # Common quality metrics
     quality_pass_rate: float = Field(ge=0, le=1)
     deduplication_rate: float = Field(ge=0, le=1)
     fetch_duration_stats: Optional[FetchDurationStats] = None
@@ -264,7 +271,7 @@ class ConsolidatedMetric(BaseModel):
     fetch_duration_stats: Optional[Dict[str, Any]] = None
     filter_breakdown: Optional[Dict[str, int]] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="allow")
 
 
 class ConsolidatedMetricsOutput(BaseModel):
@@ -289,6 +296,44 @@ class DashboardSummary(BaseModel):
     last_update: str
     total_runs: int = Field(ge=0)
     source_breakdown: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+
+    model_config = ConfigDict(extra="allow")
+
+
+class AdvancedVisualizationData(BaseModel):
+    """Schema for advanced visualization data (Sankey, Ridge, Time-series)."""
+
+    # Sankey flow data
+    sankey_available: bool = False
+    sankey_last_updated: Optional[str] = None
+
+    # Ridge plot data
+    ridge_available: bool = False
+    ridge_last_updated: Optional[str] = None
+
+    # Time-series data
+    timeseries_available: bool = False
+    timeseries_last_updated: Optional[str] = None
+
+    # Comparison data
+    comparison_available: bool = False
+    comparison_last_updated: Optional[str] = None
+
+    model_config = ConfigDict(extra="allow")
+
+
+class EnhancedDashboardMetadata(BaseModel):
+    """Enhanced metadata for dashboard with visualization flags."""
+
+    generated_at: str
+    schema_version: str = "4.0"
+    metrics_count: int = Field(ge=0)
+    sources_count: int = Field(ge=0)
+    visualizations: AdvancedVisualizationData
+
+    # Cache information
+    cache_key: Optional[str] = None
+    cache_ttl_seconds: Optional[int] = 3600  # 1 hour default
 
     model_config = ConfigDict(extra="allow")
 

@@ -12,6 +12,16 @@ mkdir -p _site
 # Copy the enhanced template
 cp dashboard/templates/index.html _site/index.html
 
+# Copy advanced features JavaScript and CSS files
+echo "Copying advanced features files..."
+cp dashboard/theme-manager.js _site/theme-manager.js
+cp dashboard/filter-manager.js _site/filter-manager.js
+cp dashboard/export-manager.js _site/export-manager.js
+cp dashboard/advanced-charts.js _site/advanced-charts.js
+cp dashboard/comparison-mode.js _site/comparison-mode.js
+cp dashboard/advanced-features.css _site/advanced-features.css
+echo "✓ Copied advanced features files"
+
 # Copy data files
 mkdir -p _site/data
 
@@ -43,6 +53,15 @@ fi
 
 if [ -d "data/reports" ]; then
     cp -r data/reports _site/data/ 2>/dev/null || true
+fi
+
+# Generate advanced visualization data (Sankey flow, text distributions)
+# Note: This script expects _site/data to exist and will create the files there
+if [ -f "scripts/generate_advanced_viz_data.py" ]; then
+    echo "Generating advanced visualization data..."
+    python scripts/generate_advanced_viz_data.py || echo "⚠ Warning: Advanced viz data generation failed"
+else
+    echo "⚠ Warning: scripts/generate_advanced_viz_data.py not found"
 fi
 
 echo "✓ Site built successfully in _site/"

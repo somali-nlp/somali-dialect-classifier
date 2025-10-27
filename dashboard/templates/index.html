@@ -22,6 +22,9 @@
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js" defer></script>
 
+    <!-- Advanced Features CSS -->
+    <link rel="stylesheet" href="advanced-features.css">
+
     <style>
         /* ========================================
            CSS CUSTOM PROPERTIES (DESIGN TOKENS)
@@ -2609,6 +2612,19 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Advanced Charts: Ridge Plot -->
+                    <div class="chart-card" style="grid-column: 1 / -1; margin-top: 2rem;">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Text Length Distribution by Source (Ridge Plot)</h3>
+                            <p style="font-size: var(--text-sm); color: var(--gray-600); margin-top: 0.5rem;">
+                                Overlapping density curves showing text length distributions across all sources
+                            </p>
+                        </div>
+                        <div class="chart-canvas">
+                            <div id="ridgePlotContainer" style="min-height: 400px;"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Quality Metrics Summary -->
@@ -2717,6 +2733,19 @@
 
                 <!-- Performance Charts -->
                 <div class="charts-section">
+                    <!-- Advanced Charts: Sankey Diagram (Data Flow) -->
+                    <div class="chart-card" style="grid-column: 1 / -1; margin-bottom: 2rem;">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Data Pipeline Flow (Sankey Diagram)</h3>
+                            <p style="font-size: var(--text-sm); color: var(--gray-600); margin-top: 0.5rem;">
+                                Visualizing data flow through discovery, extraction, quality filtering, and final output stages
+                            </p>
+                        </div>
+                        <div class="chart-canvas">
+                            <div id="sankeyContainer" style="min-height: 500px;"></div>
+                        </div>
+                    </div>
+
                     <!-- Chart 1: Performance Efficiency (Bullet Graph) -->
                     <div class="chart-card" style="grid-column: 1 / -1;">
                         <div class="chart-canvas">
@@ -4431,6 +4460,54 @@
         } else {
             init();
         }
+
+        // Initialize advanced features after dashboard loads
+        window.addEventListener('load', function() {
+            // Initialize advanced features with loaded metrics
+            if (metricsData && metricsData.metrics) {
+                // Create advanced charts
+                if (window.SankeyChart) {
+                    SankeyChart.create('sankeyContainer', metricsData.metrics);
+                }
+
+                if (window.RidgePlot) {
+                    RidgePlot.create('ridgePlotContainer', metricsData.metrics);
+                }
+
+                // Initialize FilterManager
+                if (window.FilterManager) {
+                    FilterManager.init(metricsData.metrics);
+
+                    // Listen for filter changes and update charts
+                    FilterManager.onFilterChange((filteredMetrics) => {
+                        // Update advanced charts with filtered data
+                        if (window.SankeyChart) {
+                            SankeyChart.create('sankeyContainer', filteredMetrics);
+                        }
+                        if (window.RidgePlot) {
+                            RidgePlot.create('ridgePlotContainer', filteredMetrics);
+                        }
+                        // Optionally re-render other charts here
+                    });
+                }
+
+                // Initialize ComparisonMode
+                if (window.ComparisonMode) {
+                    ComparisonMode.init(metricsData.metrics);
+                }
+            }
+
+            // Emit dashboardReady event
+            window.dispatchEvent(new CustomEvent('dashboardReady'));
+            console.log('✓ Advanced features initialized');
+        });
     </script>
+
+    <!-- Advanced Features JavaScript -->
+    <script src="theme-manager.js"></script>
+    <script src="filter-manager.js"></script>
+    <script src="export-manager.js"></script>
+    <script src="advanced-charts.js"></script>
+    <script src="comparison-mode.js"></script>
 </body>
 </html>

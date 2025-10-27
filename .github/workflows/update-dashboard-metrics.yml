@@ -1,0 +1,121 @@
+name: Update Dashboard Metrics
+
+on:
+  # Run on push to main when metrics files change
+  push:
+    branches:
+      - main
+    paths:
+      - 'data/metrics/**/*.json'
+      - 'scripts/generate_enhanced_metrics.py'
+
+  # Run on schedule (every 6 hours)
+  schedule:
+    - cron: '0 */6 * * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      force_refresh:
+        description: 'Force cache refresh'
+        required: false
+        type: boolean
+        default: false
+      skip_visualizations:
+        description: 'Skip visualization generation'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  update-metrics:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[config]"
+
+      - name: Generate enhanced metrics
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.force_refresh }}" = "true" ]; then
+            ARGS="$ARGS --force-refresh"
+          fi
+          if [ "${{ github.event.inputs.skip_visualizations }}" = "true" ]; then
+            ARGS="$ARGS --skip-visualizations"
+          fi
+
+          python scripts/generate_enhanced_metrics.py $ARGS --compress
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet _site/data/; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add _site/data/
+          git commit -m "chore(metrics): update dashboard metrics and visualizations"
+          git push
+
+      - name: Upload metrics artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: dashboard-metrics
+          path: |
+            _site/data/*.json
+            _site/data/*.json.gz
+          retention-days: 30
+
+      - name: Report metrics summary
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          echo "## Dashboard Metrics Updated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "_site/data/summary.json" ]; then
+            TOTAL_RECORDS=$(jq '.total_records' _site/data/summary.json)
+            TOTAL_RUNS=$(jq '.total_runs' _site/data/summary.json)
+            AVG_SUCCESS=$(jq '.avg_success_rate' _site/data/summary.json)
+            SOURCES=$(jq -r '.sources | join(", ")' _site/data/summary.json)
+
+            echo "- **Total Records**: $TOTAL_RECORDS" >> $GITHUB_STEP_SUMMARY
+            echo "- **Total Runs**: $TOTAL_RUNS" >> $GITHUB_STEP_SUMMARY
+            echo "- **Avg Success Rate**: $AVG_SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "- **Sources**: $SOURCES" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Deploy to GitHub Pages
+        if: steps.check_changes.outputs.changes == 'true'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          publish_branch: gh-pages
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'chore(dashboard): update metrics data'

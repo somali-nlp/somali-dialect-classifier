@@ -71,3 +71,5 @@ dashboard/index-advanced.html
 
 # TikTok integration testing directory
 tiktok_apify_test/
+node_modules/
+*-snapshots/

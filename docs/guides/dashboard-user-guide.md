@@ -514,7 +514,231 @@ Decision: Adopt new threshold
 
 ---
 
-## FAQ
+## Advanced Features
+
+### Interactive Data Exploration
+
+#### Source Comparison Table
+
+The dashboard includes an interactive comparison table that provides detailed side-by-side metrics for all data sources.
+
+**Features**:
+- Sortable columns (click header to sort)
+- Color-coded success rates
+- At-a-glance quality metrics
+- Pipeline type indicators
+
+**How to Use**:
+1. Scroll to "Source Comparison Table" section
+2. Click column headers to sort by that metric
+3. Hover over rows for highlighting
+4. Compare metrics across sources
+
+**Interpretation**:
+```
+Source    Records  Success Rate  Quality Pass  Dedup Rate
+Wiki      9,623    95.2%        63.6%         0.0%
+BBC       4,250    94.7%        85.3%         45.2%
+HF        50,000   98.1%        72.4%         12.5%
+Språk     1,450    99.2%        91.8%         5.3%
+
+→ Wikipedia: High volume, lower quality rate (many stubs)
+→ BBC: Moderate volume, high quality, high dedup (frequent updates)
+→ HuggingFace: Highest volume, good quality
+→ Språkbanken: Lowest volume, highest quality (curated)
+```
+
+#### Performance Bullet Charts
+
+Bullet charts provide a compact way to compare actual performance against targets and thresholds.
+
+**What They Show**:
+- **Dark bar**: Actual performance
+- **Light bar**: Target/benchmark
+- **Color zones**: Poor (red), Acceptable (yellow), Excellent (green)
+
+**Reading Example**:
+```
+Wikipedia Performance Score
+|████░░░░░░| 65%
+Poor    OK    Excellent
+[0-50] [50-80] [80-100]
+
+→ Currently in "OK" range
+→ Above minimum threshold but below excellent
+→ Room for improvement
+```
+
+**Use Cases**:
+- Quick performance assessment
+- Identify underperforming sources
+- Track progress toward quality goals
+- Set realistic benchmarks
+
+#### Chart Export Functionality
+
+Export visualizations for reports, presentations, or offline analysis.
+
+**Supported Formats**:
+- PNG (high resolution)
+- PDF (vector graphics - planned)
+- CSV (raw data - planned)
+
+**How to Export**:
+1. Hover over any chart
+2. Click "Export PNG" button in top-right corner
+3. Image downloads automatically
+4. Use in reports or presentations
+
+**Export Tips**:
+- Charts export at 2x resolution for clarity
+- Includes title and legend
+- Background is transparent (for dark slides)
+- Filename includes timestamp
+
+### Date Range Filtering
+
+Filter dashboard data by time period to focus on specific intervals.
+
+**Available Presets**:
+- Last 7 days
+- Last 30 days
+- Last 90 days
+- Year to date
+- All time
+- Custom range
+
+**How to Use**:
+1. Click "Date Range" dropdown in top navigation
+2. Select preset or choose "Custom Range"
+3. For custom: select start and end dates
+4. Click "Apply"
+5. Dashboard updates all visualizations
+
+**Use Cases**:
+```
+Last 7 Days:
+  → Monitor recent pipeline activity
+  → Quick health check
+  → Detect immediate issues
+
+Last 90 Days:
+  → Identify trends
+  → Compare source performance
+  → Monthly reporting
+
+Custom Range:
+  → Investigate specific incident
+  → Compare before/after changes
+  → Quarter/year-end reports
+```
+
+### Dark Mode
+
+Switch between light and dark themes for comfortable viewing in any environment.
+
+**How to Toggle**:
+- Click moon/sun icon in top-right navigation
+- Or press `Ctrl+Shift+D` (keyboard shortcut)
+
+**Dark Mode Features**:
+- Reduces eye strain in low-light environments
+- Optimized chart colors for dark backgrounds
+- Preserves data readability
+- Saves preference in browser
+
+**Accessibility**:
+- Meets WCAG AA contrast requirements
+- Color schemes tested for colorblind users
+- Automatic adjustment based on system preference
+
+### Pipeline Run Comparison
+
+Compare metrics between different pipeline runs to track improvements or investigate degradations.
+
+**How to Use**:
+1. Click "Compare Runs" button
+2. Select two or more runs from the list
+3. View side-by-side metrics
+4. Toggle between absolute and percentage difference views
+
+**Comparison Metrics**:
+- Records collected (delta)
+- Success rate change
+- Quality pass rate change
+- Performance improvements
+- Filter efficiency changes
+
+**Example Analysis**:
+```
+Comparing Wikipedia Runs:
+  Run 1 (Oct 20): 9,000 records, 58% quality
+  Run 2 (Oct 27): 9,623 records, 63.6% quality
+
+Delta Analysis:
+  ↑ +623 records (+6.9%)
+  ↑ +5.6% quality pass rate
+  → Filter threshold adjusted successfully
+```
+
+### Advanced Filters
+
+Apply multiple filters to drill down into specific data subsets.
+
+**Available Filters**:
+- **Source**: Filter by data source (Wikipedia, BBC, etc.)
+- **Pipeline Type**: web_scraping, file_processing, stream_processing
+- **Success Rate Range**: Only show runs within success rate bounds
+- **Date Range**: Time-based filtering
+- **Quality Threshold**: Minimum quality pass rate
+- **Record Volume**: Minimum/maximum record counts
+
+**How to Use**:
+1. Click "Filters" panel in sidebar
+2. Select filter criteria
+3. Combine multiple filters
+4. Click "Apply Filters"
+5. Click "Reset" to clear all filters
+
+**Filter Combinations**:
+```
+Example 1: Identify Low-Quality Runs
+  - Success Rate Range: 0-70%
+  - Date Range: Last 30 days
+  → Shows problematic runs requiring investigation
+
+Example 2: Compare Scraping Performance
+  - Pipeline Type: web_scraping
+  - Source: BBC
+  - Date Range: Last 90 days
+  → Analyze web scraping trends
+```
+
+### Keyboard Shortcuts
+
+Navigate the dashboard efficiently using keyboard shortcuts.
+
+**Navigation**:
+- `Alt+1` through `Alt+6`: Jump to main sections
+- `Tab`: Navigate between interactive elements
+- `Enter/Space`: Activate buttons and toggles
+- `/`: Focus search box (if available)
+- `Esc`: Close modals or cancel operations
+
+**Data Operations**:
+- `Ctrl+E`: Export current view
+- `Ctrl+F`: Open filters panel
+- `Ctrl+R`: Refresh data
+- `Ctrl+Shift+D`: Toggle dark mode
+- `Ctrl+Shift+C`: Open comparison mode
+
+**Accessibility**:
+- All features accessible via keyboard
+- Skip links for screen readers
+- Focus indicators visible
+- Logical tab order
+
+### FAQ
 
 ### General Questions
 
@@ -589,11 +813,41 @@ somali-orchestrate --pipeline all
 A: Yes, filters are configurable in each processor's `_register_filters()` method. See [Custom Filters Guide](../howto/custom-filters.md).
 
 **Q: How do I export dashboard data?**
-A: Use the export script:
-```bash
-python scripts/export_dashboard_data.py
-```
-Data is saved to `_site/data/all_metrics.json`.
+A: Yes, multiple ways:
+1. **Individual charts**: Click "Export PNG" button on any chart
+2. **Raw data**: Use the export script:
+   ```bash
+   python scripts/export_dashboard_data.py
+   ```
+   Data is saved to `_site/data/all_metrics.json`
+3. **CSV export**: Click "Export CSV" in the data table (planned)
+
+### Advanced Features FAQ
+
+**Q: How do I use dark mode?**
+A: Click the moon/sun icon in the top-right navigation, or press `Ctrl+Shift+D`. Your preference is automatically saved.
+
+**Q: Can I compare different pipeline runs?**
+A: Yes, click the "Compare Runs" button to select multiple runs and view side-by-side metrics with delta calculations.
+
+**Q: How do date range filters work?**
+A: Click "Date Range" in the navigation to select a preset (Last 7/30/90 days) or choose a custom range. All charts update automatically.
+
+**Q: What keyboard shortcuts are available?**
+A: Press `?` to view all shortcuts, or see the "Keyboard Shortcuts" section in this guide. Common ones:
+- `Ctrl+E`: Export current view
+- `Ctrl+F`: Open filters
+- `Ctrl+R`: Refresh data
+- `Ctrl+Shift+D`: Toggle dark mode
+
+**Q: How do I filter the dashboard data?**
+A: Click "Filters" in the sidebar to apply filters by source, pipeline type, success rate, date range, or record volume. Multiple filters can be combined.
+
+**Q: Can I export charts for presentations?**
+A: Yes, hover over any chart and click "Export PNG". Charts are exported at high resolution (2x) with transparent backgrounds for easy insertion into slides.
+
+**Q: What are bullet charts and how do I read them?**
+A: Bullet charts show performance against targets. The dark bar is actual performance, and color zones indicate Poor (red), Acceptable (yellow), and Excellent (green) ranges. See the "Performance Bullet Charts" section for details.
 
 ---
 

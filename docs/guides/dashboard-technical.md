@@ -919,9 +919,634 @@ python -m http.server 8000
 
 ---
 
+## Advanced Visualization Components
+
+### Sankey Diagram Architecture
+
+**Purpose**: Visualize data flow through the pipeline from discovery through quality filtering to final storage.
+
+**Data Structure**:
+
+```javascript
+const sankeyData = {
+    nodes: [
+        { id: 'discovered', label: 'Records Discovered' },
+        { id: 'extracted', label: 'Extracted' },
+        { id: 'passed_filters', label: 'Passed Filters' },
+        { id: 'duplicates', label: 'Duplicates' },
+        { id: 'written', label: 'Written to Storage' }
+    ],
+    links: [
+        { source: 'discovered', target: 'extracted', value: 15136 },
+        { source: 'extracted', target: 'passed_filters', value: 9623 },
+        { source: 'extracted', target: 'duplicates', value: 0 },
+        { source: 'passed_filters', target: 'written', value: 9623 }
+    ]
+};
+```
+
+**Implementation**:
+
+```javascript
+function renderSankeyDiagram(data) {
+    // Convert metrics to Sankey format
+    const nodes = buildNodes(data);
+    const links = buildLinks(data);
+
+    // Use D3-sankey or Chart.js Sankey plugin
+    const sankey = d3.sankey()
+        .nodeWidth(15)
+        .nodePadding(10)
+        .extent([[1, 1], [width - 1, height - 6]]);
+
+    const graph = sankey({
+        nodes: nodes,
+        links: links
+    });
+
+    // Render SVG
+    renderSankeyNodes(graph.nodes);
+    renderSankeyLinks(graph.links);
+}
+
+function buildNodes(metricsData) {
+    const totalDiscovered = metricsData.files_discovered || metricsData.urls_discovered;
+    const totalExtracted = metricsData.records_extracted;
+    const totalPassedFilters = metricsData.records_passed_filters;
+    const totalDuplicates = metricsData.duplicate_records;
+    const totalWritten = metricsData.records_written;
+
+    return [
+        { id: 0, name: `Discovered\n${totalDiscovered.toLocaleString()}` },
+        { id: 1, name: `Extracted\n${totalExtracted.toLocaleString()}` },
+        { id: 2, name: `Quality Check\n${totalPassedFilters.toLocaleString()}` },
+        { id: 3, name: `Duplicates\n${totalDuplicates.toLocaleString()}` },
+        { id: 4, name: `Stored\n${totalWritten.toLocaleString()}` }
+    ];
+}
+```
+
+**Use Cases**:
+- Identify bottlenecks in the pipeline
+- Visualize filter impact
+- Understand deduplication efficiency
+- Communicate pipeline flow to stakeholders
+
+### Ridge Plot Implementation
+
+**Purpose**: Show distribution of text lengths, processing times, or quality scores across different sources.
+
+**Binning Algorithm**:
+
+```python
+def create_ridge_plot_data(metrics_data, metric_name='text_lengths'):
+    """
+    Create ridge plot data with proper binning.
+
+    Args:
+        metrics_data: List of metric dictionaries
+        metric_name: Name of the metric to plot
+
+    Returns:
+        Dictionary with source names and their distributions
+    """
+    ridge_data = {}
+
+    for source in get_unique_sources(metrics_data):
+        source_metrics = filter_by_source(metrics_data, source)
+        values = []
+
+        for metric in source_metrics:
+            values.extend(metric.get(metric_name, []))
+
+        if not values:
+            continue
+
+        # Create histogram bins
+        hist, bin_edges = np.histogram(values, bins=50, density=True)
+
+        # Smooth using kernel density estimation
+        kde = gaussian_kde(values)
+        x_range = np.linspace(min(values), max(values), 200)
+        density = kde(x_range)
+
+        ridge_data[source] = {
+            'x': x_range.tolist(),
+            'y': density.tolist(),
+            'mean': np.mean(values),
+            'median': np.median(values),
+            'std': np.std(values)
+        }
+
+    return ridge_data
+```
+
+**JavaScript Rendering**:
+
+```javascript
+function renderRidgePlot(ridgeData, containerId) {
+    const sources = Object.keys(ridgeData);
+    const container = document.getElementById(containerId);
+
+    // Create layered ridge plot
+    sources.forEach((source, index) => {
+        const layer = document.createElement('div');
+        layer.className = 'ridge-plot-layer';
+        layer.style.marginTop = `${index * -20}px`; // Overlap layers
+
+        // Create mini area chart for this source
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ridgeData[source].x,
+                datasets: [{
+                    label: source,
+                    data: ridgeData[source].y,
+                    fill: true,
+                    backgroundColor: `${SOURCE_COLORS[source]}40`,
+                    borderColor: SOURCE_COLORS[source],
+                    borderWidth: 2,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { display: index === sources.length - 1 }, // Only show x-axis on bottom layer
+                    y: { display: false }
+                },
+                plugins: {
+                    legend: { display: true, position: 'left' }
+                }
+            }
+        });
+
+        container.appendChild(layer);
+    });
+}
+```
+
+### Bullet Chart Technical Details
+
+**Data Format**:
+
+```javascript
+const bulletChartData = {
+    sources: ['Wikipedia', 'BBC', 'HuggingFace', 'Språkbanken'],
+    data: [
+        {
+            source: 'Wikipedia',
+            actual: 63.6,        // Quality pass rate
+            target: 70.0,        // Target quality
+            ranges: [50, 80, 100] // Poor, Acceptable, Excellent
+        },
+        {
+            source: 'BBC',
+            actual: 85.3,
+            target: 80.0,
+            ranges: [50, 80, 100]
+        }
+    ]
+};
+```
+
+**Implementation Using Chart.js**:
+
+```javascript
+function renderBulletChart(bulletData, canvasId) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+
+    // Transform bullet data into horizontal bar chart with background ranges
+    const datasets = [
+        {
+            label: 'Excellent',
+            data: bulletData.data.map(d => d.ranges[2]),
+            backgroundColor: '#d1f4d1',
+            barPercentage: 1.0,
+            categoryPercentage: 1.0
+        },
+        {
+            label: 'Good',
+            data: bulletData.data.map(d => d.ranges[1]),
+            backgroundColor: '#fff4cc',
+            barPercentage: 1.0,
+            categoryPercentage: 1.0
+        },
+        {
+            label: 'Poor',
+            data: bulletData.data.map(d => d.ranges[0]),
+            backgroundColor: '#f4cccc',
+            barPercentage: 1.0,
+            categoryPercentage: 1.0
+        },
+        {
+            label: 'Performance Score',
+            data: bulletData.data.map(d => d.actual),
+            backgroundColor: '#0176D3',
+            barThickness: 20,
+            order: 0 // Render on top
+        }
+    ];
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: bulletData.sources,
+            datasets: datasets
+        },
+        options: {
+            indexAxis: 'y', // Horizontal
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    filter: (item) => ['Performance Score', 'Excellent', 'Good'].includes(item.text)
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    max: 100
+                },
+                y: {
+                    stacked: false
+                }
+            }
+        }
+    });
+}
+```
+
+### Dark Mode CSS Architecture
+
+**CSS Custom Properties Strategy**:
+
+```css
+:root {
+    /* Light mode (default) */
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F4F4F4;
+    --text-primary: #080707;
+    --text-secondary: #333333;
+    --border-color: #EBEBEB;
+    --card-bg: #FFFFFF;
+    --chart-grid: #E5E7EB;
+}
+
+[data-theme="dark"] {
+    /* Dark mode overrides */
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --text-primary: #f5f5f5;
+    --text-secondary: #d4d4d4;
+    --border-color: #404040;
+    --card-bg: #252525;
+    --chart-grid: #404040;
+
+    /* Chart colors adjusted for dark backgrounds */
+    --wikipedia: #60a5fa;
+    --bbc: #f87171;
+    --huggingface: #34d399;
+    --sprakbanken: #fbbf24;
+}
+```
+
+**JavaScript Theme Toggle**:
+
+```javascript
+class ThemeManager {
+    constructor() {
+        this.theme = localStorage.getItem('dashboard-theme') || 'light';
+        this.applyTheme();
+        this.setupToggle();
+    }
+
+    applyTheme() {
+        document.documentElement.setAttribute('data-theme', this.theme);
+        this.updateChartColors();
+    }
+
+    toggleTheme() {
+        this.theme = this.theme === 'light' ? 'dark' : 'light';
+        localStorage.setItem('dashboard-theme', this.theme);
+        this.applyTheme();
+    }
+
+    updateChartColors() {
+        // Update all Chart.js instances with new colors
+        Chart.defaults.color = getComputedStyle(document.documentElement)
+            .getPropertyValue('--text-primary');
+        Chart.defaults.borderColor = getComputedStyle(document.documentElement)
+            .getPropertyValue('--chart-grid');
+
+        // Redraw all charts
+        Chart.instances.forEach(chart => chart.update());
+    }
+
+    setupToggle() {
+        const toggle = document.getElementById('theme-toggle');
+        toggle.addEventListener('click', () => this.toggleTheme());
+
+        // Keyboard shortcut
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                this.toggleTheme();
+            }
+        });
+    }
+}
+
+// Initialize on page load
+const themeManager = new ThemeManager();
+```
+
+### Export Functionality Architecture
+
+**Export Formats Support**:
+
+```javascript
+class ChartExporter {
+    constructor() {
+        this.supportedFormats = ['png', 'pdf', 'svg', 'csv'];
+    }
+
+    exportChart(chartId, format = 'png') {
+        const chart = Chart.getChart(chartId);
+
+        switch (format) {
+            case 'png':
+                return this.exportPNG(chart);
+            case 'pdf':
+                return this.exportPDF(chart);
+            case 'csv':
+                return this.exportCSV(chart);
+            default:
+                throw new Error(`Unsupported format: ${format}`);
+        }
+    }
+
+    exportPNG(chart) {
+        // Get high-resolution image
+        const url = chart.toBase64Image('image/png', 2.0); // 2x resolution
+
+        // Create download link
+        const link = document.createElement('a');
+        link.download = `${chart.canvas.id}_${new Date().toISOString()}.png`;
+        link.href = url;
+        link.click();
+    }
+
+    exportPDF(chart) {
+        // Use jsPDF library
+        const pdf = new jsPDF('landscape');
+        const imgData = chart.toBase64Image();
+
+        pdf.addImage(imgData, 'PNG', 10, 10, 280, 150);
+        pdf.save(`${chart.canvas.id}_${new Date().toISOString()}.pdf`);
+    }
+
+    exportCSV(chart) {
+        // Extract data from chart
+        const labels = chart.data.labels;
+        const datasets = chart.data.datasets;
+
+        // Build CSV
+        let csv = 'Label,' + datasets.map(ds => ds.label).join(',') + '\n';
+
+        labels.forEach((label, index) => {
+            const row = [label];
+            datasets.forEach(ds => {
+                row.push(ds.data[index]);
+            });
+            csv += row.join(',') + '\n';
+        });
+
+        // Download
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `${chart.canvas.id}_data.csv`;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+}
+
+const exporter = new ChartExporter();
+
+// Add export buttons to all charts
+function addExportButtons() {
+    document.querySelectorAll('canvas').forEach(canvas => {
+        const container = canvas.parentElement;
+        const buttonGroup = document.createElement('div');
+        buttonGroup.className = 'chart-export-buttons';
+
+        ['PNG', 'PDF', 'CSV'].forEach(format => {
+            const button = document.createElement('button');
+            button.textContent = `Export ${format}`;
+            button.onclick = () => exporter.exportChart(canvas.id, format.toLowerCase());
+            buttonGroup.appendChild(button);
+        });
+
+        container.insertBefore(buttonGroup, canvas);
+    });
+}
+```
+
+### Filter State Management
+
+**State Management Pattern**:
+
+```javascript
+class DashboardFilterState {
+    constructor() {
+        this.filters = {
+            sources: [],
+            pipelineTypes: [],
+            dateRange: { start: null, end: null },
+            successRateRange: { min: 0, max: 100 },
+            qualityThreshold: 0,
+            recordVolumeRange: { min: 0, max: Infinity }
+        };
+
+        this.listeners = [];
+    }
+
+    updateFilter(filterName, value) {
+        this.filters[filterName] = value;
+        this.notifyListeners();
+    }
+
+    applyFilters(data) {
+        let filtered = data;
+
+        // Apply source filter
+        if (this.filters.sources.length > 0) {
+            filtered = filtered.filter(m =>
+                this.filters.sources.includes(m.source)
+            );
+        }
+
+        // Apply pipeline type filter
+        if (this.filters.pipelineTypes.length > 0) {
+            filtered = filtered.filter(m =>
+                this.filters.pipelineTypes.includes(m.pipeline_type)
+            );
+        }
+
+        // Apply date range filter
+        if (this.filters.dateRange.start && this.filters.dateRange.end) {
+            filtered = filtered.filter(m => {
+                const timestamp = new Date(m.timestamp);
+                return timestamp >= this.filters.dateRange.start &&
+                       timestamp <= this.filters.dateRange.end;
+            });
+        }
+
+        // Apply success rate filter
+        filtered = filtered.filter(m => {
+            const rate = m.success_rate * 100;
+            return rate >= this.filters.successRateRange.min &&
+                   rate <= this.filters.successRateRange.max;
+        });
+
+        // Apply quality threshold
+        filtered = filtered.filter(m =>
+            m.quality_pass_rate * 100 >= this.filters.qualityThreshold
+        );
+
+        // Apply record volume filter
+        filtered = filtered.filter(m =>
+            m.records_written >= this.filters.recordVolumeRange.min &&
+            m.records_written <= this.filters.recordVolumeRange.max
+        );
+
+        return filtered;
+    }
+
+    subscribe(callback) {
+        this.listeners.push(callback);
+    }
+
+    notifyListeners() {
+        this.listeners.forEach(callback => callback(this.filters));
+    }
+
+    reset() {
+        this.filters = {
+            sources: [],
+            pipelineTypes: [],
+            dateRange: { start: null, end: null },
+            successRateRange: { min: 0, max: 100 },
+            qualityThreshold: 0,
+            recordVolumeRange: { min: 0, max: Infinity }
+        };
+        this.notifyListeners();
+    }
+}
+
+// Usage
+const filterState = new DashboardFilterState();
+
+filterState.subscribe((filters) => {
+    // Reload dashboard with filtered data
+    const filteredData = filterState.applyFilters(allMetricsData);
+    updateAllCharts(filteredData);
+});
+```
+
+### Comparison Mode Implementation
+
+**Comparison Engine**:
+
+```javascript
+class RunComparator {
+    constructor(metricsData) {
+        this.allRuns = metricsData.metrics;
+    }
+
+    compareRuns(runIds) {
+        const runs = runIds.map(id =>
+            this.allRuns.find(r => r.run_id === id)
+        );
+
+        return {
+            runs: runs,
+            deltas: this.calculateDeltas(runs),
+            summary: this.generateSummary(runs)
+        };
+    }
+
+    calculateDeltas(runs) {
+        if (runs.length < 2) return null;
+
+        const baseline = runs[0];
+        const deltas = [];
+
+        for (let i = 1; i < runs.length; i++) {
+            const current = runs[i];
+
+            deltas.push({
+                run_id: current.run_id,
+                records_delta: {
+                    absolute: current.records_written - baseline.records_written,
+                    percentage: ((current.records_written - baseline.records_written) / baseline.records_written * 100)
+                },
+                success_rate_delta: {
+                    absolute: current.success_rate - baseline.success_rate,
+                    percentage: ((current.success_rate - baseline.success_rate) / baseline.success_rate * 100)
+                },
+                quality_delta: {
+                    absolute: current.quality_pass_rate - baseline.quality_pass_rate,
+                    percentage: ((current.quality_pass_rate - baseline.quality_pass_rate) / baseline.quality_pass_rate * 100)
+                }
+            });
+        }
+
+        return deltas;
+    }
+
+    generateSummary(runs) {
+        return {
+            totalRuns: runs.length,
+            dateRange: {
+                start: new Date(Math.min(...runs.map(r => new Date(r.timestamp)))),
+                end: new Date(Math.max(...runs.map(r => new Date(r.timestamp))))
+            },
+            improvements: this.identifyImprovements(runs),
+            degradations: this.identifyDegradations(runs)
+        };
+    }
+
+    identifyImprovements(runs) {
+        const deltas = this.calculateDeltas(runs);
+        return deltas?.filter(d =>
+            d.quality_delta.absolute > 0 ||
+            d.success_rate_delta.absolute > 0
+        ) || [];
+    }
+
+    identifyDegradations(runs) {
+        const deltas = this.calculateDeltas(runs);
+        return deltas?.filter(d =>
+            d.quality_delta.absolute < 0 ||
+            d.success_rate_delta.absolute < 0
+        ) || [];
+    }
+}
+```
+
+---
+
 ## Related Documentation
 
 - [Dashboard User Guide](dashboard-user-guide.md) - Interpreting dashboard metrics
+- [Dashboard Advanced Features](dashboard-advanced-features.md) - Detailed feature documentation
+- [Dashboard Configuration Guide](dashboard-configuration.md) - Customization options
 - [Metrics Reference](../reference/metrics.md) - Complete metrics API
 - [Filter Reference](../reference/filters.md) - Understanding quality filters
 - [Deployment Guide](../operations/deployment.md) - Deployment procedures
