@@ -15,7 +15,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
@@ -25,24 +25,51 @@
     <style>
         /* ========================================
            CSS CUSTOM PROPERTIES (DESIGN TOKENS)
+           TABLEAU-INSPIRED DESIGN SYSTEM
            ======================================== */
         :root {
-            /* Brand Colors */
-            --brand-primary: #2563eb;
-            --brand-secondary: #7c3aed;
-            --brand-accent: #10b981;
+            /* ===== TABLEAU COLOR PALETTE ===== */
+
+            /* Primary Blues */
+            --tableau-blue: #0176D3;
+            --tableau-navy: #032D60;
+            --tableau-navy-link: #0B5CAB;
+            --tableau-dark-navy: #001639;
+
+            /* Backgrounds */
+            --tableau-bg-light-blue: #EAF5FE;
+            --tableau-bg-off-white: #F4F4F4;
+            --tableau-bg-white: #FFFFFF;
+
+            /* Accents */
+            --tableau-green: #00A651;
+            --tableau-teal: #3860BE;
+
+            /* Text Colors */
+            --tableau-text-primary: #080707;
+            --tableau-text-secondary: #333333;
+            --tableau-text-light: #555555;
+
+            /* Grays */
+            --tableau-gray-border: #EBEBEB;
+            --tableau-gray-divider: #D1D1D1;
+
+            /* Brand Colors (mapped to Tableau) */
+            --brand-primary: #0176D3;
+            --brand-secondary: #032D60;
+            --brand-accent: #00A651;
 
             /* Source Colors */
             --wikipedia: #3b82f6;
             --bbc: #ef4444;
-            --huggingface: #10b981;
+            --huggingface: #00A651;
             --sprakbanken: #f59e0b;
 
             /* Semantic Colors */
-            --success: #10b981;
+            --success: #00A651;
             --warning: #f59e0b;
             --error: #ef4444;
-            --info: #3b82f6;
+            --info: #0176D3;
 
             /* Gray Scale */
             --gray-50: #f9fafb;
@@ -54,41 +81,45 @@
             --gray-600: #4b5563;
             --gray-700: #374151;
             --gray-800: #1f2937;
-            --gray-900: #111827;
+            --gray-900: #032D60;
 
-            /* Typography */
+            /* Typography - Tableau Style */
             --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
+            --font-display: 'Montserrat', 'Inter', sans-serif;
             --font-mono: 'Fira Code', Monaco, monospace;
 
+            /* Type Scale - Tableau Sizes */
             --text-xs: 0.75rem;
             --text-sm: 0.875rem;
             --text-base: 1rem;
             --text-lg: 1.125rem;
             --text-xl: 1.25rem;
             --text-2xl: 1.5rem;
-            --text-3xl: 1.875rem;
-            --text-4xl: 2.25rem;
-            --text-5xl: 3rem;
+            --text-3xl: 2rem;
+            --text-4xl: 2.5rem;
+            --text-5xl: 3.5rem;
 
-            /* Spacing */
+            /* Spacing - More Generous */
+            --space-2: 0.5rem;
             --space-4: 1rem;
             --space-6: 1.5rem;
             --space-8: 2rem;
             --space-12: 3rem;
             --space-16: 4rem;
+            --space-20: 5rem;
 
-            /* Shadows */
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            /* Shadows - Tableau Dual-Layer */
+            --shadow-sm: rgba(23, 23, 23, 0.04) 0px 1px 4px -1px, rgba(23, 23, 23, 0.08) 0px 4px 8px -1px;
+            --shadow-md: rgba(23, 23, 23, 0.08) 0px 2px 8px -2px, rgba(23, 23, 23, 0.16) 0px 8px 12px -2px;
+            --shadow-lg: rgba(23, 23, 23, 0.12) 0px 4px 12px -2px, rgba(23, 23, 23, 0.24) 0px 12px 20px -2px;
+            --shadow-xl: rgba(23, 23, 23, 0.16) 0px 6px 16px -2px, rgba(23, 23, 23, 0.32) 0px 16px 32px -2px;
 
-            /* Border Radius */
+            /* Border Radius - Tableau Style */
             --radius-sm: 0.25rem;
             --radius-md: 0.5rem;
-            --radius-lg: 0.75rem;
+            --radius-lg: 1rem;
             --radius-xl: 1rem;
+            --radius-card: 1rem;
             --radius-full: 9999px;
 
             /* Transitions */
@@ -121,11 +152,54 @@
 
         body {
             font-family: var(--font-sans);
-            background: var(--gray-50);
-            color: var(--gray-900);
+            background: var(--tableau-bg-white);
+            color: var(--tableau-text-primary);
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ========================================
+           TYPOGRAPHY - TABLEAU STYLE
+           ======================================== */
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-display);
+            font-weight: 400;
+            color: var(--tableau-navy);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: var(--text-5xl);
+            line-height: 1.14;
+            margin-bottom: 1.5rem;
+        }
+
+        h2 {
+            font-size: var(--text-4xl);
+            line-height: 1.2;
+            margin-bottom: 1.25rem;
+        }
+
+        h3 {
+            font-size: var(--text-2xl);
+            line-height: 1.33;
+            margin-bottom: 1rem;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        a {
+            color: var(--tableau-navy-link);
+            transition: color var(--transition-fast);
+        }
+
+        a:hover {
+            color: var(--tableau-navy);
         }
 
         /* ========================================
@@ -151,14 +225,13 @@
         }
 
         /* ========================================
-           GLOBAL NAVIGATION (STICKY)
+           GLOBAL NAVIGATION (STICKY) - TABLEAU STYLE
            ======================================== */
         .global-nav {
             position: sticky;
             top: 0;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--gray-200);
+            background: white;
+            border-bottom: 1px solid var(--tableau-gray-border);
             z-index: 1000;
             box-shadow: var(--shadow-sm);
         }
@@ -166,11 +239,11 @@
         .global-nav .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 0 var(--space-6);
+            padding: 0 var(--space-8);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 72px;
+            height: 80px;
         }
 
         .nav-brand {
@@ -178,14 +251,14 @@
             align-items: center;
             gap: var(--space-4);
             text-decoration: none;
-            color: var(--gray-900);
+            color: var(--tableau-navy);
         }
 
         .nav-brand-logo {
             width: 40px;
             height: 40px;
-            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
-            border-radius: var(--radius-md);
+            background: var(--tableau-blue);
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -254,19 +327,21 @@
         }
 
         .nav-cta {
-            background: var(--brand-primary);
+            background: var(--tableau-blue);
             color: white !important;
             padding: 0.5rem 1.5rem;
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--tableau-blue);
             font-weight: 600;
             transition: all var(--transition-base);
         }
 
         .nav-cta:hover,
         .nav-cta:focus {
-            background: var(--brand-secondary);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
+            background: #0158A5;
+            border-color: #0158A5;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(1, 118, 211, 0.2);
             color: white !important;
         }
 
@@ -281,12 +356,12 @@
         }
 
         /* ========================================
-           HERO SECTION
+           HERO SECTION - TABLEAU STYLE
            ======================================== */
         .hero {
-            background: linear-gradient(135deg, #1e40af 0%, var(--brand-primary) 50%, #3b82f6 100%);
+            background: linear-gradient(135deg, var(--tableau-blue) 0%, var(--tableau-navy) 100%);
             color: white;
-            padding: var(--space-16) 0 calc(var(--space-16) + 80px);
+            padding: 7.5rem 0 calc(7.5rem + 80px);
             position: relative;
             overflow: hidden;
         }
@@ -299,15 +374,15 @@
             right: 0;
             bottom: 0;
             background-image:
-                radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+                radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
             pointer-events: none;
         }
 
         .hero .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 0 var(--space-6);
+            padding: 0 var(--space-8);
             position: relative;
             z-index: 1;
         }
@@ -316,20 +391,19 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.15);
             padding: 0.5rem var(--space-4);
             border-radius: var(--radius-full);
             font-size: var(--text-sm);
             font-weight: 600;
             margin-bottom: var(--space-4);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.25);
         }
 
         .hero h1 {
             font-family: var(--font-display);
-            font-size: clamp(2.5rem, 5vw, 4rem);
-            font-weight: 800;
+            font-size: clamp(2.5rem, 5vw, 3.5rem);
+            font-weight: 400;
             margin-bottom: var(--space-4);
             line-height: 1.1;
         }
@@ -350,50 +424,31 @@
             line-height: 1.7;
         }
 
-        /* Hero Stats - Modernized */
+        /* Hero Stats - Tableau Style (Solid White Cards) */
         .hero-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: var(--space-6);
+            gap: var(--space-8);
             margin-top: var(--space-12);
         }
 
         .hero-stat {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: var(--radius-xl);
-            padding: var(--space-8);
+            background: white;
+            border: none;
+            border-radius: var(--radius-card);
+            padding: var(--space-12);
             text-align: center;
-            transition: all var(--transition-base);
+            transition: all var(--transition-slow);
             position: relative;
             overflow: hidden;
             cursor: default;
-        }
-
-        /* Gradient overlay on hover */
-        .hero-stat::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
-            opacity: 0;
-            transition: opacity var(--transition-base);
-            pointer-events: none;
-        }
-
-        .hero-stat:hover::before {
-            opacity: 1;
+            box-shadow: var(--shadow-md);
         }
 
         .hero-stat:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: translateY(-6px);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-            border-color: rgba(255, 255, 255, 0.4);
+            background: white;
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
         }
 
         /* Icon container */
@@ -401,7 +456,7 @@
             width: 48px;
             height: 48px;
             margin: 0 auto 1rem;
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--tableau-bg-light-blue);
             border-radius: var(--radius-lg);
             display: flex;
             align-items: center;
@@ -410,30 +465,36 @@
         }
 
         .hero-stat:hover .hero-stat-icon {
-            background: rgba(255, 255, 255, 0.3);
-            transform: scale(1.1) rotate(5deg);
+            background: var(--tableau-blue);
+            transform: scale(1.05);
         }
 
         .hero-stat-icon svg {
             width: 24px;
             height: 24px;
-            stroke: white;
+            stroke: var(--tableau-blue);
             stroke-width: 2;
             fill: none;
+            transition: stroke var(--transition-base);
+        }
+
+        .hero-stat:hover .hero-stat-icon svg {
+            stroke: white;
         }
 
         .hero-stat-value {
             font-size: var(--text-4xl);
-            font-weight: 800;
+            font-weight: 600;
             font-family: var(--font-display);
             display: block;
             margin-bottom: 0.5rem;
             position: relative;
+            color: var(--tableau-navy);
         }
 
         .hero-stat-label {
             font-size: var(--text-sm);
-            opacity: 0.95;
+            color: var(--tableau-text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.05em;
             font-weight: 600;
@@ -461,7 +522,7 @@
         .hero-stat:nth-child(3) { animation-delay: 0.3s; }
         .hero-stat:nth-child(4) { animation-delay: 0.4s; }
 
-        /* Hero CTAs - Modernized */
+        /* Hero CTAs - Tableau Style */
         .hero-ctas {
             display: flex;
             gap: var(--space-4);
@@ -470,8 +531,8 @@
         }
 
         .hero-cta {
-            padding: 1rem 2rem;
-            border-radius: var(--radius-lg);
+            padding: 14px 32px;
+            border-radius: var(--radius-sm);
             font-weight: 600;
             text-decoration: none;
             display: inline-flex;
@@ -480,9 +541,7 @@
             transition: all var(--transition-base);
             font-size: var(--text-base);
             position: relative;
-            overflow: hidden;
             cursor: pointer;
-            border: none;
         }
 
         /* Button icon styles */
@@ -497,74 +556,40 @@
             height: 100%;
         }
 
-        /* Primary Button */
+        /* Primary Button - Solid White */
         .hero-cta-primary {
             background: white;
-            color: var(--brand-primary);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
-        }
-
-        .hero-cta-primary::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
-            opacity: 0;
-            transition: opacity var(--transition-base);
-            z-index: -1;
+            color: var(--tableau-blue);
+            border: 2px solid white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .hero-cta-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.08);
-        }
-
-        .hero-cta-primary:hover::before {
-            opacity: 0.05;
+            background: var(--tableau-bg-off-white);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         }
 
         .hero-cta-primary:hover .hero-cta-icon {
             transform: translateY(2px);
-            animation: bounceArrow 0.6s ease-in-out;
         }
 
         .hero-cta-primary:active {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        /* Secondary Button */
+        /* Secondary Button - Outlined */
         .hero-cta-secondary {
-            background: rgba(255, 255, 255, 0.12);
+            background: transparent;
             color: white;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            backdrop-filter: blur(8px);
-        }
-
-        .hero-cta-secondary::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.1);
-            opacity: 0;
-            transition: opacity var(--transition-base);
+            border: 2px solid rgba(255, 255, 255, 0.5);
         }
 
         .hero-cta-secondary:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: white;
             transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-        }
-
-        .hero-cta-secondary:hover::before {
-            opacity: 1;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .hero-cta-secondary:hover .hero-cta-icon {
@@ -698,12 +723,12 @@
             background: linear-gradient(to bottom, #f0fdf4 0%, white 100%);
         }
 
-        /* Current/Active Stage */
+        /* Current/Active Stage - Tableau Style */
         .lifecycle-stage.current {
-            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
-            border-color: var(--brand-primary);
+            background: var(--tableau-blue);
+            border-color: var(--tableau-blue);
             color: white;
-            box-shadow: 0 8px 16px rgba(37, 99, 235, 0.2);
+            box-shadow: 0 8px 16px rgba(1, 118, 211, 0.25);
         }
 
         /* Subtle Pulse Animation for Active Stage */
@@ -713,10 +738,10 @@
 
         @keyframes subtlePulse {
             0%, 100% {
-                box-shadow: 0 8px 16px rgba(37, 99, 235, 0.2);
+                box-shadow: 0 8px 16px rgba(1, 118, 211, 0.25);
             }
             50% {
-                box-shadow: 0 8px 20px rgba(37, 99, 235, 0.28);
+                box-shadow: 0 8px 20px rgba(1, 118, 211, 0.35);
             }
         }
 
@@ -754,7 +779,6 @@
             background: rgba(255, 255, 255, 0.25);
             border-color: rgba(255, 255, 255, 0.4);
             color: white;
-            backdrop-filter: blur(8px);
         }
 
         /* Hide number text when completed (show checkmark instead) */
@@ -1010,12 +1034,13 @@
 
         .source-card {
             background: white;
-            border: 2px solid var(--gray-200);
-            border-radius: var(--radius-xl);
-            padding: var(--space-6);
-            transition: all var(--transition-base);
+            border: none;
+            border-radius: var(--radius-card);
+            padding: var(--space-12);
+            transition: all var(--transition-slow);
             position: relative;
             overflow: hidden;
+            box-shadow: var(--shadow-md);
         }
 
         .source-card::before {
@@ -1044,7 +1069,6 @@
         }
 
         .source-card:hover {
-            border-color: var(--brand-primary);
             box-shadow: var(--shadow-lg);
             transform: translateY(-4px);
         }
@@ -1057,9 +1081,10 @@
         }
 
         .source-card-title {
-            font-weight: 700;
+            font-weight: 400;
             font-size: var(--text-lg);
-            color: var(--gray-900);
+            color: var(--tableau-navy);
+            font-family: var(--font-display);
         }
 
         .source-card-badge {
@@ -1096,9 +1121,9 @@
         }
 
         .source-metric-value {
-            font-weight: 700;
+            font-weight: 600;
             font-size: var(--text-lg);
-            color: var(--gray-900);
+            color: var(--tableau-navy);
         }
 
         .source-card-footer {
@@ -1121,9 +1146,9 @@
 
         .section-title {
             font-family: var(--font-display);
-            font-size: var(--text-2xl);
-            font-weight: 700;
-            color: var(--gray-900);
+            font-size: var(--text-3xl);
+            font-weight: 400;
+            color: var(--tableau-navy);
             margin-bottom: var(--space-6);
         }
 
@@ -1135,15 +1160,16 @@
 
         .chart-card {
             background: white;
-            border: 1px solid var(--gray-200);
-            border-radius: var(--radius-xl);
-            padding: var(--space-6);
-            box-shadow: var(--shadow-sm);
-            transition: all var(--transition-base);
+            border: none;
+            border-radius: var(--radius-card);
+            padding: var(--space-12);
+            box-shadow: var(--shadow-md);
+            transition: all var(--transition-slow);
         }
 
         .chart-card:hover {
-            box-shadow: var(--shadow-md);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
         }
 
         .chart-header {
@@ -1154,9 +1180,10 @@
         }
 
         .chart-title {
-            font-weight: 600;
+            font-weight: 400;
             font-size: var(--text-lg);
-            color: var(--gray-900);
+            color: var(--tableau-navy);
+            font-family: var(--font-display);
         }
 
         .chart-actions {
@@ -1165,20 +1192,22 @@
         }
 
         .chart-action {
-            background: var(--gray-100);
-            border: none;
+            background: var(--tableau-bg-off-white);
+            border: 2px solid transparent;
             padding: 0.5rem var(--space-4);
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-sm);
             font-size: var(--text-sm);
             font-weight: 500;
             cursor: pointer;
-            transition: all var(--transition-fast);
-            color: var(--gray-700);
+            transition: all var(--transition-base);
+            color: var(--tableau-text-secondary);
         }
 
         .chart-action:hover {
-            background: var(--brand-primary);
+            background: var(--tableau-blue);
+            border-color: var(--tableau-blue);
             color: white;
+            transform: translateY(-1px);
         }
 
         .chart-canvas {
@@ -1187,18 +1216,18 @@
         }
 
         /* ========================================
-           DATA STORY SECTION
+           DATA STORY SECTION - TABLEAU STYLE
            ======================================== */
         .data-story {
-            background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
-            padding: var(--space-16) 0;
+            background: var(--tableau-bg-light-blue);
+            padding: var(--space-20) 0;
             margin: var(--space-16) 0;
         }
 
         .data-story .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 0 var(--space-6);
+            padding: 0 var(--space-8);
         }
 
         .data-story-header {
@@ -1209,14 +1238,14 @@
         .data-story-header h2 {
             font-family: var(--font-display);
             font-size: var(--text-4xl);
-            font-weight: 800;
-            color: var(--gray-900);
+            font-weight: 400;
+            color: var(--tableau-navy);
             margin-bottom: var(--space-4);
         }
 
         .data-story-header p {
             font-size: var(--text-lg);
-            color: var(--gray-700);
+            color: var(--tableau-text-secondary);
             max-width: 800px;
             margin: 0 auto;
             line-height: 1.8;
@@ -1225,20 +1254,20 @@
         .story-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: var(--space-6);
+            gap: var(--space-8);
         }
 
         .story-card {
             background: white;
-            border-radius: var(--radius-xl);
-            padding: var(--space-8);
+            border-radius: var(--radius-card);
+            padding: var(--space-12);
             box-shadow: var(--shadow-md);
-            transition: all var(--transition-base);
+            transition: all var(--transition-slow);
         }
 
         .story-card:hover {
             transform: translateY(-4px);
-            box-shadow: var(--shadow-xl);
+            box-shadow: var(--shadow-lg);
         }
 
         .story-card-icon {
@@ -1247,37 +1276,38 @@
         }
 
         .story-card-title {
-            font-weight: 700;
+            font-weight: 400;
             font-size: var(--text-xl);
-            color: var(--gray-900);
+            color: var(--tableau-navy);
+            font-family: var(--font-display);
             margin-bottom: var(--space-4);
         }
 
         .story-card-text {
-            color: var(--gray-600);
+            color: var(--tableau-text-secondary);
             line-height: 1.7;
         }
 
         /* ========================================
-           CONTRIBUTE SECTION
+           CONTRIBUTE SECTION - TABLEAU STYLE
            ======================================== */
         .contribute {
-            background: var(--gray-900);
+            background: var(--tableau-navy);
             color: white;
-            padding: var(--space-16) 0;
+            padding: var(--space-20) 0;
         }
 
         .contribute .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 0 var(--space-6);
+            padding: 0 var(--space-8);
             text-align: center;
         }
 
         .contribute h2 {
             font-family: var(--font-display);
             font-size: var(--text-4xl);
-            font-weight: 800;
+            font-weight: 400;
             margin-bottom: var(--space-6);
         }
 
@@ -1292,22 +1322,23 @@
         .contribute-types {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: var(--space-6);
+            gap: var(--space-8);
             margin-bottom: var(--space-12);
         }
 
         .contribute-type {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: var(--radius-lg);
-            padding: var(--space-6);
-            transition: all var(--transition-base);
+            background: white;
+            border: none;
+            border-radius: var(--radius-card);
+            padding: var(--space-8);
+            transition: all var(--transition-slow);
+            box-shadow: var(--shadow-md);
         }
 
         .contribute-type:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.4);
-            transform: translateY(-2px);
+            background: white;
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
         }
 
         .contribute-type-icon {
@@ -1316,34 +1347,38 @@
         }
 
         .contribute-type-title {
-            font-weight: 600;
+            font-weight: 400;
             font-size: var(--text-lg);
             margin-bottom: 0.5rem;
+            color: var(--tableau-navy);
+            font-family: var(--font-display);
         }
 
         .contribute-type-text {
             font-size: var(--text-sm);
-            opacity: 0.8;
+            color: var(--tableau-text-secondary);
         }
 
         .contribute-cta {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            background: white;
-            color: var(--gray-900);
-            padding: var(--space-4) var(--space-8);
-            border-radius: var(--radius-lg);
+            background: var(--tableau-blue);
+            color: white;
+            padding: 14px 32px;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--tableau-blue);
             font-weight: 600;
             text-decoration: none;
             transition: all var(--transition-base);
-            box-shadow: var(--shadow-lg);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .contribute-cta:hover {
-            background: var(--gray-100);
+            background: #0158A5;
+            border-color: #0158A5;
             transform: translateY(-2px);
-            box-shadow: var(--shadow-xl);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
         }
 
         /* ========================================
@@ -1369,9 +1404,10 @@
         }
 
         .footer-section h3 {
-            font-weight: 700;
+            font-weight: 400;
             font-size: var(--text-base);
-            color: var(--gray-900);
+            color: var(--tableau-navy);
+            font-family: var(--font-display);
             margin-bottom: var(--space-4);
         }
 
@@ -1423,7 +1459,13 @@
             }
 
             .hero h1 {
-                font-size: var(--text-3xl);
+                font-size: 2.5rem;
+            }
+
+            .section-title,
+            .data-story-header h2,
+            .contribute h2 {
+                font-size: 2rem;
             }
 
             .hero-stats {
@@ -1432,7 +1474,7 @@
             }
 
             .hero-stat {
-                padding: var(--space-6);
+                padding: var(--space-8);
             }
 
             .hero-stat-icon {
@@ -1464,6 +1506,12 @@
 
             .source-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .source-card,
+            .chart-card,
+            .story-card {
+                padding: var(--space-8);
             }
 
             .charts-grid {
