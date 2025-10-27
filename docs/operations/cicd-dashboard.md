@@ -714,6 +714,7 @@ Example: Add Slack notification on failure
 - [Playwright Documentation](https://playwright.dev/)
 - [JSON Schema Documentation](https://json-schema.org/)
 - [GitHub Pages Documentation](https://docs.github.com/en/pages)
+- [CI/CD Quick Reference](cicd-quick-reference.md) - Quick commands and common operations
 
 ## Support
 

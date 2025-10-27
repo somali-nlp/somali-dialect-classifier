@@ -410,7 +410,7 @@ alias dash-logs='gh run list --workflow=deploy-dashboard-v2.yml --limit 1 | tail
 
 ## Additional Resources
 
-- Full documentation: `docs/CICD_DASHBOARD.md`
+- Full documentation: [CI/CD Dashboard](cicd-dashboard.md)
 - GitHub Actions: https://docs.github.com/en/actions
 - Playwright: https://playwright.dev/
 - Repository issues: `gh issue list`
