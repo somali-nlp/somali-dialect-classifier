@@ -394,13 +394,14 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.25);
             padding: 0.5rem var(--space-4);
             border-radius: var(--radius-full);
             font-size: var(--text-sm);
             font-weight: 600;
             margin-bottom: var(--space-4);
-            border: 1px solid rgba(255, 255, 255, 0.25);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
 
         .hero h1 {
@@ -410,22 +411,26 @@
             margin-bottom: var(--space-4);
             line-height: 1.1;
             letter-spacing: -0.02em;
+            color: #001639;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
         .hero-tagline {
             font-size: var(--text-xl);
             font-weight: 500;
-            opacity: 0.95;
+            opacity: 1;
             margin-bottom: var(--space-6);
             max-width: 800px;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
         }
 
         .hero-description {
             font-size: var(--text-base);
-            opacity: 0.9;
+            opacity: 1;
             max-width: 700px;
             margin-bottom: var(--space-8);
             line-height: 1.7;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         /* Hero Stats - Tableau Style (Solid White Cards) */
@@ -446,13 +451,13 @@
             position: relative;
             overflow: hidden;
             cursor: default;
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
         .hero-stat:hover {
             background: white;
             transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         /* Icon container */
@@ -582,18 +587,20 @@
             transform: translateY(-1px);
         }
 
-        /* Secondary Button - Outlined */
+        /* Secondary Button - Liquid Glass Effect */
         .hero-cta-secondary {
-            background: transparent;
+            background: rgba(92, 178, 247, 0.15);
             color: white;
-            border: 2px solid rgba(255, 255, 255, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.7);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(8px);
         }
 
         .hero-cta-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(92, 178, 247, 0.25);
             border-color: white;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .hero-cta-secondary:hover .hero-cta-icon {
