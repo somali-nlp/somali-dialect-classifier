@@ -68,3 +68,6 @@ tests/*-navigation.js
 tests/test_dashboard_calculation_unit.py
 scripts/analyze_success_rate.py
 dashboard/index-advanced.html
+
+# TikTok integration testing directory
+tiktok_apify_test/

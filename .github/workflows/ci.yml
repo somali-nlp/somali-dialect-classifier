@@ -66,3 +66,141 @@ jobs:
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
+
+  test-dashboard:
+    name: Dashboard Visual Tests
+    runs-on: ubuntu-latest
+    needs: [lint-and-type-check]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Python dependencies
+        run: |
+          pip install pandas plotly numpy
+
+      - name: Install Playwright dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Build dashboard
+        run: |
+          chmod +x dashboard/build-site.sh
+          ./dashboard/build-site.sh
+
+      - name: Generate test metrics data
+        run: |
+          mkdir -p _site/data
+          python << 'PYTHON_SCRIPT'
+          import json
+          from pathlib import Path
+          from datetime import datetime
+
+          site_data = Path("_site/data")
+
+          metrics_dir = Path("data/metrics")
+          all_metrics = []
+
+          if metrics_dir.exists():
+              for metrics_file in sorted(metrics_dir.glob("*_processing.json")):
+                  try:
+                      with open(metrics_file) as f:
+                          data = json.load(f)
+
+                          if "_schema_version" in data:
+                              legacy_wrapper = data.get("legacy_metrics", {})
+                              snapshot = legacy_wrapper.get("snapshot", {})
+                              stats = legacy_wrapper.get("statistics", {})
+                          else:
+                              snapshot = data.get("snapshot", {})
+                              stats = data.get("statistics", {})
+
+                          perf = stats.get("throughput", {})
+                          quality = stats.get("text_length_stats", {})
+                          pipeline_type = snapshot.get("pipeline_type", "unknown")
+
+                          metric_entry = {
+                              "run_id": snapshot.get("run_id", ""),
+                              "source": snapshot.get("source", ""),
+                              "timestamp": snapshot.get("timestamp", ""),
+                              "duration_seconds": snapshot.get("duration_seconds", 0),
+                              "pipeline_type": pipeline_type,
+                              "urls_discovered": snapshot.get("urls_discovered", 0),
+                              "urls_fetched": snapshot.get("urls_fetched", 0),
+                              "urls_processed": snapshot.get("urls_processed", 0),
+                              "records_written": snapshot.get("records_written", 0),
+                              "bytes_downloaded": snapshot.get("bytes_downloaded", 0),
+                              "pipeline_metrics": {
+                                  "pipeline_type": pipeline_type,
+                                  "quality_pass_rate": stats.get("quality_pass_rate", 0),
+                                  "deduplication_rate": stats.get("deduplication_rate", 0),
+                              },
+                              "performance": {
+                                  "urls_per_second": perf.get("urls_per_second", 0),
+                                  "bytes_per_second": perf.get("bytes_per_second", 0),
+                                  "records_per_minute": perf.get("records_per_minute", 0)
+                              },
+                              "quality": {
+                                  "min": quality.get("min", 0),
+                                  "max": quality.get("max", 0),
+                                  "mean": quality.get("mean", 0),
+                                  "median": quality.get("median", 0),
+                                  "total_chars": quality.get("total_chars", 0)
+                              }
+                          }
+
+                          all_metrics.append(metric_entry)
+
+                  except Exception as e:
+                      print(f"Warning: {metrics_file}: {e}")
+
+          output = {
+              "count": len(all_metrics),
+              "records": sum(m["records_written"] for m in all_metrics),
+              "sources": sorted(list(set(m["source"] for m in all_metrics))),
+              "pipeline_types": sorted(list(set(m["pipeline_type"] for m in all_metrics))),
+              "metrics": all_metrics,
+              "schema_version": "2.0"
+          }
+
+          with open("_site/data/all_metrics.json", "w") as f:
+              json.dump(output, f, indent=2)
+
+          print(f"Generated metrics: {len(all_metrics)} runs")
+          PYTHON_SCRIPT
+
+      - name: Run Playwright tests
+        env:
+          DASHBOARD_URL: http://localhost:8000
+        run: |
+          npx playwright test --project=chromium
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test-results/
+          retention-days: 30
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-html-report
+          path: test-results/html-report/
+          retention-days: 30

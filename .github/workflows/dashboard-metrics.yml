@@ -1,0 +1,264 @@
+name: Dashboard Metrics Regeneration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'data/metrics/**/*_processing.json'
+      - 'data/metrics/**/*_discovery.json'
+      - 'data/metrics/**/*_extraction.json'
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild even if no changes detected'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: dashboard-metrics-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regenerate-metrics:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas plotly numpy jsonschema
+
+      - name: Create site structure
+        run: |
+          mkdir -p _site/data
+          echo "✅ Created _site/data directory"
+
+      - name: Regenerate all_metrics.json
+        id: regenerate
+        run: |
+          python << 'PYTHON_SCRIPT'
+          import json
+          from pathlib import Path
+          from datetime import datetime
+
+          site_data = Path("_site/data")
+          site_data.mkdir(parents=True, exist_ok=True)
+
+          def extract_pipeline_metrics(snapshot, stats):
+              """Extract metrics based on pipeline type with backward compatibility."""
+              pipeline_type = snapshot.get("pipeline_type", "unknown")
+
+              metrics = {
+                  "pipeline_type": pipeline_type,
+                  "quality_pass_rate": stats.get("quality_pass_rate", 0),
+                  "deduplication_rate": stats.get("deduplication_rate", 0),
+              }
+
+              if pipeline_type == "web_scraping":
+                  metrics["http_success_rate"] = stats.get("http_request_success_rate",
+                                                           stats.get("fetch_success_rate", 0))
+                  metrics["extraction_rate"] = stats.get("content_extraction_success_rate",
+                                                         stats.get("fetch_success_rate", 0))
+
+              elif pipeline_type == "file_processing":
+                  metrics["file_extraction_rate"] = stats.get("file_extraction_success_rate",
+                                                              stats.get("fetch_success_rate", 0))
+                  metrics["parsing_rate"] = stats.get("record_parsing_success_rate",
+                                                      stats.get("fetch_success_rate", 0))
+
+              elif pipeline_type == "stream_processing":
+                  metrics["connection_success"] = stats.get("stream_connection_success_rate",
+                                                           stats.get("fetch_success_rate", 0))
+                  metrics["retrieval_rate"] = stats.get("record_retrieval_success_rate",
+                                                        stats.get("fetch_success_rate", 0))
+                  metrics["coverage_rate"] = stats.get("dataset_coverage_rate", 0)
+              else:
+                  metrics["success_rate"] = stats.get("fetch_success_rate", 0)
+
+              metrics["success_rate_deprecated"] = stats.get("fetch_success_rate", 0)
+
+              return metrics
+
+          metrics_dir = Path("data/metrics")
+          all_metrics = []
+
+          if metrics_dir.exists():
+              for metrics_file in sorted(metrics_dir.glob("*_processing.json")):
+                  try:
+                      with open(metrics_file) as f:
+                          data = json.load(f)
+
+                          if "_schema_version" in data:
+                              legacy_wrapper = data.get("legacy_metrics", {})
+                              snapshot = legacy_wrapper.get("snapshot", {})
+                              stats = legacy_wrapper.get("statistics", {})
+                          else:
+                              snapshot = data.get("snapshot", {})
+                              stats = data.get("statistics", {})
+
+                          perf = stats.get("throughput", {})
+                          quality = stats.get("text_length_stats", {})
+
+                          pipeline_metrics = extract_pipeline_metrics(snapshot, stats)
+
+                          metric_entry = {
+                              "run_id": snapshot.get("run_id", ""),
+                              "source": snapshot.get("source", ""),
+                              "timestamp": snapshot.get("timestamp", ""),
+                              "duration_seconds": snapshot.get("duration_seconds", 0),
+                              "pipeline_type": snapshot.get("pipeline_type", "unknown"),
+                              "urls_discovered": snapshot.get("urls_discovered", 0),
+                              "urls_fetched": snapshot.get("urls_fetched", 0),
+                              "urls_processed": snapshot.get("urls_processed", 0),
+                              "files_discovered": snapshot.get("files_discovered", 0),
+                              "files_processed": snapshot.get("files_processed", 0),
+                              "records_fetched": snapshot.get("records_fetched", 0),
+                              "records_written": snapshot.get("records_written", 0),
+                              "bytes_downloaded": snapshot.get("bytes_downloaded", 0),
+                              "pipeline_metrics": pipeline_metrics,
+                              "performance": {
+                                  "urls_per_second": perf.get("urls_per_second", 0),
+                                  "bytes_per_second": perf.get("bytes_per_second", 0),
+                                  "records_per_minute": perf.get("records_per_minute", 0)
+                              },
+                              "quality": {
+                                  "min": quality.get("min", 0),
+                                  "max": quality.get("max", 0),
+                                  "mean": quality.get("mean", 0),
+                                  "median": quality.get("median", 0),
+                                  "total_chars": quality.get("total_chars", 0)
+                              }
+                          }
+
+                          all_metrics.append(metric_entry)
+
+                  except Exception as e:
+                      print(f"⚠️  Error loading {metrics_file}: {e}")
+
+          if all_metrics:
+              total_records = sum(m["records_written"] for m in all_metrics)
+              sources = sorted(list(set(m["source"] for m in all_metrics)))
+              pipeline_types = sorted(list(set(m["pipeline_type"] for m in all_metrics)))
+
+              output = {
+                  "count": len(all_metrics),
+                  "records": total_records,
+                  "sources": sources,
+                  "pipeline_types": pipeline_types,
+                  "metrics": all_metrics,
+                  "schema_version": "2.0",
+                  "backward_compatible": True,
+                  "generated_at": datetime.utcnow().isoformat() + "Z"
+              }
+
+              with open("_site/data/all_metrics.json", "w") as f:
+                  json.dump(output, f, indent=2)
+
+              with open("_site/data/summary.json", "w") as f:
+                  summary = {
+                      "total_runs": len(all_metrics),
+                      "total_records": total_records,
+                      "sources": sources,
+                      "pipeline_types": pipeline_types,
+                      "last_updated": datetime.utcnow().isoformat() + "Z"
+                  }
+                  json.dump(summary, f, indent=2)
+
+              print(f"✅ Generated metrics: {len(all_metrics)} runs, {total_records:,} records")
+              print(f"✅ Sources: {', '.join(sources)}")
+              print(f"✅ Pipeline types: {', '.join(pipeline_types)}")
+
+              # Set output for next step
+              with open("$GITHUB_OUTPUT", "a") as f:
+                  f.write(f"metrics_generated=true\n")
+                  f.write(f"total_runs={len(all_metrics)}\n")
+                  f.write(f"total_records={total_records}\n")
+          else:
+              print("⚠️  No metrics found")
+              with open("$GITHUB_OUTPUT", "a") as f:
+                  f.write("metrics_generated=false\n")
+          PYTHON_SCRIPT
+
+      - name: Generate summary report
+        if: steps.regenerate.outputs.metrics_generated == 'true'
+        run: |
+          cat > metrics_report.md << 'EOF'
+          ## Dashboard Metrics Regenerated
+
+          📊 **Metrics Summary**
+          - Total Runs: ${{ steps.regenerate.outputs.total_runs }}
+          - Total Records: ${{ steps.regenerate.outputs.total_records }}
+          - Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          ### Files Updated
+          - `_site/data/all_metrics.json`
+          - `_site/data/summary.json`
+
+          The dashboard data has been regenerated and is ready for deployment.
+          EOF
+
+          cat metrics_report.md
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet _site/data/all_metrics.json _site/data/summary.json 2>/dev/null; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in metrics files"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in metrics files"
+          fi
+
+      - name: Commit and push changes
+        if: steps.changes.outputs.has_changes == 'true' || github.event.inputs.force_rebuild == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add _site/data/all_metrics.json _site/data/summary.json
+
+          git commit -m "chore(dashboard): regenerate metrics data
+
+          - Updated all_metrics.json with latest pipeline runs
+          - Refreshed summary.json with current statistics
+          - Total runs: ${{ steps.regenerate.outputs.total_runs }}
+          - Total records: ${{ steps.regenerate.outputs.total_records }}"
+
+          git push
+
+      - name: Summary
+        run: |
+          echo "🎉 Metrics regeneration complete!"
+          echo ""
+          echo "📊 Statistics:"
+          echo "  - Runs: ${{ steps.regenerate.outputs.total_runs }}"
+          echo "  - Records: ${{ steps.regenerate.outputs.total_records }}"
+          echo "  - Changes: ${{ steps.changes.outputs.has_changes }}"

@@ -1,0 +1,299 @@
+name: Deployment Health Check
+
+on:
+  deployment_status:
+  schedule:
+    - cron: '0 */6 * * *'  # Run every 6 hours
+  workflow_dispatch:
+    inputs:
+      dashboard_url:
+        description: 'Dashboard URL to check'
+        required: false
+        default: 'https://somali-nlp.github.io/somali-dialect-classifier/'
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  health-check:
+    name: Dashboard Health Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set dashboard URL
+        id: set_url
+        run: |
+          if [ -n "${{ github.event.inputs.dashboard_url }}" ]; then
+            echo "url=${{ github.event.inputs.dashboard_url }}" >> $GITHUB_OUTPUT
+          else
+            echo "url=https://somali-nlp.github.io/somali-dialect-classifier/" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check dashboard accessibility
+        id: accessibility
+        run: |
+          URL="${{ steps.set_url.outputs.url }}"
+          echo "Checking $URL"
+
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+          RESPONSE_TIME=$(curl -s -o /dev/null -w "%{time_total}" "$URL")
+
+          echo "http_code=$HTTP_CODE" >> $GITHUB_OUTPUT
+          echo "response_time=$RESPONSE_TIME" >> $GITHUB_OUTPUT
+
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response Time: ${RESPONSE_TIME}s"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Dashboard is not accessible (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+
+          if (( $(echo "$RESPONSE_TIME > 10.0" | bc -l) )); then
+            echo "⚠️  Dashboard response time is slow (${RESPONSE_TIME}s)"
+          else
+            echo "✅ Dashboard is accessible"
+          fi
+
+      - name: Check metrics data availability
+        id: metrics_check
+        run: |
+          METRICS_URL="${{ steps.set_url.outputs.url }}data/all_metrics.json"
+          echo "Checking $METRICS_URL"
+
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$METRICS_URL")
+          echo "metrics_http_code=$HTTP_CODE" >> $GITHUB_OUTPUT
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Metrics data is not accessible (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+
+          # Download and validate metrics data
+          curl -s "$METRICS_URL" > metrics.json
+
+          # Basic validation
+          if ! jq empty metrics.json 2>/dev/null; then
+            echo "❌ Metrics data is not valid JSON"
+            exit 1
+          fi
+
+          COUNT=$(jq -r '.count // 0' metrics.json)
+          RECORDS=$(jq -r '.records // 0' metrics.json)
+          SOURCES=$(jq -r '.sources | length' metrics.json)
+
+          echo "metrics_count=$COUNT" >> $GITHUB_OUTPUT
+          echo "metrics_records=$RECORDS" >> $GITHUB_OUTPUT
+          echo "metrics_sources=$SOURCES" >> $GITHUB_OUTPUT
+
+          echo "✅ Metrics data is valid"
+          echo "   - Runs: $COUNT"
+          echo "   - Records: $RECORDS"
+          echo "   - Sources: $SOURCES"
+
+      - name: Check data freshness
+        id: freshness
+        run: |
+          if [ ! -f metrics.json ]; then
+            echo "⚠️  Metrics file not found, skipping freshness check"
+            exit 0
+          fi
+
+          # Get the most recent timestamp
+          LATEST=$(jq -r '[.metrics[].timestamp] | max' metrics.json)
+
+          if [ "$LATEST" == "null" ] || [ -z "$LATEST" ]; then
+            echo "⚠️  No timestamp found in metrics"
+            exit 0
+          fi
+
+          # Calculate age in days
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            LATEST_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${LATEST:0:19}" "+%s" 2>/dev/null || echo "0")
+          else
+            LATEST_EPOCH=$(date -d "${LATEST:0:19}" "+%s" 2>/dev/null || echo "0")
+          fi
+
+          CURRENT_EPOCH=$(date "+%s")
+          AGE_DAYS=$(( (CURRENT_EPOCH - LATEST_EPOCH) / 86400 ))
+
+          echo "data_age_days=$AGE_DAYS" >> $GITHUB_OUTPUT
+
+          if [ "$AGE_DAYS" -gt 30 ]; then
+            echo "⚠️  Data is stale (${AGE_DAYS} days old)"
+            echo "data_stale=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Data is fresh (${AGE_DAYS} days old)"
+            echo "data_stale=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Performance check
+        id: performance
+        run: |
+          URL="${{ steps.set_url.outputs.url }}"
+
+          # Measure load time for key resources
+          echo "📊 Measuring performance..."
+
+          MAIN_PAGE_TIME=$(curl -s -o /dev/null -w "%{time_total}" "$URL")
+          METRICS_TIME=$(curl -s -o /dev/null -w "%{time_total}" "${URL}data/all_metrics.json")
+
+          echo "main_page_time=$MAIN_PAGE_TIME" >> $GITHUB_OUTPUT
+          echo "metrics_load_time=$METRICS_TIME" >> $GITHUB_OUTPUT
+
+          echo "Main page load: ${MAIN_PAGE_TIME}s"
+          echo "Metrics data load: ${METRICS_TIME}s"
+
+          # Check for performance issues
+          if (( $(echo "$MAIN_PAGE_TIME > 5.0" | bc -l) )); then
+            echo "⚠️  Main page load time is slow"
+          fi
+
+          if (( $(echo "$METRICS_TIME > 3.0" | bc -l) )); then
+            echo "⚠️  Metrics data load time is slow"
+          fi
+
+      - name: Generate health report
+        if: always()
+        run: |
+          cat > health_report.md << 'EOF'
+          # Dashboard Health Check Report
+
+          **Status**: ${{ steps.accessibility.outcome == 'success' && steps.metrics_check.outcome == 'success' && '✅ Healthy' || '❌ Unhealthy' }}
+
+          ## Accessibility
+          - HTTP Status: ${{ steps.accessibility.outputs.http_code }}
+          - Response Time: ${{ steps.accessibility.outputs.response_time }}s
+
+          ## Metrics Data
+          - HTTP Status: ${{ steps.metrics_check.outputs.metrics_http_code }}
+          - Total Runs: ${{ steps.metrics_check.outputs.metrics_count }}
+          - Total Records: ${{ steps.metrics_check.outputs.metrics_records }}
+          - Data Sources: ${{ steps.metrics_check.outputs.metrics_sources }}
+
+          ## Data Freshness
+          - Age: ${{ steps.freshness.outputs.data_age_days }} days
+          - Status: ${{ steps.freshness.outputs.data_stale == 'true' && '⚠️  Stale' || '✅ Fresh' }}
+
+          ## Performance
+          - Main Page: ${{ steps.performance.outputs.main_page_time }}s
+          - Metrics Load: ${{ steps.performance.outputs.metrics_load_time }}s
+
+          ---
+          *Check time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")*
+          EOF
+
+          cat health_report.md
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🚨 Dashboard Health Check Failed';
+            const body = `The dashboard health check has failed.
+
+            **Check Details:**
+            - Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - Dashboard URL: ${{ steps.set_url.outputs.url }}
+            - Time: ${new Date().toISOString()}
+
+            **Status:**
+            - Accessibility: ${{ steps.accessibility.outcome }}
+            - Metrics Check: ${{ steps.metrics_check.outcome }}
+            - Freshness Check: ${{ steps.freshness.outcome }}
+
+            Please investigate and resolve this issue.`;
+
+            // Check if there's already an open issue
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['dashboard', 'health-check']
+            });
+
+            if (issues.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['dashboard', 'health-check', 'bug']
+              });
+              console.log('Created new issue');
+            } else {
+              console.log('Issue already exists, skipping creation');
+            }
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "🏥 Health Check Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Dashboard: ${{ steps.set_url.outputs.url }}"
+          echo "Status: ${{ steps.accessibility.outcome == 'success' && steps.metrics_check.outcome == 'success' && '✅ Healthy' || '❌ Unhealthy' }}"
+          echo ""
+          echo "Details:"
+          echo "  HTTP Code: ${{ steps.accessibility.outputs.http_code }}"
+          echo "  Metrics Runs: ${{ steps.metrics_check.outputs.metrics_count }}"
+          echo "  Data Age: ${{ steps.freshness.outputs.data_age_days }} days"
+          echo "  Page Load: ${{ steps.performance.outputs.main_page_time }}s"
+
+  rollback-check:
+    name: Rollback Capability Check
+    runs-on: ubuntu-latest
+    needs: [health-check]
+    if: failure()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 10
+
+      - name: Check for previous successful deployment
+        id: check_rollback
+        run: |
+          echo "🔍 Checking for previous deployment..."
+
+          # Get the last 5 commits to main
+          git log --oneline -5 origin/main
+
+          # Check if we can rollback
+          PREV_COMMIT=$(git log --oneline -2 origin/main | tail -1 | cut -d' ' -f1)
+
+          if [ -n "$PREV_COMMIT" ]; then
+            echo "rollback_available=true" >> $GITHUB_OUTPUT
+            echo "rollback_commit=$PREV_COMMIT" >> $GITHUB_OUTPUT
+            echo "✅ Rollback available to commit: $PREV_COMMIT"
+          else
+            echo "rollback_available=false" >> $GITHUB_OUTPUT
+            echo "⚠️  No previous commit found for rollback"
+          fi
+
+      - name: Rollback instructions
+        if: steps.check_rollback.outputs.rollback_available == 'true'
+        run: |
+          cat << 'EOF'
+          ⚙️  ROLLBACK INSTRUCTIONS
+
+          To rollback to the previous deployment:
+
+          1. Manually trigger rollback:
+             git revert HEAD
+             git push origin main
+
+          2. Or reset to previous commit:
+             git reset --hard ${{ steps.check_rollback.outputs.rollback_commit }}
+             git push --force origin main
+
+          3. Monitor the deployment workflow to ensure successful rollback
+
+          Previous commit: ${{ steps.check_rollback.outputs.rollback_commit }}
+          EOF

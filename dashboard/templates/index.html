@@ -1780,11 +1780,256 @@
         .report-card-action:hover {
             gap: 0.75rem;
         }
+
+        /* ========================================
+           AUDIENCE MODE TOGGLE
+           ======================================== */
+        .audience-mode-toggle {
+            position: fixed;
+            top: 100px;
+            right: var(--space-8);
+            z-index: 999;
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--space-2);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+        }
+
+        .mode-toggle-buttons {
+            display: flex;
+            gap: 0;
+            background: var(--gray-100);
+            border-radius: var(--radius-md);
+            padding: 2px;
+        }
+
+        .mode-toggle-btn {
+            padding: var(--space-2) var(--space-4);
+            border: none;
+            background: transparent;
+            color: var(--gray-600);
+            font-size: var(--text-sm);
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .mode-toggle-btn:hover {
+            color: var(--gray-900);
+        }
+
+        .mode-toggle-btn.active {
+            background: white;
+            color: var(--brand-primary);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .mode-toggle-btn:focus-visible {
+            outline: 2px solid var(--brand-primary);
+            outline-offset: 2px;
+        }
+
+        /* Audience Mode Specific Styles */
+        [data-audience-mode="story"] [data-show-in="analyst"] {
+            display: none !important;
+        }
+
+        [data-audience-mode="analyst"] [data-show-in="story"] {
+            display: none !important;
+        }
+
+        /* ========================================
+           ENHANCED CHART COMPONENTS
+           ======================================== */
+        .chart-card.enhanced {
+            position: relative;
+            overflow: visible;
+        }
+
+        .chart-controls {
+            position: absolute;
+            top: var(--space-4);
+            right: var(--space-4);
+            display: flex;
+            gap: var(--space-2);
+            opacity: 0;
+            transition: opacity var(--transition-base);
+        }
+
+        .chart-card:hover .chart-controls {
+            opacity: 1;
+        }
+
+        .chart-control-btn {
+            padding: 0.5rem;
+            background: white;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            color: var(--gray-600);
+        }
+
+        .chart-control-btn:hover {
+            background: var(--gray-50);
+            border-color: var(--brand-primary);
+            color: var(--brand-primary);
+        }
+
+        /* Ridge Plot Styles */
+        .ridge-plot-container {
+            position: relative;
+            height: 400px;
+            margin: var(--space-4) 0;
+        }
+
+        .ridge-plot-layer {
+            position: absolute;
+            width: 100%;
+            opacity: 0.7;
+            transition: opacity var(--transition-base);
+        }
+
+        .ridge-plot-layer:hover {
+            opacity: 1;
+            z-index: 10;
+        }
+
+        /* Sankey/Funnel Diagram Container */
+        .sankey-container {
+            min-height: 400px;
+            position: relative;
+        }
+
+        /* Bullet Chart Enhancements */
+        .bullet-chart-wrapper {
+            padding: var(--space-4);
+            background: var(--gray-50);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-4);
+        }
+
+        .bullet-chart-label {
+            font-weight: 600;
+            font-size: var(--text-sm);
+            color: var(--gray-700);
+            margin-bottom: var(--space-2);
+        }
+
+        /* Coverage Scorecard */
+        .coverage-scorecard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-4);
+            margin-bottom: var(--space-8);
+        }
+
+        .coverage-metric {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .coverage-metric::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--brand-primary), var(--success));
+        }
+
+        .coverage-value {
+            font-size: var(--text-4xl);
+            font-weight: 700;
+            color: var(--brand-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .coverage-label {
+            font-size: var(--text-sm);
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        .coverage-progress {
+            margin-top: var(--space-4);
+            height: 6px;
+            background: var(--gray-200);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+
+        .coverage-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--brand-primary), var(--success));
+            border-radius: var(--radius-full);
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Responsive Enhancements */
+        @media (max-width: 1024px) {
+            .audience-mode-toggle {
+                top: 80px;
+                right: var(--space-4);
+            }
+
+            .mode-toggle-btn {
+                padding: var(--space-2) var(--space-3);
+                font-size: var(--text-xs);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .audience-mode-toggle {
+                position: relative;
+                top: 0;
+                right: 0;
+                margin: var(--space-4) auto;
+                width: fit-content;
+            }
+
+            .coverage-scorecard {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <!-- Skip to Main Content -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Audience Mode Toggle -->
+    <div class="audience-mode-toggle" role="region" aria-label="Audience Mode Selector">
+        <div class="mode-toggle-buttons">
+            <button class="mode-toggle-btn active" data-mode="story" aria-label="Story Mode - Simplified view with narrative focus">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                </svg>
+                Story
+            </button>
+            <button class="mode-toggle-btn" data-mode="analyst" aria-label="Analyst Mode - Detailed view with advanced controls">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                Analyst
+            </button>
+        </div>
+    </div>
 
     <!-- Global Navigation -->
     <nav class="global-nav" role="navigation" aria-label="Main navigation">
@@ -2043,6 +2288,51 @@
                 <p class="mb-8" style="color: var(--gray-600); font-size: var(--text-base);">
                     Real-time monitoring of data collection status across all sources. This dashboard tracks the systematic acquisition of Somali language text from four major repositories.
                 </p>
+
+                <!-- Coverage Scorecard - Radial Progress -->
+                <section class="coverage-scorecard" aria-label="Coverage Metrics" data-show-in="analyst">
+                    <div class="coverage-metric">
+                        <div class="coverage-value" id="coverage-total-records">0</div>
+                        <div class="coverage-label">Total Records</div>
+                        <div class="coverage-progress">
+                            <div class="coverage-progress-bar" style="width: 0%" id="coverage-records-bar"></div>
+                        </div>
+                    </div>
+                    <div class="coverage-metric">
+                        <div class="coverage-value" id="coverage-quality-rate">0%</div>
+                        <div class="coverage-label">Avg Quality Rate</div>
+                        <div class="coverage-progress">
+                            <div class="coverage-progress-bar" style="width: 0%" id="coverage-quality-bar"></div>
+                        </div>
+                    </div>
+                    <div class="coverage-metric">
+                        <div class="coverage-value" id="coverage-success-rate">0%</div>
+                        <div class="coverage-label">Success Rate</div>
+                        <div class="coverage-progress">
+                            <div class="coverage-progress-bar" style="width: 0%" id="coverage-success-bar"></div>
+                        </div>
+                    </div>
+                    <div class="coverage-metric">
+                        <div class="coverage-value" id="coverage-sources">0</div>
+                        <div class="coverage-label">Active Sources</div>
+                        <div class="coverage-progress">
+                            <div class="coverage-progress-bar" style="width: 0%" id="coverage-sources-bar"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Radial Progress Chart (Polar Area) -->
+                <div class="charts-section" data-show-in="analyst">
+                    <div class="chart-card enhanced">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Data Source Coverage</h3>
+                            <p class="chart-subtitle">Radial view of data distribution by source</p>
+                        </div>
+                        <div class="chart-canvas">
+                            <canvas id="coverageRadialChart" aria-label="Polar area chart showing data coverage by source"></canvas>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Source Status Cards -->
                 <div class="source-grid">
@@ -2325,90 +2615,90 @@
                 <div class="mt-8">
                     <h3 class="section-title">Quality Metrics by Source</h3>
                     <div class="source-grid">
-                        <div class="source-card">
+                        <div class="source-card" data-quality-source="Wikipedia">
                             <h4 class="source-card-title">Wikipedia Somali</h4>
                             <div class="source-card-metrics">
                                 <div class="source-metric">
                                     <span class="source-metric-label">Min Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-min">Loading...</span>
                                 </div>
                                 <div class="source-metric">
                                     <span class="source-metric-label">Max Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-max">Loading...</span>
                                 </div>
                                 <div class="source-metric">
                                     <span class="source-metric-label">Mean Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-mean">Loading...</span>
                                 </div>
                                 <div class="source-metric">
                                     <span class="source-metric-label">Median Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-median">Loading...</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="source-card">
+                        <div class="source-card" data-quality-source="BBC">
                             <h4 class="source-card-title">BBC Somali</h4>
                             <div class="source-card-metrics">
                                 <div class="source-metric">
                                     <span class="source-metric-label">Min Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-min">Loading...</span>
                                 </div>
                                 <div class="source-metric">
                                     <span class="source-metric-label">Max Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-max">Loading...</span>
                                 </div>
                                 <div class="source-metric">
                                     <span class="source-metric-label">Mean Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-mean">Loading...</span>
                                 </div>
                                 <div class="source-metric">
                                     <span class="source-metric-label">Median Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-median">Loading...</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="source-card">
+                        <div class="source-card" data-quality-source="HuggingFace">
                             <h4 class="source-card-title">HuggingFace MC4</h4>
                             <div class="source-card-metrics">
                                 <div class="source-metric">
                                     <span class="source-metric-label">Min Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-min">Loading...</span>
                                 </div>
                                 <div class="source-metric">
                                     <span class="source-metric-label">Max Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-max">Loading...</span>
                                 </div>
                                 <div class="source-metric">
                                     <span class="source-metric-label">Mean Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-mean">Loading...</span>
                                 </div>
                                 <div class="source-metric">
                                     <span class="source-metric-label">Median Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-median">Loading...</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="source-card">
+                        <div class="source-card" data-quality-source="Sprakbanken">
                             <h4 class="source-card-title">Språkbanken</h4>
                             <div class="source-card-metrics">
                                 <div class="source-metric">
                                     <span class="source-metric-label">Min Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-min">Loading...</span>
                                 </div>
                                 <div class="source-metric">
                                     <span class="source-metric-label">Max Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-max">Loading...</span>
                                 </div>
                                 <div class="source-metric">
                                     <span class="source-metric-label">Mean Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-mean">Loading...</span>
                                 </div>
                                 <div class="source-metric">
                                     <span class="source-metric-label">Median Length</span>
-                                    <span class="source-metric-value">0 chars</span>
+                                    <span class="source-metric-value quality-median">Loading...</span>
                                 </div>
                             </div>
                         </div>
@@ -3901,6 +4191,206 @@
         }
 
         // ========================================
+        // ENHANCED FEATURES
+        // ========================================
+
+        // Audience Mode Toggle
+        function initAudienceMode() {
+            const modeButtons = document.querySelectorAll('.mode-toggle-btn');
+            const savedMode = localStorage.getItem('audienceMode') || 'story';
+
+            // Set initial mode
+            document.body.setAttribute('data-audience-mode', savedMode);
+            modeButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === savedMode);
+            });
+
+            // Add click handlers
+            modeButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.mode;
+                    document.body.setAttribute('data-audience-mode', mode);
+                    localStorage.setItem('audienceMode', mode);
+
+                    modeButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    console.log(`Switched to ${mode} mode`);
+                });
+            });
+        }
+
+        // Coverage Scorecard Update
+        function updateCoverageScorecard() {
+            if (!metricsData || !metricsData.metrics) return;
+
+            const aggregates = {
+                totalRecords: metricsData.metrics.reduce((sum, m) => sum + (m.records_written || 0), 0),
+                avgQuality: 0,
+                avgSuccess: 0,
+                activeSources: metricsData.metrics.filter(m => m.records_written > 0).length
+            };
+
+            // Calculate averages
+            const validMetrics = metricsData.metrics.filter(m => m.records_written > 0);
+            if (validMetrics.length > 0) {
+                aggregates.avgQuality = validMetrics.reduce((sum, m) => {
+                    const rate = m.pipeline_metrics?.quality_pass_rate || m.quality_pass_rate || 0;
+                    return sum + (rate * 100);
+                }, 0) / validMetrics.length;
+
+                aggregates.avgSuccess = validMetrics.reduce((sum, m) => {
+                    return sum + ((m.success_rate || 0) * 100);
+                }, 0) / validMetrics.length;
+            }
+
+            // Update DOM
+            const recordsEl = document.getElementById('coverage-total-records');
+            const qualityEl = document.getElementById('coverage-quality-rate');
+            const successEl = document.getElementById('coverage-success-rate');
+            const sourcesEl = document.getElementById('coverage-sources');
+
+            if (recordsEl) recordsEl.textContent = aggregates.totalRecords.toLocaleString();
+            if (qualityEl) qualityEl.textContent = aggregates.avgQuality.toFixed(1) + '%';
+            if (successEl) successEl.textContent = aggregates.avgSuccess.toFixed(1) + '%';
+            if (sourcesEl) sourcesEl.textContent = aggregates.activeSources;
+
+            // Update progress bars
+            const maxRecords = 50000; // Target goal
+            const recordsBar = document.getElementById('coverage-records-bar');
+            const qualityBar = document.getElementById('coverage-quality-bar');
+            const successBar = document.getElementById('coverage-success-bar');
+            const sourcesBar = document.getElementById('coverage-sources-bar');
+
+            if (recordsBar) {
+                const recordsPct = Math.min((aggregates.totalRecords / maxRecords) * 100, 100);
+                setTimeout(() => recordsBar.style.width = recordsPct + '%', 100);
+            }
+            if (qualityBar) setTimeout(() => qualityBar.style.width = aggregates.avgQuality + '%', 200);
+            if (successBar) setTimeout(() => successBar.style.width = aggregates.avgSuccess + '%', 300);
+            if (sourcesBar) {
+                const sourcesPct = (aggregates.activeSources / 4) * 100;
+                setTimeout(() => sourcesBar.style.width = sourcesPct + '%', 400);
+            }
+        }
+
+        // Coverage Radial Chart
+        function createCoverageRadialChart() {
+            const ctx = document.getElementById('coverageRadialChart');
+            if (!ctx || !metricsData || !metricsData.metrics) return;
+
+            const sourceMap = new Map();
+            metricsData.metrics.forEach(m => {
+                if (m.records_written > 0) {
+                    const name = m.source.replace(/-Somali|_Somali_c4-so|-somali/g, '').replace('Sprakbanken', 'Språkbanken').trim();
+                    sourceMap.set(name, (sourceMap.get(name) || 0) + m.records_written);
+                }
+            });
+
+            const labels = Array.from(sourceMap.keys());
+            const data = Array.from(sourceMap.values());
+            const colors = labels.map(label => {
+                if (label.includes('Wikipedia')) return '#3b82f6';
+                if (label.includes('BBC')) return '#ef4444';
+                if (label.includes('HuggingFace')) return '#10b981';
+                return '#f59e0b';
+            });
+
+            new Chart(ctx, {
+                type: 'polarArea',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.map(c => c + '80'),
+                        borderColor: colors,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            ticks: {
+                                backdropColor: 'transparent',
+                                font: { size: 11 }
+                            },
+                            grid: { color: '#e5e7eb' },
+                            pointLabels: {
+                                font: { size: 12, weight: '600' }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                usePointStyle: true,
+                                font: { size: 12, weight: '500' }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed.r / total) * 100).toFixed(1);
+                                    return `${context.label}: ${context.parsed.r.toLocaleString()} records (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update Quality Metrics with Real Data
+        function updateQualityMetrics() {
+            if (!metricsData || !metricsData.metrics) return;
+
+            const sourceDataMap = {
+                'Wikipedia': metricsData.metrics.find(m => m.source.includes('Wikipedia')),
+                'BBC': metricsData.metrics.find(m => m.source.includes('BBC')),
+                'HuggingFace': metricsData.metrics.find(m => m.source.includes('HuggingFace')),
+                'Sprakbanken': metricsData.metrics.find(m => m.source.includes('Sprakbanken'))
+            };
+
+            Object.keys(sourceDataMap).forEach(sourceName => {
+                const metric = sourceDataMap[sourceName];
+                const card = document.querySelector(`[data-quality-source="${sourceName}"]`);
+
+                if (card && metric) {
+                    // Try to get text length stats from different locations
+                    let stats = null;
+
+                    if (metric.legacy_metrics?.statistics?.text_length_stats) {
+                        stats = metric.legacy_metrics.statistics.text_length_stats;
+                    } else if (metric.quality) {
+                        stats = metric.quality;
+                    }
+
+                    if (stats) {
+                        const minEl = card.querySelector('.quality-min');
+                        const maxEl = card.querySelector('.quality-max');
+                        const meanEl = card.querySelector('.quality-mean');
+                        const medianEl = card.querySelector('.quality-median');
+
+                        if (minEl) minEl.textContent = (stats.min || 0).toLocaleString() + ' chars';
+                        if (maxEl) maxEl.textContent = (stats.max || 0).toLocaleString() + ' chars';
+                        if (meanEl) meanEl.textContent = (stats.mean || 0).toFixed(0) + ' chars';
+                        if (medianEl) medianEl.textContent = (stats.median || 0).toFixed(0) + ' chars';
+                    } else {
+                        // No data available
+                        const values = card.querySelectorAll('.source-metric-value');
+                        values.forEach(v => v.textContent = 'N/A');
+                    }
+                }
+            });
+        }
+
+        // ========================================
         // INITIALIZATION
         // ========================================
         async function init() {
@@ -3922,6 +4412,12 @@
             initSmoothScroll();
             initKeyboardNav();
             initScrollSpy();
+
+            // Initialize enhanced features
+            initAudienceMode();
+            updateCoverageScorecard();
+            createCoverageRadialChart();
+            updateQualityMetrics();
 
             // Animate counts (after stats are updated)
             animateCountUp();

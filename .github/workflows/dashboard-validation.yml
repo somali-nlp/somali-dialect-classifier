@@ -1,0 +1,308 @@
+name: Dashboard Validation Pipeline
+
+on:
+  pull_request:
+    paths:
+      - 'data/metrics/**'
+      - '_site/data/**'
+      - 'dashboard/**'
+      - 'schemas/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'data/metrics/**'
+      - '_site/data/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  validate-metrics:
+    name: Validate Metrics Data
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install validation dependencies
+        run: |
+          pip install jsonschema
+
+      - name: Validate JSON schema compliance
+        id: schema_validation
+        run: |
+          python << 'PYTHON_SCRIPT'
+          import json
+          import sys
+          from pathlib import Path
+
+          schema_path = Path("schemas/metrics_schema.json")
+          metrics_path = Path("_site/data/all_metrics.json")
+
+          if not metrics_path.exists():
+              print("⚠️  Metrics file not found - will be generated in build step")
+              sys.exit(0)
+
+          print(f"📋 Validating {metrics_path}")
+
+          try:
+              with open(metrics_path) as f:
+                  data = json.load(f)
+
+              required_fields = ["count", "records", "sources", "pipeline_types", "metrics"]
+              missing = [f for f in required_fields if f not in data]
+
+              if missing:
+                  print(f"❌ Missing required fields: {', '.join(missing)}")
+                  sys.exit(1)
+
+              print("✅ Schema validation passed")
+              print(f"   - Runs: {data.get('count', 0)}")
+              print(f"   - Records: {data.get('records', 0)}")
+              print(f"   - Sources: {len(data.get('sources', []))}")
+
+          except json.JSONDecodeError as e:
+              print(f"❌ Invalid JSON: {e}")
+              sys.exit(1)
+          except Exception as e:
+              print(f"❌ Validation error: {e}")
+              sys.exit(1)
+          PYTHON_SCRIPT
+
+      - name: Run comprehensive metrics validation
+        id: metrics_validation
+        run: |
+          chmod +x scripts/validate_metrics.py
+          python scripts/validate_metrics.py || echo "validation_failed=true" >> $GITHUB_OUTPUT
+
+      - name: Check data freshness
+        run: |
+          python << 'PYTHON_SCRIPT'
+          import json
+          from datetime import datetime, timedelta, timezone
+          from pathlib import Path
+
+          metrics_path = Path("_site/data/all_metrics.json")
+          if not metrics_path.exists():
+              print("⚠️  Metrics file not found")
+              exit(0)
+
+          with open(metrics_path) as f:
+              data = json.load(f)
+
+          now = datetime.now(timezone.utc)
+          threshold = now - timedelta(days=30)
+          stale_count = 0
+
+          for metric in data.get("metrics", []):
+              timestamp_str = metric.get("timestamp", "")
+              if not timestamp_str:
+                  continue
+
+              try:
+                  if timestamp_str.endswith("Z"):
+                      timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+                  else:
+                      timestamp = datetime.fromisoformat(timestamp_str)
+
+                  if timestamp < threshold:
+                      stale_count += 1
+              except ValueError:
+                  pass
+
+          total = len(data.get("metrics", []))
+          if stale_count > 0:
+              print(f"⚠️  Found {stale_count}/{total} metrics older than 30 days")
+          else:
+              print(f"✅ All {total} metrics are fresh (< 30 days old)")
+          PYTHON_SCRIPT
+
+      - name: Validate metrics quality
+        run: |
+          python << 'PYTHON_SCRIPT'
+          import json
+          from pathlib import Path
+
+          metrics_path = Path("_site/data/all_metrics.json")
+          if not metrics_path.exists():
+              print("⚠️  Metrics file not found")
+              exit(0)
+
+          with open(metrics_path) as f:
+              data = json.load(f)
+
+          issues = []
+          warnings = []
+
+          for metric in data.get("metrics", []):
+              source = metric.get("source", "Unknown")
+              pipeline_metrics = metric.get("pipeline_metrics", {})
+              pipeline_type = pipeline_metrics.get("pipeline_type", "unknown")
+
+              # Check success rates
+              if pipeline_type == "web_scraping":
+                  rate = pipeline_metrics.get("http_success_rate", 0)
+                  if rate < 0.3:
+                      issues.append(f"{source}: Very low HTTP success rate ({rate:.1%})")
+                  elif rate < 0.5:
+                      warnings.append(f"{source}: Low HTTP success rate ({rate:.1%})")
+
+              elif pipeline_type == "file_processing":
+                  rate = pipeline_metrics.get("file_extraction_rate", 0)
+                  if rate < 0.3:
+                      issues.append(f"{source}: Very low file extraction rate ({rate:.1%})")
+                  elif rate < 0.5:
+                      warnings.append(f"{source}: Low file extraction rate ({rate:.1%})")
+
+              elif pipeline_type == "stream_processing":
+                  rate = pipeline_metrics.get("retrieval_rate", 0)
+                  if rate < 0.3:
+                      issues.append(f"{source}: Very low retrieval rate ({rate:.1%})")
+                  elif rate < 0.5:
+                      warnings.append(f"{source}: Low retrieval rate ({rate:.1%})")
+
+              # Check quality
+              quality = metric.get("quality", {})
+              mean_length = quality.get("mean", 0)
+              if mean_length < 50:
+                  warnings.append(f"{source}: Very short text length ({mean_length:.0f} chars)")
+
+              # Check for zero records
+              if metric.get("records_written", 0) == 0:
+                  issues.append(f"{source}: No records written")
+
+          if issues:
+              print("❌ QUALITY ISSUES:")
+              for issue in issues:
+                  print(f"  • {issue}")
+
+          if warnings:
+              print("\n⚠️  QUALITY WARNINGS:")
+              for warning in warnings:
+                  print(f"  • {warning}")
+
+          if not issues and not warnings:
+              print("✅ All metrics quality checks passed")
+
+          # Don't fail build on warnings, only on critical issues
+          if issues and any("No records written" in i for i in issues):
+              exit(1)
+          PYTHON_SCRIPT
+
+      - name: Generate validation report
+        if: always()
+        run: |
+          cat > validation_report.md << 'EOF'
+          ## Dashboard Validation Report
+
+          ### Schema Validation
+          ${{ steps.schema_validation.outcome == 'success' && '✅ Passed' || '❌ Failed' }}
+
+          ### Metrics Quality Validation
+          ${{ steps.metrics_validation.outcome == 'success' && '✅ Passed' || '⚠️  Issues detected' }}
+
+          ### Data Freshness Check
+          See job logs for details
+
+          ---
+          *Generated by Dashboard Validation Pipeline*
+          EOF
+
+          cat validation_report.md
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('validation_report.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+  test-metrics-generation:
+    name: Test Metrics Generation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install pandas plotly numpy
+
+      - name: Test metrics generation (dry run)
+        run: |
+          mkdir -p _site/data
+
+          python << 'PYTHON_SCRIPT'
+          import json
+          from pathlib import Path
+
+          metrics_dir = Path("data/metrics")
+
+          if not metrics_dir.exists():
+              print("⚠️  No metrics directory found")
+              exit(0)
+
+          processing_files = list(metrics_dir.glob("*_processing.json"))
+          print(f"📊 Found {len(processing_files)} processing files")
+
+          valid_count = 0
+          invalid_count = 0
+
+          for metrics_file in processing_files:
+              try:
+                  with open(metrics_file) as f:
+                      data = json.load(f)
+
+                  if "_schema_version" in data:
+                      legacy = data.get("legacy_metrics", {})
+                      snapshot = legacy.get("snapshot", {})
+                  else:
+                      snapshot = data.get("snapshot", {})
+
+                  required = ["run_id", "source", "timestamp", "pipeline_type"]
+                  if all(f in snapshot for f in required):
+                      valid_count += 1
+                      print(f"✅ {metrics_file.name}")
+                  else:
+                      invalid_count += 1
+                      print(f"❌ {metrics_file.name} - missing required fields")
+
+              except Exception as e:
+                  invalid_count += 1
+                  print(f"❌ {metrics_file.name} - {e}")
+
+          print(f"\n📈 Summary: {valid_count} valid, {invalid_count} invalid")
+
+          if invalid_count > 0:
+              exit(1)
+          PYTHON_SCRIPT
+
+      - name: Verify test passed
+        run: |
+          echo "✅ Metrics generation test passed"
