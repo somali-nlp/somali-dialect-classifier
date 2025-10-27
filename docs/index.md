@@ -1,6 +1,6 @@
 # Somali Dialect Classifier Documentation
 
-**Last Updated**: 2025-01-19
+**Last Updated**: 2025-10-27
 
 Welcome to the Somali Dialect Classifier documentation. This project provides a comprehensive pipeline for collecting, processing, and preparing Somali language data for dialect classification and NLP research.
 

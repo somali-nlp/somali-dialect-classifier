@@ -416,28 +416,69 @@ somali-orchestrate --pipeline all
 # Run specific pipeline
 somali-orchestrate --pipeline wikipedia --force
 
-# Run all with limits
+# Run all with limits (useful for testing)
 somali-orchestrate --pipeline all --max-bbc-articles 500 --max-hf-records 10000
+
+# Skip specific sources
+somali-orchestrate --pipeline all --skip-sources bbc huggingface
+
+# Choose specific Språkbanken corpus (default: all)
+somali-orchestrate --pipeline all --sprakbanken-corpus cilmi
+
+# Auto-deploy dashboard after successful run
+somali-orchestrate --pipeline all --auto-deploy
+
+# Combine options for testing workflow
+somali-orchestrate --pipeline all \
+  --max-bbc-articles 100 \
+  --max-hf-records 1000 \
+  --sprakbanken-corpus ogaden \
+  --auto-deploy
 ```
+
+**New Orchestration Features:**
+
+- `--skip-sources`: Skip specific data sources when running all pipelines (e.g., `--skip-sources bbc huggingface`)
+- `--sprakbanken-corpus`: Choose specific Språkbanken corpus instead of processing all 23 corpora (e.g., `--sprakbanken-corpus cilmi`)
+- `--auto-deploy`: Automatically deploy metrics to GitHub Pages dashboard after successful pipeline runs
+- `--max-bbc-articles`: Limit BBC articles fetched for testing purposes
+- `--max-hf-records`: Limit HuggingFace records processed for testing purposes
+
+**Exit Codes:**
+
+The orchestrator now properly returns exit codes for CI/CD integration:
+- Exit 0: All enabled pipelines succeeded
+- Exit 1: One or more pipelines failed
 
 ### Prefect Workflows
 
 ```python
 from somali_dialect_classifier.orchestration import run_all_pipelines
 
-# Run all pipelines concurrently
+# Run all pipelines concurrently with new options
 result = run_all_pipelines(
     force=False,
     max_bbc_articles=500,
     max_hf_records=10000,
+    sprakbanken_corpus="cilmi",  # Choose specific corpus
     run_wikipedia=True,
     run_bbc=True,
     run_huggingface=True,
     run_sprakbanken=True,
+    auto_deploy=True,  # Deploy dashboard after success
 )
 
 print(f"Successful: {len(result['successful'])}")
 print(f"Failed: {len(result['failed'])}")
+
+# Skip specific sources programmatically
+result = run_all_pipelines(
+    run_wikipedia=True,
+    run_bbc=False,  # Skip BBC
+    run_huggingface=False,  # Skip HuggingFace
+    run_sprakbanken=True,
+    sprakbanken_corpus="all",
+)
 ```
 
 ---
@@ -702,5 +743,5 @@ After data collection:
 
 ---
 
-**Last Updated**: 2025-10-20
+**Last Updated**: 2025-10-27
 **Maintainers**: Somali NLP Contributors

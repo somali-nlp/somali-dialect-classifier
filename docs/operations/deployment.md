@@ -303,6 +303,35 @@ For complex workflows with retries, dependencies, and monitoring.
 pip install "somali-dialect-classifier[mlops]"
 ```
 
+**New Orchestration Features (v3.0+)**:
+
+The orchestrator now supports several production-ready features:
+
+1. **Source Skipping**: Skip specific data sources when running all pipelines
+   ```bash
+   somali-orchestrate --pipeline all --skip-sources bbc huggingface
+   ```
+
+2. **Språkbanken Corpus Selection**: Choose specific corpus instead of all 23
+   ```bash
+   somali-orchestrate --pipeline all --sprakbanken-corpus cilmi
+   ```
+
+3. **Auto-Deploy Dashboard**: Automatically deploy metrics after successful runs
+   ```bash
+   somali-orchestrate --pipeline all --auto-deploy
+   ```
+
+4. **Testing Limits**: Limit records for quick testing
+   ```bash
+   somali-orchestrate --pipeline all --max-bbc-articles 100 --max-hf-records 1000
+   ```
+
+5. **Proper Exit Codes**: Returns exit code 1 on failures (critical for CI/CD)
+   ```bash
+   somali-orchestrate --pipeline all || echo "Pipeline failed with code $?"
+   ```
+
 **Create flow**: `flows/bbc_scraper_flow.py`:
 
 ```python
@@ -1155,5 +1184,5 @@ tail -f /var/log/somali-nlp/pipeline.log | grep ERROR
 
 ---
 
-**Last Updated**: 2025-10-20
+**Last Updated**: 2025-10-27
 **Maintainers**: Somali NLP Contributors

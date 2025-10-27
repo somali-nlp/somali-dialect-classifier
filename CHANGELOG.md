@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-10-27
+
 ### Added
+- **Orchestration Enhancement**: Advanced pipeline control and automation features
+  - **--skip-sources flag**: Skip specific data sources when running all pipelines (e.g., `--skip-sources bbc huggingface`)
+  - **--sprakbanken-corpus flag**: Choose specific Språkbanken corpus instead of processing all 23 (e.g., `--sprakbanken-corpus cilmi`)
+  - **--auto-deploy flag**: Automatically deploy metrics to GitHub Pages dashboard after successful pipeline runs
+  - **--max-bbc-articles flag**: Limit BBC articles fetched for testing purposes
+  - **--max-hf-records flag**: Limit HuggingFace records processed for testing purposes
+  - **Proper exit codes**: Orchestrator now exits with code 1 on failures (critical for CI/CD integration)
+  - Enables flexible testing workflows and incremental data collection
 - **Documentation Reorganization (Phase 1)**: Production-ready documentation structure
   - Archived 9 internal planning documents to `docs/archive/` with timestamped naming (`YYYYMMDD_HHMM_<filename>.md`)
   - Consolidated 4 dashboard docs into single comprehensive guide at `docs/guides/dashboard.md` (1,000+ lines)
@@ -161,6 +171,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Eliminated ~700 lines of duplicate content while improving organization
 
 ### Fixed
+- **CRITICAL: BasePipeline Output Format**: BasePipeline now returns Parquet silver datasets (not .txt files)
+  - All processors now consistently write to unified silver dataset schema
+  - Fixes inconsistency where some pipelines returned text files instead of structured Parquet
+  - Ensures consistent downstream data processing and analysis
+- **CRITICAL: Orchestrator Exit Codes**: Orchestrator exits with code 1 on pipeline failures (was always 0)
+  - Enables proper CI/CD integration and error detection
+  - Failed pipelines now properly signal errors to automation systems
+  - Critical for production deployment reliability
+- **CRITICAL: Dashboard Deployment v3.0 Compatibility**: Dashboard deployment now works with v3.0 metrics schema
+  - Fixed metric field mapping for new schema structure
+  - Dashboard properly renders discovery, extraction, and processing metrics
+  - Resolves deployment failures after metrics schema migration
+- **HIGH: CLI Rate Limit Flags**: Rate-limit flags now work correctly for BBC scraping
+  - Fixed --max-articles parameter handling in orchestrator
+  - Ensures testing limits are properly applied
+  - Prevents accidental over-scraping during development
+- **HIGH: Crawl Ledger Source Identifier**: Crawl ledger now preserves source identifier
+  - Fixed source field consistency in ledger tracking
+  - Enables accurate resume capability across runs
+  - Improves deduplication accuracy
 - **Språkbanken CLI Logging**: Fixed structured logging format in `download_sprakbanken.py`
   - Changed from generic file logger to source-specific `sprakbanken-somali` logger for consistency
   - Ensures structured JSON logs include correct source identifier

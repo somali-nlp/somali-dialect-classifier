@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "somali-dialect-classifier"
-version = "0.1.0"
-description = "Somali NLP: download, extract, and process Somali Wikipedia for dialect classification"
+version = "0.2.0"
+description = "Production-ready data pipeline for Somali NLP: collect, process, and curate high-quality Somali text from multiple sources"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}

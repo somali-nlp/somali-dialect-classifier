@@ -85,6 +85,18 @@ somali-orchestrate --pipeline all
 # Run specific pipeline with limits
 somali-orchestrate --pipeline bbc --max-bbc-articles 500
 somali-orchestrate --pipeline all --max-hf-records 10000
+
+# Skip specific sources
+somali-orchestrate --pipeline all --skip-sources bbc huggingface
+
+# Choose specific Språkbanken corpus
+somali-orchestrate --pipeline all --sprakbanken-corpus cilmi
+
+# Auto-deploy dashboard after successful run
+somali-orchestrate --pipeline all --auto-deploy
+
+# Testing with limits
+somali-orchestrate --pipeline all --max-bbc-articles 100 --max-hf-records 1000
 ```
 
 ### Individual Pipelines
@@ -112,8 +124,11 @@ spraksom-download --list
 # Download specific corpus
 spraksom-download --corpus cilmi
 
-# Download all
+# Download all corpora
 spraksom-download --corpus all
+
+# Use with orchestrator
+somali-orchestrate --pipeline sprakbanken --sprakbanken-corpus ogaden
 ```
 
 ### Accessing the Silver Dataset
@@ -335,4 +350,4 @@ If you use this project in your research, please cite:
 
 ---
 
-**Last Updated:** 2025-10-20
+**Last Updated:** 2025-10-27
