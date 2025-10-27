@@ -32,9 +32,23 @@ somali-orchestrate --pipeline all
 Start here for practical usage:
 
 - **[Data Pipeline Guide](guides/data-pipeline.md)** - **⭐ Complete guide to data collection and processing**
-- **[Dashboard Guide](guides/dashboard.md)** - **⭐ Interactive metrics dashboard deployment and usage**
 - **[Portfolio Guide](guides/portfolio.md)** - **⭐ Showcasing this project in your portfolio, resume, and interviews**
 - **[Documentation Guide](guides/documentation-guide.md)** - Standards for writing and maintaining documentation
+
+#### Dashboard Documentation
+
+Comprehensive documentation for the interactive metrics dashboard:
+
+- **[Dashboard Guide](guides/dashboard.md)** - **⭐ Main dashboard deployment and usage guide**
+- **[Dashboard User Guide](guides/dashboard-user-guide.md)** - Interpreting metrics, visualizations, and insights
+- **[Dashboard Technical Architecture](guides/dashboard-technical.md)** - System design, data flow, and technical details
+- **[Dashboard Advanced Features](guides/dashboard-advanced-features.md)** - Sankey diagrams, ridge plots, dark mode, comparison tools
+- **[Dashboard Maintenance](guides/dashboard-maintenance.md)** - Troubleshooting, updates, and operational procedures
+- **[Dashboard Developer Onboarding](guides/dashboard-developer-onboarding.md)** - Contributing to dashboard development
+
+#### Data Quality & Filters
+
+- **[Filter Breakdown](guides/filter-breakdown.md)** - Understanding filter statistics and data quality metrics
 
 ### 📖 Overview - Understanding the System
 
@@ -62,6 +76,7 @@ Technical specifications and API reference:
 
 - **[API Reference](reference/api.md)** - Complete API documentation with examples
 - **[Metrics Reference](reference/metrics.md)** - Pipeline metrics collection and interpretation
+- **[Metrics Schema](reference/metrics-schema.md)** - Metrics schema specification and contract
 - **[Silver Schema](reference/silver-schema.md)** - Silver dataset schema specification
 - **[Filters Reference](reference/filters.md)** - Built-in filter documentation
 - **[Text Cleaning](reference/text-cleaning.md)** - Cleaning pipeline reference (coming soon)
@@ -72,6 +87,8 @@ Production deployment and operations:
 
 - **[Deployment](operations/deployment.md)** - Production deployment guide
 - **[Testing](operations/testing.md)** - Testing strategies and patterns
+- **[CI/CD Dashboard](operations/cicd-dashboard.md)** - Continuous integration and deployment for dashboard
+- **[CI/CD Quick Reference](operations/cicd-quick-reference.md)** - Quick reference for dashboard operations and workflows
 - **[MLOps Playbook](../operations/mlops-playbook.md)** - MLflow, monitoring (coming soon)
 
 ### 🗺️ Project - Roadmap & Plans
@@ -91,11 +108,33 @@ Design rationale and trade-offs:
 
 **Templates**: [ADR Template](templates/adr-template.md) | [How-To Template](templates/howto-template.md)
 
-### 📚 Guides
+### 🔮 Future Documentation - ML Pipeline Stages
 
-Project-wide guidelines and standards:
+As the project evolves through its lifecycle phases, documentation will be organized by ML pipeline stage:
 
-- **[Documentation Guide](guides/documentation-guide.md)** - Standards for writing and maintaining documentation
+#### Phase 2: Annotation & Labeling (Planned)
+- `guides/annotation-guidelines.md` - Standards for dialect annotation
+- `howto/labeling-interface.md` - Using the annotation tool
+- `reference/label-schema.md` - Label definitions and taxonomy
+- `operations/annotation-quality.md` - Inter-annotator agreement and QA
+
+#### Phase 3: Model Training (Planned)
+- `guides/model-training.md` - Training dialect classification models
+- `howto/experiment-tracking.md` - MLflow experiment management
+- `reference/model-architecture.md` - Architecture specifications
+- `operations/training-infrastructure.md` - GPU resources and optimization
+
+#### Phase 4: Evaluation (Planned)
+- `guides/model-evaluation.md` - Evaluation metrics and benchmarks
+- `howto/error-analysis.md` - Analyzing model predictions
+- `reference/benchmark-datasets.md` - Test set specifications
+
+#### Phase 5: Deployment (Planned)
+- `guides/model-deployment.md` - Serving models in production
+- `howto/inference-api.md` - Using the inference API
+- `operations/model-monitoring.md` - Performance monitoring and drift detection
+
+**Contributing Future Documentation**: When adding docs for new phases, follow the established structure and use the templates in `docs/templates/`.
 
 ---
 
@@ -311,12 +350,11 @@ See [Documentation Guide](guides/documentation-guide.md) for comprehensive writi
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.1.0 | 2025-10-27 | Added comprehensive dashboard docs, CI/CD operations, metrics schema, filter breakdown, and future ML pipeline documentation structure |
 | 2.0.0 | 2025-10-16 | Documentation restructure - hierarchical organization |
 | 1.0.0 | 2025-01-15 | Initial documentation release |
 
 ---
 
----
-
-**Last Updated**: 2025-10-20
+**Last Updated**: 2025-10-27
 **Maintainers**: Somali NLP Contributors
