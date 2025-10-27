@@ -403,9 +403,10 @@
         .hero h1 {
             font-family: var(--font-display);
             font-size: clamp(2.5rem, 5vw, 3.5rem);
-            font-weight: 400;
+            font-weight: 700;
             margin-bottom: var(--space-4);
             line-height: 1.1;
+            letter-spacing: -0.02em;
         }
 
         .hero-tagline {
@@ -1276,7 +1277,7 @@
         }
 
         .story-card-title {
-            font-weight: 400;
+            font-weight: 600;
             font-size: var(--text-xl);
             color: var(--tableau-navy);
             font-family: var(--font-display);
@@ -1307,7 +1308,7 @@
         .contribute h2 {
             font-family: var(--font-display);
             font-size: var(--text-4xl);
-            font-weight: 400;
+            font-weight: 600;
             margin-bottom: var(--space-6);
         }
 
@@ -1328,26 +1329,43 @@
 
         .contribute-type {
             background: white;
-            border: none;
+            border: 2px solid transparent;
             border-radius: var(--radius-card);
             padding: var(--space-8);
             transition: all var(--transition-slow);
             box-shadow: var(--shadow-md);
+            position: relative;
         }
 
         .contribute-type:hover {
             background: white;
             transform: translateY(-4px);
             box-shadow: var(--shadow-lg);
+            border-color: var(--tableau-blue);
+        }
+
+        .contribute-type:focus-within {
+            outline: 3px solid var(--tableau-blue);
+            outline-offset: 2px;
         }
 
         .contribute-type-icon {
             font-size: var(--text-3xl);
             margin-bottom: var(--space-4);
+            color: var(--tableau-blue);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .contribute-type:hover .contribute-type-icon {
+            color: var(--tableau-navy);
+            transform: scale(1.05);
         }
 
         .contribute-type-title {
-            font-weight: 400;
+            font-weight: 600;
             font-size: var(--text-lg);
             margin-bottom: 0.5rem;
             color: var(--tableau-navy);
@@ -1404,7 +1422,7 @@
         }
 
         .footer-section h3 {
-            font-weight: 400;
+            font-weight: 600;
             font-size: var(--text-base);
             color: var(--tableau-navy);
             font-family: var(--font-display);
@@ -1699,8 +1717,24 @@
         }
 
         .report-card-icon {
-            font-size: var(--text-3xl);
+            font-size: var(--text-5xl);
             margin-bottom: var(--space-4);
+            color: var(--tableau-blue);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .report-card-icon svg {
+            width: 48px;
+            height: 48px;
+            stroke-width: 2;
+        }
+
+        .report-card:hover .report-card-icon {
+            color: var(--tableau-navy);
+            transform: translateY(-2px);
         }
 
         .report-card-title {
@@ -2465,7 +2499,13 @@
                 <!-- Report Cards -->
                 <div class="report-cards">
                     <div class="report-card">
-                        <div class="report-card-icon">📊</div>
+                        <div class="report-card-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="20" x2="18" y2="10"/>
+                                <line x1="12" y1="20" x2="12" y2="4"/>
+                                <line x1="6" y1="20" x2="6" y2="14"/>
+                            </svg>
+                        </div>
                         <h3 class="report-card-title">Metrics Report (JSON)</h3>
                         <p class="report-card-description">
                             Complete metrics data including success rates, processing times, and quality statistics for all sources.
@@ -2477,7 +2517,12 @@
                     </div>
 
                     <div class="report-card">
-                        <div class="report-card-icon">📄</div>
+                        <div class="report-card-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                        </div>
                         <h3 class="report-card-title">Data Schema</h3>
                         <p class="report-card-description">
                             Comprehensive schema documentation for the Somali dialect corpus including field definitions and data types.
@@ -2489,7 +2534,12 @@
                     </div>
 
                     <div class="report-card">
-                        <div class="report-card-icon">🔗</div>
+                        <div class="report-card-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                            </svg>
+                        </div>
                         <h3 class="report-card-title">API Documentation</h3>
                         <p class="report-card-description">
                             REST API endpoints for programmatic access to the corpus, including authentication and rate limits.
