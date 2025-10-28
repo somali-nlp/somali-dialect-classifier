@@ -2268,4 +2268,5 @@ Contributions to improve the dashboard are welcome! See [CONTRIBUTING.md](../../
 
 ---
 
+**Last Updated**: 2025-10-28
 **Maintainers**: Somali NLP Contributors

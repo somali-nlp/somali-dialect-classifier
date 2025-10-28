@@ -303,9 +303,9 @@ For complex workflows with retries, dependencies, and monitoring.
 pip install "somali-dialect-classifier[mlops]"
 ```
 
-**New Orchestration Features (v3.0+)**:
+**Orchestration Options**:
 
-The orchestrator now supports several production-ready features:
+The orchestrator supports several production-ready features:
 
 1. **Source Skipping**: Skip specific data sources when running all pipelines
    ```bash

@@ -750,3 +750,8 @@ Manual check: 88% acceptable (good)
 
 **Have Questions?**
 Open an issue with the `filters` label or consult the [Troubleshooting Guide](../howto/troubleshooting.md).
+
+---
+
+**Last Updated**: 2025-10-28
+**Maintainers**: Somali NLP Contributors

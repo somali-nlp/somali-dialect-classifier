@@ -414,3 +414,8 @@ alias dash-logs='gh run list --workflow=deploy-dashboard-v2.yml --limit 1 | tail
 - GitHub Actions: https://docs.github.com/en/actions
 - Playwright: https://playwright.dev/
 - Repository issues: `gh issue list`
+
+---
+
+**Last Updated**: 2025-10-28
+**Maintainers**: Somali NLP Contributors

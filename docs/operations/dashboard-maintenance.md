@@ -594,3 +594,8 @@ netlify deploy --prod --dir=_site
 
 **Questions?**
 Contact the maintainers or open an issue with the `dashboard` or `operations` label.
+
+---
+
+**Last Updated**: 2025-10-28
+**Maintainers**: Somali NLP Contributors

@@ -723,3 +723,8 @@ For issues or questions:
 2. Review workflow logs
 3. Search existing GitHub issues
 4. Create new issue with `dashboard` and `cicd` labels
+
+---
+
+**Last Updated**: 2025-10-28
+**Maintainers**: Somali NLP Contributors

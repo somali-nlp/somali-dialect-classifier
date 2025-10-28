@@ -1553,5 +1553,5 @@ class RunComparator {
 
 ---
 
+**Last Updated**: 2025-10-27
 **Maintainers**: Somali NLP Contributors
-**Last Review**: 2025-10-27

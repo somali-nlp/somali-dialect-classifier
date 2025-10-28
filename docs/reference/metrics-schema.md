@@ -518,3 +518,8 @@ For questions or issues with the schema:
 - [Metrics Reference](metrics.md) - Pipeline metrics collection and interpretation
 - [API Reference](api.md) - Pipeline API documentation
 - [CI/CD Dashboard](../operations/cicd-dashboard.md) - Dashboard automation and deployment
+
+---
+
+**Last Updated**: 2025-10-28
+**Maintainers**: Somali NLP Contributors

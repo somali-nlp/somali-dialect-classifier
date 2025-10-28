@@ -436,7 +436,7 @@ somali-orchestrate --pipeline all \
   --auto-deploy
 ```
 
-**New Orchestration Features:**
+**Orchestration Options:**
 
 - `--skip-sources`: Skip specific data sources when running all pipelines (e.g., `--skip-sources bbc huggingface`)
 - `--sprakbanken-corpus`: Choose specific Språkbanken corpus instead of processing all 23 corpora (e.g., `--sprakbanken-corpus cilmi`)
@@ -446,7 +446,7 @@ somali-orchestrate --pipeline all \
 
 **Exit Codes:**
 
-The orchestrator now properly returns exit codes for CI/CD integration:
+The orchestrator returns exit codes for CI/CD integration:
 - Exit 0: All enabled pipelines succeeded
 - Exit 1: One or more pipelines failed
 
@@ -455,7 +455,7 @@ The orchestrator now properly returns exit codes for CI/CD integration:
 ```python
 from somali_dialect_classifier.orchestration import run_all_pipelines
 
-# Run all pipelines concurrently with new options
+# Run all pipelines concurrently
 result = run_all_pipelines(
     force=False,
     max_bbc_articles=500,
