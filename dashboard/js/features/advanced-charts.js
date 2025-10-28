@@ -6,7 +6,7 @@
 // ========================================
 // SANKEY DIAGRAM (Data Flow Visualization)
 // ========================================
-const SankeyChart = {
+export const SankeyChart = {
     /**
      * Create a Sankey/Funnel diagram showing data flow through pipeline stages
      * Using D3-sankey for proper flow visualization
@@ -280,7 +280,7 @@ const SankeyChart = {
 // ========================================
 // RIDGE PLOT (Text Length Distribution)
 // ========================================
-const RidgePlot = {
+export const RidgePlot = {
     /**
      * Create ridge plots for text-length distribution comparison
      * Overlapping density curves for each source
@@ -542,7 +542,7 @@ const RidgePlot = {
 // ========================================
 // BULLET CHART (Performance Metrics)
 // ========================================
-const BulletChart = {
+export const BulletChart = {
     /**
      * Create bullet charts with dual encoding
      * Horizontal bars with control bands, targets, and quality dots
@@ -804,10 +804,3 @@ const BulletChart = {
         return svg;
     }
 };
-
-// Export for use in main dashboard
-if (typeof window !== 'undefined') {
-    window.SankeyChart = SankeyChart;
-    window.RidgePlot = RidgePlot;
-    window.BulletChart = BulletChart;
-}

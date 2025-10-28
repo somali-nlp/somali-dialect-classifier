@@ -1,0 +1,199 @@
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+/* Mobile Responsive Design for Lifecycle */
+@media (max-width: 1024px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .lifecycle-stages {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-4);
+    }
+
+    .lifecycle-stage {
+        max-width: none;
+    }
+
+    .lifecycle-stage::after {
+        display: none;
+    }
+
+    .audience-mode-toggle {
+        top: 80px;
+        right: var(--space-4);
+    }
+
+    .mode-toggle-btn {
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--text-xs);
+    }
+}
+
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+
+    .mobile-menu-toggle {
+        display: block;
+    }
+
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+
+    .section-title,
+    .data-story-header h2,
+    .contribute h2 {
+        font-size: 2rem;
+    }
+
+    .hero-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-4);
+    }
+
+    .hero-stat {
+        padding: var(--space-8);
+    }
+
+    .hero-stat-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .hero-stat-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .hero-stat-value {
+        font-size: var(--text-3xl);
+    }
+
+    .hero-cta {
+        padding: 0.875rem 1.5rem;
+        font-size: var(--text-sm);
+    }
+
+    .lifecycle-stages {
+        grid-template-columns: 1fr;
+    }
+
+    .tab-list {
+        justify-content: flex-start;
+    }
+
+    .source-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .source-card,
+    .chart-card,
+    .story-card {
+        padding: var(--space-8);
+    }
+
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .story-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .contribute-types {
+        grid-template-columns: 1fr;
+    }
+
+    .footer-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .audience-mode-toggle {
+        position: relative;
+        top: 0;
+        right: 0;
+        margin: var(--space-4) auto;
+        width: fit-content;
+    }
+
+    .coverage-scorecard {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .lifecycle-stages {
+        grid-template-columns: 1fr;
+    }
+
+    .lifecycle-stage {
+        padding: var(--space-6);
+    }
+
+    .lifecycle-stage-icon {
+        font-size: 2.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-stats {
+        grid-template-columns: 1fr;
+        gap: var(--space-4);
+    }
+
+    .hero-stat {
+        padding: var(--space-6);
+    }
+
+    .hero-stat-value {
+        font-size: var(--text-2xl);
+    }
+
+    .hero-stat-label {
+        font-size: 0.7rem;
+    }
+
+    .hero-ctas {
+        flex-direction: column;
+        width: 100%;
+        gap: var(--space-4);
+    }
+
+    .hero-cta {
+        width: 100%;
+        justify-content: center;
+        padding: 0.875rem 1.25rem;
+    }
+
+    .hero-cta-icon {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .lifecycle-stage,
+    .lifecycle-stage-icon,
+    .lifecycle-stage-number,
+    .lifecycle-stage-progress-bar,
+    .lifecycle-overall-progress-fill {
+        animation: none !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .lifecycle-stage:hover {
+        transform: none;
+    }
+}

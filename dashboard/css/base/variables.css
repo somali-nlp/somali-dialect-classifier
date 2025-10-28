@@ -1,0 +1,112 @@
+/* ========================================
+   CSS CUSTOM PROPERTIES (DESIGN TOKENS)
+   TABLEAU-INSPIRED DESIGN SYSTEM
+   ======================================== */
+:root {
+    /* ===== TABLEAU COLOR PALETTE ===== */
+
+    /* Primary Blues */
+    --tableau-blue: #0176D3;
+    --tableau-navy: #032D60;
+    --tableau-navy-link: #0B5CAB;
+    --tableau-dark-navy: #001639;
+
+    /* Backgrounds */
+    --tableau-bg-light-blue: #EAF5FE;
+    --tableau-bg-off-white: #F4F4F4;
+    --tableau-bg-white: #FFFFFF;
+
+    /* Accents */
+    --tableau-green: #00A651;
+    --tableau-teal: #3860BE;
+
+    /* Text Colors */
+    --tableau-text-primary: #080707;
+    --tableau-text-secondary: #333333;
+    --tableau-text-light: #555555;
+
+    /* Grays */
+    --tableau-gray-border: #EBEBEB;
+    --tableau-gray-divider: #D1D1D1;
+
+    /* Brand Colors (mapped to Tableau) */
+    --brand-primary: #0176D3;
+    --brand-secondary: #032D60;
+    --brand-accent: #00A651;
+
+    /* Source Colors */
+    --wikipedia: #3b82f6;
+    --bbc: #ef4444;
+    --huggingface: #00A651;
+    --sprakbanken: #f59e0b;
+
+    /* Semantic Colors */
+    --success: #00A651;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --info: #0176D3;
+
+    /* Gray Scale */
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #032D60;
+
+    /* Typography - Tableau Style */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-display: 'Montserrat', 'Inter', sans-serif;
+    --font-mono: 'Fira Code', Monaco, monospace;
+
+    /* Type Scale - Tableau Sizes */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 2rem;
+    --text-4xl: 2.5rem;
+    --text-5xl: 3.5rem;
+
+    /* Spacing - More Generous */
+    --space-2: 0.5rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+    --space-20: 5rem;
+
+    /* Shadows - Tableau Dual-Layer */
+    --shadow-sm: rgba(23, 23, 23, 0.04) 0px 1px 4px -1px, rgba(23, 23, 23, 0.08) 0px 4px 8px -1px;
+    --shadow-md: rgba(23, 23, 23, 0.08) 0px 2px 8px -2px, rgba(23, 23, 23, 0.16) 0px 8px 12px -2px;
+    --shadow-lg: rgba(23, 23, 23, 0.12) 0px 4px 12px -2px, rgba(23, 23, 23, 0.24) 0px 12px 20px -2px;
+    --shadow-xl: rgba(23, 23, 23, 0.16) 0px 6px 16px -2px, rgba(23, 23, 23, 0.32) 0px 16px 32px -2px;
+
+    /* Border Radius - Tableau Style */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1rem;
+    --radius-card: 1rem;
+    --radius-full: 9999px;
+
+    /* Transitions */
+    --transition-fast: 150ms ease;
+    --transition-base: 250ms ease;
+    --transition-slow: 350ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

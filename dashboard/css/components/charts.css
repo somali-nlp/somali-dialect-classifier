@@ -1,0 +1,82 @@
+/* ========================================
+   CHART COMPONENTS
+   ======================================== */
+
+/* Charts Section */
+.charts-section {
+    margin-bottom: var(--space-12);
+}
+
+.section-title {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    font-weight: 400;
+    color: var(--tableau-navy);
+    margin-bottom: var(--space-6);
+}
+
+/* Chart Header */
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-6);
+}
+
+.chart-title {
+    font-weight: 400;
+    font-size: var(--text-lg);
+    color: var(--tableau-navy);
+    font-family: var(--font-display);
+}
+
+.chart-actions {
+    display: flex;
+    gap: var(--space-4);
+}
+
+/* Chart Canvas */
+.chart-canvas {
+    position: relative;
+    height: 300px;
+}
+
+/* Ridge Plot Styles */
+.ridge-plot-container {
+    position: relative;
+    height: 400px;
+    margin: var(--space-4) 0;
+}
+
+.ridge-plot-layer {
+    position: absolute;
+    width: 100%;
+    opacity: 0.7;
+    transition: opacity var(--transition-base);
+}
+
+.ridge-plot-layer:hover {
+    opacity: 1;
+    z-index: 10;
+}
+
+/* Sankey/Funnel Diagram Container */
+.sankey-container {
+    min-height: 400px;
+    position: relative;
+}
+
+/* Bullet Chart Enhancements */
+.bullet-chart-wrapper {
+    padding: var(--space-4);
+    background: var(--gray-50);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-4);
+}
+
+.bullet-chart-label {
+    font-weight: 600;
+    font-size: var(--text-sm);
+    color: var(--gray-700);
+    margin-bottom: var(--space-2);
+}

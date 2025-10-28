@@ -73,3 +73,6 @@ dashboard/index-advanced.html
 tiktok_apify_test/
 node_modules/
 *-snapshots/
+
+# Claude Code configuration
+.claude/

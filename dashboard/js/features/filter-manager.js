@@ -3,7 +3,7 @@
  * Handles source filtering, quality thresholds, date ranges, and URL state management
  */
 
-const FilterManager = {
+export const FilterManager = {
     filters: {
         sources: [], // Selected sources
         qualityThreshold: 0, // Minimum quality threshold (0-100)
@@ -519,8 +519,3 @@ const FilterManager = {
         return connectivity.connection_successful && (volume.records_written || 0) > 0;
     }
 };
-
-// Export for use in main dashboard
-if (typeof window !== 'undefined') {
-    window.FilterManager = FilterManager;
-}

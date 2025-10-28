@@ -23,6 +23,35 @@ A production-ready data pipeline for collecting, processing, and preparing high-
 
 Real-time metrics, quality reports, and pipeline performance monitoring.
 
+### Local Development
+
+**Important:** The dashboard uses ES6 modules and must be run on an HTTP server.
+
+#### Quick Start
+
+```bash
+# Python 3
+cd _site
+python -m http.server 8000
+
+# Node.js
+npx serve _site -p 8000
+
+# PHP
+cd _site
+php -S localhost:8000
+```
+
+Then open: http://localhost:8000
+
+#### Why HTTP Server Required?
+
+ES6 modules (`import`/`export`) are subject to CORS policy and will not load from `file://` protocol. This is a browser security feature, not a bug.
+
+#### VS Code Users
+
+Install "Live Server" extension and right-click `index.html` → "Open with Live Server"
+
 ## Quick Start
 
 ```bash

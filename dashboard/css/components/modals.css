@@ -1,0 +1,48 @@
+/* ========================================
+   MODAL AND OVERLAY COMPONENTS
+   ======================================== */
+
+/* Audience Mode Toggle */
+.audience-mode-toggle {
+    position: fixed;
+    top: 100px;
+    right: var(--space-8);
+    z-index: 999;
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: var(--space-2);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--gray-200);
+}
+
+/* Audience Mode Specific Styles */
+[data-audience-mode="story"] [data-show-in="analyst"] {
+    display: none !important;
+}
+
+[data-audience-mode="analyst"] [data-show-in="story"] {
+    display: none !important;
+}
+
+/* Loading State */
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-16);
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid var(--gray-200);
+    border-top-color: var(--brand-primary);
+    border-radius: var(--radius-full);
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

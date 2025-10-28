@@ -3,7 +3,7 @@
  * Supports PNG, PDF, and multi-page PDF exports using html2canvas and jsPDF
  */
 
-const ExportManager = {
+export const ExportManager = {
     /**
      * Export a single chart as PNG
      */
@@ -526,8 +526,3 @@ const ExportManager = {
         });
     }
 };
-
-// Export for use in main dashboard
-if (typeof window !== 'undefined') {
-    window.ExportManager = ExportManager;
-}

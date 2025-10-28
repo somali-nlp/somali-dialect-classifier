@@ -1,0 +1,26 @@
+/* ========================================
+   SOMALI NLP DASHBOARD - MAIN STYLESHEET
+   Modular CSS Architecture
+   ======================================== */
+
+/* Base Styles */
+@import url('./base/variables.css');
+@import url('./base/reset.css');
+@import url('./base/typography.css');
+
+/* Layout */
+@import url('./layout/navigation.css');
+@import url('./layout/hero.css');
+@import url('./layout/grid.css');
+
+/* Components */
+@import url('./components/cards.css');
+@import url('./components/tabs.css');
+@import url('./components/tables.css');
+@import url('./components/buttons.css');
+@import url('./components/charts.css');
+@import url('./components/lifecycle.css');
+@import url('./components/sections.css');
+@import url('./components/modals.css');
+@import url('./components/utilities.css');
+@import url('./components/responsive.css');

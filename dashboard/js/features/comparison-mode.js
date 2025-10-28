@@ -3,7 +3,7 @@
  * Enables split-screen comparison of metrics from different runs with diff indicators
  */
 
-const ComparisonMode = {
+export const ComparisonMode = {
     isActive: false,
     runs: {
         left: null,
@@ -570,8 +570,3 @@ const ComparisonMode = {
         return num.toLocaleString();
     }
 };
-
-// Export for use in main dashboard
-if (typeof window !== 'undefined') {
-    window.ComparisonMode = ComparisonMode;
-}

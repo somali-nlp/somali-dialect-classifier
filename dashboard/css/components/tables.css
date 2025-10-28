@@ -1,0 +1,43 @@
+/* ========================================
+   TABLE COMPONENTS
+   ======================================== */
+
+/* Comparison Table */
+.comparison-table {
+    width: 100%;
+    background: white;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-200);
+}
+
+.comparison-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.comparison-table th,
+.comparison-table td {
+    padding: var(--space-4);
+    text-align: left;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.comparison-table th {
+    background: var(--gray-50);
+    font-weight: 600;
+    font-size: var(--text-sm);
+    color: var(--gray-700);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.comparison-table td {
+    font-size: var(--text-sm);
+    color: var(--gray-900);
+}
+
+.comparison-table tr:hover {
+    background: var(--gray-50);
+}

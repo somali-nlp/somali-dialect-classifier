@@ -1,0 +1,116 @@
+/* ========================================
+   SECTION COMPONENTS
+   ======================================== */
+
+/* Data Story Section - Tableau Style */
+.data-story {
+    background: var(--tableau-bg-light-blue);
+    padding: var(--space-20) 0;
+    margin: var(--space-16) 0;
+}
+
+.data-story .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 var(--space-8);
+}
+
+.data-story-header {
+    text-align: center;
+    margin-bottom: var(--space-12);
+}
+
+.data-story-header h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-4xl);
+    font-weight: 400;
+    color: var(--tableau-navy);
+    margin-bottom: var(--space-4);
+}
+
+.data-story-header p {
+    font-size: var(--text-lg);
+    color: var(--tableau-text-secondary);
+    max-width: 800px;
+    margin: 0 auto;
+    line-height: 1.8;
+}
+
+/* Contribute Section - Tableau Style */
+.contribute {
+    background: linear-gradient(135deg, var(--tableau-blue) 0%, var(--tableau-navy) 100%);
+    color: white;
+    padding: var(--space-20) 0;
+}
+
+.contribute .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 var(--space-8);
+    text-align: center;
+}
+
+.contribute h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-4xl);
+    font-weight: 600;
+    margin-bottom: var(--space-6);
+}
+
+.contribute-text {
+    font-size: var(--text-lg);
+    opacity: 0.9;
+    max-width: 700px;
+    margin: 0 auto var(--space-12);
+    line-height: 1.8;
+}
+
+/* Footer */
+footer {
+    background: var(--gray-100);
+    padding: var(--space-12) 0 var(--space-6);
+    border-top: 1px solid var(--gray-200);
+}
+
+footer .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+}
+
+.footer-section h3 {
+    font-weight: 600;
+    font-size: var(--text-base);
+    color: var(--tableau-navy);
+    font-family: var(--font-display);
+    margin-bottom: var(--space-4);
+}
+
+.footer-links {
+    list-style: none;
+    display: grid;
+    gap: var(--space-4);
+}
+
+.footer-links a {
+    color: var(--gray-600);
+    text-decoration: none;
+    font-size: var(--text-sm);
+    transition: color var(--transition-fast);
+}
+
+.footer-links a:hover {
+    color: var(--brand-primary);
+}
+
+.footer-bottom {
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+}

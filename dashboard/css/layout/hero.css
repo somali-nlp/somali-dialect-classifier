@@ -1,0 +1,263 @@
+/* ========================================
+   HERO SECTION - TABLEAU STYLE
+   ======================================== */
+.hero {
+    background: linear-gradient(180deg, #5CB2F7 0%, #6DC4FA 50%, #A9DBFB 100%);
+    color: white;
+    padding: 7.5rem 0 calc(7.5rem + 80px);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.hero .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 var(--space-8);
+    position: relative;
+    z-index: 1;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.25);
+    padding: 0.5rem var(--space-4);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    margin-bottom: var(--space-4);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    font-weight: 700;
+    margin-bottom: var(--space-4);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: #001639;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.hero-tagline {
+    font-size: var(--text-xl);
+    font-weight: 500;
+    opacity: 1;
+    margin-bottom: var(--space-6);
+    max-width: 800px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.hero-description {
+    font-size: var(--text-base);
+    opacity: 1;
+    max-width: 700px;
+    margin-bottom: var(--space-8);
+    line-height: 1.7;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Hero Stats - Tableau Style (Solid White Cards) */
+.hero-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-8);
+    margin-top: var(--space-12);
+}
+
+.hero-stat {
+    background: white;
+    border: none;
+    border-radius: var(--radius-card);
+    padding: var(--space-12);
+    text-align: center;
+    transition: all var(--transition-slow);
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.hero-stat:hover {
+    background: white;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Icon container */
+.hero-stat-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 1rem;
+    background: var(--tableau-bg-light-blue);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-base);
+}
+
+.hero-stat:hover .hero-stat-icon {
+    background: var(--tableau-blue);
+    transform: scale(1.05);
+}
+
+.hero-stat-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: var(--tableau-blue);
+    stroke-width: 2;
+    fill: none;
+    transition: stroke var(--transition-base);
+}
+
+.hero-stat:hover .hero-stat-icon svg {
+    stroke: white;
+}
+
+.hero-stat-value {
+    font-size: var(--text-4xl);
+    font-weight: 600;
+    font-family: var(--font-display);
+    display: block;
+    margin-bottom: 0.5rem;
+    position: relative;
+    color: var(--tableau-navy);
+}
+
+.hero-stat-label {
+    font-size: var(--text-sm);
+    color: var(--tableau-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+/* Entry animations */
+@keyframes statFadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hero-stat {
+    animation: statFadeInUp 0.6s ease-out forwards;
+    opacity: 0;
+}
+
+.hero-stat:nth-child(1) { animation-delay: 0.1s; }
+.hero-stat:nth-child(2) { animation-delay: 0.2s; }
+.hero-stat:nth-child(3) { animation-delay: 0.3s; }
+.hero-stat:nth-child(4) { animation-delay: 0.4s; }
+
+/* Hero CTAs - Tableau Style */
+.hero-ctas {
+    display: flex;
+    gap: var(--space-4);
+    margin-top: var(--space-8);
+    flex-wrap: wrap;
+}
+
+.hero-cta {
+    padding: 14px 32px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all var(--transition-base);
+    font-size: var(--text-base);
+    position: relative;
+    cursor: pointer;
+}
+
+/* Button icon styles */
+.hero-cta-icon {
+    width: 20px;
+    height: 20px;
+    transition: transform var(--transition-base);
+}
+
+.hero-cta-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Primary Button - Solid White */
+.hero-cta-primary {
+    background: white;
+    color: var(--tableau-blue);
+    border: 2px solid white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.hero-cta-primary:hover {
+    background: var(--tableau-bg-off-white);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.hero-cta-primary:hover .hero-cta-icon {
+    transform: translateY(2px);
+}
+
+.hero-cta-primary:active {
+    transform: translateY(-1px);
+}
+
+/* Secondary Button - Outlined */
+.hero-cta-secondary {
+    background: rgba(0, 0, 0, 0.1);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.hero-cta-secondary:hover {
+    background: rgba(0, 0, 0, 0.2);
+    border-color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.hero-cta-secondary:hover .hero-cta-icon {
+    transform: translateX(3px);
+}
+
+.hero-cta-secondary:active {
+    transform: translateY(0);
+}
+
+/* Arrow bounce animation for primary button */
+@keyframes bounceArrow {
+    0%, 100% { transform: translateY(2px); }
+    50% { transform: translateY(6px); }
+}
+
+/* Focus states for accessibility */
+.hero-cta:focus-visible {
+    outline: 3px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 3px;
+}

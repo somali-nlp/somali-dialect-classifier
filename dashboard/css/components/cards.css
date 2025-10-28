@@ -1,0 +1,342 @@
+/* ========================================
+   CARD COMPONENTS
+   ======================================== */
+
+/* Source Cards */
+.source-card {
+    background: white;
+    border: none;
+    border-radius: var(--radius-card);
+    padding: var(--space-12);
+    transition: all var(--transition-slow);
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+.source-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+}
+
+.source-card.wikipedia::before {
+    background: var(--wikipedia);
+}
+
+.source-card.bbc::before {
+    background: var(--bbc);
+}
+
+.source-card.huggingface::before {
+    background: var(--huggingface);
+}
+
+.source-card.sprakbanken::before {
+    background: var(--sprakbanken);
+}
+
+.source-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
+}
+
+.source-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: var(--space-4);
+}
+
+.source-card-title {
+    font-weight: 400;
+    font-size: var(--text-lg);
+    color: var(--tableau-navy);
+    font-family: var(--font-display);
+}
+
+.source-card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.source-card-badge.complete {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.source-card-metrics {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.source-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.source-metric-label {
+    color: var(--gray-600);
+    font-size: var(--text-sm);
+}
+
+.source-metric-value {
+    font-weight: 600;
+    font-size: var(--text-lg);
+    color: var(--tableau-navy);
+}
+
+.source-card-footer {
+    margin-top: var(--space-6);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+}
+
+/* Chart Cards */
+.chart-card {
+    background: white;
+    border: none;
+    border-radius: var(--radius-card);
+    padding: var(--space-12);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-slow);
+}
+
+.chart-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.chart-card.enhanced {
+    position: relative;
+    overflow: visible;
+}
+
+/* Story Cards */
+.story-card {
+    background: white;
+    border-radius: var(--radius-card);
+    padding: var(--space-12);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-slow);
+}
+
+.story-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.story-card-icon {
+    font-size: var(--text-5xl);
+    margin-bottom: var(--space-4);
+    color: var(--tableau-blue);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.story-card-icon svg {
+    width: 48px;
+    height: 48px;
+    stroke-width: 2;
+}
+
+.story-card:hover .story-card-icon {
+    color: var(--tableau-navy);
+    transform: scale(1.05);
+}
+
+.story-card-title {
+    font-weight: 600;
+    font-size: var(--text-xl);
+    color: var(--tableau-navy);
+    font-family: var(--font-display);
+    margin-bottom: var(--space-4);
+}
+
+.story-card-text {
+    color: var(--tableau-text-secondary);
+    line-height: 1.7;
+}
+
+/* Report Cards */
+.report-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    transition: all var(--transition-base);
+}
+
+.report-card:hover {
+    border-color: var(--brand-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.report-card-icon {
+    font-size: var(--text-5xl);
+    margin-bottom: var(--space-4);
+    color: var(--tableau-blue);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.report-card-icon svg {
+    width: 48px;
+    height: 48px;
+    stroke-width: 2;
+}
+
+.report-card:hover .report-card-icon {
+    color: var(--tableau-navy);
+    transform: translateY(-2px);
+}
+
+.report-card-title {
+    font-weight: 600;
+    font-size: var(--text-lg);
+    margin-bottom: var(--space-4);
+}
+
+.report-card-description {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin-bottom: var(--space-6);
+    line-height: 1.6;
+}
+
+.report-card-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--brand-primary);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: var(--text-sm);
+    transition: all var(--transition-fast);
+}
+
+.report-card-action:hover {
+    gap: 0.75rem;
+}
+
+/* Contribute Type Cards */
+.contribute-type {
+    background: white;
+    border: 2px solid transparent;
+    border-radius: var(--radius-card);
+    padding: var(--space-8);
+    transition: all var(--transition-slow);
+    box-shadow: var(--shadow-md);
+    position: relative;
+}
+
+.contribute-type:hover {
+    background: white;
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--tableau-blue);
+}
+
+.contribute-type:focus-within {
+    outline: 3px solid var(--tableau-blue);
+    outline-offset: 2px;
+}
+
+.contribute-type-icon {
+    font-size: var(--text-3xl);
+    margin-bottom: var(--space-4);
+    color: var(--tableau-blue);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.contribute-type:hover .contribute-type-icon {
+    color: var(--tableau-navy);
+    transform: scale(1.05);
+}
+
+.contribute-type-title {
+    font-weight: 600;
+    font-size: var(--text-lg);
+    margin-bottom: 0.5rem;
+    color: var(--tableau-navy);
+    font-family: var(--font-display);
+}
+
+.contribute-type-text {
+    font-size: var(--text-sm);
+    color: var(--tableau-text-secondary);
+}
+
+/* Coverage Metric Cards */
+.coverage-metric {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.coverage-metric::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--brand-primary), var(--success));
+}
+
+.coverage-value {
+    font-size: var(--text-4xl);
+    font-weight: 700;
+    color: var(--brand-primary);
+    margin-bottom: var(--space-2);
+}
+
+.coverage-label {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.coverage-progress {
+    margin-top: var(--space-4);
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.coverage-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--brand-primary), var(--success));
+    border-radius: var(--radius-full);
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}

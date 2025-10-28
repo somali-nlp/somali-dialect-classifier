@@ -12,15 +12,17 @@ mkdir -p _site
 # Copy the enhanced template
 cp dashboard/templates/index.html _site/index.html
 
-# Copy advanced features JavaScript and CSS files
-echo "Copying advanced features files..."
-cp dashboard/theme-manager.js _site/theme-manager.js
-cp dashboard/filter-manager.js _site/filter-manager.js
-cp dashboard/export-manager.js _site/export-manager.js
-cp dashboard/advanced-charts.js _site/advanced-charts.js
-cp dashboard/comparison-mode.js _site/comparison-mode.js
-cp dashboard/advanced-features.css _site/advanced-features.css
-echo "✓ Copied advanced features files"
+# Copy modular CSS and JavaScript structure
+echo "Copying modular CSS and JavaScript files..."
+cp -r dashboard/css _site/css
+cp -r dashboard/js _site/js
+echo "✓ Copied modular CSS and JavaScript files"
+
+# Copy advanced features CSS (if exists for backwards compatibility)
+if [ -f "dashboard/advanced-features.css" ]; then
+    cp dashboard/advanced-features.css _site/advanced-features.css
+    echo "✓ Copied advanced-features.css"
+fi
 
 # Copy data files
 mkdir -p _site/data

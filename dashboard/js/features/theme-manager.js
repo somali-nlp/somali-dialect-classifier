@@ -3,7 +3,7 @@
  * Manages theme switching, localStorage persistence, and chart color updates
  */
 
-const ThemeManager = {
+export const ThemeManager = {
     themes: {
         LIGHT: 'light',
         DARK: 'dark'
@@ -234,15 +234,3 @@ const ThemeManager = {
         };
     }
 };
-
-// Export for use in main dashboard
-if (typeof window !== 'undefined') {
-    window.ThemeManager = ThemeManager;
-
-    // Auto-initialize when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => ThemeManager.init());
-    } else {
-        ThemeManager.init();
-    }
-}
