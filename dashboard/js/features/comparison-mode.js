@@ -398,8 +398,9 @@ export const ComparisonMode = {
      */
     generateSourceCard(metric) {
         const source = this.getSourceName(metric._source || metric.source);
-        const records = metric.layered_metrics?.volume?.records_written || 0;
-        const quality = (metric.legacy_metrics?.statistics?.quality_pass_rate || 0) * 100;
+        const records = metric.records_written || 0;
+        // Bug Fix #7: Use normalized quality_pass_rate (not legacy_metrics)
+        const quality = (metric.quality_pass_rate || 0) * 100;
 
         return `
             <div class="comparison-source-card">
@@ -506,7 +507,8 @@ export const ComparisonMode = {
         const totalSources = sources.size;
 
         const avgQuality = metrics.reduce((sum, m) => {
-            return sum + ((m.legacy_metrics?.statistics?.quality_pass_rate || 0) * 100);
+            // Bug Fix #7: Use normalized quality_pass_rate (not legacy_metrics)
+            return sum + ((m.quality_pass_rate || 0) * 100);
         }, 0) / metrics.length;
 
         const avgSuccess = metrics.reduce((sum, m) => {

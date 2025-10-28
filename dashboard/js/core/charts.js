@@ -4,6 +4,8 @@
  */
 
 import { getMetrics } from './data-service.js';
+import { normalizeSourceName } from '../utils/formatters.js';
+import { Logger } from '../utils/logger.js';
 
 /**
  * Initialize all dashboard charts
@@ -33,10 +35,23 @@ export function initCharts() {
  */
 function createSourceDistributionChart(metricsData) {
     const sourceDistCtx = document.getElementById('sourceDistributionChart');
+
+    // Bug Fix #10: Comprehensive validation before processing
+    if (!sourceDistCtx) {
+        Logger.warn('Chart container not found: sourceDistributionChart');
+        return;
+    }
+
+    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+        Logger.warn('Invalid or empty metrics data for source distribution chart');
+        return;
+    }
+
     if (sourceDistCtx && metricsData.metrics && metricsData.metrics.length > 0) {
         const sourceMap = new Map();
         metricsData.metrics.forEach(m => {
-            const name = m.source.replace(/-Somali|_Somali_c4-so|-Somali/, '').replace('Sprakbanken', 'Språkbanken').replace('HuggingFace', 'HuggingFace');
+            // Bug Fix #9: Use consistent source name normalization
+            const name = normalizeSourceName(m.source);
             sourceMap.set(name, (sourceMap.get(name) || 0) + m.records_written);
         });
 
@@ -95,10 +110,24 @@ function createSourceDistributionChart(metricsData) {
  */
 function createQualityRateChart(metricsData) {
     const qualityRateCtx = document.getElementById('qualityRateChart');
+
+    // Bug Fix #10: Comprehensive validation before processing
+    if (!qualityRateCtx) {
+        Logger.warn('Chart container not found: qualityRateChart');
+        return;
+    }
+
+    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+        Logger.warn('Invalid or empty metrics data for quality rate chart');
+        return;
+    }
+
     if (qualityRateCtx && metricsData.metrics && metricsData.metrics.length > 0) {
-        const labels = metricsData.metrics.map(m => m.source.replace(/-Somali|_Somali_c4-so/, '').replace('Sprakbanken', 'Språkbanken'));
+        // Bug Fix #9: Use consistent source name normalization
+        const labels = metricsData.metrics.map(m => normalizeSourceName(m.source));
         const data = metricsData.metrics.map(m => {
-            const qualityRate = m.pipeline_metrics?.quality_pass_rate || 0;
+            // Bug Fix #2: Use flattened quality_pass_rate (normalized by data-service)
+            const qualityRate = m.quality_pass_rate || 0;
             return qualityRate * 100;
         });
         const colors = metricsData.metrics.map(m => {
@@ -156,8 +185,21 @@ function createQualityRateChart(metricsData) {
  */
 function createSourceComparisonChart(metricsData) {
     const sourceCompCtx = document.getElementById('sourceComparisonChart');
+
+    // Bug Fix #10: Comprehensive validation before processing
+    if (!sourceCompCtx) {
+        Logger.warn('Chart container not found: sourceComparisonChart');
+        return;
+    }
+
+    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+        Logger.warn('Invalid or empty metrics data for source comparison chart');
+        return;
+    }
+
     if (sourceCompCtx && metricsData.metrics && metricsData.metrics.length > 0) {
-        const labels = metricsData.metrics.map(m => m.source.replace(/-Somali|_Somali_c4-so/, '').replace('Sprakbanken', 'Språkbanken'));
+        // Bug Fix #9: Use consistent source name normalization
+        const labels = metricsData.metrics.map(m => normalizeSourceName(m.source));
         const data = metricsData.metrics.map(m => m.records_written);
         const colors = metricsData.metrics.map(m => {
             if (m.source.includes('Wikipedia')) return '#3b82f6';
@@ -214,9 +256,23 @@ function createSourceComparisonChart(metricsData) {
  */
 function createTextLengthChart(metricsData) {
     const textLengthCtx = document.getElementById('textLengthChart');
+
+    // Bug Fix #10: Comprehensive validation before processing
+    if (!textLengthCtx) {
+        Logger.warn('Chart container not found: textLengthChart');
+        return;
+    }
+
+    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+        Logger.warn('Invalid or empty metrics data for text length chart');
+        return;
+    }
+
     if (textLengthCtx && metricsData.metrics && metricsData.metrics.length > 0) {
-        const labels = metricsData.metrics.map(m => m.source.replace(/-Somali|_Somali_c4-so/, '').replace('Sprakbanken', 'Språkbanken'));
-        const data = metricsData.metrics.map(m => m.quality?.avg_text_length || 0);
+        // Bug Fix #9: Use consistent source name normalization
+        const labels = metricsData.metrics.map(m => normalizeSourceName(m.source));
+        // Bug Fix #4: Use text_length_stats.mean (normalized by data-service)
+        const data = metricsData.metrics.map(m => m.text_length_stats?.mean || 0);
         const colors = metricsData.metrics.map(m => {
             if (m.source.includes('Wikipedia')) return '#3b82f6';
             if (m.source.includes('BBC')) return '#ef4444';
@@ -334,15 +390,33 @@ function createDeduplicationChart() {
  */
 function createPerformanceBulletChart(metricsData) {
     const bulletCtx = document.getElementById('performanceBulletChart');
+
+    // Bug Fix #10: Comprehensive validation before processing
+    if (!bulletCtx) {
+        Logger.warn('Chart container not found: performanceBulletChart');
+        return;
+    }
+
+    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+        Logger.warn('Invalid or empty metrics data for performance bullet chart');
+        return;
+    }
+
     if (bulletCtx && metricsData.metrics && metricsData.metrics.length > 0) {
         const metrics = metricsData.metrics;
-        const sources = metrics.map(m => m.source.replace(/-Somali|_Somali_c4-so|-Somali/, '').replace('HuggingFace', 'HF').replace('Sprakbanken', 'Språk'));
-        const recordsPerMin = metrics.map(m => m.performance.records_per_minute);
+        // Bug Fix #9: Use consistent source name normalization (with abbreviations for space)
+        const sources = metrics.map(m => {
+            const normalized = normalizeSourceName(m.source);
+            return normalized.replace('HuggingFace MC4', 'HF').replace('Språkbanken', 'Språk');
+        });
+        // Bug Fix #3/#8: Use flattened records_per_minute with safety checks
+        const recordsPerMin = metrics.map(m => m.records_per_minute || 0);
         const qualityRates = metrics.map(m => {
-            const quality = m.pipeline_metrics?.quality_pass_rate || 0;
+            // Bug Fix #2: Use flattened quality_pass_rate (normalized by data-service)
+            const quality = m.quality_pass_rate || 0;
             return quality * 100;
         });
-        const maxRPM = Math.max(...recordsPerMin);
+        const maxRPM = Math.max(...recordsPerMin, 1); // Ensure at least 1 to avoid division by zero
 
         // Calculate composite performance score (60% speed + 40% quality)
         const performanceScores = metrics.map((m, i) => {
@@ -416,19 +490,35 @@ function createPerformanceBulletChart(metricsData) {
  */
 function createQualityVsSpeedChart(metricsData) {
     const scatterCtx = document.getElementById('qualityVsSpeedChart');
+
+    // Bug Fix #10: Comprehensive validation before processing
+    if (!scatterCtx) {
+        Logger.warn('Chart container not found: qualityVsSpeedChart');
+        return;
+    }
+
+    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+        Logger.warn('Invalid or empty metrics data for quality vs speed chart');
+        return;
+    }
+
     if (scatterCtx && metricsData.metrics) {
         const datasets = metricsData.metrics.map(m => {
-            const sourceShort = m.source.replace(/-Somali|_Somali_c4-so/, '').replace('Sprakbanken', 'Språk').replace('HuggingFace', 'HF');
+            // Bug Fix #9: Use consistent source name normalization (with abbreviations for space)
+            const normalized = normalizeSourceName(m.source);
+            const sourceShort = normalized.replace('HuggingFace MC4', 'HF').replace('Språkbanken', 'Språk');
             let color = m.source.includes('Wikipedia') ? '#3b82f6' :
                         m.source.includes('BBC') ? '#ef4444' :
                         m.source.includes('HuggingFace') ? '#10b981' : '#f59e0b';
             const bubbleSize = Math.log10(m.records_written + 1) * 7 + 5;
-            const qualityRate = m.pipeline_metrics?.quality_pass_rate || 0;
+            // Bug Fix #2: Use flattened quality_pass_rate (normalized by data-service)
+            const qualityRate = m.quality_pass_rate || 0;
 
             return {
                 label: `${sourceShort} (${m.records_written.toLocaleString()})`,
                 data: [{
-                    x: m.performance.records_per_minute,
+                    // Bug Fix #3/#8: Use flattened records_per_minute with safety checks
+                    x: m.records_per_minute || 0,
                     y: qualityRate * 100,
                     r: bubbleSize
                 }],
@@ -475,12 +565,26 @@ function createQualityVsSpeedChart(metricsData) {
  */
 function createCumulativeTimelineChart(metricsData) {
     const timelineCtx = document.getElementById('cumulativeTimelineChart');
+
+    // Bug Fix #10: Comprehensive validation before processing
+    if (!timelineCtx) {
+        Logger.warn('Chart container not found: cumulativeTimelineChart');
+        return;
+    }
+
+    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+        Logger.warn('Invalid or empty metrics data for cumulative timeline chart');
+        return;
+    }
+
     if (timelineCtx && metricsData.metrics) {
         const sorted = [...metricsData.metrics].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         const sources = [...new Set(sorted.map(m => m.source))];
 
         const datasets = sources.map(source => {
-            const sourceShort = source.replace(/-Somali|_Somali_c4-so/, '').replace('Sprakbanken', 'Språk').replace('HuggingFace', 'HF');
+            // Bug Fix #9: Use consistent source name normalization (with abbreviations for space)
+            const normalized = normalizeSourceName(source);
+            const sourceShort = normalized.replace('HuggingFace MC4', 'HF').replace('Språkbanken', 'Språk');
             let color = source.includes('Wikipedia') ? '#3b82f6' :
                         source.includes('BBC') ? '#ef4444' :
                         source.includes('HuggingFace') ? '#10b981' : '#f59e0b';

@@ -504,8 +504,8 @@ export const FilterManager = {
      * Get quality rate from metric
      */
     getQualityRate(metric) {
-        const stats = metric.legacy_metrics?.statistics || {};
-        return (stats.quality_pass_rate || 0) * 100;
+        // Bug Fix #7: Use normalized quality_pass_rate (not legacy_metrics)
+        return (metric.quality_pass_rate || 0) * 100;
     },
 
     /**

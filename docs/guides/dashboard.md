@@ -2,8 +2,8 @@
 
 **Complete guide to deploying, using, and mastering the Somali Dialect Classifier data pipeline dashboard.**
 
-**Last Updated**: 2025-10-27
-**Version**: 3.1.0
+**Last Updated**: 2025-10-28
+**Version**: 3.2.0
 
 ---
 
@@ -12,11 +12,11 @@
 The Somali Dialect Classifier includes a professional data quality monitoring dashboard with zero hosting costs. This comprehensive guide covers everything from initial deployment to advanced analytics and customization.
 
 **What You Get**:
-- Live static dashboard on GitHub Pages with zero hosting costs
-- Interactive local dashboard with Streamlit for deep analysis
-- Automated deployments via GitHub Actions
+- Live static ES6 modular dashboard on GitHub Pages with zero hosting costs
 - Real-time metrics visualization and quality reports
+- Automated deployments via GitHub Actions
 - Advanced filtering, comparison, and export capabilities
+- Interactive charts with dark mode support
 
 **Data Sources Monitored**:
 - **Wikipedia (Somali)**: Encyclopedia articles
@@ -104,21 +104,21 @@ Replace `somali-nlp` with your actual GitHub username in these files:
 
 1. **README.md** (badge and link sections)
 2. **dashboard/README.md** (live dashboard link)
-3. **dashboard/app.py** (footer GitHub link)
+3. **dashboard/index.html** (if needed for absolute paths)
 
 Quick replacement command:
 ```bash
 # macOS/Linux
-sed -i '' 's/somali-nlp/YOUR-GITHUB-USERNAME/g' README.md dashboard/README.md dashboard/app.py
+sed -i '' 's/somali-nlp/YOUR-GITHUB-USERNAME/g' README.md dashboard/README.md dashboard/index.html
 
-# Or manually edit the 3 files
+# Or manually edit the files
 ```
 
 ### Step 4: Deploy (1 minute)
 
 ```bash
 # Stage all changes
-git add README.md dashboard/README.md dashboard/app.py
+git add README.md dashboard/README.md dashboard/index.html
 
 # Commit
 git commit -m "chore(config): configure dashboard URLs for deployment"
@@ -254,34 +254,32 @@ somali-deploy-dashboard --min-sources 4
 
 ### Dashboard Architecture
 
-The project includes two complementary dashboard versions:
+The project includes a modern ES6 modular dashboard:
 
-#### 1. Static Dashboard (GitHub Pages)
+#### Static Dashboard (GitHub Pages)
 
 **URL**: `https://YOUR-USERNAME.github.io/somali-dialect-classifier/`
 
+**Architecture**: ES6 modular JavaScript with Chart.js visualizations
+
 **Features**:
-- Key metrics overview
-- Links to quality reports
-- Source comparison tables
+- Key metrics overview with interactive charts
+- Source comparison tables and performance analytics
+- Quality reports viewer
 - Zero cost hosting
 - Automatic updates on push to `main`
+- Dark mode support
+- Advanced filtering and export capabilities
 
-**Best For**: Public metrics sharing, quick overview, stakeholder visibility
+**Requirements**: Must be served over HTTP (not file:// protocol)
 
-#### 2. Interactive Dashboard (Local/Streamlit)
+**Local Development**: Run an HTTP server in the `_site/` directory:
+```bash
+cd _site && python3 -m http.server 8000
+# Opens at: http://localhost:8000
+```
 
-**Run**: `streamlit run dashboard/app.py`
-
-**Features**:
-- Real-time filtering by source and date
-- Interactive charts (zoom, pan, select)
-- Live data refresh
-- Full quality report viewer
-- Advanced analytics and comparison tools
-- Export capabilities
-
-**Best For**: Deep analysis, debugging, exploration
+**Best For**: Public metrics sharing, stakeholder visibility, production dashboard
 
 ### Data Flow
 
@@ -299,10 +297,10 @@ The project includes two complementary dashboard versions:
 
 ┌─────────────────────────────────────────────────┐
 │ 2. Test Dashboard Locally                       │
-│    streamlit run dashboard/app.py               │
+│    cd _site && python3 -m http.server 8000     │
 └─────────────┬───────────────────────────────────┘
               │
-              └─► http://localhost:8501 (Interactive)
+              └─► http://localhost:8000 (ES6 Dashboard)
 
 ┌─────────────────────────────────────────────────┐
 │ 3. Commit & Push                                │
@@ -338,8 +336,22 @@ The project includes two complementary dashboard versions:
 
 ```
 ├── dashboard/
-│   ├── app.py                    # Interactive Streamlit dashboard
-│   ├── requirements.txt          # Dashboard dependencies
+│   ├── index.html                # Main dashboard HTML
+│   ├── css/                      # Stylesheets
+│   ├── js/                       # ES6 modular JavaScript
+│   │   ├── config.js             # Configuration management
+│   │   ├── main.js               # Entry point
+│   │   ├── core/                 # Core functionality
+│   │   │   ├── data-service.js   # Data loading with normalization
+│   │   │   ├── stats.js          # Statistics calculation
+│   │   │   ├── charts.js         # Chart rendering
+│   │   │   ├── ui-renderer.js    # UI component rendering
+│   │   │   └── tabs.js           # Tab navigation
+│   │   ├── features/             # Advanced features
+│   │   └── utils/                # Utility functions
+│   │       ├── logger.js         # Structured logging
+│   │       └── formatters.js     # Data formatting utilities
+│   ├── build-site.sh             # Build script for deployment
 │   └── README.md                 # Technical reference
 ├── scripts/
 │   └── export_dashboard_data.py  # Aggregates metrics for static site
@@ -891,26 +903,36 @@ Decision: Adopt new threshold
 
 ## Local Development
 
-### Installation
+### Requirements
+
+The dashboard is built with ES6 modules and requires:
+- Modern web browser (Chrome 61+, Firefox 60+, Safari 11+, Edge 79+)
+- HTTP server (ES6 modules cannot load from `file://` protocol)
+- No Python dependencies for the dashboard itself
+
+### Running the Dashboard Locally
 
 ```bash
-# Install dashboard dependencies
-pip install -r dashboard/requirements.txt
+# 1. Build the site (aggregates metrics)
+./dashboard/build-site.sh
+
+# 2. Start HTTP server in the _site directory
+cd _site && python3 -m http.server 8000
+
+# 3. Open browser
+# Navigate to: http://localhost:8000
 ```
 
-Dependencies include:
-- `streamlit` - Interactive web dashboard framework
-- `plotly` - Interactive charts and visualizations
-- `pandas` - Data manipulation
-- `pyarrow` - Parquet file reading
-
-### Running the Dashboard
-
+**Alternative HTTP servers**:
 ```bash
-# Run interactive dashboard
-streamlit run dashboard/app.py
+# Node.js http-server
+npx http-server _site -p 8000
 
-# Opens at: http://localhost:8501
+# PHP built-in server
+php -S localhost:8000 -t _site
+
+# Ruby WEBrick
+ruby -run -e httpd _site -p 8000
 ```
 
 ### Development Loop
@@ -919,29 +941,47 @@ streamlit run dashboard/app.py
 # 1. Run pipeline locally
 python -m somali_dialect_classifier.cli.download_bbcsom --max-articles 100
 
-# 2. Test dashboard locally
-streamlit run dashboard/app.py
+# 2. Rebuild dashboard with new data
+./dashboard/build-site.sh
 
-# 3. Commit and push when satisfied
+# 3. Refresh browser (no need to restart server)
+# The dashboard will load the updated data automatically
+
+# 4. Commit and push when satisfied
 git add data/metrics/ data/reports/
 git commit -m "chore(metrics): add BBC Somali pipeline run"
 git push origin main
 
-# 4. GitHub Actions automatically updates the live dashboard
+# 5. GitHub Actions automatically updates the live dashboard
 #    (Check Actions tab to see deployment)
 ```
 
 ### Advanced Development
 
-```bash
-# Run with debug logging
-streamlit run dashboard/app.py --logger.level=debug
+**Enable Debug Logging** (in browser console):
+```javascript
+// Set log level to DEBUG
+Logger.level = LogLevel.DEBUG;
 
-# Run on custom port
-streamlit run dashboard/app.py --server.port=8502
+// Refresh dashboard to see debug output
+location.reload();
+```
 
-# Disable file watcher (for performance)
-streamlit run dashboard/app.py --server.fileWatcherType=none
+**Test with Different Data Files**:
+```javascript
+// Override data path in browser console
+Config.DATA_PATHS = ['test-data/all_metrics.json'];
+
+// Reload data
+location.reload();
+```
+
+**Monitor Performance**:
+```javascript
+// Use Logger's timing utility
+Logger.time('data-load');
+// ... perform operation ...
+Logger.timeEnd('data-load');
 ```
 
 ---
@@ -964,32 +1004,73 @@ class MetricSnapshot:
 collector.increment("custom_metric", value)
 ```
 
-#### Step 2: Update Dashboard to Display Metric
+#### Step 2: Update Export Script
 
 ```python
-# In dashboard/app.py, load_metrics() function
-row["custom_metric"] = snapshot.get("custom_metric", 0)
-
-# Add visualization
-st.subheader("Custom Metric Analysis")
-fig = px.line(
-    filtered_df,
-    x="timestamp",
-    y="custom_metric",
-    color="source",
-    title="Custom Metric Over Time"
-)
-st.plotly_chart(fig, use_container_width=True)
+# In scripts/export_dashboard_data.py
+# Add to metric entry dictionary
+metric_entry = {
+    # ... existing fields ...
+    "custom_metric": snapshot.get("custom_metric", 0)
+}
 ```
 
-#### Step 3: Deploy
+#### Step 3: Update Dashboard JavaScript
+
+```javascript
+// In dashboard/js/core/charts.js or create new module
+function renderCustomMetricChart(metricsData) {
+    const ctx = document.getElementById('customMetricChart').getContext('2d');
+
+    const data = metricsData.metrics.map(m => ({
+        x: m.timestamp,
+        y: m.custom_metric
+    }));
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: 'Custom Metric',
+                data: data,
+                borderColor: '#0176D3',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { type: 'time', title: { display: true, text: 'Date' } },
+                y: { beginAtZero: true, title: { display: true, text: 'Value' } }
+            }
+        }
+    });
+}
+
+// In dashboard/js/main.js, add to initialization
+initCustomMetricChart();
+```
+
+#### Step 4: Add HTML Container
+
+```html
+<!-- In dashboard/index.html -->
+<div class="chart-container">
+    <h3>Custom Metric Analysis</h3>
+    <canvas id="customMetricChart"></canvas>
+</div>
+```
+
+#### Step 5: Deploy
 
 ```bash
 # Test locally
-streamlit run dashboard/app.py
+./dashboard/build-site.sh
+cd _site && python3 -m http.server 8000
+# Open http://localhost:8000 and verify chart appears
 
 # Commit and push
-git add dashboard/app.py src/somali_dialect_classifier/utils/metrics.py
+git add dashboard/js/ dashboard/index.html src/somali_dialect_classifier/utils/metrics.py
 git commit -m "feat(dashboard): add custom metric visualization"
 git push origin main
 ```
@@ -1153,25 +1234,40 @@ git push
 
 ### Local Dashboard Not Loading
 
-**Symptom**: `streamlit run dashboard/app.py` fails or shows errors.
+**Symptom**: Dashboard shows "Failed to fetch" errors or blank page.
 
-**Solutions**:
+**Common Cause**: Attempting to open `index.html` directly using `file://` protocol.
+
+**Solution**: Must use HTTP server (ES6 modules require HTTP protocol)
 
 ```bash
-# Reinstall dependencies
-pip install -r dashboard/requirements.txt --upgrade
+# 1. Navigate to _site directory
+cd _site
 
-# Check Python version (requires 3.8+)
-python --version
+# 2. Start HTTP server
+python3 -m http.server 8000
 
-# Run with debug logging
-streamlit run dashboard/app.py --logger.level=debug
+# 3. Open browser to http://localhost:8000
+# DO NOT open file:///path/to/_site/index.html
+```
 
-# Clear Streamlit cache
-rm -rf ~/.streamlit/cache/
+**Additional Troubleshooting**:
 
-# Check port availability
-lsof -i :8501  # Kill conflicting process if needed
+```bash
+# Check if data file exists
+ls _site/data/all_metrics.json
+
+# Verify data format
+python3 -c "import json; print(json.load(open('_site/data/all_metrics.json'))['metrics'][0])"
+
+# Check browser console for errors
+# Open DevTools (F12) → Console tab
+# Look for CORS errors or module loading failures
+
+# Clear browser cache and reload
+# Chrome/Edge: Ctrl+Shift+R
+# Firefox: Ctrl+F5
+# Safari: Cmd+Shift+R
 ```
 
 ### Broken Visualizations
@@ -1180,18 +1276,31 @@ lsof -i :8501  # Kill conflicting process if needed
 
 **Solutions**:
 
-1. **Update Plotly**:
-   ```bash
-   pip install plotly --upgrade
-   ```
+1. **Verify Chart.js loaded**: Check browser console for Chart.js errors
 
 2. **Clear browser cache**: Hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
 
-3. **Check data format**: Ensure metrics JSON has correct structure
-
-4. **Verify Pandas version**:
+3. **Check data format**:
    ```bash
-   pip install pandas>=1.3.0
+   # Verify data structure
+   cat _site/data/all_metrics.json | python3 -m json.tool | head -50
+   ```
+
+4. **Enable debug logging** (in browser console):
+   ```javascript
+   Logger.level = LogLevel.DEBUG;
+   location.reload();
+   ```
+
+5. **Check data normalization**: Dashboard expects flat structure:
+   ```json
+   {
+     "metrics": [{
+       "quality_pass_rate": 1.0,
+       "records_per_minute": 0.9319,
+       "text_length_stats": { "mean": 4875 }
+     }]
+   }
    ```
 
 ### Performance Issues

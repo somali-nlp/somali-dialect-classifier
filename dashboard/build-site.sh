@@ -14,9 +14,11 @@ cp dashboard/templates/index.html _site/index.html
 
 # Copy modular CSS and JavaScript structure
 echo "Copying modular CSS and JavaScript files..."
+# Clean old files first to prevent nested directories and stale code
+rm -rf _site/css _site/js
 cp -r dashboard/css _site/css
 cp -r dashboard/js _site/js
-echo "✓ Copied modular CSS and JavaScript files"
+echo "✓ Copied modular CSS and JavaScript files (cleaned old files first)"
 
 # Copy advanced features CSS (if exists for backwards compatibility)
 if [ -f "dashboard/advanced-features.css" ]; then

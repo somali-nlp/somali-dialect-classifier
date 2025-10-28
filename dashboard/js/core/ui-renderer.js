@@ -4,6 +4,7 @@
  */
 
 import { getMetrics } from './data-service.js';
+import { normalizeSourceName } from '../utils/formatters.js';
 
 /**
  * Populate the source comparison table
@@ -27,15 +28,15 @@ export function populateSourceTable() {
 
     // Build rows from real metrics data
     const rows = metricsData.metrics.map(metric => {
-        const sourceName = metric.source
-            .replace(/-Somali|_Somali_c4-so/, '')
-            .replace('Sprakbanken', 'Språkbanken')
-            .replace('HuggingFace', 'HuggingFace MC4');
+        // Bug Fix #9: Use consistent source name normalization
+        const sourceName = normalizeSourceName(metric.source);
 
         const records = metric.records_written;
-        const qualityRate = metric.pipeline_metrics?.quality_pass_rate || 0;
+        // Bug Fix #2: Use flattened quality_pass_rate (normalized by data-service)
+        const qualityRate = metric.quality_pass_rate || 0;
         const qualityRateFormatted = (qualityRate * 100).toFixed(1) + '%';
-        const avgLength = metric.quality?.mean ? Math.round(metric.quality.mean).toLocaleString() : '0';
+        // Bug Fix #4: Use text_length_stats.mean (normalized by data-service)
+        const avgLength = metric.text_length_stats?.mean ? Math.round(metric.text_length_stats.mean).toLocaleString() : '0';
 
         // Format total chars
         const totalChars = metric.quality?.total_chars || 0;
@@ -121,24 +122,25 @@ export function populateQualityMetrics() {
  * Update a single quality card with metric data
  */
 function updateQualityCard(card, metric) {
-    if (!card || !metric || !metric.quality) return;
+    // Bug Fix #5: Use text_length_stats (normalized by data-service)
+    if (!card || !metric || !metric.text_length_stats) return;
 
     const metrics = card.querySelectorAll('.source-metric-value');
     if (metrics.length === 4) {
         // Min Length
-        metrics[0].textContent = (metric.quality.min || 0).toLocaleString() + ' chars';
+        metrics[0].textContent = (metric.text_length_stats.min || 0).toLocaleString() + ' chars';
 
         // Max Length
-        const maxChars = metric.quality.max || 0;
+        const maxChars = metric.text_length_stats.max || 0;
         metrics[1].textContent = maxChars >= 1000
             ? Math.round(maxChars / 1000).toLocaleString() + 'K chars'
             : maxChars.toLocaleString() + ' chars';
 
         // Mean Length
-        metrics[2].textContent = Math.round(metric.quality.mean || 0).toLocaleString() + ' chars';
+        metrics[2].textContent = Math.round(metric.text_length_stats.mean || 0).toLocaleString() + ' chars';
 
         // Median Length
-        metrics[3].textContent = Math.round(metric.quality.median || 0).toLocaleString() + ' chars';
+        metrics[3].textContent = Math.round(metric.text_length_stats.median || 0).toLocaleString() + ' chars';
     }
 }
 
@@ -197,18 +199,20 @@ export function populatePerformanceMetrics() {
  * Update a single performance card with metric data
  */
 function updatePerformanceCard(card, metric) {
-    if (!card || !metric || !metric.performance) return;
+    if (!card || !metric) return;
 
     const metrics = card.querySelectorAll('.source-metric-value');
     if (metrics.length === 3) {
         // URLs/Second
-        const urlsPerSec = metric.performance.urls_per_second || 0;
+        // Bug Fix #3: Use flattened urls_per_second (normalized by data-service)
+        const urlsPerSec = metric.urls_per_second || 0;
         metrics[0].textContent = urlsPerSec >= 1
             ? Math.round(urlsPerSec).toLocaleString()
             : urlsPerSec.toFixed(2);
 
         // Records/Minute
-        const recordsPerMin = metric.performance.records_per_minute || 0;
+        // Bug Fix #3: Use flattened records_per_minute (normalized by data-service)
+        const recordsPerMin = metric.records_per_minute || 0;
         metrics[1].textContent = recordsPerMin >= 1
             ? Math.round(recordsPerMin).toLocaleString()
             : recordsPerMin.toFixed(2);
@@ -293,7 +297,8 @@ function updateOverviewCard(card, metric, totalRecords) {
         metrics[1].textContent = percentage.toFixed(1) + '%';
 
         // Quality Rate (pipeline-specific)
-        const qualityRate = metric.pipeline_metrics?.quality_pass_rate || 0;
+        // Bug Fix #2: Use flattened quality_pass_rate (normalized by data-service)
+        const qualityRate = metric.quality_pass_rate || 0;
         metrics[2].textContent = (qualityRate * 100).toFixed(1) + '%';
     }
 
@@ -325,14 +330,8 @@ export function updateQualityMetrics() {
         const card = document.querySelector(`[data-quality-source="${sourceName}"]`);
 
         if (card && metric) {
-            // Try to get text length stats from different locations
-            let stats = null;
-
-            if (metric.legacy_metrics?.statistics?.text_length_stats) {
-                stats = metric.legacy_metrics.statistics.text_length_stats;
-            } else if (metric.quality) {
-                stats = metric.quality;
-            }
+            // Bug Fix #5: Use normalized text_length_stats (data-service handles fallback)
+            const stats = metric.text_length_stats;
 
             if (stats) {
                 const minEl = card.querySelector('.quality-min');
