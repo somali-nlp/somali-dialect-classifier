@@ -4,6 +4,7 @@
  */
 
 import { getMetrics } from './data-service.js';
+import { Logger } from '../utils/logger.js';
 
 /**
  * Update statistics display from loaded metrics data
@@ -14,7 +15,7 @@ export function updateStats() {
 
     if (!metricsData || !metricsData.metrics || metricsData.metrics.length === 0) {
         // Empty state - set all to 0
-        console.log('No metrics data - displaying empty state');
+        Logger.info('No metrics data - displaying empty state');
 
         // Update hero stats
         document.getElementById('total-records').setAttribute('data-count', '0');
@@ -35,15 +36,16 @@ export function updateStats() {
     const totalSources = new Set(metrics.map(m => m.source.split('-')[0])).size;
 
     // Calculate average quality pass rate (meaningful across all pipeline types)
+    // Bug Fix #2: Use flattened quality_pass_rate (normalized by data-service)
     const avgQualityRate = metrics.reduce((sum, m) => {
-        const quality = m.pipeline_metrics?.quality_pass_rate || 0;
+        const quality = m.quality_pass_rate || 0;
         return sum + quality;
     }, 0) / metrics.length * 100;
 
     // Count unique pipeline types
     const pipelineTypes = new Set(metrics.map(m => m.pipeline_type || 'unknown')).size;
 
-    console.log('Calculated stats:', { totalRecords, totalSources, pipelineTypes, avgQualityRate });
+    Logger.debug('Calculated stats', { totalRecords, totalSources, pipelineTypes, avgQualityRate });
 
     // Update hero stats
     document.getElementById('total-records').setAttribute('data-count', totalRecords);

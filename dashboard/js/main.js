@@ -65,51 +65,157 @@ import { SankeyChart, RidgePlot, BulletChart } from './features/advanced-charts.
 import { ComparisonMode } from './features/comparison-mode.js';
 
 // Import utility modules
+import { Logger } from './utils/logger.js';
 import { animateCountUp } from './utils/animations.js';
 import { initSmoothScroll, initKeyboardNav, initScrollSpy } from './utils/accessibility.js';
 
 /**
  * Main initialization function
  * Loads data and initializes all dashboard components
+ * Enhanced with comprehensive error handling and logging
  */
 async function init() {
-    console.log('🚀 Initializing dashboard...');
+    Logger.info('Initializing dashboard...');
 
     try {
-        // Load data first
-        await loadMetrics();
+        // Load data first - critical step
+        const metricsData = await loadMetrics();
+
+        if (!metricsData || !metricsData.metrics || metricsData.metrics.length === 0) {
+            Logger.warn('Dashboard initialized with empty data state');
+            displayEmptyState();
+            return;
+        }
 
         // Update all stats from loaded data
         updateStats();
 
-        // Initialize core components
-        initTabs();
-        initCharts();
-        populateSourceTable();
-        populateQualityMetrics();
-        populatePerformanceMetrics();
-        populateOverviewCards();
+        // Initialize core components with individual error handling
+        // Bug Fix #6: Wrap each component initialization to prevent cascade failures
+        try {
+            initTabs();
+        } catch (error) {
+            Logger.error('Failed to initialize tabs', error);
+            // Non-critical: tabs can fail without breaking dashboard
+        }
+
+        try {
+            initCharts();
+        } catch (error) {
+            Logger.error('Failed to initialize charts', error);
+            // Non-critical: charts can fail without breaking dashboard
+        }
+
+        try {
+            populateSourceTable();
+        } catch (error) {
+            Logger.error('Failed to populate source table', error);
+            // Non-critical: table can fail without breaking dashboard
+        }
+
+        try {
+            populateQualityMetrics();
+        } catch (error) {
+            Logger.error('Failed to populate quality metrics', error);
+            // Non-critical: quality metrics can fail without breaking dashboard
+        }
+
+        try {
+            populatePerformanceMetrics();
+        } catch (error) {
+            Logger.error('Failed to populate performance metrics', error);
+            // Non-critical: performance metrics can fail without breaking dashboard
+        }
+
+        try {
+            populateOverviewCards();
+        } catch (error) {
+            Logger.error('Failed to populate overview cards', error);
+            // Non-critical: overview cards can fail without breaking dashboard
+        }
 
         // Initialize accessibility features
-        initSmoothScroll();
-        initKeyboardNav();
-        initScrollSpy();
+        try {
+            initSmoothScroll();
+            initKeyboardNav();
+            initScrollSpy();
+        } catch (error) {
+            Logger.warn('Non-critical: Accessibility features failed to initialize', error);
+        }
 
         // Initialize enhanced features
-        initAudienceMode();
-        updateCoverageScorecard();
-        createCoverageRadialChart();
-        updateQualityMetrics();
+        try {
+            initAudienceMode();
+            updateCoverageScorecard();
+            createCoverageRadialChart();
+            updateQualityMetrics();
+        } catch (error) {
+            Logger.warn('Non-critical: Enhanced features failed to initialize', error);
+        }
 
         // Animate counts (after stats are updated)
-        animateCountUp();
+        try {
+            animateCountUp();
+        } catch (error) {
+            Logger.warn('Non-critical: Count animation failed', error);
+        }
 
         // Initialize advanced features
-        initAdvancedFeatures();
+        try {
+            initAdvancedFeatures();
+        } catch (error) {
+            Logger.warn('Non-critical: Advanced features failed to initialize', error);
+        }
 
-        console.log('✓ Dashboard initialized successfully');
+        Logger.info('Dashboard initialized successfully');
     } catch (error) {
-        console.error('✗ Dashboard initialization failed:', error);
+        Logger.error('Dashboard initialization failed', error);
+        displayErrorState(error);
+    }
+}
+
+/**
+ * Display empty state message
+ */
+function displayEmptyState() {
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        const emptyMessage = document.createElement('div');
+        emptyMessage.style.cssText = `
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--gray-600, #6b7280);
+        `;
+        emptyMessage.innerHTML = `
+            <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">No Data Available</h2>
+            <p>Run the data ingestion pipeline to populate the dashboard with metrics.</p>
+        `;
+        mainContent.prepend(emptyMessage);
+    }
+}
+
+/**
+ * Display error state message
+ * @param {Error} error - The error that occurred
+ */
+function displayErrorState(error) {
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        const errorMessage = document.createElement('div');
+        errorMessage.style.cssText = `
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--red-600, #dc2626);
+        `;
+        errorMessage.innerHTML = `
+            <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">⚠ Initialization Error</h2>
+            <p style="margin-bottom: 1rem;">The dashboard failed to initialize properly.</p>
+            <details style="max-width: 600px; margin: 0 auto; text-align: left;">
+                <summary style="cursor: pointer; color: var(--gray-600, #6b7280);">Show error details</summary>
+                <pre style="background: #f3f4f6; padding: 1rem; border-radius: 0.25rem; overflow-x: auto; margin-top: 1rem; font-size: 0.875rem;">${error.message}\n${error.stack || ''}</pre>
+            </details>
+        `;
+        mainContent.prepend(errorMessage);
     }
 }
 
@@ -143,7 +249,7 @@ function initAdvancedFeatures() {
 
         // Emit dashboardReady event
         window.dispatchEvent(new CustomEvent('dashboardReady'));
-        console.log('✓ Advanced features initialized');
+        Logger.info('Advanced features initialized');
     }
 }
 
