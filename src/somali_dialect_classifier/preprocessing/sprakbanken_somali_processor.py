@@ -462,6 +462,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         """
         texts_count = 0
         sentences_count = 0
+        text_index = 0  # Counter for all text elements (for unique URL generation)
 
         try:
             # Open and parse compressed XML
@@ -474,6 +475,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
                 # Iterate through texts
                 for text_elem in root.findall('.//text'):
+                    text_index += 1  # Increment for every text element to ensure URL uniqueness
                     text_metadata = self._extract_text_metadata(text_elem)
 
                     # Collect sentences from all pages
@@ -486,8 +488,10 @@ class SprakbankenSomaliProcessor(BasePipeline):
                                 sentences_count += 1
 
                     if sentences:
-                        # Build URL for this text
-                        url = f"https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}"
+                        # Build URL for this text with unique identifier
+                        # Use sequential index to ensure URL uniqueness (title alone is not unique)
+                        text_id = f"{text_index}"
+                        url = f"https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}&text={text_id}"
                         text_content = " ".join(sentences)
 
                         # Process duplicates with combined exact and near-duplicate detection
