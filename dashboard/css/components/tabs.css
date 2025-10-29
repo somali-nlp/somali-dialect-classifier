@@ -160,8 +160,9 @@
 }
 
 .exec-panel-header {
-    max-width: 840px;
-    margin-bottom: var(--space-8);
+    max-width: 960px;
+    margin: 0 auto var(--space-8);
+    text-align: center;
 }
 
 .exec-panel-header h2 {
@@ -176,6 +177,7 @@
     font-size: var(--text-base);
     color: var(--tableau-text-secondary);
     line-height: 1.8;
+    margin: 0 auto;
 }
 
 .exec-panel-placeholder {

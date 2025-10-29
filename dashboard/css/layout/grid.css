@@ -24,6 +24,11 @@
     gap: var(--space-8);
 }
 
+.executive-dashboard .story-cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-6);
+}
+
 /* Report Cards */
 .report-cards {
     display: grid;
