@@ -105,7 +105,7 @@ export function initKeyboardNav() {
  * Initialize scroll spy for active navigation highlighting
  */
 export function initScrollSpy() {
-    const sections = document.querySelectorAll('section[id], main[id], nav[id]');
+    const sections = document.querySelectorAll('section[id], main[id], nav[id], header[id]');
     const navLinks = document.querySelectorAll('.nav-link');
 
     // Height of sticky header for offset
