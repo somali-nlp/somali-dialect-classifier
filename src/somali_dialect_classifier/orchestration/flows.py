@@ -10,6 +10,7 @@ Provides coordinated execution of all four data sources with:
 
 import logging
 import sys
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import timedelta
@@ -33,6 +34,46 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
+
+
+def _setup_orchestrator_logging() -> None:
+    """
+    Set up logging for orchestration flows.
+
+    Creates rotating file handler for orchestrator.log with 10MB max file size
+    to capture all pipeline execution logs in a unified location.
+    """
+    # Console logs - maintain real-time monitoring
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        force=True  # Reset existing handlers
+    )
+
+    # File logs (rotating) under logs/
+    logs_dir = Path('logs')
+    logs_dir.mkdir(exist_ok=True)
+
+    # Create handler for orchestrator log file
+    # Use larger maxBytes (10MB) for orchestrator since it logs multiple pipelines
+    fh = RotatingFileHandler(
+        logs_dir / 'orchestrator.log',
+        maxBytes=10_000_000,  # 10MB (larger for orchestrator)
+        backupCount=5  # Keep more history for orchestrator
+    )
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+    # Add handler to root logger to capture all downstream logs
+    root_logger = logging.getLogger()
+
+    # Remove any existing file handlers to prevent duplication
+    root_logger.handlers = [h for h in root_logger.handlers if not isinstance(h, RotatingFileHandler)]
+
+    # Add our file handler
+    root_logger.addHandler(fh)
+
+    logger.info("Orchestrator logging initialized: logs/orchestrator.log")
 
 
 @task(retries=2, retry_delay_seconds=300)
@@ -424,6 +465,9 @@ def run_all_pipelines(
 def main():
     """CLI entry point for running orchestration flows."""
     import argparse
+
+    # Set up logging for orchestrator
+    _setup_orchestrator_logging()
 
     parser = argparse.ArgumentParser(
         description="Orchestrate Somali dialect classifier data pipelines"
