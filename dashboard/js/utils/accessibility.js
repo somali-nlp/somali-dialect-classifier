@@ -19,6 +19,19 @@ export function initSmoothScroll() {
                 if (tabButton) tabButton.click();
             }
 
+            if (this.hasAttribute('data-dashboard-link')) {
+                const overviewButton = document.querySelector('.tab-button[data-tab="overview"]');
+                if (overviewButton) overviewButton.click();
+            }
+
+            const modeTarget = this.dataset.modeTarget;
+            if (modeTarget) {
+                const modeButton = document.querySelector(`.mode-toggle-btn[data-mode="${modeTarget}"]`);
+                if (modeButton && !modeButton.classList.contains('active')) {
+                    modeButton.click();
+                }
+            }
+
             if (href === '#') {
                 return;
             }
@@ -92,11 +105,11 @@ export function initKeyboardNav() {
  * Initialize scroll spy for active navigation highlighting
  */
 export function initScrollSpy() {
-    const sections = document.querySelectorAll('section[id], main[id]');
+    const sections = document.querySelectorAll('section[id], main[id], nav[id]');
     const navLinks = document.querySelectorAll('.nav-link');
 
     // Height of sticky header for offset
-    const navHeight = document.querySelector('.global-nav').offsetHeight;
+    const navHeight = document.querySelector('.global-nav')?.offsetHeight || 0;
 
     function updateActiveLink() {
         let currentSection = '';
@@ -134,4 +147,52 @@ export function initScrollSpy() {
 
     // Initial update
     updateActiveLink();
+}
+
+/**
+ * Initialize mobile navigation menu toggle
+ */
+export function initMobileMenu() {
+    const toggleButton = document.querySelector('.mobile-menu-toggle');
+    const navLinks = document.querySelector('.nav-links');
+
+    if (!toggleButton || !navLinks) {
+        return;
+    }
+
+    const closeMenu = () => {
+        navLinks.classList.remove('is-open');
+        toggleButton.setAttribute('aria-expanded', 'false');
+        toggleButton.setAttribute('aria-label', 'Open mobile menu');
+    };
+
+    toggleButton.addEventListener('click', () => {
+        const isOpen = navLinks.classList.toggle('is-open');
+        toggleButton.setAttribute('aria-expanded', String(isOpen));
+        toggleButton.setAttribute('aria-label', isOpen ? 'Close mobile menu' : 'Open mobile menu');
+
+        if (isOpen) {
+            toggleButton.focus();
+        }
+    });
+
+    navLinks.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+            if (navLinks.classList.contains('is-open')) {
+                closeMenu();
+            }
+        });
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && navLinks.classList.contains('is-open')) {
+            closeMenu();
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768 && navLinks.classList.contains('is-open')) {
+            closeMenu();
+        }
+    });
 }

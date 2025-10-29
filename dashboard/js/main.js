@@ -67,7 +67,7 @@ import { ComparisonMode } from './features/comparison-mode.js';
 // Import utility modules
 import { Logger } from './utils/logger.js';
 import { animateCountUp } from './utils/animations.js';
-import { initSmoothScroll, initKeyboardNav, initScrollSpy } from './utils/accessibility.js';
+import { initSmoothScroll, initKeyboardNav, initScrollSpy, initMobileMenu } from './utils/accessibility.js';
 
 /**
  * Main initialization function
@@ -139,6 +139,7 @@ async function init() {
             initSmoothScroll();
             initKeyboardNav();
             initScrollSpy();
+            initMobileMenu();
         } catch (error) {
             Logger.warn('Non-critical: Accessibility features failed to initialize', error);
         }

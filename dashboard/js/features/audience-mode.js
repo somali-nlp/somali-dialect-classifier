@@ -9,7 +9,12 @@
  */
 export function initAudienceMode() {
     const modeButtons = document.querySelectorAll('.mode-toggle-btn');
-    const savedMode = localStorage.getItem('audienceMode') || 'story';
+    let savedMode = localStorage.getItem('audienceMode') || 'executive';
+
+    if (savedMode === 'story') {
+        savedMode = 'executive';
+        localStorage.setItem('audienceMode', 'executive');
+    }
 
     // Set initial mode
     applyMode(savedMode);

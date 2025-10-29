@@ -74,11 +74,24 @@
     border-color: #0158A5;
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    color: #ffffff;
 }
 
 .contribute-cta:focus-visible {
     outline: 3px solid rgba(255, 255, 255, 0.9);
     outline-offset: 3px;
+    color: #ffffff;
+}
+
+.contribute-cta:focus {
+    color: #ffffff;
+}
+
+.contribute-cta:active {
+    background: #014b94;
+    border-color: #014b94;
+    color: #ffffff;
+    transform: translateY(-1px);
 }
 
 /* Mode Toggle Buttons */

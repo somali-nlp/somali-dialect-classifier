@@ -16,11 +16,11 @@
 }
 
 /* Audience Mode Specific Styles */
-[data-audience-mode="story"] [data-show-in="analyst"] {
+[data-audience-mode="executive"] [data-show-in="analyst"] {
     display: none !important;
 }
 
-[data-audience-mode="analyst"] [data-show-in="story"] {
+[data-audience-mode="analyst"] [data-show-in="executive"] {
     display: none !important;
 }
 

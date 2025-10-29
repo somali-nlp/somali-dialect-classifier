@@ -18,6 +18,7 @@
     justify-content: space-between;
     align-items: center;
     height: 80px;
+    position: relative;
 }
 
 .nav-brand {
@@ -127,4 +128,32 @@
     font-size: var(--text-2xl);
     cursor: pointer;
     color: var(--gray-700);
+}
+
+@media (max-width: 768px) {
+    .nav-links.is-open {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        top: 80px;
+        left: 0;
+        right: 0;
+        background: white;
+        padding: var(--space-6);
+        gap: var(--space-4);
+        box-shadow: var(--shadow-md);
+        border-bottom: 1px solid var(--gray-200);
+        z-index: 1200;
+    }
+
+    .nav-links.is-open a {
+        justify-content: flex-start;
+        font-size: var(--text-base);
+    }
+
+    .nav-links.is-open .nav-cta {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
 }

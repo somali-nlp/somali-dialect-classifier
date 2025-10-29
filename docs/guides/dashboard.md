@@ -747,7 +747,7 @@ The dashboard uses color-coded status indicators:
 
 The dashboard conceptually operates in two modes, tailored to different user needs:
 
-### Story Mode (Executive View)
+### Executive Mode (Narrative View)
 
 **Purpose**: Quick overview of pipeline status and progress
 
