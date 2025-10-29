@@ -82,6 +82,11 @@ def main() -> None:
         default=6,
         help='Maximum delay between requests in seconds (default: 6)'
     )
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Force reprocessing even if output files exist'
+    )
     args = parser.parse_args()
 
     _setup_logging()
@@ -90,7 +95,8 @@ def main() -> None:
         # Initialize with user-specified parameters
         processor = BBCSomaliProcessor(
             max_articles=args.max_articles,
-            delay_range=(args.min_delay, args.max_delay)
+            delay_range=(args.min_delay, args.max_delay),
+            force=args.force
         )
 
         article_links_file = processor.download()

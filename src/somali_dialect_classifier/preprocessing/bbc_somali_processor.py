@@ -18,6 +18,8 @@ import json
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from urllib3.exceptions import ProtocolError
+from http.client import RemoteDisconnected
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 import feedparser
@@ -346,6 +348,8 @@ class BBCSomaliProcessor(BasePipeline):
         self.logger.info("=" * 60)
 
         articles_count = 0
+        failed_count = 0
+        connection_errors = 0
         session = self._get_http_session()
 
         # Open staging file for streaming JSONL writes to avoid memory spike
@@ -353,6 +357,10 @@ class BBCSomaliProcessor(BasePipeline):
             # Use tqdm for progress tracking
             with tqdm(total=len(links), desc="Scraping articles", unit="article") as pbar:
                 for i, link in enumerate(links, 1):
+                    # Log progress every 10 articles
+                    if i % 10 == 1 or i == 1:
+                        self.logger.info(f"Scraping article {i} of {len(links)}: {link}")
+
                     # Check if should fetch (skip if already processed/failed)
                     if not self.ledger.should_fetch_url(link, force=self.force):
                         pbar.update(1)
@@ -410,11 +418,38 @@ class BBCSomaliProcessor(BasePipeline):
                                 individual_file = self.raw_dir / f"bbc-somali_{self.run_id}_raw_article-{i:04d}.json"
                                 with open(individual_file, 'w', encoding='utf-8') as f:
                                     json.dump(article, f, ensure_ascii=False, indent=2)
+
+                                # Log success for first article and every 10th
+                                if i == 1 or i % 10 == 0:
+                                    word_count = len(article['text'].split())
+                                    self.logger.info(f"Article {i}: {word_count} words extracted")
                             else:
                                 # Mark as failed
                                 self.ledger.mark_failed(link, "Failed to scrape or empty text")
                                 self.metrics.increment('urls_failed')
                                 self.metrics.record_error("scrape_failed")
+                                failed_count += 1
+
+                        except (RemoteDisconnected, ProtocolError, ConnectionError) as e:
+                            # Connection errors - skip and continue
+                            error_type = type(e).__name__
+                            self.logger.warning(
+                                f"Connection error on article {i}/{len(links)} ({link}): "
+                                f"{error_type} - skipping and continuing"
+                            )
+                            self.ledger.mark_failed(link, f"Connection error: {error_type}")
+                            self.metrics.increment('urls_failed')
+                            self.metrics.record_error("connection_error")
+                            failed_count += 1
+                            connection_errors += 1
+
+                            # Reset session on connection errors (clear stale connections)
+                            if connection_errors % 3 == 0:
+                                self.logger.info("Resetting HTTP session due to repeated connection errors")
+                                session = self._get_http_session()
+
+                            pbar.update(1)
+                            continue
 
                         except requests.HTTPError as e:
                             # Handle HTTP 429 (Too Many Requests)
@@ -426,22 +461,51 @@ class BBCSomaliProcessor(BasePipeline):
                                 pbar.update(1)
                                 continue
                             else:
-                                # Other HTTP errors
+                                # Other HTTP errors - skip and continue
+                                self.logger.warning(
+                                    f"HTTP {e.response.status_code} on article {i}/{len(links)} "
+                                    f"({link}) - skipping and continuing"
+                                )
                                 self.ledger.mark_failed(link, f"HTTP {e.response.status_code}")
                                 self.metrics.record_http_status(e.response.status_code)
                                 self.metrics.increment('urls_failed')
+                                failed_count += 1
                                 pbar.update(1)
                                 continue
+
+                        except requests.Timeout as e:
+                            # Timeout errors - skip and continue
+                            self.logger.warning(
+                                f"Timeout on article {i}/{len(links)} ({link}) - "
+                                f"skipping and continuing"
+                            )
+                            self.ledger.mark_failed(link, "Timeout")
+                            self.metrics.increment('urls_failed')
+                            self.metrics.record_error("timeout")
+                            failed_count += 1
+                            pbar.update(1)
+                            continue
 
                     # Record fetch duration
                     self.metrics.record_fetch_duration(timer.get_elapsed_ms())
 
                     # Update progress bar
                     pbar.update(1)
-                    pbar.set_postfix({"extracted": articles_count})
+                    pbar.set_postfix({
+                        "extracted": articles_count,
+                        "failed": failed_count,
+                        "success_rate": f"{(articles_count/(i))*100:.1f}%"
+                    })
+
+        # Calculate success rate
+        success_rate = (articles_count / len(links) * 100) if len(links) > 0 else 0
 
         self.logger.info("=" * 60)
         self.logger.info(f"Extraction complete: {articles_count}/{len(links)} articles extracted")
+        self.logger.info(f"Failed: {failed_count} articles ({failed_count/len(links)*100:.1f}%)")
+        self.logger.info(f"Success rate: {success_rate:.1f}%")
+        if connection_errors > 0:
+            self.logger.info(f"Connection errors encountered: {connection_errors}")
         self.logger.info("=" * 60)
 
         # Export metrics and generate extraction quality report
@@ -730,6 +794,13 @@ class BBCSomaliProcessor(BasePipeline):
 
         Returns:
             Dictionary with article data or None if failed/not modified
+
+        Raises:
+            RemoteDisconnected: If server closes connection
+            ProtocolError: If connection protocol error occurs
+            ConnectionError: If connection fails
+            requests.HTTPError: If HTTP error occurs (429, 404, etc.)
+            requests.Timeout: If request times out
         """
         try:
             # Get conditional headers from ledger
@@ -817,8 +888,12 @@ class BBCSomaliProcessor(BasePipeline):
                 return None
             raise  # Re-raise for handling in extract()
 
-        except (requests.RequestException, ValueError, KeyError) as e:
-            self.logger.error(f"Error scraping {url}: {e}")
+        except (RemoteDisconnected, ProtocolError, ConnectionError, requests.Timeout):
+            # Connection and timeout errors - propagate to extract() for proper handling
+            raise
+
+        except (ValueError, KeyError) as e:
+            self.logger.error(f"Error parsing article {url}: {e}")
             return None
 
     def _get_http_session(self) -> requests.Session:
