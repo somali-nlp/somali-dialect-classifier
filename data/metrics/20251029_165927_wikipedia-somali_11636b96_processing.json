@@ -1,14 +1,14 @@
 {
   "_schema_version": "3.0",
   "_pipeline_type": "file_processing",
-  "_timestamp": "2025-10-26T15:54:18.797985+00:00",
-  "_run_id": "20251026_155342_wikipedia-somali_c2915cab",
+  "_timestamp": "2025-10-29T16:59:44.596575+00:00",
+  "_run_id": "20251029_165927_wikipedia-somali_11636b96",
   "_source": "Wikipedia-Somali",
   "layered_metrics": {
     "connectivity": {
       "connection_attempted": true,
       "connection_successful": true,
-      "connection_duration_ms": 28953,
+      "connection_duration_ms": 10725,
       "connection_error": null
     },
     "extraction": {
@@ -38,10 +38,10 @@
   ],
   "legacy_metrics": {
     "snapshot": {
-      "timestamp": "2025-10-26T15:54:18.797985+00:00",
-      "run_id": "20251026_155342_wikipedia-somali_c2915cab",
+      "timestamp": "2025-10-29T16:59:44.596575+00:00",
+      "run_id": "20251029_165927_wikipedia-somali_11636b96",
       "source": "Wikipedia-Somali",
-      "duration_seconds": 36.08953905105591,
+      "duration_seconds": 17.066582202911377,
       "pipeline_type": "file_processing",
       "urls_discovered": 0,
       "urls_fetched": 0,
@@ -69,10 +69,10 @@
       },
       "error_types": {},
       "fetch_durations_ms": [
-        28953
+        10725
       ],
       "process_durations_ms": [
-        3647
+        3298
       ],
       "text_lengths": [
         38,
@@ -1089,20 +1089,20 @@
       "fetch_success_rate": 1.0,
       "fetch_failure_rate": 0.0,
       "fetch_duration_stats": {
-        "min": 28953,
-        "max": 28953,
-        "mean": 28953,
-        "median": 28953,
-        "p95": 28953,
-        "p99": 28953
+        "min": 10725,
+        "max": 10725,
+        "mean": 10725,
+        "median": 10725,
+        "p95": 10725,
+        "p99": 10725
       },
       "process_duration_stats": {
-        "min": 3647,
-        "max": 3647,
-        "mean": 3647,
-        "median": 3647,
-        "p95": 3647,
-        "p99": 3647
+        "min": 3298,
+        "max": 3298,
+        "mean": 3298,
+        "median": 3298,
+        "p95": 3298,
+        "p99": 3298
       },
       "text_length_stats": {
         "min": 10,
@@ -1112,9 +1112,9 @@
         "total_chars": 4415740
       },
       "throughput": {
-        "urls_per_second": 266.6423637715719,
-        "bytes_per_second": 395696.54740664194,
-        "records_per_minute": 15998.541826294315
+        "urls_per_second": 563.850446773017,
+        "bytes_per_second": 836752.5395661176,
+        "records_per_minute": 33831.02680638102
       },
       "_metric_semantics": {
         "file_extraction_success_rate": "File-level extraction success (local file I/O, not HTTP)",
