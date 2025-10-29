@@ -76,7 +76,7 @@ def _setup_orchestrator_logging() -> None:
     logger.info("Orchestrator logging initialized: logs/orchestrator.log")
 
 
-@task(retries=2, retry_delay_seconds=300)
+@task(retries=2, retry_delay_seconds=10)
 def run_wikipedia_task(force: bool = False) -> Dict[str, Any]:
     """
     Task to run Wikipedia data collection pipeline.
@@ -113,7 +113,7 @@ def run_wikipedia_task(force: bool = False) -> Dict[str, Any]:
         }
 
 
-@task(retries=2, retry_delay_seconds=300)
+@task(retries=2, retry_delay_seconds=10)
 def run_bbc_task(max_articles: Optional[int] = None, force: bool = False) -> Dict[str, Any]:
     """
     Task to run BBC Somali data collection pipeline.
@@ -151,7 +151,7 @@ def run_bbc_task(max_articles: Optional[int] = None, force: bool = False) -> Dic
         }
 
 
-@task(retries=2, retry_delay_seconds=300)
+@task(retries=2, retry_delay_seconds=10)
 def run_huggingface_task(
     dataset_name: str = "allenai/c4",
     dataset_config: str = "so",
@@ -203,7 +203,7 @@ def run_huggingface_task(
         }
 
 
-@task(retries=2, retry_delay_seconds=300)
+@task(retries=2, retry_delay_seconds=10)
 def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> Dict[str, Any]:
     """
     Task to run Språkbanken corpora collection pipeline.

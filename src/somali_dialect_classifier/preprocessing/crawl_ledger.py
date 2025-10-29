@@ -168,11 +168,18 @@ class SQLiteLedger(LedgerBackend):
             self._local.conn = sqlite3.connect(
                 str(self.db_path),
                 check_same_thread=self._check_same_thread,
-                timeout=30.0  # 30 second timeout for locks
+                timeout=60.0,  # 60 second timeout for lock acquisition
+                isolation_level=None  # Autocommit mode for better concurrency
             )
-            # Enable foreign keys and WAL mode for better concurrency
+            # Configure for maximum concurrency
             self._local.conn.execute("PRAGMA foreign_keys = ON")
             self._local.conn.execute("PRAGMA journal_mode = WAL")
+            # Increase busy timeout to 60 seconds to handle write contention
+            self._local.conn.execute("PRAGMA busy_timeout = 60000")
+            # Enable synchronous mode for better write performance
+            self._local.conn.execute("PRAGMA synchronous = NORMAL")
+            # Increase WAL checkpoint threshold for better write batching
+            self._local.conn.execute("PRAGMA wal_autocheckpoint = 1000")
             # Return rows as dictionaries
             self._local.conn.row_factory = sqlite3.Row
         return self._local.conn
@@ -181,6 +188,8 @@ class SQLiteLedger(LedgerBackend):
     def transaction(self):
         """Context manager for database transactions."""
         conn = self.connection
+        # Manually start transaction since we're in autocommit mode
+        conn.execute("BEGIN IMMEDIATE")
         try:
             yield conn
             conn.commit()
