@@ -184,10 +184,91 @@ function normalizeMetrics(rawData) {
  * @returns {Object} Normalized metric record
  */
 function normalizeMetricRecord(metric) {
-    const snapshot = metric.snapshot || metric.legacy_metrics?.snapshot || {};
+    const legacyMetrics = metric.legacy_metrics || {};
+    const legacyStats = legacyMetrics.statistics || {};
+    const snapshot = metric.snapshot || legacyMetrics.snapshot || {};
     const layered = metric.layered_metrics || {};
-    const performance = metric.performance || metric.statistics || {};
-    const quality = layered.quality || metric.quality || {};
+    const quality = layered.quality || metric.quality || legacyStats.quality || {};
+    const performance = metric.performance || metric.statistics || legacyStats || {};
+
+    const rawQualityRate =
+        metric.quality_pass_rate ??
+        metric.pipeline_metrics?.quality_pass_rate ??
+        quality.quality_pass_rate ??
+        legacyStats.quality_pass_rate ??
+        null;
+
+    let qualityPassRate = Number(rawQualityRate);
+    if (!Number.isFinite(qualityPassRate) || qualityPassRate < 0) {
+        const passed = quality.records_passed_filters ??
+                       legacyStats.records_passed_filters ??
+                       snapshot.records_written ??
+                       0;
+        const received = quality.records_received ??
+                         legacyStats.records_received ??
+                         (snapshot.records_written + (snapshot.records_filtered || 0)) ??
+                         0;
+        if (received > 0) {
+            qualityPassRate = passed / received;
+        } else {
+            qualityPassRate = 0;
+        }
+    }
+    qualityPassRate = Math.max(0, Math.min(1, qualityPassRate));
+
+    const rawHttpSuccess =
+        metric.http_request_success_rate ??
+        performance.http_request_success_rate ??
+        performance.fetch_success_rate ??
+        legacyStats.http_request_success_rate ??
+        legacyStats.fetch_success_rate ??
+        legacyStats.file_extraction_success_rate ??
+        legacyStats.record_parsing_success_rate ??
+        null;
+
+    let httpSuccessRate = Number(rawHttpSuccess);
+    if (!Number.isFinite(httpSuccessRate) || httpSuccessRate <= 0) {
+        const urlsFetched = metric.urls_fetched ??
+                            snapshot.urls_fetched ??
+                            snapshot.files_processed ??
+                            0;
+        const recordsWritten = metric.records_written ??
+                               snapshot.records_written ??
+                               0;
+        if (urlsFetched > 0) {
+            httpSuccessRate = Math.min(recordsWritten / urlsFetched, 1);
+        } else if (recordsWritten > 0) {
+            httpSuccessRate = 1;
+        } else {
+            httpSuccessRate = 0;
+        }
+    }
+    httpSuccessRate = Math.max(0, Math.min(1, httpSuccessRate));
+
+    const rawExtractionSuccess =
+        metric.content_extraction_success_rate ??
+        performance.content_extraction_success_rate ??
+        legacyStats.record_parsing_success_rate ??
+        legacyStats.content_extraction_success_rate ??
+        null;
+
+    let extractionSuccessRate = Number(rawExtractionSuccess);
+    if (!Number.isFinite(extractionSuccessRate) || extractionSuccessRate < 0) {
+        extractionSuccessRate = 0;
+    }
+    extractionSuccessRate = Math.max(0, Math.min(1, extractionSuccessRate));
+
+    const rawDedupRate =
+        metric.deduplication_rate ??
+        performance.deduplication_rate ??
+        legacyStats.deduplication_rate ??
+        0;
+
+    let deduplicationRate = Number(rawDedupRate);
+    if (!Number.isFinite(deduplicationRate) || deduplicationRate < 0) {
+        deduplicationRate = 0;
+    }
+    deduplicationRate = Math.max(0, Math.min(1, deduplicationRate));
 
     // Create normalized record with all expected properties
     const normalized = {
@@ -205,15 +286,10 @@ function normalizeMetricRecord(metric) {
 
         // Quality metrics (flattened from nested structure)
         // Bug Fix #2: Handle both flat and nested pipeline_metrics
-        quality_pass_rate: metric.quality_pass_rate ||
-                          metric.pipeline_metrics?.quality_pass_rate || 0,
-        http_request_success_rate: metric.http_request_success_rate ||
-                                    performance.http_request_success_rate ||
-                                    performance.fetch_success_rate || 0,
-        content_extraction_success_rate: metric.content_extraction_success_rate ||
-                                         performance.content_extraction_success_rate || 0,
-        deduplication_rate: metric.deduplication_rate ||
-                            performance.deduplication_rate || 0,
+        quality_pass_rate: qualityPassRate,
+        http_request_success_rate: httpSuccessRate,
+        content_extraction_success_rate: extractionSuccessRate,
+        deduplication_rate: deduplicationRate,
 
         // Performance metrics (flattened from nested structure)
         // Bug Fix #3: Handle both flat and nested performance

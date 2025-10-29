@@ -1,9 +1,19 @@
 /**
  * Coverage Metrics Module
- * Manages coverage scorecard and radial chart
+ * Manages coverage scorecard and coverage overview charts
  */
 
 import { getMetrics } from '../core/data-service.js';
+import { computePipelineAggregates } from '../core/aggregates.js';
+import { normalizeSourceName } from '../utils/formatters.js';
+
+function getSourceColor(label) {
+    if (label.includes('Wikipedia')) return '#3b82f6';
+    if (label.includes('BBC')) return '#ef4444';
+    if (label.includes('HuggingFace')) return '#10b981';
+    if (label.includes('Språkbanken') || label.includes('Sprakbanken')) return '#f59e0b';
+    return '#2563eb';
+}
 
 /**
  * Update coverage scorecard with aggregated metrics
@@ -12,26 +22,9 @@ export function updateCoverageScorecard() {
     const metricsData = getMetrics();
     if (!metricsData || !metricsData.metrics) return;
 
-    const aggregates = {
-        totalRecords: metricsData.metrics.reduce((sum, m) => sum + (m.records_written || 0), 0),
-        avgQuality: 0,
-        avgSuccess: 0,
-        activeSources: metricsData.metrics.filter(m => m.records_written > 0).length
-    };
-
-    // Calculate averages
-    const validMetrics = metricsData.metrics.filter(m => m.records_written > 0);
-    if (validMetrics.length > 0) {
-        aggregates.avgQuality = validMetrics.reduce((sum, m) => {
-            const rate = m.quality_pass_rate || 0;
-            return sum + (rate * 100);
-        }, 0) / validMetrics.length;
-
-        aggregates.avgSuccess = validMetrics.reduce((sum, m) => {
-            const success = m.http_request_success_rate || m.content_extraction_success_rate || 0;
-            return sum + (success * 100);
-        }, 0) / validMetrics.length;
-    }
+    const aggregates = computePipelineAggregates(metricsData.metrics);
+    const avgQualityPercent = aggregates.avgQualityRate * 100;
+    const avgSuccessPercent = aggregates.avgSuccessRate * 100;
 
     // Update DOM
     const recordsEl = document.getElementById('coverage-total-records');
@@ -40,8 +33,8 @@ export function updateCoverageScorecard() {
     const sourcesEl = document.getElementById('coverage-sources');
 
     if (recordsEl) recordsEl.textContent = aggregates.totalRecords.toLocaleString();
-    if (qualityEl) qualityEl.textContent = aggregates.avgQuality.toFixed(1) + '%';
-    if (successEl) successEl.textContent = aggregates.avgSuccess.toFixed(1) + '%';
+    if (qualityEl) qualityEl.textContent = avgQualityPercent.toFixed(1) + '%';
+    if (successEl) successEl.textContent = avgSuccessPercent.toFixed(1) + '%';
     if (sourcesEl) sourcesEl.textContent = aggregates.activeSources;
 
     // Update progress bars
@@ -55,8 +48,8 @@ export function updateCoverageScorecard() {
         const recordsPct = Math.min((aggregates.totalRecords / maxRecords) * 100, 100);
         setTimeout(() => recordsBar.style.width = recordsPct + '%', 100);
     }
-    if (qualityBar) setTimeout(() => qualityBar.style.width = aggregates.avgQuality + '%', 200);
-    if (successBar) setTimeout(() => successBar.style.width = aggregates.avgSuccess + '%', 300);
+    if (qualityBar) setTimeout(() => qualityBar.style.width = Math.min(avgQualityPercent, 100) + '%', 200);
+    if (successBar) setTimeout(() => successBar.style.width = Math.min(avgSuccessPercent, 100) + '%', 300);
     if (sourcesBar) {
         const sourcesPct = (aggregates.activeSources / 4) * 100;
         setTimeout(() => sourcesBar.style.width = sourcesPct + '%', 400);
@@ -64,73 +57,80 @@ export function updateCoverageScorecard() {
 }
 
 /**
- * Create coverage radial polar area chart
+ * Render coverage records bar chart
  */
-export function createCoverageRadialChart() {
+export function createCoverageRecordsChart() {
     const metricsData = getMetrics();
-    const ctx = document.getElementById('coverageRadialChart');
+    const ctx = document.getElementById('coverageRecordsChart');
     if (!ctx || !metricsData || !metricsData.metrics) return;
 
     const sourceMap = new Map();
     metricsData.metrics.forEach(m => {
-        if (m.records_written > 0) {
-            const name = m.source.replace(/-Somali|_Somali_c4-so|-somali/g, '').replace('Sprakbanken', 'Språkbanken').trim();
-            sourceMap.set(name, (sourceMap.get(name) || 0) + m.records_written);
-        }
+        const records = m.records_written || 0;
+        if (records <= 0) return;
+        const name = normalizeSourceName(m.source);
+        sourceMap.set(name, (sourceMap.get(name) || 0) + records);
     });
 
-    const labels = Array.from(sourceMap.keys());
-    const data = Array.from(sourceMap.values());
-    const colors = labels.map(label => {
-        if (label.includes('Wikipedia')) return '#3b82f6';
-        if (label.includes('BBC')) return '#ef4444';
-        if (label.includes('HuggingFace')) return '#10b981';
-        return '#f59e0b';
-    });
+    const rows = Array.from(sourceMap.entries())
+        .sort((a, b) => b[1] - a[1]);
+
+    if (rows.length === 0) {
+        const wrapper = ctx.parentElement;
+        if (wrapper) {
+            wrapper.innerHTML = '<p style="text-align:center;padding:2rem;color:#6b7280;">Coverage data is not yet available.</p>';
+        }
+        return;
+    }
+
+    const labels = rows.map(([label]) => label);
+    const data = rows.map(([, value]) => value);
+    const colors = labels.map(getSourceColor);
 
     new Chart(ctx, {
-        type: 'polarArea',
+        type: 'bar',
         data: {
-            labels: labels,
+            labels,
             datasets: [{
-                data: data,
-                backgroundColor: colors.map(c => c + '80'),
-                borderColor: colors,
-                borderWidth: 2
+                label: 'Records Written',
+                data,
+                backgroundColor: colors,
+                borderRadius: 6
             }]
         },
         options: {
+            indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: true,
-            scales: {
-                r: {
-                    beginAtZero: true,
-                    ticks: {
-                        backdropColor: 'transparent',
-                        font: { size: 11 }
-                    },
-                    grid: { color: '#e5e7eb' },
-                    pointLabels: {
-                        font: { size: 12, weight: '600' }
-                    }
-                }
-            },
             plugins: {
                 legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 15,
-                        usePointStyle: true,
-                        font: { size: 12, weight: '500' }
-                    }
+                    display: false
                 },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((context.parsed.r / total) * 100).toFixed(1);
-                            return `${context.label}: ${context.parsed.r.toLocaleString()} records (${percentage}%)`;
+                            const total = data.reduce((acc, value) => acc + value, 0);
+                            const percentage = total > 0 ? ((context.parsed.x / total) * 100).toFixed(1) : '0.0';
+                            return `${context.parsed.x.toLocaleString()} records (${percentage}%)`;
                         }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString();
+                        }
+                    },
+                    grid: {
+                        color: '#f3f4f6'
+                    }
+                },
+                y: {
+                    grid: {
+                        display: false
                     }
                 }
             }

@@ -4,6 +4,7 @@
  */
 
 import { getMetrics, getDashboardMetadata } from './data-service.js';
+import { computePipelineAggregates } from './aggregates.js';
 import { Logger } from '../utils/logger.js';
 
 /**
@@ -33,15 +34,10 @@ export function updateStats() {
     // Calculate real metrics
     const metrics = metricsData.metrics;
     const dashboardMetadata = getDashboardMetadata ? getDashboardMetadata() : {};
-    const totalRecords = metrics.reduce((sum, m) => sum + m.records_written, 0);
-    const totalSources = new Set(metrics.map(m => m.source.split('-')[0])).size;
-
-    // Calculate average quality pass rate (meaningful across all pipeline types)
-    // Bug Fix #2: Use flattened quality_pass_rate (normalized by data-service)
-    const avgQualityRate = metrics.reduce((sum, m) => {
-        const quality = m.quality_pass_rate || 0;
-        return sum + quality;
-    }, 0) / metrics.length * 100;
+    const aggregates = computePipelineAggregates(metrics);
+    const totalRecords = aggregates.totalRecords;
+    const totalSources = new Set(metrics.map(m => (m.source || '').split('-')[0])).size;
+    const avgQualityRate = aggregates.avgQualityRate * 100;
 
     // Count unique pipeline types
     const pipelineTypes = new Set(metrics.map(m => m.pipeline_type || 'unknown')).size;
@@ -56,7 +52,14 @@ export function updateStats() {
             }, 0);
     }
 
-    Logger.debug('Calculated stats', { totalRecords, totalSources, pipelineTypes, avgQualityRate });
+    Logger.debug('Calculated stats', {
+        totalRecords,
+        totalSources,
+        pipelineTypes,
+        avgQualityRate,
+        activeSources: aggregates.activeSources,
+        avgSuccessRate: aggregates.avgSuccessRate
+    });
 
     // Update hero stats
     document.getElementById('total-records').setAttribute('data-count', totalRecords);

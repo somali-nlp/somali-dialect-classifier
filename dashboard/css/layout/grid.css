@@ -17,6 +17,10 @@
     gap: var(--space-6);
 }
 
+.charts-grid-three {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
 /* Story Cards */
 .story-cards {
     display: grid;

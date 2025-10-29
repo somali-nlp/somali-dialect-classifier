@@ -57,7 +57,7 @@ import {
 
 // Import feature modules
 import { initAudienceMode } from './features/audience-mode.js';
-import { updateCoverageScorecard, createCoverageRadialChart } from './features/coverage-metrics.js';
+import { updateCoverageScorecard, createCoverageRecordsChart } from './features/coverage-metrics.js';
 import { ThemeManager } from './features/theme-manager.js';
 import { FilterManager } from './features/filter-manager.js';
 import { ExportManager } from './features/export-manager.js';
@@ -149,7 +149,7 @@ async function init() {
         try {
             initAudienceMode();
             updateCoverageScorecard();
-            createCoverageRadialChart();
+            createCoverageRecordsChart();
             updateQualityMetrics();
         } catch (error) {
             Logger.warn('Non-critical: Enhanced features failed to initialize', error);

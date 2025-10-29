@@ -455,15 +455,36 @@
                     </div>
                 </section>
 
-                <!-- Radial Progress Chart (Polar Area) -->
+                <!-- Processing Summary Charts -->
                 <div class="charts-section" data-show-in="analyst">
-                    <div class="chart-card enhanced">
-                        <div class="chart-header">
-                            <h3 class="chart-title">Data Source Coverage</h3>
-                            <p class="chart-subtitle">Radial view of data distribution by source</p>
+                    <h3 class="section-title">Processing Summary</h3>
+                    <div class="charts-grid charts-grid-three">
+                        <div class="chart-card enhanced">
+                            <div class="chart-header">
+                                <h4 class="chart-title">Records by Source</h4>
+                                <p class="chart-subtitle">Latest successful writes (records)</p>
+                            </div>
+                            <div class="chart-canvas">
+                                <canvas id="coverageRecordsChart" aria-label="Bar chart showing records written per data source"></canvas>
+                            </div>
                         </div>
-                        <div class="chart-canvas">
-                            <canvas id="coverageRadialChart" aria-label="Polar area chart showing data coverage by source"></canvas>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h4 class="chart-title">Source Distribution</h4>
+                                <p class="chart-subtitle">Share of total records contributed</p>
+                            </div>
+                            <div class="chart-canvas">
+                                <canvas id="sourceDistributionChart" aria-label="Donut chart showing distribution of records across data sources"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h4 class="chart-title">Quality Pass Rate by Source</h4>
+                                <p class="chart-subtitle">Percentage of records passing quality filters</p>
+                            </div>
+                            <div class="chart-canvas">
+                                <canvas id="qualityRateChart" aria-label="Bar chart showing quality pass rates for each data source"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -587,28 +608,6 @@
                     </article>
                 </div>
 
-                <!-- Real-time Metrics Panel -->
-                <div class="charts-section mt-8" data-show-in="analyst">
-                    <h3 class="section-title">Processing Summary</h3>
-                    <div class="charts-grid">
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h4 class="chart-title">Source Distribution</h4>
-                            </div>
-                            <div class="chart-canvas">
-                                <canvas id="sourceDistributionChart" aria-label="Pie chart showing distribution of records across data sources"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h4 class="chart-title">Quality Pass Rate by Source</h4>
-                            </div>
-                            <div class="chart-canvas">
-                                <canvas id="qualityRateChart" aria-label="Bar chart showing quality pass rates for each data source"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 
