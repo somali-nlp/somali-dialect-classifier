@@ -19,6 +19,24 @@ export const Config = {
         '../data/all_metrics.json',
         '/data/all_metrics.json'
     ],
+    METADATA_PATHS: [
+        'data/dashboard_metadata.json',
+        './data/dashboard_metadata.json',
+        '../data/dashboard_metadata.json',
+        '/data/dashboard_metadata.json'
+    ],
+    SANKEY_PATHS: [
+        'data/sankey_flow.json',
+        './data/sankey_flow.json',
+        '../data/sankey_flow.json',
+        '/data/sankey_flow.json'
+    ],
+    TEXT_DISTRIBUTION_PATHS: [
+        'data/text_distributions.json',
+        './data/text_distributions.json',
+        '../data/text_distributions.json',
+        '/data/text_distributions.json'
+    ],
 
     /**
      * Network settings

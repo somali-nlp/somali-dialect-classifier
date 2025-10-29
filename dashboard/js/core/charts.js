@@ -18,13 +18,18 @@ export function initCharts() {
     // Chart.js defaults
     Chart.defaults.font.family = "'Inter', sans-serif";
     Chart.defaults.color = '#6b7280';
+    Chart.defaults.animation = false;
+    if (Chart.defaults.plugins?.legend?.labels) {
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.padding = 12;
+    }
 
     // Initialize all chart types
     createSourceDistributionChart(metricsData);
     createQualityRateChart(metricsData);
     createSourceComparisonChart(metricsData);
     createTextLengthChart(metricsData);
-    createDeduplicationChart();
+    createDeduplicationChart(metricsData);
     createPerformanceBulletChart(metricsData);
     createQualityVsSpeedChart(metricsData);
     createCumulativeTimelineChart(metricsData);
@@ -325,64 +330,114 @@ function createTextLengthChart(metricsData) {
 /**
  * Create deduplication polar area chart
  */
-function createDeduplicationChart() {
+function createDeduplicationChart(metricsData) {
     const dedupCtx = document.getElementById('deduplicationChart');
-    if (dedupCtx) {
-        new Chart(dedupCtx, {
-            type: 'polarArea',
-            data: {
-                labels: ['Wikipedia', 'BBC Somali', 'HuggingFace', 'Språkbanken'],
-                datasets: [{
-                    label: 'Deduplication Rate',
-                    data: [0, 0, 0, 0],
-                    backgroundColor: [
-                        'rgba(59, 130, 246, 0.6)',
-                        'rgba(239, 68, 68, 0.6)',
-                        'rgba(16, 185, 129, 0.6)',
-                        'rgba(245, 158, 11, 0.6)'
-                    ],
-                    borderColor: [
-                        '#3b82f6',
-                        '#ef4444',
-                        '#10b981',
-                        '#f59e0b'
-                    ],
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 15,
-                            usePointStyle: true
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.label}: ${context.parsed.toFixed(1)}% duplicates removed`;
-                            }
-                        }
+    if (!dedupCtx) {
+        Logger.warn('Chart container not found: deduplicationChart');
+        return;
+    }
+
+    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+        Logger.warn('Invalid or empty metrics data for deduplication chart');
+        return;
+    }
+
+    const dedupMap = new Map();
+
+    metricsData.metrics.forEach(metric => {
+        if (!metric) return;
+
+        const source = normalizeSourceName(metric.source);
+        const breakdown = metric.filter_breakdown || {};
+
+        const duplicateFiltered = Object.entries(breakdown).reduce((sum, [reason, count]) => {
+            const normalizedReason = reason.toLowerCase();
+            if (normalizedReason.includes('duplicate') || normalizedReason.includes('hash')) {
+                return sum + count;
+            }
+            return sum;
+        }, 0);
+
+        const written = metric.records_written || 0;
+        const totalConsidered = duplicateFiltered + written;
+        if (totalConsidered === 0) return;
+
+        const entry = dedupMap.get(source) || { duplicates: 0, total: 0 };
+        entry.duplicates += duplicateFiltered;
+        entry.total += totalConsidered;
+        dedupMap.set(source, entry);
+    });
+
+    if (dedupMap.size === 0) {
+        const wrapper = dedupCtx.parentElement;
+        if (wrapper) {
+            wrapper.innerHTML = '<p style="text-align:center;padding:2rem;color:#6b7280;">Deduplication data is not yet available.</p>';
+        }
+        return;
+    }
+
+    const labels = Array.from(dedupMap.keys());
+    const values = labels.map(label => {
+        const data = dedupMap.get(label);
+        return data.total > 0 ? (data.duplicates / data.total) * 100 : 0;
+    });
+
+    new Chart(dedupCtx, {
+        type: 'polarArea',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Deduplication Rate',
+                data: values,
+                backgroundColor: labels.map(label => {
+                    if (label.includes('Wikipedia')) return 'rgba(59, 130, 246, 0.6)';
+                    if (label.includes('BBC')) return 'rgba(239, 68, 68, 0.6)';
+                    if (label.includes('HuggingFace')) return 'rgba(16, 185, 129, 0.6)';
+                    if (label.includes('Språkbanken')) return 'rgba(245, 158, 11, 0.6)';
+                    return 'rgba(107, 114, 128, 0.6)';
+                }),
+                borderColor: labels.map(label => {
+                    if (label.includes('Wikipedia')) return '#3b82f6';
+                    if (label.includes('BBC')) return '#ef4444';
+                    if (label.includes('HuggingFace')) return '#10b981';
+                    if (label.includes('Språkbanken')) return '#f59e0b';
+                    return '#6b7280';
+                }),
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true
                     }
                 },
-                scales: {
-                    r: {
-                        beginAtZero: true,
-                        max: 10,
-                        ticks: {
-                            callback: function(value) {
-                                return value + '%';
-                            }
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.parsed.toFixed(1)}% duplicates removed`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
                         }
                     }
                 }
             }
-        });
-    }
+        }
+    });
 }
 
 /**
@@ -552,8 +607,22 @@ function createQualityVsSpeedChart(metricsData) {
                     }
                 },
                 scales: {
-                    x: { type: 'logarithmic', title: { display: true, text: 'Processing Speed (RPM) - Log Scale', font: { size: 12, weight: 600 } }, ticks: { callback: (v) => v >= 1000 ? (v/1000).toFixed(0) + 'K' : v }, grid: { color: 'rgba(0,0,0,0.05)' } },
-                    y: { beginAtZero: true, max: 100, title: { display: true, text: 'Quality Pass Rate (%)', font: { size: 12, weight: 600 } }, ticks: { callback: (v) => v + '%' }, grid: { color: 'rgba(0,0,0,0.05)' } }
+                    x: {
+                        type: 'linear',
+                        beginAtZero: true,
+                        title: { display: true, text: 'Processing Speed (records per minute)', font: { size: 12, weight: 600 } },
+                        ticks: {
+                            callback: (value) => Math.round(value).toLocaleString()
+                        },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Quality Pass Rate (%)', font: { size: 12, weight: 600 } },
+                        ticks: { callback: (v) => v + '%' },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    }
                 }
             }
         });
@@ -596,7 +665,7 @@ function createCumulativeTimelineChart(metricsData) {
             });
 
             return {
-                label: `${sourceShort} (${cumulative.toLocaleString()})`,
+                label: sourceShort,
                 data: data,
                 backgroundColor: color + '66',
                 borderColor: color,
@@ -622,7 +691,7 @@ function createCumulativeTimelineChart(metricsData) {
                         intersect: false,
                         callbacks: {
                             title: (items) => new Date(items[0].parsed.x).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-                            label: (ctx) => `${ctx.dataset.label.split(' ')[0]}: ${ctx.parsed.y.toLocaleString()} records`,
+                            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} records`,
                             footer: (items) => {
                                 const total = items.reduce((sum, item) => sum + item.parsed.y, 0);
                                 return `Total: ${total.toLocaleString()} records`;

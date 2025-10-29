@@ -43,7 +43,7 @@ python -m http.server 8000</pre>
 }
 
 // Import core modules
-import { loadMetrics, getMetrics } from './core/data-service.js';
+import { loadMetrics, getMetrics, getSankeyFlow, getTextDistributions } from './core/data-service.js';
 import { updateStats } from './core/stats.js';
 import { initTabs } from './core/tabs.js';
 import { initCharts } from './core/charts.js';
@@ -224,14 +224,16 @@ function displayErrorState(error) {
  * Theme manager, filters, export, advanced charts, and comparison mode
  */
 function initAdvancedFeatures() {
-    const metricsData = getMetrics();
+    const dashboardData = getMetrics();
+    const sankeyFlow = getSankeyFlow();
+    const textDistributions = getTextDistributions();
 
-    if (metricsData && metricsData.metrics) {
+    if (dashboardData && dashboardData.metrics) {
         // Initialize theme manager
         ThemeManager.init();
 
         // Initialize filter manager
-        FilterManager.init(metricsData.metrics);
+        FilterManager.init(dashboardData.metrics);
 
         // Listen for filter changes and update charts
         FilterManager.onFilterChange((filteredMetrics) => {
@@ -241,11 +243,11 @@ function initAdvancedFeatures() {
         });
 
         // Create advanced charts
-        SankeyChart.create('sankeyContainer', metricsData.metrics);
-        RidgePlot.create('ridgePlotContainer', metricsData.metrics);
+        SankeyChart.create('sankeyContainer', dashboardData.metrics, sankeyFlow);
+        RidgePlot.create('ridgePlotContainer', dashboardData.metrics, textDistributions);
 
         // Initialize comparison mode
-        ComparisonMode.init(metricsData.metrics);
+        ComparisonMode.init(dashboardData.metrics);
 
         // Emit dashboardReady event
         window.dispatchEvent(new CustomEvent('dashboardReady'));

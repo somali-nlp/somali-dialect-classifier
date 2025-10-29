@@ -3,7 +3,7 @@
  * Updates hero statistics and story cards from metrics data
  */
 
-import { getMetrics } from './data-service.js';
+import { getMetrics, getDashboardMetadata } from './data-service.js';
 import { Logger } from '../utils/logger.js';
 
 /**
@@ -32,6 +32,7 @@ export function updateStats() {
 
     // Calculate real metrics
     const metrics = metricsData.metrics;
+    const dashboardMetadata = getDashboardMetadata ? getDashboardMetadata() : {};
     const totalRecords = metrics.reduce((sum, m) => sum + m.records_written, 0);
     const totalSources = new Set(metrics.map(m => m.source.split('-')[0])).size;
 
@@ -44,6 +45,16 @@ export function updateStats() {
 
     // Count unique pipeline types
     const pipelineTypes = new Set(metrics.map(m => m.pipeline_type || 'unknown')).size;
+    let activeVisualizations = 0;
+    if (dashboardMetadata && dashboardMetadata.visualizations) {
+        activeVisualizations = Object.entries(dashboardMetadata.visualizations)
+            .reduce((sum, [key, value]) => {
+                if (key.endsWith('_available') && value) {
+                    return sum + 1;
+                }
+                return sum;
+            }, 0);
+    }
 
     Logger.debug('Calculated stats', { totalRecords, totalSources, pipelineTypes, avgQualityRate });
 
@@ -51,9 +62,14 @@ export function updateStats() {
     document.getElementById('total-records').setAttribute('data-count', totalRecords);
     document.getElementById('total-sources').setAttribute('data-count', totalSources);
     document.getElementById('pipeline-types').setAttribute('data-count', pipelineTypes);
+    document.getElementById('active-visualizations').setAttribute('data-count', activeVisualizations);
 
     // Update story cards
     document.getElementById('story-records').textContent = totalRecords.toLocaleString();
     document.getElementById('story-quality').textContent = avgQualityRate.toFixed(1);
     document.getElementById('story-sources').textContent = totalSources;
+    const storyInsights = document.getElementById('active-visualizations-story');
+    if (storyInsights) {
+        storyInsights.textContent = activeVisualizations;
+    }
 }

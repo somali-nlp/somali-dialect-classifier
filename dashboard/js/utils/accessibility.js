@@ -12,13 +12,17 @@ export function initSmoothScroll() {
         anchor.addEventListener('click', function(e) {
             const href = this.getAttribute('href');
 
-            // Skip tab navigation links
-            if (href === '#' || href === '#overview' || href === '#sources' ||
-                href === '#quality' || href === '#pipeline' || href === '#reports') {
-                return; // Let tab navigation handle these
+            e.preventDefault();
+            const targetTab = this.dataset.tabTarget;
+            if (targetTab) {
+                const tabButton = document.querySelector(`.tab-button[data-tab="${targetTab}"]`);
+                if (tabButton) tabButton.click();
             }
 
-            e.preventDefault();
+            if (href === '#') {
+                return;
+            }
+
             const target = document.querySelector(href);
             if (target) {
                 // Get navbar height for offset

@@ -11,19 +11,61 @@ export const SankeyChart = {
      * Create a Sankey/Funnel diagram showing data flow through pipeline stages
      * Using D3-sankey for proper flow visualization
      */
-    create(containerId, metrics) {
+    create(containerId, metrics, flowData = null) {
         const container = document.getElementById(containerId);
         if (!container) {
             console.error(`Container ${containerId} not found`);
             return null;
         }
 
-        // Aggregate data from all sources
-        const aggregated = this.aggregateFlowData(metrics);
+        // Prefer pre-aggregated flow data, fall back to derived metrics
+        const aggregated = flowData
+            ? this.normalizeExternalFlow(flowData)
+            : this.aggregateFlowData(metrics);
+
+        if (!aggregated) {
+            container.innerHTML = '<p style="text-align:center;padding:2rem;color:#6b7280;">Sankey data is not yet available.</p>';
+            return null;
+        }
 
         // Create canvas-based Sankey using manual rendering
         // This avoids needing D3-sankey library (keeping bundle size small)
         return this.renderManualSankey(container, aggregated);
+    },
+
+    normalizeExternalFlow(flowData) {
+        if (!flowData) {
+            return null;
+        }
+
+        const stageCounts = flowData.stage_counts || {};
+        const filterBreakdown = flowData.filter_breakdown || {};
+
+        const aggregated = {
+            discovered: stageCounts.discovered || 0,
+            fetched: stageCounts.fetched || stageCounts.discovery || 0,
+            extracted: stageCounts.extracted || 0,
+            quality_received: stageCounts.quality_received || stageCounts.extracted || 0,
+            passed_quality: stageCounts.quality_passed || stageCounts.written || 0,
+            written: stageCounts.written || stageCounts['Silver Dataset'] || stageCounts.quality_passed || 0,
+            filtered_duplicate: 0,
+            filtered_quality: 0,
+            filtered_other: 0
+        };
+
+        Object.entries(filterBreakdown).forEach(([reason, count]) => {
+            const normalizedReason = reason.toLowerCase();
+            if (normalizedReason.includes('duplicate') || normalizedReason.includes('hash')) {
+                aggregated.filtered_duplicate += count;
+            } else if (normalizedReason.includes('length') || normalizedReason.includes('quality')) {
+                aggregated.filtered_quality += count;
+            } else {
+                aggregated.filtered_other += count;
+            }
+        });
+
+        const hasAnyValue = Object.values(aggregated).some(value => typeof value === 'number' && value > 0);
+        return hasAnyValue ? aggregated : null;
     },
 
     aggregateFlowData(metrics) {
@@ -31,6 +73,7 @@ export const SankeyChart = {
             discovered: 0,
             fetched: 0,
             extracted: 0,
+            quality_received: 0,
             passed_quality: 0,
             filtered_duplicate: 0,
             filtered_quality: 0,
@@ -38,40 +81,36 @@ export const SankeyChart = {
             written: 0
         };
 
+        if (!Array.isArray(metrics)) {
+            return null;
+        }
+
         metrics.forEach(metric => {
             if (!metric) return;
 
-            const layered = metric.layered_metrics || {};
-            const legacy = metric.legacy_metrics?.snapshot || {};
+            const filteredTotal = Object.values(metric.filter_breakdown || {}).reduce((sum, value) => sum + value, 0);
 
-            // Connectivity (Discovery)
-            flow.discovered += legacy.urls_discovered || legacy.files_discovered || 0;
+            flow.discovered += metric.urls_discovered || 0;
+            flow.fetched += metric.urls_fetched || metric.urls_discovered || 0;
+            flow.extracted += metric.records_extracted || metric.records_written || 0;
+            flow.quality_received += (metric.records_written || 0) + filteredTotal;
+            flow.passed_quality += metric.records_written || 0;
+            flow.written += metric.records_written || 0;
 
-            // Extraction
-            flow.fetched += legacy.urls_fetched || legacy.files_processed || legacy.records_fetched || 0;
-            flow.extracted += layered.extraction?.content_extracted || legacy.records_extracted || 0;
-
-            // Quality filtering
-            const qualityMetrics = layered.quality || {};
-            flow.passed_quality += qualityMetrics.records_passed_filters || 0;
-
-            // Filter breakdown
-            const filterBreakdown = qualityMetrics.filter_breakdown || legacy.filter_reasons || {};
-            Object.entries(filterBreakdown).forEach(([reason, count]) => {
-                if (reason.toLowerCase().includes('duplicate') || reason.toLowerCase().includes('hash')) {
+            Object.entries(metric.filter_breakdown || {}).forEach(([reason, count]) => {
+                const normalizedReason = reason.toLowerCase();
+                if (normalizedReason.includes('duplicate') || normalizedReason.includes('hash')) {
                     flow.filtered_duplicate += count;
-                } else if (reason.toLowerCase().includes('length') || reason.toLowerCase().includes('quality')) {
+                } else if (normalizedReason.includes('length') || normalizedReason.includes('quality')) {
                     flow.filtered_quality += count;
                 } else {
                     flow.filtered_other += count;
                 }
             });
-
-            // Volume (Final output)
-            flow.written += layered.volume?.records_written || legacy.records_written || 0;
         });
 
-        return flow;
+        const hasAnyValue = Object.values(flow).some(value => typeof value === 'number' && value > 0);
+        return hasAnyValue ? flow : null;
     },
 
     renderManualSankey(container, flow) {
@@ -91,8 +130,8 @@ export const SankeyChart = {
             { id: 'discovered', label: 'Discovered', value: flow.discovered, color: '#94a3b8', x: 0 },
             { id: 'fetched', label: 'Fetched', value: flow.fetched, color: '#60a5fa', x: 1 },
             { id: 'extracted', label: 'Extracted', value: flow.extracted, color: '#3b82f6', x: 2 },
-            { id: 'quality_checked', label: 'Quality Check', value: flow.extracted, color: '#2563eb', x: 3 },
-            { id: 'written', label: 'Written', value: flow.written, color: '#10b981', x: 4 }
+            { id: 'quality_checked', label: 'Quality Check', value: flow.quality_received, color: '#2563eb', x: 3 },
+            { id: 'written', label: 'Silver Dataset', value: flow.written, color: '#10b981', x: 4 }
         ];
 
         // Calculate max value for scaling
@@ -188,7 +227,7 @@ export const SankeyChart = {
         // Draw all flows
         drawFlow(stages[0], stages[1], flow.fetched, 'flow-0');
         drawFlow(stages[1], stages[2], flow.extracted, 'flow-1');
-        drawFlow(stages[2], stages[3], flow.extracted, 'flow-2');
+        drawFlow(stages[2], stages[3], flow.quality_received, 'flow-2');
         drawFlow(stages[3], stages[4], flow.written, 'flow-3');
 
         // Draw stage rectangles
@@ -240,30 +279,36 @@ export const SankeyChart = {
         });
 
         // Add filter annotations
-        if (flow.filtered_duplicate > 0 || flow.filtered_quality > 0) {
+        const totalFiltered = (flow.filtered_duplicate || 0) + (flow.filtered_quality || 0) + (flow.filtered_other || 0);
+        if (totalFiltered > 0) {
             const filterY = stages[3].yPos + stages[3].height + 60;
+            const qualityDrop = Math.max(flow.quality_received - flow.written, 0);
 
-            if (flow.filtered_duplicate > 0) {
-                const filterText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                filterText.setAttribute('x', stages[3].xPos + stageWidth / 2);
-                filterText.setAttribute('y', filterY);
-                filterText.setAttribute('text-anchor', 'middle');
-                filterText.setAttribute('fill', '#ef4444');
-                filterText.setAttribute('font-size', '11');
-                filterText.textContent = `↓ Duplicates: ${this.formatNumber(flow.filtered_duplicate)}`;
-                svg.appendChild(filterText);
+            const breakdownRows = [
+                { color: '#ef4444', label: 'Duplicates', value: flow.filtered_duplicate },
+                { color: '#f59e0b', label: 'Quality Filters', value: flow.filtered_quality },
+                { color: '#94a3b8', label: 'Other Filters', value: flow.filtered_other }
+            ].filter(item => item.value > 0);
+
+            const addText = (textContent, offsetY, color = '#6b7280') => {
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', stages[3].xPos + stageWidth / 2);
+                text.setAttribute('y', offsetY);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('fill', color);
+                text.setAttribute('font-size', '11');
+                text.textContent = textContent;
+                svg.appendChild(text);
+            };
+
+            addText(`Filtered: ${this.formatNumber(totalFiltered)} records`, filterY, '#ef4444');
+            if (qualityDrop > 0) {
+                addText(`Retained after QC: ${this.formatNumber(flow.written)}`, filterY + 15, '#2563eb');
             }
 
-            if (flow.filtered_quality > 0) {
-                const filterText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                filterText.setAttribute('x', stages[3].xPos + stageWidth / 2);
-                filterText.setAttribute('y', filterY + 15);
-                filterText.setAttribute('text-anchor', 'middle');
-                filterText.setAttribute('fill', '#f59e0b');
-                filterText.setAttribute('font-size', '11');
-                filterText.textContent = `↓ Quality: ${this.formatNumber(flow.filtered_quality)}`;
-                svg.appendChild(filterText);
-            }
+            breakdownRows.forEach((item, index) => {
+                addText(`${item.label}: ${this.formatNumber(item.value)}`, filterY + 32 + index * 15, item.color);
+            });
         }
 
         container.appendChild(svg);
@@ -283,36 +328,73 @@ export const SankeyChart = {
 export const RidgePlot = {
     /**
      * Create ridge plots for text-length distribution comparison
-     * Overlapping density curves for each source
+     * Supports both pre-aggregated distribution data and raw metric fallbacks
      */
-    create(containerId, metrics) {
+    create(containerId, metrics, distributions = null) {
         const container = document.getElementById(containerId);
         if (!container) {
             console.error(`Container ${containerId} not found`);
             return null;
         }
 
-        // Extract text length data by source
-        const sourceData = this.extractTextLengthData(metrics);
+        const distributionData = distributions
+            ? this.normalizeDistributionData(distributions)
+            : this.extractTextLengthData(metrics);
 
-        return this.renderRidgePlot(container, sourceData);
+        if (!distributionData) {
+            container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 2rem;">No text distribution data available</p>';
+            return null;
+        }
+
+        return this.renderRidgePlot(container, distributionData);
     },
 
     extractTextLengthData(metrics) {
-        const data = {};
+        if (!Array.isArray(metrics) || metrics.length === 0) {
+            return null;
+        }
+
+        const lengthsBySource = new Map();
 
         metrics.forEach(metric => {
             if (!metric) return;
 
-            const source = this.getSourceName(metric._source || metric.source);
+            const source = this.getSourceName(metric.source);
             const textLengths = metric.legacy_metrics?.snapshot?.text_lengths || [];
 
-            if (textLengths.length > 0 && !data[source]) {
-                data[source] = textLengths;
+            if (textLengths.length > 0) {
+                const filtered = textLengths.filter(value => value > 0);
+                if (filtered.length === 0) return;
+
+                const existing = lengthsBySource.get(source) || [];
+                lengthsBySource.set(source, existing.concat(filtered));
             }
         });
 
-        return data;
+        if (lengthsBySource.size === 0) {
+            return null;
+        }
+
+        const edges = [10, 100, 1000, 10000, 100000, 1000000];
+        const labels = ['10-100', '100-1K', '1K-10K', '10K-100K', '100K+'];
+        const distributions = {};
+
+        lengthsBySource.forEach((lengths, source) => {
+            const histogram = this.computeHistogram(lengths, edges);
+            distributions[source] = {
+                bins: labels,
+                bin_edges: edges,
+                counts: histogram.counts,
+                densities: histogram.densities,
+                stats: histogram.stats
+            };
+        });
+
+        return {
+            sources: Array.from(lengthsBySource.keys()),
+            binInfo: { edges, labels },
+            distributions
+        };
     },
 
     getSourceName(fullSource) {
@@ -323,19 +405,31 @@ export const RidgePlot = {
             .trim();
     },
 
+    normalizeDistributionData(distributionData) {
+        if (!distributionData || !distributionData.distributions) {
+            return null;
+        }
+
+        return {
+            sources: distributionData.sources || Object.keys(distributionData.distributions),
+            binInfo: distributionData.bin_info || { edges: [], labels: [] },
+            distributions: distributionData.distributions
+        };
+    },
+
     renderRidgePlot(container, sourceData) {
         container.innerHTML = '';
 
-        const sources = Object.keys(sourceData);
-        if (sources.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 2rem;">No text length data available</p>';
+        const { sources, distributions, binInfo } = sourceData;
+        if (!sources || sources.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 2rem;">No text distribution data available</p>';
             return null;
         }
 
         const width = container.offsetWidth || 800;
-        const ridgeHeight = 80;
-        const spacing = 20;
-        const height = sources.length * (ridgeHeight + spacing) + 100;
+        const ridgeHeight = 70;
+        const spacing = 24;
+        const height = sources.length * (ridgeHeight + spacing) + 120;
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('width', width);
@@ -344,10 +438,23 @@ export const RidgePlot = {
         svg.style.width = '100%';
         svg.style.height = 'auto';
 
-        const padding = { left: 150, right: 50, top: 50, bottom: 50 };
+        const padding = { left: 170, right: 40, top: 40, bottom: 70 };
         const chartWidth = width - padding.left - padding.right;
 
-        // Colors for each source
+        const edges = (binInfo.edges && binInfo.edges.length > 1)
+            ? binInfo.edges
+            : this.deriveEdges(distributions);
+
+        if (!edges || edges.length < 2) {
+            container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 2rem;">Insufficient distribution data</p>';
+            return null;
+        }
+
+        const globalMin = Math.max(edges[0], 1);
+        const globalMax = edges[edges.length - 1];
+        const logMin = Math.log10(globalMin);
+        const logMax = Math.log10(globalMax);
+
         const colors = {
             'Wikipedia': '#3b82f6',
             'BBC': '#ef4444',
@@ -355,187 +462,234 @@ export const RidgePlot = {
             'Språkbanken': '#f59e0b'
         };
 
-        // Find global min/max for consistent x-axis (log scale)
-        let globalMin = Infinity;
-        let globalMax = 0;
+        const maxDensity = sources.reduce((max, source) => {
+            const densities = distributions[source]?.densities || [];
+            const localMax = Math.max(...densities, 0);
+            return Math.max(max, localMax);
+        }, 0) || 1;
 
-        sources.forEach(source => {
-            const lengths = sourceData[source].filter(l => l > 0);
-            if (lengths.length > 0) {
-                globalMin = Math.min(globalMin, ...lengths);
-                globalMax = Math.max(globalMax, ...lengths);
-            }
-        });
-
-        // Use log scale for x-axis
-        const logMin = Math.log10(Math.max(globalMin, 1));
-        const logMax = Math.log10(globalMax);
-
-        // Create density curves for each source
         sources.forEach((source, idx) => {
-            const y = padding.top + idx * (ridgeHeight + spacing);
-            const lengths = sourceData[source].filter(l => l > 0);
+            const distribution = distributions[source];
+            if (!distribution) return;
 
-            if (lengths.length === 0) return;
+            const densities = distribution.densities || [];
+            const counts = distribution.counts || [];
+            const totalCount = counts.reduce((sum, value) => sum + value, 0);
+            const labelText = `${this.getSourceName(source)} (${totalCount.toLocaleString()} samples)`;
 
-            // Calculate density using kernel density estimation (simplified)
-            const bins = 50;
-            const density = this.calculateDensity(lengths, bins, globalMin, globalMax);
+            const yBase = padding.top + idx * (ridgeHeight + spacing);
 
-            // Find max density for scaling
-            const maxDensity = Math.max(...density.map(d => d.density), 1);
-
-            // Create path for density curve
-            const points = density.map(d => {
-                const logValue = Math.log10(Math.max(d.value, 1));
+            const points = densities.map((density, index) => {
+                const edgeStart = edges[index];
+                const edgeEnd = edges[index + 1] || edgeStart;
+                const center = (edgeStart + edgeEnd) / 2;
+                const logValue = Math.log10(Math.max(center, 1));
                 const x = padding.left + ((logValue - logMin) / (logMax - logMin)) * chartWidth;
-                const curveY = y + ridgeHeight - (d.density / maxDensity) * ridgeHeight;
-                return { x, y: curveY };
+                const y = yBase + ridgeHeight - (density / maxDensity) * ridgeHeight;
+                return { x, y };
             });
 
-            // Draw filled area
+            if (points.length === 0) return;
+
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            let d = `M ${padding.left} ${y + ridgeHeight} `;
-            points.forEach((p, i) => {
-                if (i === 0) d += `L ${p.x} ${p.y} `;
-                else d += `L ${p.x} ${p.y} `;
+            let d = `M ${padding.left} ${yBase + ridgeHeight} `;
+            points.forEach(point => {
+                d += `L ${point.x} ${point.y} `;
             });
-            d += `L ${padding.left + chartWidth} ${y + ridgeHeight} Z`;
+            d += `L ${padding.left + chartWidth} ${yBase + ridgeHeight} Z`;
 
+            const color = colors[this.getSourceName(source)] || '#3b82f6';
             path.setAttribute('d', d);
-            path.setAttribute('fill', colors[source] || '#9ca3af');
-            path.setAttribute('fill-opacity', '0.5');
-            path.setAttribute('stroke', colors[source] || '#6b7280');
-            path.setAttribute('stroke-width', '2');
-            path.classList.add('ridge-curve');
+            path.setAttribute('fill', `${color}4d`);
+            path.setAttribute('stroke', color);
+            path.setAttribute('stroke-width', '1.5');
+            path.classList.add('ridge-plot-layer');
+
+            const stats = distribution.stats || {};
+            const statsSummary = stats.count
+                ? `Mean: ${Math.round(stats.mean).toLocaleString()} • Median: ${Math.round(stats.median).toLocaleString()}`
+                : '';
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            title.textContent = statsSummary ? `${labelText} • ${statsSummary}` : labelText;
+            path.appendChild(title);
+
             svg.appendChild(path);
 
-            // Add median line
-            const median = this.calculateMedian(lengths);
-            const medianLogValue = Math.log10(Math.max(median, 1));
-            const medianX = padding.left + ((medianLogValue - logMin) / (logMax - logMin)) * chartWidth;
-
-            const medianLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            medianLine.setAttribute('x1', medianX);
-            medianLine.setAttribute('y1', y);
-            medianLine.setAttribute('x2', medianX);
-            medianLine.setAttribute('y2', y + ridgeHeight);
-            medianLine.setAttribute('stroke', colors[source] || '#6b7280');
-            medianLine.setAttribute('stroke-width', '2');
-            medianLine.setAttribute('stroke-dasharray', '4 2');
-            medianLine.setAttribute('opacity', '0.8');
-            svg.appendChild(medianLine);
-
-            // Source label
             const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            label.setAttribute('x', padding.left - 10);
-            label.setAttribute('y', y + ridgeHeight / 2);
+            label.setAttribute('x', padding.left - 20);
+            label.setAttribute('y', yBase + ridgeHeight / 2);
             label.setAttribute('text-anchor', 'end');
             label.setAttribute('dominant-baseline', 'middle');
             label.setAttribute('fill', '#374151');
             label.setAttribute('font-size', '13');
             label.setAttribute('font-weight', '600');
-            label.textContent = source;
+            label.textContent = labelText;
             svg.appendChild(label);
 
-            // Median value label
-            const medianLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            medianLabel.setAttribute('x', medianX);
-            medianLabel.setAttribute('y', y - 5);
-            medianLabel.setAttribute('text-anchor', 'middle');
-            medianLabel.setAttribute('fill', colors[source] || '#6b7280');
-            medianLabel.setAttribute('font-size', '10');
-            medianLabel.textContent = Math.round(median);
-            svg.appendChild(medianLabel);
+            if (stats.median) {
+                const medianLog = Math.log10(Math.max(stats.median, 1));
+                const medianX = padding.left + ((medianLog - logMin) / (logMax - logMin)) * chartWidth;
+
+                const medianLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                medianLine.setAttribute('x1', medianX);
+                medianLine.setAttribute('y1', yBase);
+                medianLine.setAttribute('x2', medianX);
+                medianLine.setAttribute('y2', yBase + ridgeHeight);
+                medianLine.setAttribute('stroke', color);
+                medianLine.setAttribute('stroke-width', '2');
+                medianLine.setAttribute('stroke-dasharray', '4 2');
+                svg.appendChild(medianLine);
+
+                const medianLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                medianLabel.setAttribute('x', medianX);
+                medianLabel.setAttribute('y', yBase - 6);
+                medianLabel.setAttribute('text-anchor', 'middle');
+                medianLabel.setAttribute('fill', color);
+                medianLabel.setAttribute('font-size', '10');
+                medianLabel.textContent = Math.round(stats.median).toLocaleString();
+                svg.appendChild(medianLabel);
+            }
         });
 
-        // X-axis (logarithmic)
-        const axisY = padding.top + sources.length * (ridgeHeight + spacing);
+        const axisGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        axisGroup.setAttribute('transform', `translate(0, ${height - padding.bottom})`);
+
         const axisLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         axisLine.setAttribute('x1', padding.left);
-        axisLine.setAttribute('y1', axisY);
         axisLine.setAttribute('x2', padding.left + chartWidth);
-        axisLine.setAttribute('y2', axisY);
+        axisLine.setAttribute('y1', 0);
+        axisLine.setAttribute('y2', 0);
         axisLine.setAttribute('stroke', '#d1d5db');
-        axisLine.setAttribute('stroke-width', '2');
-        svg.appendChild(axisLine);
+        axisLine.setAttribute('stroke-width', '1');
+        axisGroup.appendChild(axisLine);
 
-        // X-axis ticks (log scale)
-        const logTicks = [10, 100, 1000, 10000, 100000];
-        logTicks.forEach(tickValue => {
-            if (tickValue < globalMin || tickValue > globalMax) return;
+        const tickValues = edges.slice(0, -1).map((edge, index) => {
+            const nextEdge = edges[index + 1] || edge;
+            return Math.round(Math.sqrt(edge * nextEdge));
+        });
 
-            const logValue = Math.log10(tickValue);
+        tickValues.forEach(value => {
+            const logValue = Math.log10(Math.max(value, 1));
             const x = padding.left + ((logValue - logMin) / (logMax - logMin)) * chartWidth;
 
             const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
             tick.setAttribute('x1', x);
-            tick.setAttribute('y1', axisY);
             tick.setAttribute('x2', x);
-            tick.setAttribute('y2', axisY + 5);
-            tick.setAttribute('stroke', '#6b7280');
+            tick.setAttribute('y1', 0);
+            tick.setAttribute('y2', 6);
+            tick.setAttribute('stroke', '#9ca3af');
             tick.setAttribute('stroke-width', '1');
-            svg.appendChild(tick);
+            axisGroup.appendChild(tick);
 
-            const tickLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            tickLabel.setAttribute('x', x);
-            tickLabel.setAttribute('y', axisY + 20);
-            tickLabel.setAttribute('text-anchor', 'middle');
-            tickLabel.setAttribute('fill', '#6b7280');
-            tickLabel.setAttribute('font-size', '11');
-            tickLabel.textContent = tickValue >= 1000 ? (tickValue / 1000) + 'K' : tickValue;
-            svg.appendChild(tickLabel);
+            const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label.setAttribute('x', x);
+            label.setAttribute('y', 20);
+            label.setAttribute('text-anchor', 'middle');
+            label.setAttribute('fill', '#6b7280');
+            label.setAttribute('font-size', '11');
+            label.textContent = this.formatTick(value);
+            axisGroup.appendChild(label);
         });
 
-        // X-axis label
-        const xLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        xLabel.setAttribute('x', padding.left + chartWidth / 2);
-        xLabel.setAttribute('y', axisY + 45);
-        xLabel.setAttribute('text-anchor', 'middle');
-        xLabel.setAttribute('fill', '#374151');
-        xLabel.setAttribute('font-size', '13');
-        xLabel.setAttribute('font-weight', '600');
-        xLabel.textContent = 'Text Length (characters, log scale)';
-        svg.appendChild(xLabel);
+        svg.appendChild(axisGroup);
+
+        const axisLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        axisLabel.setAttribute('x', padding.left + chartWidth / 2);
+        axisLabel.setAttribute('y', height - 20);
+        axisLabel.setAttribute('text-anchor', 'middle');
+        axisLabel.setAttribute('fill', '#6b7280');
+        axisLabel.setAttribute('font-size', '12');
+        axisLabel.textContent = 'Text length (characters, log scale)';
+        svg.appendChild(axisLabel);
 
         container.appendChild(svg);
         return svg;
     },
 
-    calculateDensity(data, bins, min, max) {
-        const binWidth = (max - min) / bins;
-        const density = [];
-
-        for (let i = 0; i < bins; i++) {
-            const binMin = min + i * binWidth;
-            const binMax = binMin + binWidth;
-            const binCenter = (binMin + binMax) / 2;
-
-            // Count values in bin with Gaussian kernel
-            let count = 0;
-            const bandwidth = binWidth * 2;
-
-            data.forEach(value => {
-                const distance = Math.abs(value - binCenter);
-                const weight = Math.exp(-(distance * distance) / (2 * bandwidth * bandwidth));
-                count += weight;
-            });
-
-            density.push({
-                value: binCenter,
-                density: count / data.length
-            });
-        }
-
-        return density;
+    deriveEdges(distributions) {
+        const first = Object.values(distributions || {})[0];
+        return first ? first.bin_edges : [];
     },
 
-    calculateMedian(arr) {
-        const sorted = [...arr].sort((a, b) => a - b);
-        const mid = Math.floor(sorted.length / 2);
-        return sorted.length % 2 === 0
-            ? (sorted[mid - 1] + sorted[mid]) / 2
-            : sorted[mid];
+    formatTick(value) {
+        if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+        if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
+        return value.toLocaleString();
+    },
+
+    computeHistogram(values, edges) {
+        const counts = new Array(edges.length - 1).fill(0);
+
+        values.forEach(value => {
+            if (value < edges[0]) return;
+
+            let index = edges.findIndex((edge, idx) => value >= edge && value < edges[idx + 1]);
+            if (index === -1) {
+                index = counts.length - 1;
+            }
+            index = Math.min(index, counts.length - 1);
+            counts[index] += 1;
+        });
+
+        const total = values.length || 1;
+        const densities = counts.map(count => count / total);
+        const stats = this.calculateStats(values);
+
+        return { counts, densities, stats };
+    },
+
+    calculateStats(values) {
+        if (!values || values.length === 0) {
+            return {
+                mean: 0,
+                median: 0,
+                q1: 0,
+                q3: 0,
+                min: 0,
+                max: 0,
+                count: 0
+            };
+        }
+
+        const sorted = [...values].sort((a, b) => a - b);
+        const sum = sorted.reduce((acc, val) => acc + val, 0);
+
+        return {
+            mean: sum / sorted.length,
+            median: this.calculateMedian(sorted),
+            q1: this.calculateQuantile(sorted, 0.25),
+            q3: this.calculateQuantile(sorted, 0.75),
+            min: sorted[0],
+            max: sorted[sorted.length - 1],
+            count: sorted.length
+        };
+    },
+
+    calculateMedian(sortedValues) {
+        if (!sortedValues || sortedValues.length === 0) {
+            return 0;
+        }
+
+        const mid = Math.floor(sortedValues.length / 2);
+        return sortedValues.length % 2 === 0
+            ? (sortedValues[mid - 1] + sortedValues[mid]) / 2
+            : sortedValues[mid];
+    },
+
+    calculateQuantile(sortedValues, quantile) {
+        if (!sortedValues || sortedValues.length === 0) {
+            return 0;
+        }
+
+        const pos = (sortedValues.length - 1) * quantile;
+        const base = Math.floor(pos);
+        const rest = pos - base;
+
+        if (sortedValues[base + 1] !== undefined) {
+            return sortedValues[base] + rest * (sortedValues[base + 1] - sortedValues[base]);
+        }
+
+        return sortedValues[base];
     }
 };
 

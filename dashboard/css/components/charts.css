@@ -7,6 +7,10 @@
     margin-bottom: var(--space-12);
 }
 
+.charts-section + .charts-section {
+    margin-top: var(--space-12);
+}
+
 .section-title {
     font-family: var(--font-display);
     font-size: var(--text-3xl);
@@ -20,11 +24,12 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-6);
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
 }
 
 .chart-title {
-    font-weight: 400;
+    font-weight: 500;
     font-size: var(--text-lg);
     color: var(--tableau-navy);
     font-family: var(--font-display);
@@ -38,7 +43,7 @@
 /* Chart Canvas */
 .chart-canvas {
     position: relative;
-    height: 300px;
+    height: 320px;
 }
 
 /* Ridge Plot Styles */

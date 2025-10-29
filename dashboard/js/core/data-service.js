@@ -7,8 +7,13 @@
 import { Config } from '../config.js';
 import { Logger, DataLoadError, DataValidationError } from '../utils/logger.js';
 
-// Store metrics data globally for the module
-let metricsData = null;
+// Store dashboard data globally for the module
+let dashboardData = {
+    metrics: [],
+    metadata: {},
+    sankey: null,
+    textDistributions: null
+};
 
 /**
  * Load metrics from JSON file with fallback paths and retry logic
@@ -16,26 +21,48 @@ let metricsData = null;
  * @returns {Promise<Object>} The loaded and normalized metrics data
  */
 export async function loadMetrics() {
-    Logger.info('Starting metrics data load...');
+    Logger.info('Starting dashboard data load...');
 
     try {
-        const data = await fetchWithFallback(Config.DATA_PATHS);
+        const [rawMetrics, metadata, sankey, textDistributions] = await Promise.all([
+            fetchWithFallback(Config.DATA_PATHS),
+            fetchWithOptionalFallback(Config.METADATA_PATHS),
+            fetchWithOptionalFallback(Config.SANKEY_PATHS),
+            fetchWithOptionalFallback(Config.TEXT_DISTRIBUTION_PATHS)
+        ]);
 
-        if (!data) {
-            Logger.warn('No data loaded from any path, using empty state');
-            metricsData = { metrics: [] };
-            return metricsData;
+        if (!rawMetrics) {
+            Logger.warn('No metrics data loaded from any path, using empty state');
+            dashboardData = {
+                metrics: [],
+                metadata: metadata || {},
+                sankey: normalizeSankeyData(sankey),
+                textDistributions: normalizeTextDistributions(textDistributions)
+            };
+            return dashboardData;
         }
 
-        // Validate and normalize the data structure
-        metricsData = normalizeMetrics(data);
-        Logger.info(`Metrics loaded successfully: ${metricsData.metrics.length} records`);
+        const normalizedMetrics = normalizeMetrics(rawMetrics);
 
-        return metricsData;
+        dashboardData = {
+            metrics: normalizedMetrics.metrics,
+            metadata: metadata || rawMetrics.metadata || {},
+            sankey: normalizeSankeyData(sankey || rawMetrics.sankey_flow),
+            textDistributions: normalizeTextDistributions(textDistributions || rawMetrics.text_distributions)
+        };
+
+        Logger.info(`Dashboard data loaded: metrics=${dashboardData.metrics.length}, sankey=${dashboardData.sankey ? 'yes' : 'no'}, distributions=${dashboardData.textDistributions ? 'yes' : 'no'}`);
+
+        return dashboardData;
     } catch (error) {
-        Logger.error('Fatal error loading metrics', error);
-        metricsData = { metrics: [] };
-        return metricsData;
+        Logger.error('Fatal error loading dashboard data', error);
+        dashboardData = {
+            metrics: [],
+            metadata: {},
+            sankey: null,
+            textDistributions: null
+        };
+        return dashboardData;
     }
 }
 
@@ -90,6 +117,42 @@ async function fetchWithFallback(paths) {
 }
 
 /**
+ * Fetch data with fallback paths, but suppress warnings when all fail
+ * Useful for optional datasets that may not exist yet
+ * @param {Array<string>} paths - Array of paths to try
+ * @returns {Promise<Object|null>} The fetched data or null
+ */
+async function fetchWithOptionalFallback(paths) {
+    if (!Array.isArray(paths) || paths.length === 0) {
+        return null;
+    }
+
+    for (let i = 0; i < paths.length; i++) {
+        const path = paths[i];
+        Logger.debug(`Attempting optional fetch from: ${path}`);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), Config.FETCH_TIMEOUT);
+
+        try {
+            const response = await fetch(path, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                const data = await response.json();
+                Logger.info(`Loaded optional data from: ${path}`);
+                return data;
+            }
+        } catch (error) {
+            clearTimeout(timeoutId);
+            Logger.debug(`Optional path ${path} unavailable: ${error.message}`);
+        }
+    }
+
+    return null;
+}
+
+/**
  * Normalize metrics data structure
  * Handles different schema variations and ensures consistent downstream structure
  * Fixes nested data structure issues (Bugs #2-5)
@@ -121,6 +184,11 @@ function normalizeMetrics(rawData) {
  * @returns {Object} Normalized metric record
  */
 function normalizeMetricRecord(metric) {
+    const snapshot = metric.snapshot || metric.legacy_metrics?.snapshot || {};
+    const layered = metric.layered_metrics || {};
+    const performance = metric.performance || metric.statistics || {};
+    const quality = layered.quality || metric.quality || {};
+
     // Create normalized record with all expected properties
     const normalized = {
         // Core identifiers
@@ -131,11 +199,21 @@ function normalizeMetricRecord(metric) {
         // Data volume metrics
         records_written: metric.records_written || 0,
         urls_scraped: metric.urls_scraped || 0,
+        urls_discovered: metric.urls_discovered || snapshot.urls_discovered || snapshot.files_discovered || 0,
+        urls_fetched: metric.urls_fetched || snapshot.urls_fetched || snapshot.files_processed || 0,
+        records_extracted: metric.records_extracted || snapshot.records_extracted || snapshot.urls_processed || 0,
 
         // Quality metrics (flattened from nested structure)
         // Bug Fix #2: Handle both flat and nested pipeline_metrics
         quality_pass_rate: metric.quality_pass_rate ||
                           metric.pipeline_metrics?.quality_pass_rate || 0,
+        http_request_success_rate: metric.http_request_success_rate ||
+                                    performance.http_request_success_rate ||
+                                    performance.fetch_success_rate || 0,
+        content_extraction_success_rate: metric.content_extraction_success_rate ||
+                                         performance.content_extraction_success_rate || 0,
+        deduplication_rate: metric.deduplication_rate ||
+                            performance.deduplication_rate || 0,
 
         // Performance metrics (flattened from nested structure)
         // Bug Fix #3: Handle both flat and nested performance
@@ -154,6 +232,7 @@ function normalizeMetricRecord(metric) {
                               mean: 0,
                               median: 0
                           },
+        filter_breakdown: quality.filter_breakdown || snapshot.filter_reasons || {},
 
         // Duration
         duration_seconds: metric.duration_seconds || 0,
@@ -166,11 +245,84 @@ function normalizeMetricRecord(metric) {
 }
 
 /**
+ * Normalize Sankey flow data
+ * @param {Object|null} data - Raw sankey data
+ * @returns {Object|null}
+ */
+function normalizeSankeyData(data) {
+    if (!data || typeof data !== 'object') {
+        return null;
+    }
+
+    const stageCounts = data.stage_counts || {};
+    const normalizedStages = {
+        discovered: stageCounts.discovered || stageCounts.discovery || 0,
+        fetched: stageCounts.fetched || stageCounts.quality_received || stageCounts.discovered || 0,
+        extracted: stageCounts.extracted || stageCounts.records_extracted || 0,
+        quality_received: stageCounts.quality_received || stageCounts.extracted || 0,
+        quality_passed: stageCounts.quality_passed || stageCounts.passed_quality || 0,
+        written: stageCounts.written || stageCounts['Silver Dataset'] || stageCounts.quality_passed || 0
+    };
+
+    const hasData = Object.values(normalizedStages).some(value => value > 0) ||
+                    (Array.isArray(data.links) && data.links.length > 0);
+
+    if (!hasData) {
+        return null;
+    }
+
+    return {
+        nodes: data.nodes || [],
+        links: data.links || [],
+        filter_breakdown: data.filter_breakdown || {},
+        stage_counts: normalizedStages,
+        generated_at: data.generated_at || null
+    };
+}
+
+/**
+ * Normalize text distribution data for ridge plot
+ * @param {Object|null} data - Raw text distribution data
+ * @returns {Object|null}
+ */
+function normalizeTextDistributions(data) {
+    if (!data || typeof data !== 'object') {
+        return null;
+    }
+
+    const distributions = data.distributions || {};
+    const sources = data.sources || Object.keys(distributions);
+
+    if (!sources || sources.length === 0) {
+        return null;
+    }
+
+    return {
+        sources,
+        bin_info: data.bin_info || {},
+        distributions,
+        generated_at: data.generated_at || null
+    };
+}
+
+/**
  * Get currently loaded metrics data
  * @returns {Object|null} The metrics data or null if not loaded
  */
 export function getMetrics() {
-    return metricsData;
+    return dashboardData;
+}
+
+export function getSankeyFlow() {
+    return dashboardData.sankey;
+}
+
+export function getTextDistributions() {
+    return dashboardData.textDistributions;
+}
+
+export function getDashboardMetadata() {
+    return dashboardData.metadata;
 }
 
 /**

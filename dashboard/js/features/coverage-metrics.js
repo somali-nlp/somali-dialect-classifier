@@ -23,12 +23,13 @@ export function updateCoverageScorecard() {
     const validMetrics = metricsData.metrics.filter(m => m.records_written > 0);
     if (validMetrics.length > 0) {
         aggregates.avgQuality = validMetrics.reduce((sum, m) => {
-            const rate = m.pipeline_metrics?.quality_pass_rate || m.quality_pass_rate || 0;
+            const rate = m.quality_pass_rate || 0;
             return sum + (rate * 100);
         }, 0) / validMetrics.length;
 
         aggregates.avgSuccess = validMetrics.reduce((sum, m) => {
-            return sum + ((m.success_rate || 0) * 100);
+            const success = m.http_request_success_rate || m.content_extraction_success_rate || 0;
+            return sum + (success * 100);
         }, 0) / validMetrics.length;
     }
 
