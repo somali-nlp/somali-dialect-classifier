@@ -2,7 +2,7 @@
 """
 Download and process Språkbanken Somali corpora.
 
-This script downloads and processes 23 Somali language corpora from
+This script downloads and processes 66 Somali language corpora from
 University of Gothenburg's Språkbanken repository.
 
 Usage:
@@ -10,13 +10,13 @@ Usage:
     python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus all
 
     # Download specific corpus
-    python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus ogaden
+    python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus somali-ogaden
 
     # List available corpora
     python -m somali_dialect_classifier.cli.download_sprakbankensom --list
 
     # Show info about specific corpus
-    python -m somali_dialect_classifier.cli.download_sprakbankensom --info cilmi
+    python -m somali_dialect_classifier.cli.download_sprakbankensom --info somali-cilmi
 
     # Force reprocessing
     python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus all --force
@@ -117,7 +117,7 @@ def show_corpus_info(corpus_id: str):
     info = CORPUS_INFO[corpus_id]
 
     print("\n" + "=" * 60)
-    print(f"CORPUS: somali-{corpus_id}")
+    print(f"CORPUS: {corpus_id}")
     print("=" * 60)
 
     print(f"Domain: {info.get('domain', 'general')}")
@@ -140,9 +140,9 @@ def show_corpus_info(corpus_id: str):
     print(f"\nLicense: CC BY 4.0")
     print(f"Format: XML (bz2 compressed)")
     print(f"Download URL:")
-    print(f"  https://spraakbanken.gu.se/lb/resurser/meningsmangder/somali-{corpus_id}.xml.bz2")
+    print(f"  https://spraakbanken.gu.se/lb/resurser/meningsmangder/{corpus_id}.xml.bz2")
     print(f"Korp Interface:")
-    print(f"  https://spraakbanken.gu.se/korp/?mode=somali#?corpus=somali-{corpus_id}")
+    print(f"  https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}")
     print("=" * 60)
     print()
 
@@ -177,7 +177,7 @@ def download_and_process(
     if corpus_id == "all":
         print(f"Processing: ALL {len(CORPUS_INFO)} corpora")
     else:
-        print(f"Processing: somali-{corpus_id}")
+        print(f"Processing: {corpus_id}")
         info = CORPUS_INFO[corpus_id]
         print(f"Domain: {info.get('domain', 'general')}")
 

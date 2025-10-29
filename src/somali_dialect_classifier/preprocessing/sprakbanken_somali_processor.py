@@ -1,19 +1,18 @@
 """
 Språkbanken Somali corpora processor.
 
-Processes 23 Somali language corpora from University of Gothenburg's Språkbanken.
+Processes 66 Somali language corpora from University of Gothenburg's Språkbanken.
 Each corpus contains domain-specific content (news, literature, science, etc.)
 with rich metadata including dates, authors, and publishers.
 
-Corpora available:
-- News: as-2001, as-2016, ah-2010-19, cb-*, ogaden
-- Literature: sheekooyin*, suugaan*
-- Science: cilmi, saynis-1980-89
-- Health: caafimaad-1972-79
-- Radio: radioden2014, radioswe2014
-- Translations: turjuman variants
-- Historical: 1971-79, 1993-94, 2001
-- QA: kqa
+Corpora domains:
+- General: Various general content corpora
+- News: BBC Somali, CB News, Wardheer News, Haatuf News (2002-2009)
+- Literature: Stories, poetry, translated works
+- Science: Science education materials across decades
+- Health: Health education materials
+- Education: Mathematics textbooks from various regions
+- Immigrant: Diaspora content from Canada
 
 All corpora use CC BY 4.0 license and XML format (bz2 compressed).
 """
@@ -43,31 +42,74 @@ from ..config import get_config
 logger = logging.getLogger(__name__)
 
 
-# Corpus metadata mapping
+# Corpus metadata mapping - Complete 66 Somali corpora from Språkbanken
 CORPUS_INFO = {
-    "1993-94": {"domain": "general", "period": "1993-1994"},
-    "as-2016": {"domain": "news", "period": "2016", "source": "Arlaadi Soomaaliyeed"},
-    "1971-79": {"domain": "historical", "period": "1971-1979"},
-    "as-2001": {"domain": "news", "period": "2001", "source": "Arlaadi Soomaaliyeed"},
-    "2001": {"domain": "general", "period": "2001"},
-    "ah-2010-19": {"domain": "news", "period": "2010-2019", "source": "Afhayeenka"},
-    "caafimaad-1972-79": {"domain": "health", "period": "1972-1979", "topic": "health"},
-    "cilmi": {"domain": "science", "topic": "knowledge/science"},
-    "cb": {"domain": "news", "source": "CB News"},
-    "cb-2001-03-soomaaliya": {"domain": "news", "period": "2001-2003", "region": "Somalia"},
-    "cb-2016": {"domain": "news", "period": "2016", "source": "CB News"},
-    "kqa": {"domain": "qa", "format": "question-answer"},
-    "mk-1972-79": {"domain": "general", "period": "1972-1979"},
-    "radioden2014": {"domain": "radio", "period": "2014", "source": "Radio Denmark"},
-    "radioswe2014": {"domain": "radio", "period": "2014", "source": "Radio Sweden"},
-    "saynis-1980-89": {"domain": "science", "period": "1980-1989", "topic": "science"},
-    "sheekooyin": {"domain": "literature", "genre": "stories"},
-    "sheekooyin-carruureed": {"domain": "children", "genre": "children's stories"},
-    "sheekooying": {"domain": "literature", "genre": "stories"},
-    "suugaan-turjuman": {"domain": "literature_translation", "genre": "literature", "type": "translation"},
-    "suugaan": {"domain": "literature", "genre": "literature/poetry"},
-    "tid-turjuman": {"domain": "translation", "type": "translation"},
-    "ogaden": {"domain": "news_regional", "region": "Ogaden"},
+    "somali-1993-94": {"domain": "general", "period": "1993-1994"},
+    "somali-as-2016": {"domain": "general", "period": "2016", "region": "Somalia"},
+    "somali-caafimaad-1983": {"domain": "health", "period": "1983", "topic": "health"},
+    "somali-1971-79": {"domain": "general", "period": "1971-1979"},
+    "somali-as-2001": {"domain": "general", "period": "2001", "region": "Somalia"},
+    "somali-2001": {"domain": "general", "period": "2001", "region": "Somalia"},
+    "somali-itoobiya": {"domain": "general", "region": "Ethiopia"},
+    "somali-hargeysa-2010": {"domain": "general", "period": "2010", "region": "Somaliland"},
+    "somali-as-2013": {"domain": "general", "period": "2013", "region": "Somalia"},
+    "somali-as-2018": {"domain": "general", "period": "2018", "region": "Somalia"},
+    "somali-ah-1992-02-kanada": {"domain": "immigrant", "period": "1992-2002", "region": "Canada"},
+    "somali-ah-2010-19": {"domain": "immigrant", "period": "2010-2019", "region": "Canada"},
+    "somali-bbc": {"domain": "news", "source": "BBC Somali"},
+    "somali-caafimaad-1972-79": {"domain": "health", "period": "1972-1979", "topic": "health"},
+    "somali-caafimaad-1994": {"domain": "health", "period": "1994", "topic": "health"},
+    "somali-cilmi": {"domain": "science", "topic": "knowledge/science"},
+    "somali-cb": {"domain": "news", "source": "CB News"},
+    "somali-cb-1980-89": {"domain": "news", "period": "1980-1989", "region": "Somalia"},
+    "somali-hargeysa": {"domain": "general", "region": "Somaliland"},
+    "somali-cb-2001-03-soomaaliya": {"domain": "news", "period": "2001-2003", "region": "Somalia"},
+    "somali-cb-2010": {"domain": "news", "period": "2010", "region": "Somalia"},
+    "somali-cb-2011": {"domain": "news", "period": "2011", "region": "Somalia"},
+    "somali-cb-2016": {"domain": "news", "period": "2016", "region": "Somalia"},
+    "somali-cb-2018": {"domain": "news", "period": "2018", "region": "Somalia"},
+    "somali-cd-2012-itoobiya": {"domain": "news", "period": "2012", "region": "Ethiopia"},
+    "somali-wakiillada": {"domain": "news", "source": "Wakiillada"},
+    "somali-haatuf-news-2002": {"domain": "news", "period": "2002", "region": "Somaliland"},
+    "somali-haatuf-news-2003": {"domain": "news", "period": "2003", "region": "Somaliland"},
+    "somali-haatuf-news-2004": {"domain": "news", "period": "2004", "region": "Somaliland"},
+    "somali-haatuf-news-2005": {"domain": "news", "period": "2005", "region": "Somaliland"},
+    "somali-haatuf-news-2006": {"domain": "news", "period": "2006", "region": "Somaliland"},
+    "somali-haatuf-news-2007": {"domain": "news", "period": "2007", "region": "Somaliland"},
+    "somali-haatuf-news-2008": {"domain": "news", "period": "2008", "region": "Somaliland"},
+    "somali-haatuf-news-2009": {"domain": "news", "period": "2009", "region": "Somaliland"},
+    "somali-mk-1972-79": {"domain": "general", "period": "1972-1979"},
+    "somali-ogaden": {"domain": "general", "region": "Ogaden"},
+    "somali-qoraallo": {"domain": "general", "topic": "literature"},
+    "somali-radioden2014": {"domain": "news", "period": "2014", "region": "Somalia"},
+    "somali-radioswe2014": {"domain": "news", "period": "2014", "region": "Somalia"},
+    "somali-radiomuq": {"domain": "news", "region": "Somalia"},
+    "somali-saynis-1972-77": {"domain": "science", "period": "1972-1977", "topic": "science"},
+    "somali-saynis-1980-89": {"domain": "science", "period": "1980-1989", "topic": "science"},
+    "somali-saynis-1994-96": {"domain": "science", "period": "1994-1996", "topic": "science"},
+    "somali-saynis": {"domain": "science", "topic": "science"},
+    "somali-saynis-2001": {"domain": "science", "period": "2001", "topic": "science"},
+    "somali-saynis-2011-soomaaliya": {"domain": "science", "period": "2011", "region": "Somalia", "topic": "science"},
+    "somali-saynis-2016": {"domain": "science", "period": "2016", "region": "Somalia", "topic": "science"},
+    "somali-saynis-2018": {"domain": "science", "period": "2018", "region": "Somalia", "topic": "science"},
+    "somali-sheekooyin": {"domain": "literature", "topic": "folklore"},
+    "somali-sheekooyin-carruureed": {"domain": "literature", "topic": "children's stories"},
+    "somali-sheekooying": {"domain": "literature", "topic": "children's stories"},
+    "somali-suugaan": {"domain": "literature", "topic": "poetry"},
+    "somali-suugaan-turjuman": {"domain": "literature", "topic": "translated poetry"},
+    "somali-suugaan2": {"domain": "literature", "topic": "poetry"},
+    "somali-tid-turjuman": {"domain": "literature", "topic": "translated literature"},
+    "somali-wksi": {"domain": "general", "region": "Somalia"},
+    "somali-wksk": {"domain": "general", "region": "Somalia"},
+    "somali-wardheer": {"domain": "news", "source": "Wardheer News"},
+    "somali-xeerar": {"domain": "general", "topic": "law"},
+    "somali-xisaab-1971-79": {"domain": "education", "period": "1971-1979", "topic": "mathematics"},
+    "somali-xisaab-1994-97": {"domain": "education", "period": "1994-1997", "topic": "mathematics"},
+    "somali-xisaab-2001-hargeysa": {"domain": "education", "period": "2001", "region": "Hargeysa", "topic": "mathematics"},
+    "somali-xisaab-2001-nayroobi": {"domain": "education", "period": "2001", "region": "Nairobi", "topic": "mathematics"},
+    "somali-xisaab-2011-itoobiya": {"domain": "education", "period": "2011", "region": "Ethiopia", "topic": "mathematics"},
+    "somali-xisaab-2016-somaliland": {"domain": "education", "period": "2016", "region": "Somaliland", "topic": "mathematics"},
+    "somali-xisaab-2018-soomaaliya": {"domain": "education", "period": "2018", "region": "Somalia", "topic": "mathematics"}
 }
 
 
@@ -75,7 +117,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
     """
     Processor for Språkbanken Somali corpora.
 
-    Handles downloading, extracting, and processing of 23 XML corpora
+    Handles downloading, extracting, and processing of 66 XML corpora
     with domain-specific metadata enrichment.
     """
 
@@ -89,7 +131,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         Initialize Språkbanken processor.
 
         Args:
-            corpus_id: Specific corpus ID or "all" for all 23 corpora
+            corpus_id: Specific corpus ID or "all" for all 66 corpora
             force: Force reprocessing even if output files exist
             batch_size: Batch size for silver dataset writing
         """
@@ -262,8 +304,8 @@ class SprakbankenSomaliProcessor(BasePipeline):
             # Track discovery (use files_discovered for file processing)
             self.metrics.increment('files_discovered')
 
-            corpus_file = self.raw_dir / f"somali-{corpus_id}.xml.bz2"
-            download_url = f"https://spraakbanken.gu.se/lb/resurser/meningsmangder/somali-{corpus_id}.xml.bz2"
+            corpus_file = self.raw_dir / f"{corpus_id}.xml.bz2"
+            download_url = f"https://spraakbanken.gu.se/lb/resurser/meningsmangder/{corpus_id}.xml.bz2"
 
             # Download if not exists
             if not corpus_file.exists() or self.force:

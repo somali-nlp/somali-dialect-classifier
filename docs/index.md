@@ -1,6 +1,6 @@
 # Somali Dialect Classifier Documentation
 
-**Last Updated**: 2025-10-27
+**Last Updated**: 2025-10-29
 
 Welcome to the Somali Dialect Classifier documentation. This project provides a comprehensive pipeline for collecting, processing, and preparing Somali language data for dialect classification and NLP research.
 
@@ -54,7 +54,7 @@ Task-oriented guides for common workflows:
 - **[Wikipedia Integration](howto/wikipedia-integration.md)** - Complete guide to Wikipedia dumps, XML parsing, namespace filtering
 - **[BBC Integration](howto/bbc-integration.md)** - Ethical web scraping, topic enrichment, rate limiting
 - **[HuggingFace Integration](howto/huggingface-integration.md)** - Streaming datasets, manifests, JSONL batching (MC4)
-- **[Språkbanken Integration](howto/sprakbanken-integration.md)** - All 23 corpora, domain mapping, metadata extraction
+- **[Språkbanken Integration](howto/sprakbanken-integration.md)** - All 66 corpora, domain mapping, metadata extraction
 - **[Understanding Filter Statistics](howto/understanding-filter-statistics.md)** - Understanding quality filter impact and optimization
 - **[Custom Filters](howto/custom-filters.md)** - Writing and registering quality filters
 - **[Configuration](howto/configuration.md)** - Environment setup and config management
@@ -350,5 +350,5 @@ See [Documentation Guide](guides/documentation-guide.md) for comprehensive writi
 
 ---
 
-**Last Updated**: 2025-10-27
+**Last Updated**: 2025-10-29
 **Maintainers**: Somali NLP Contributors

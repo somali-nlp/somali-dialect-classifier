@@ -10,7 +10,7 @@ A production-ready data pipeline for collecting, processing, and preparing high-
 
 ## Key Features
 
-- **Multi-source data collection** - Wikipedia (~50k articles), BBC Somali news, HuggingFace MC4 (~100k-200k web docs), Språkbanken (23 academic corpora)
+- **Multi-source data collection** - Wikipedia (~50k articles), BBC Somali news, HuggingFace MC4 (~100k-200k web docs), Språkbanken (66 academic corpora)
 - **Production-grade MLOps** - Structured logging, automated metrics, quality reports, crawl ledger for resume capability
 - **Quality-first architecture** - Two-tier deduplication (exact + near-duplicate), pluggable quality filters, unified silver dataset schema
 - **Ethical web scraping** - Rate limiting, robots.txt compliance, conditional requests, configurable scraping policies
@@ -145,19 +145,19 @@ bbcsom-download --max-articles 500
 hfsom-download mc4 --max-records 10000
 ```
 
-**Språkbanken** (23 academic corpora)
+**Språkbanken** (66 academic corpora)
 ```bash
 # List available corpora
 spraksom-download --list
 
-# Download specific corpus
-spraksom-download --corpus cilmi
+# Download specific corpus (use full corpus ID with "somali-" prefix)
+spraksom-download --corpus somali-cilmi
 
 # Download all corpora
 spraksom-download --corpus all
 
 # Use with orchestrator
-somali-orchestrate --pipeline sprakbanken --sprakbanken-corpus ogaden
+somali-orchestrate --pipeline sprakbanken --sprakbanken-corpus somali-ogaden
 ```
 
 ### Accessing the Silver Dataset
@@ -379,4 +379,4 @@ If you use this project in your research, please cite:
 
 ---
 
-**Last Updated:** 2025-10-27
+**Last Updated:** 2025-10-29

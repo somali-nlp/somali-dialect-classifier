@@ -35,13 +35,13 @@ class TestSprakbankenSomaliProcessor:
             config.data.silver_dir = tmp_path / "silver"
             mock_config.return_value = config
 
-            processor = SprakbankenSomaliProcessor(corpus_id="cilmi", force=True)
+            processor = SprakbankenSomaliProcessor(corpus_id="somali-cilmi", force=True)
             return processor
 
     def test_processor_initialization(self, processor):
         """Test processor initializes correctly."""
-        assert processor.corpus_id == "cilmi"
-        assert processor.corpora_to_process == ["cilmi"]
+        assert processor.corpus_id == "somali-cilmi"
+        assert processor.corpora_to_process == ["somali-cilmi"]
         assert processor.source == "Sprakbanken-Somali"  # Consistent source name
 
     def test_processor_all_corpora(self, tmp_path):
@@ -135,9 +135,9 @@ class TestSprakbankenSomaliProcessor:
             with open(manifest_path, 'r') as f:
                 manifest = json.load(f)
 
-            assert manifest["corpora_ids"] == ["cilmi"]
+            assert manifest["corpora_ids"] == ["somali-cilmi"]
             assert len(manifest["corpora"]) > 0
-            assert manifest["corpora"][0]["id"] == "cilmi"
+            assert manifest["corpora"][0]["id"] == "somali-cilmi"
 
     def test_extract_corpus_xml_parsing(self, processor, tmp_path):
         """Test XML corpus extraction."""
@@ -190,13 +190,13 @@ class TestSprakbankenSomaliProcessor:
         # Create staging file with test data
         staging_data = [
             {
-                "corpus_id": "cilmi",
+                "corpus_id": "somali-cilmi",
                 "title": "Test Title 1",
                 "text": "Test text 1",
                 "metadata": {"domain": "science"},
             },
             {
-                "corpus_id": "cilmi",
+                "corpus_id": "somali-cilmi",
                 "title": "Test Title 2",
                 "text": "Test text 2",
                 "metadata": {"domain": "science"},
@@ -217,13 +217,12 @@ class TestSprakbankenSomaliProcessor:
         assert records[0].text == "Test text 1"
         assert records[0].metadata["domain"] == "science"
         # Verify corpus_id is added to metadata for source_id population
-        assert records[0].metadata["corpus_id"] == "cilmi"
-        assert records[1].metadata["corpus_id"] == "cilmi"
+        assert records[0].metadata["corpus_id"] == "somali-cilmi"
+        assert records[1].metadata["corpus_id"] == "somali-cilmi"
 
     def test_processor_filters(self, processor):
         """Test that proper filters are registered."""
-        processor._register_filters()
-
+        # Filters are already registered during __init__, don't call again
         # Should have min_length and langid filters
         assert len(processor.record_filters) == 2
 
@@ -240,21 +239,21 @@ class TestSprakbankenHelperFunctions:
         corpora = list_available_corpora()
 
         assert isinstance(corpora, list)
-        assert len(corpora) == 23
-        assert "cilmi" in corpora
-        assert "ogaden" in corpora
-        assert "sheekooyin-carruureed" in corpora
+        assert len(corpora) == 66
+        assert "somali-cilmi" in corpora
+        assert "somali-ogaden" in corpora
+        assert "somali-sheekooyin-carruureed" in corpora
 
     def test_get_corpus_info(self):
         """Test getting corpus information."""
         # Test valid corpus
-        info = get_corpus_info("cilmi")
+        info = get_corpus_info("somali-cilmi")
         assert info["domain"] == "science"
         assert info["topic"] == "knowledge/science"
 
         # Test another corpus
-        info = get_corpus_info("ogaden")
-        assert info["domain"] == "news_regional"
+        info = get_corpus_info("somali-ogaden")
+        assert info["domain"] == "general"
         assert info["region"] == "Ogaden"
 
         # Test invalid corpus
@@ -271,9 +270,7 @@ class TestCorpusMetadata:
             assert "domain" in info, f"Corpus {corpus_id} missing domain"
             assert info["domain"] in [
                 "general", "news", "literature", "science", "health",
-                "children", "radio", "social_media", "web", "academic",
-                "translation", "qa", "historical", "news_regional",
-                "literature_translation"
+                "immigrant", "education"
             ], f"Invalid domain {info['domain']} for corpus {corpus_id}"
 
     def test_corpus_metadata_consistency(self):
@@ -281,17 +278,26 @@ class TestCorpusMetadata:
         # Check turjuman corpora have translation info
         for corpus_id, info in CORPUS_INFO.items():
             if "turjuman" in corpus_id:
-                assert info.get("type") == "translation" or "translation" in info.get("domain", "")
+                assert "topic" in info and "translat" in info["topic"].lower(), f"Expected translation topic for {corpus_id}"
 
-        # Check news corpora
-        news_prefixes = ["as-", "ah-", "cb"]
-        for corpus_id, info in CORPUS_INFO.items():
-            if any(corpus_id.startswith(prefix) for prefix in news_prefixes):
-                assert "news" in info.get("domain", ""), f"Expected news domain for {corpus_id}"
+        # Check specific news corpora (CB News and BBC are news domain)
+        news_corpora = ["somali-cb", "somali-bbc", "somali-wardheer", "somali-wakiillada",
+                       "somali-cb-1980-89", "somali-cb-2001-03-soomaaliya", "somali-cb-2010",
+                       "somali-cb-2011", "somali-cb-2016", "somali-cb-2018", "somali-cd-2012-itoobiya",
+                       "somali-radioden2014", "somali-radioswe2014", "somali-radiomuq"]
+        news_corpora.extend([f"somali-haatuf-news-{year}" for year in range(2002, 2010)])
 
-        # Check children corpus
-        assert CORPUS_INFO["sheekooyin-carruureed"]["domain"] == "children"
+        for corpus_id in news_corpora:
+            if corpus_id in CORPUS_INFO:
+                assert CORPUS_INFO[corpus_id]["domain"] == "news", f"Expected news domain for {corpus_id}"
+
+        # Check immigrant domain corpora
+        assert CORPUS_INFO["somali-ah-1992-02-kanada"]["domain"] == "immigrant"
+        assert CORPUS_INFO["somali-ah-2010-19"]["domain"] == "immigrant"
+
+        # Check literature corpus
+        assert CORPUS_INFO["somali-sheekooyin-carruureed"]["domain"] == "literature"
 
         # Check science corpora
-        assert CORPUS_INFO["cilmi"]["domain"] == "science"
-        assert CORPUS_INFO["saynis-1980-89"]["domain"] == "science"
+        assert CORPUS_INFO["somali-cilmi"]["domain"] == "science"
+        assert CORPUS_INFO["somali-saynis-1980-89"]["domain"] == "science"

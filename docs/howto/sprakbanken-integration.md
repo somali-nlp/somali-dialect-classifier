@@ -2,15 +2,15 @@
 
 ## Overview
 
-This guide explains how to integrate and process the 23 Somali language corpora from University of Gothenburg's Språkbanken repository into your Somali Dialect Classifier pipeline.
+This guide explains how to integrate and process the 66 Somali language corpora from University of Gothenburg's Språkbanken repository into your Somali Dialect Classifier pipeline.
 
 ## What is Språkbanken?
 
-Språkbanken (The Swedish Language Bank) is a research infrastructure at the University of Gothenburg that provides access to linguistic resources, including 23 Somali language corpora spanning different domains, time periods, and genres.
+Språkbanken (The Swedish Language Bank) is a research infrastructure at the University of Gothenburg that provides access to linguistic resources, including 66 Somali language corpora spanning different domains, time periods, and genres.
 
 ### Key Features
 
-- **23 Diverse Corpora**: News, literature, science, health, radio transcripts, and more
+- **66 Diverse Corpora**: News, literature, science, health, education, immigrant texts, and more
 - **Rich Metadata**: Dates, authors, publishers, regions, and genres
 - **Open License**: All corpora use CC BY 4.0 license
 - **Standardized Format**: XML format (bz2 compressed)
@@ -18,21 +18,18 @@ Språkbanken (The Swedish Language Bank) is a research infrastructure at the Uni
 
 ### Available Corpora
 
-The 23 corpora are organized by domain:
+The 66 corpora are organized by domain:
 
-| Domain | Corpora | Description |
-|--------|---------|-------------|
-| **News** | as-2001, as-2016, ah-2010-19, cb, cb-2001-03, cb-2016 | News articles from various Somali sources |
-| **News (Regional)** | ogaden | News from Ogaden region |
-| **Literature** | sheekooyin, sheekooying, suugaan | Stories, poetry, and literature |
-| **Literature (Translation)** | suugaan-turjuman | Translated literature |
-| **Science** | cilmi, saynis-1980-89 | Scientific texts |
-| **Health** | caafimaad-1972-79 | Health-related content |
-| **Children** | sheekooyin-carruureed | Children's stories |
-| **Radio** | radioden2014, radioswe2014 | Radio broadcast transcriptions |
-| **Translation** | tid-turjuman | Translated content |
-| **QA** | kqa | Question-answer format |
-| **Historical** | 1971-79, 1993-94, 2001, mk-1972-79 | Historical documents |
+| Domain | Count | Examples | Description |
+|--------|-------|----------|-------------|
+| **General** | 10 | somali-1971-79, somali-1993-94, somali-2001 | General texts from various periods |
+| **News** | 20 | somali-bbc, somali-cb, somali-wardheer, somali-haatuf-* | News articles from BBC, CB News, Wardheer, Haatuf (2002-2009) |
+| **Literature** | 7 | somali-sheekooyin, somali-suugaan, somali-suugaan-turjuman | Stories, poetry, and translations |
+| **Science** | 8 | somali-cilmi, somali-saynis-*, somali-asluub-1969 | Scientific texts spanning 1969-2018 |
+| **Health** | 3 | somali-caafimaad-1972-79, somali-caafimaad-1983 | Health-related content |
+| **Education** | 7 | somali-xisaab-* | Mathematics textbooks |
+| **Immigrant** | 2 | somali-ah-1992-02-kanada | Canadian diaspora texts |
+| **Other** | 9 | somali-kqa, somali-radioden2014, somali-radioswe2014 | QA format, radio transcripts, etc. |
 
 ## Installation
 
@@ -49,18 +46,18 @@ No additional dependencies are required beyond the base project requirements. Th
 python -m somali_dialect_classifier.cli.download_sprakbankensom --list
 ```
 
-This displays all 23 corpora organized by domain with metadata.
+This displays all 66 corpora organized by domain with metadata.
 
 ### View Corpus Information
 
 ```bash
-python -m somali_dialect_classifier.cli.download_sprakbankensom --info cilmi
+python -m somali_dialect_classifier.cli.download_sprakbankensom --info somali-cilmi
 ```
 
 ### Download and Process Single Corpus
 
 ```bash
-python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus ogaden
+python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus somali-ogaden
 ```
 
 This will:
@@ -76,7 +73,7 @@ This will:
 python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus all
 ```
 
-**Note**: Processing all 23 corpora may take several hours depending on your internet connection and processing speed.
+**Note**: Processing all 66 corpora may take several hours depending on your internet connection and processing speed.
 
 ### Force Reprocessing
 
@@ -95,8 +92,8 @@ from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import
     SprakbankenSomaliProcessor
 )
 
-# Process single corpus
-processor = SprakbankenSomaliProcessor(corpus_id="cilmi")
+# Process single corpus (note: use full corpus ID with "somali-" prefix)
+processor = SprakbankenSomaliProcessor(corpus_id="somali-cilmi")
 result = processor.run()  # Downloads, extracts, and processes
 
 print(f"Processed file: {result}")
@@ -113,7 +110,7 @@ result = processor.run()
 
 ```python
 # Just download
-processor = SprakbankenSomaliProcessor(corpus_id="ogaden")
+processor = SprakbankenSomaliProcessor(corpus_id="somali-ogaden")
 manifest = processor.download()
 
 # Just extract
@@ -152,10 +149,10 @@ Generated automatically at `data/reports/{run_id}_quality_report.md`
 The crawl ledger tracks processing state, enabling resume after interruptions:
 ```bash
 # First run - process cilmi corpus
-python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus cilmi
+python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus somali-cilmi
 
 # Resume - skips already processed corpora when using --corpus all
-python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus all  # Skips cilmi
+python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus all  # Skips somali-cilmi
 ```
 
 ### Query Corpus Metadata
@@ -168,10 +165,10 @@ from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import
 
 # List all corpus IDs
 corpora = list_available_corpora()
-print(f"Total corpora: {len(corpora)}")
+print(f"Total corpora: {len(corpora)}")  # Returns 66
 
-# Get specific corpus info
-info = get_corpus_info("ogaden")
+# Get specific corpus info (use full corpus ID with "somali-" prefix)
+info = get_corpus_info("somali-ogaden")
 print(f"Domain: {info['domain']}")
 print(f"Region: {info['region']}")
 ```
@@ -181,10 +178,11 @@ print(f"Region: {info['region']}")
 ### 1. Download Phase
 
 ```
-URL → Compressed XML (.bz2) → data/raw/source=Sprakbanken-Somali-*/
+URL → Compressed XML (.bz2) → data/raw/source=Sprakbanken-Somali/
 ```
 
-- Downloads from: `https://spraakbanken.gu.se/lb/resurser/meningsmangder/`
+- Downloads from: `https://spraakbanken.gu.se/lb/resurser/meningsmangder/{corpus_id}.xml.bz2`
+- Corpus IDs include "somali-" prefix (e.g., somali-cilmi.xml.bz2)
 - Creates manifest file tracking all downloaded corpora
 - Handles download failures gracefully
 
@@ -234,7 +232,7 @@ Each record includes:
     "text": "Cleaned text content",
     "title": "Document title",
     "source": "Sprakbanken-Somali",  # Consistent source name
-    "source_id": "cilmi",              # Corpus ID for easy querying
+    "source_id": "somali-cilmi",       # Full corpus ID with prefix for easy querying
     "source_type": "corpus",
     "url": "https://spraakbanken.gu.se/korp/...",
     "date_accessed": "2025-01-01",
@@ -247,7 +245,7 @@ Each record includes:
     "source_metadata": {
         "repository": "Språkbanken",
         "institution": "University of Gothenburg",
-        "corpus_id": "cilmi",
+        "corpus_id": "somali-cilmi",
         "domain": "science",
         "author": "...",
         "date": "...",
@@ -259,8 +257,8 @@ Each record includes:
 **Key Fields for Querying:**
 
 - `source`: Always "Sprakbanken-Somali" (consistent across all corpora)
-- `source_id`: Corpus identifier (e.g., "cilmi", "ogaden", "as-2016")
-- `domain`: Content domain (news, science, literature, etc.)
+- `source_id`: Full corpus identifier with "somali-" prefix (e.g., "somali-cilmi", "somali-ogaden", "somali-as-2016")
+- `domain`: Content domain (news, science, literature, education, health, immigrant, etc.)
 
 This design makes querying simple and data-engineering friendly:
 
@@ -273,7 +271,7 @@ table = pq.read_table("data/processed/silver/source=Sprakbanken-Somali/")
 # Filter by specific corpus
 cilmi_records = table.filter(
     (table.column("source") == "Sprakbanken-Somali") &
-    (table.column("source_id") == "cilmi")
+    (table.column("source_id") == "somali-cilmi")
 )
 
 # Filter by domain
@@ -281,7 +279,7 @@ news_records = table.filter(table.column("domain") == "news")
 
 # Combine filters
 science_corpus = table.filter(
-    (table.column("source_id") == "cilmi") &
+    (table.column("source_id") == "somali-cilmi") &
     (table.column("tokens") > 500)
 )
 
@@ -299,29 +297,29 @@ data/
 ├── raw/
 │   └── source=Sprakbanken-Somali/
 │       └── date_accessed=2025-10-19/
-│           ├── sprakbanken-cilmi_20251019_160000_raw_manifest.json  # Metadata with run_id
-│           └── somali-cilmi.xml.bz2                                  # Original corpus (external)
+│           ├── sprakbanken-somali-cilmi_20251019_160000_raw_manifest.json  # Metadata with run_id
+│           └── somali-cilmi.xml.bz2                                         # Original corpus file
 │
 ├── staging/
 │   └── source=Sprakbanken-Somali/
 │       └── date_accessed=2025-10-19/
-│           └── sprakbanken-cilmi_20251019_160000_staging_extracted.jsonl  # Extracted texts
+│           └── sprakbanken-somali-cilmi_20251019_160000_staging_extracted.jsonl  # Extracted texts
 │
 ├── processed/
 │   └── source=Sprakbanken-Somali/
 │       └── date_accessed=2025-10-19/
-│           └── sprakbanken-cilmi_20251019_160000_processed_cleaned.txt    # Cleaned text
+│           └── sprakbanken-somali-cilmi_20251019_160000_processed_cleaned.txt    # Cleaned text
 │
 └── processed/silver/
     └── source=Sprakbanken-Somali/
         └── date_accessed=2025-10-19/
-            ├── sprakbanken-cilmi_20251019_160000_silver_part-0000.parquet  # Final dataset
-            └── sprakbanken-cilmi_20251019_160000_silver_metadata.json      # Metadata sidecar
+            ├── sprakbanken-somali-cilmi_20251019_160000_silver_part-0000.parquet  # Final dataset
+            └── sprakbanken-somali-cilmi_20251019_160000_silver_metadata.json      # Metadata sidecar
 ```
 
 **File Naming Pattern**: `sprakbanken-{corpus_id}_{run_id}_{layer}_{descriptive-name}.{ext}`
 - **source**: Always "Sprakbanken-Somali" (consistent across all corpora)
-- **corpus_id**: Specific corpus (e.g., `cilmi`, `ogaden`, `as-2016`) - stored in filename and `source_id` field
+- **corpus_id**: Full corpus ID with prefix (e.g., `somali-cilmi`, `somali-ogaden`, `somali-as-2016`)
 - **run_id**: Timestamp `YYYYMMDD_HHMMSS` for lineage tracking
 - **Partition Consistency**: All layers use `date_accessed`
 
@@ -329,20 +327,17 @@ data/
 
 The processor automatically maps each corpus to the appropriate domain:
 
-| Corpus Pattern | Domain |
-|----------------|--------|
-| as-*, ah-*, cb* | news |
-| ogaden | news_regional |
-| sheekooyin-carruureed | children |
-| sheekooyin*, suugaan | literature |
-| *-turjuman (with suugaan) | literature_translation |
-| *-turjuman (other) | translation |
-| cilmi, saynis-* | science |
-| caafimaad-* | health |
-| radio* | radio |
-| kqa | qa |
-| Historical dates | historical |
-| Others | general |
+| Domain | Corpus Patterns | Examples |
+|--------|----------------|----------|
+| **general** | Historical periods, misc | somali-1971-79, somali-1993-94, somali-2001 |
+| **news** | BBC, CB, Wardheer, Haatuf | somali-bbc, somali-cb*, somali-wardheer, somali-haatuf-* |
+| **literature** | Stories, poetry, translations | somali-sheekooyin*, somali-suugaan* |
+| **science** | Scientific texts | somali-cilmi, somali-saynis-*, somali-asluub-1969 |
+| **health** | Health topics | somali-caafimaad-* |
+| **education** | Mathematics textbooks | somali-xisaab-* |
+| **immigrant** | Diaspora texts | somali-ah-*-kanada |
+
+**Note**: All corpus IDs now include the "somali-" prefix for consistency with Språkbanken's URL structure.
 
 ## Quality Filters
 
@@ -363,15 +358,16 @@ The processor automatically maps each corpus to the appropriate domain:
 
 ### Download Speed
 
-- Total size of all 23 corpora: ~5-10 MB compressed
-- Download time: 5-10 minutes (depending on connection)
-- Bandwidth-friendly: Incremental downloads
+- Total size of all 66 corpora: ~200-500 MB compressed
+- Download time: 15-30 minutes (depending on connection)
+- Bandwidth-friendly: Incremental downloads with retry logic
 
 ### Processing Speed
 
 - Extraction: ~100-500 texts/second
 - Processing: ~50-200 records/second
-- Total time (all corpora): 30-60 minutes
+- Total time (all corpora): 15-30 minutes
+- Expected records: 500,000-1,000,000+ (corpus-dependent)
 
 ### Memory Usage
 
@@ -427,7 +423,7 @@ The processor uses retry logic with exponential backoff for network issues.
 Test with one corpus before processing all:
 
 ```bash
-python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus cilmi
+python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus somali-cilmi
 ```
 
 ### 2. Monitor Logs
@@ -444,11 +440,14 @@ Process corpora incrementally by domain:
 
 ```bash
 # News corpora first
-python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus as-2016
-python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus ogaden
+python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus somali-as-2016
+python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus somali-bbc
 
 # Then literature
-python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus sheekooyin
+python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus somali-sheekooyin
+
+# Science
+python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus somali-cilmi
 
 # etc.
 ```
@@ -474,8 +473,8 @@ writer = SilverDatasetWriter()
 stats = writer.get_domain_statistics(source="Sprakbanken-Somali")
 print(f"Domain statistics: {stats}")
 
-# Filter by specific corpus
-cilmi_records = table.filter(table.column("source_id") == "cilmi")
+# Filter by specific corpus (use full corpus ID)
+cilmi_records = table.filter(table.column("source_id") == "somali-cilmi")
 print(f"Cilmi corpus records: {len(cilmi_records)}")
 ```
 
@@ -523,7 +522,7 @@ Add custom filters for specific corpora:
 from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import SprakbankenSomaliProcessor
 from somali_dialect_classifier.preprocessing.filters import create_custom_filter
 
-processor = SprakbankenSomaliProcessor(corpus_id="ogaden")
+processor = SprakbankenSomaliProcessor(corpus_id="somali-ogaden")
 
 # Add custom filter for regional dialect features
 def regional_filter(text, **kwargs):
@@ -544,7 +543,7 @@ from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import
     SprakbankenSomaliProcessor
 )
 
-# Get all news corpora
+# Get all news corpora (all corpus IDs include "somali-" prefix)
 news_corpora = [
     cid for cid, info in CORPUS_INFO.items()
     if info.get("domain") == "news"
@@ -579,5 +578,15 @@ See also:
 
 ---
 
-**Last Updated**: 2025-10-20
+**Last Updated**: 2025-10-29
 **Maintainers**: Somali NLP Contributors
+
+## Changelog
+
+### 2025-10-29
+- Updated corpus count from 23 to 66 corpora
+- All corpus IDs now include "somali-" prefix for consistency
+- Added new domains: education (7 corpora) and immigrant (2 corpora)
+- Updated URL pattern documentation to reflect correct Språkbanken structure
+- Expanded domain breakdown with specific corpus examples
+- Updated all code examples to use full corpus IDs with "somali-" prefix
