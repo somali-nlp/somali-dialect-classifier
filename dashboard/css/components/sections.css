@@ -43,6 +43,16 @@
     padding: var(--space-20) 0;
 }
 
+.executive-dashboard {
+    padding: var(--space-16) 0;
+}
+
+.executive-dashboard .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+}
+
 .contribute .container {
     max-width: 1400px;
     margin: 0 auto;
@@ -66,7 +76,6 @@
 }
 
 #main-content,
-#story,
 #get-involved,
 #dashboard {
     scroll-margin-top: 120px;

@@ -110,6 +110,19 @@
         grid-template-columns: 1fr;
     }
 
+    .executive-tabs {
+        flex-direction: column;
+    }
+
+    .exec-tab-button {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .exec-tab-panel {
+        padding: var(--space-8);
+    }
+
     .footer-grid {
         grid-template-columns: 1fr;
     }

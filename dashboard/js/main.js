@@ -140,6 +140,7 @@ async function init() {
             initKeyboardNav();
             initScrollSpy();
             initMobileMenu();
+            initExecutiveTabs();
         } catch (error) {
             Logger.warn('Non-critical: Accessibility features failed to initialize', error);
         }
@@ -218,6 +219,43 @@ function displayErrorState(error) {
         `;
         mainContent.prepend(errorMessage);
     }
+}
+
+/**
+ * Initialize executive dashboard tabs
+ */
+function initExecutiveTabs() {
+    const buttons = document.querySelectorAll('.exec-tab-button');
+    const panels = document.querySelectorAll('.exec-tab-panel');
+
+    if (!buttons.length || !panels.length) {
+        return;
+    }
+
+    panels.forEach(panel => {
+        const isActive = panel.classList.contains('active');
+        panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+    });
+
+    buttons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetPanelId = button.getAttribute('aria-controls');
+
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.setAttribute('aria-selected', 'false');
+            });
+
+            button.classList.add('active');
+            button.setAttribute('aria-selected', 'true');
+
+            panels.forEach(panel => {
+                const isMatch = panel.id === targetPanelId;
+                panel.classList.toggle('active', isMatch);
+                panel.setAttribute('aria-hidden', isMatch ? 'false' : 'true');
+            });
+        });
+    });
 }
 
 /**

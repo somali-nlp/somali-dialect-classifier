@@ -89,3 +89,101 @@
     margin: 0 auto;
     padding: var(--space-12) var(--space-6);
 }
+
+/* Executive Dashboard Tabs */
+.executive-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+}
+
+.exec-tab-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: var(--space-4) var(--space-6);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(3, 45, 96, 0.08);
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--gray-600);
+    font-weight: 600;
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+}
+
+.exec-tab-button:hover,
+.exec-tab-button:focus-visible {
+    color: var(--brand-primary);
+    border-color: rgba(3, 45, 96, 0.18);
+    box-shadow: var(--shadow-md);
+    outline: none;
+}
+
+.exec-tab-button.active {
+    background: var(--brand-primary);
+    color: white;
+    border-color: var(--brand-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.exec-tab-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.exec-tab-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2;
+}
+
+.exec-tab-panels {
+    display: grid;
+    gap: var(--space-6);
+}
+
+.exec-tab-panel {
+    display: none;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(3, 45, 96, 0.08);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-12);
+}
+
+.exec-tab-panel.active {
+    display: block;
+}
+
+.exec-panel-header {
+    max-width: 840px;
+    margin-bottom: var(--space-8);
+}
+
+.exec-panel-header h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    font-weight: 600;
+    color: var(--tableau-navy);
+    margin-bottom: var(--space-4);
+}
+
+.exec-panel-header p {
+    font-size: var(--text-base);
+    color: var(--tableau-text-secondary);
+    line-height: 1.8;
+}
+
+.exec-panel-placeholder {
+    text-align: center;
+    padding: var(--space-16) var(--space-4);
+    color: var(--gray-600);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    font-size: var(--text-base);
+}

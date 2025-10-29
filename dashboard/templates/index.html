@@ -64,7 +64,6 @@
             </a>
             <ul id="primary-navigation" class="nav-links">
                 <li><a href="#main-content" class="nav-link" data-tab-target="overview">Overview</a></li>
-                <li><a href="#story" class="nav-link" data-mode-target="executive">Executive Summary</a></li>
                 <li><a href="#dashboard" class="nav-link" data-dashboard-link>Dashboard</a></li>
                 <li><a href="#get-involved" class="nav-cta">Get Involved</a></li>
             </ul>
@@ -169,10 +168,6 @@
     <!-- ML Lifecycle Navigator -->
     <section class="ml-lifecycle" aria-label="Machine Learning Pipeline Stages" data-show-in="analyst">
         <div class="container">
-            <div class="lifecycle-header">
-                <h2>Pipeline Progress</h2>
-                <p>Track progress from data collection to deployment</p>
-            </div>
             <div class="lifecycle-stages">
                 <!-- Stage 1: Data Ingestion (CURRENT) -->
                 <div class="lifecycle-stage current completed" tabindex="0" role="button" aria-label="Data Ingestion - Current Stage - Complete">
@@ -263,46 +258,163 @@
         </div>
     </section>
 
-    <!-- Tab Navigation (Stage 1 Dashboard) -->
-    <nav id="dashboard" class="dashboard-tabs" role="navigation" aria-label="Dashboard sections">
-        <div class="container">
-            <ul class="tab-list" role="tablist">
-                <li role="presentation">
-                    <button class="tab-button active" role="tab" aria-selected="true" aria-controls="overview-panel" data-tab="overview">
-                        <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg></span>
-                        <span>Overview</span>
-                    </button>
-                </li>
-                <li role="presentation" data-show-in="analyst">
-                    <button class="tab-button" role="tab" aria-selected="false" aria-controls="sources-panel" data-tab="sources">
-                        <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.9a2 2 0 0 1-1.69-.9l-.81-1.2a2 2 0 0 0-1.67-.9H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z"/><path d="M2 8v11a2 2 0 0 0 2 2h14"/></svg></span>
-                        <span>Data Sources</span>
-                    </button>
-                </li>
-                <li role="presentation" data-show-in="analyst">
-                    <button class="tab-button" role="tab" aria-selected="false" aria-controls="quality-panel" data-tab="quality">
-                        <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span>
-                        <span>Quality Insights</span>
-                    </button>
-                </li>
-                <li role="presentation" data-show-in="analyst">
-                    <button class="tab-button" role="tab" aria-selected="false" aria-controls="pipeline-panel" data-tab="pipeline">
-                        <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></span>
-                        <span>Pipeline Performance</span>
-                    </button>
-                </li>
-                <li role="presentation" data-show-in="analyst">
-                    <button class="tab-button" role="tab" aria-selected="false" aria-controls="reports-panel" data-tab="reports">
-                        <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
-                        <span>Technical Reports</span>
-                    </button>
-                </li>
-            </ul>
-        </div>
-    </nav>
 
     <!-- Main Content -->
     <main id="main-content">
+        <section id="dashboard">
+            <div class="executive-dashboard" data-show-in="executive">
+                <div class="container">
+                    <div class="executive-tabs" role="tablist" aria-label="Executive dashboard stages">
+                        <button type="button" class="exec-tab-button active" id="exec-tab-data-ingestion" data-exec-tab="data-ingestion" aria-controls="exec-data-ingestion-panel" aria-selected="true">
+                            <span class="exec-tab-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
+                            </span>
+                            <span>Data Ingestion</span>
+                        </button>
+                        <button type="button" class="exec-tab-button" id="exec-tab-preprocessing" data-exec-tab="preprocessing" aria-controls="exec-preprocessing-panel" aria-selected="false">
+                            <span class="exec-tab-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                            </span>
+                            <span>Preprocessing</span>
+                        </button>
+                        <button type="button" class="exec-tab-button" id="exec-tab-model-training" data-exec-tab="model-training" aria-controls="exec-model-training-panel" aria-selected="false">
+                            <span class="exec-tab-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
+                            </span>
+                            <span>Model Training</span>
+                        </button>
+                        <button type="button" class="exec-tab-button" id="exec-tab-evaluation" data-exec-tab="evaluation" aria-controls="exec-evaluation-panel" aria-selected="false">
+                            <span class="exec-tab-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                            </span>
+                            <span>Evaluation</span>
+                        </button>
+                        <button type="button" class="exec-tab-button" id="exec-tab-deployment" data-exec-tab="deployment" aria-controls="exec-deployment-panel" aria-selected="false">
+                            <span class="exec-tab-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+                            </span>
+                            <span>Deployment</span>
+                        </button>
+                    </div>
+                    <div class="exec-tab-panels">
+                        <section class="exec-tab-panel active" id="exec-data-ingestion-panel" role="tabpanel" aria-labelledby="exec-tab-data-ingestion">
+                            <div class="exec-panel-header">
+                                <h2>The Journey From Raw Data to AI-Ready Corpus</h2>
+                                <p>
+                                    Low-resource languages like Somali face a critical barrier in NLP: lack of quality training data.
+                                    We built an automated, production-grade data pipeline to systematically collect, clean, and unify
+                                    Somali text from the web's most reliable sources. This is the foundation for advancing Somali
+                                    language AI and making dialect classification accessible to researchers worldwide.
+                                </p>
+                            </div>
+                            <div class="story-cards">
+                                <div class="story-card">
+                                    <div class="story-card-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                                    </div>
+                                    <h3 class="story-card-title"><span id="story-records">0</span> Records Collected</h3>
+                                    <p class="story-card-text">
+                                        Through systematic crawling and API integration, we're assembling an open
+                                        Somali language corpus, providing researchers with access to diverse linguistic data.
+                                    </p>
+                                </div>
+                                <div class="story-card">
+                                    <div class="story-card-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                    </div>
+                                    <h3 class="story-card-title"><span id="story-quality">0</span>% Avg Quality Rate</h3>
+                                    <p class="story-card-text">
+                                        Our robust pipeline architecture ensures high-quality data through intelligent filtering,
+                                        validation, and source-specific quality checks across all pipeline types.
+                                    </p>
+                                </div>
+                                <div class="story-card">
+                                    <div class="story-card-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                    </div>
+                                    <h3 class="story-card-title"><span id="story-sources">0</span> Data Sources</h3>
+                                    <p class="story-card-text">
+                                        By combining encyclopedic knowledge, journalism, ML datasets, and academic corpora,
+                                        we ensure comprehensive coverage of Somali dialects, registers, and domains.
+                                    </p>
+                                </div>
+                                <div class="story-card">
+                                    <div class="story-card-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                                    </div>
+                                    <h3 class="story-card-title">Open Source Impact</h3>
+                                    <p class="story-card-text">
+                                        Released under an open license, this corpus democratizes access to Somali NLP research,
+                                        enabling global collaboration and accelerating innovation for low-resource languages.
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+                        <section class="exec-tab-panel" id="exec-preprocessing-panel" role="tabpanel" aria-labelledby="exec-tab-preprocessing" aria-hidden="true">
+                            <div class="exec-panel-placeholder">
+                                <h2>Preprocessing</h2>
+                                <p>Executive overview coming soon as preprocessing moves into production.</p>
+                            </div>
+                        </section>
+                        <section class="exec-tab-panel" id="exec-model-training-panel" role="tabpanel" aria-labelledby="exec-tab-model-training" aria-hidden="true">
+                            <div class="exec-panel-placeholder">
+                                <h2>Model Training</h2>
+                                <p>Executive overview coming soon as model development details become available.</p>
+                            </div>
+                        </section>
+                        <section class="exec-tab-panel" id="exec-evaluation-panel" role="tabpanel" aria-labelledby="exec-tab-evaluation" aria-hidden="true">
+                            <div class="exec-panel-placeholder">
+                                <h2>Evaluation</h2>
+                                <p>Executive overview coming soon once evaluation pipelines are live.</p>
+                            </div>
+                        </section>
+                        <section class="exec-tab-panel" id="exec-deployment-panel" role="tabpanel" aria-labelledby="exec-tab-deployment" aria-hidden="true">
+                            <div class="exec-panel-placeholder">
+                                <h2>Deployment</h2>
+                                <p>Executive overview coming soon as deployment workflows are launched.</p>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        <div class="analyst-dashboard" data-show-in="analyst">
+            <nav class="dashboard-tabs" role="navigation" aria-label="Dashboard sections">
+                <div class="container">
+                    <ul class="tab-list" role="tablist">
+                        <li role="presentation">
+                            <button class="tab-button active" role="tab" aria-selected="true" aria-controls="overview-panel" data-tab="overview">
+                                <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg></span>
+                                <span>Overview</span>
+                            </button>
+                        </li>
+                        <li role="presentation">
+                            <button class="tab-button" role="tab" aria-selected="false" aria-controls="sources-panel" data-tab="sources">
+                                <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.9a2 2 0 0 1-1.69-.9l-.81-1.2a2 2 0 0 0-1.67-.9H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z"/><path d="M2 8v11a2 2 0 0 0 2 2h14"/></svg></span>
+                                <span>Data Sources</span>
+                            </button>
+                        </li>
+                        <li role="presentation">
+                            <button class="tab-button" role="tab" aria-selected="false" aria-controls="quality-panel" data-tab="quality">
+                                <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span>
+                                <span>Quality Insights</span>
+                            </button>
+                        </li>
+                        <li role="presentation">
+                            <button class="tab-button" role="tab" aria-selected="false" aria-controls="pipeline-panel" data-tab="pipeline">
+                                <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></span>
+                                <span>Pipeline Performance</span>
+                            </button>
+                        </li>
+                        <li role="presentation">
+                            <button class="tab-button" role="tab" aria-selected="false" aria-controls="reports-panel" data-tab="reports">
+                                <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
+                                <span>Technical Reports</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
         <!-- Tab 1: Overview -->
         <div class="tab-content active" id="overview-panel" role="tabpanel" aria-labelledby="overview-tab">
             <div class="tab-panel">
@@ -973,68 +1085,9 @@
                 </div>
             </div>
         </div>
-    </main>
-
-    <!-- Data Story Section -->
-    <section class="data-story" id="story" data-show-in="executive">
-        <div class="container">
-            <div class="data-story-header">
-                <h2>The Journey From Raw Data to AI-Ready Corpus</h2>
-                <p>
-                    Low-resource languages like Somali face a critical barrier in NLP: lack of quality training data.
-                    We built an automated, production-grade data pipeline to systematically collect, clean, and unify
-                    Somali text from the web's most reliable sources. This is the foundation for advancing Somali
-                    language AI and making dialect classification accessible to researchers worldwide.
-                </p>
-            </div>
-
-            <div class="story-cards">
-                <div class="story-card">
-                    <div class="story-card-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-                    </div>
-                    <h3 class="story-card-title"><span id="story-records">0</span> Records Collected</h3>
-                    <p class="story-card-text">
-                        Through systematic crawling and API integration, we're assembling an open
-                        Somali language corpus, providing researchers with access to diverse linguistic data.
-                    </p>
-                </div>
-
-                <div class="story-card">
-                    <div class="story-card-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                    </div>
-                    <h3 class="story-card-title"><span id="story-quality">0</span>% Avg Quality Rate</h3>
-                    <p class="story-card-text">
-                        Our robust pipeline architecture ensures high-quality data through intelligent filtering,
-                        validation, and source-specific quality checks across all pipeline types.
-                    </p>
-                </div>
-
-                <div class="story-card">
-                    <div class="story-card-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                    </div>
-                    <h3 class="story-card-title"><span id="story-sources">0</span> Data Sources</h3>
-                    <p class="story-card-text">
-                        By combining encyclopedic knowledge, journalism, ML datasets, and academic corpora,
-                        we ensure comprehensive coverage of Somali dialects, registers, and domains.
-                    </p>
-                </div>
-
-                <div class="story-card">
-                    <div class="story-card-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-                    </div>
-                    <h3 class="story-card-title">Open Source Impact</h3>
-                    <p class="story-card-text">
-                        Released under an open license, this corpus democratizes access to Somali NLP research,
-                        enabling global collaboration and accelerating innovation for low-resource languages.
-                    </p>
-                </div>
-            </div>
         </div>
-    </section>
+        </section>
+    </main>
 
     <!-- Contribute Section -->
     <section class="contribute" id="get-involved">

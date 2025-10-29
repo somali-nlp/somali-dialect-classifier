@@ -130,7 +130,8 @@
 
 /* Story Cards */
 .story-card {
-    background: white;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(3, 45, 96, 0.08);
     border-radius: var(--radius-card);
     padding: var(--space-12);
     box-shadow: var(--shadow-md);
@@ -140,6 +141,7 @@
 .story-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
+    background: rgba(255, 255, 255, 1);
 }
 
 .story-card-icon {
@@ -241,8 +243,8 @@
 
 /* Contribute Type Cards */
 .contribute-type {
-    background: white;
-    border: 2px solid transparent;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(3, 45, 96, 0.08);
     border-radius: var(--radius-card);
     padding: var(--space-8);
     transition: all var(--transition-slow);
@@ -251,7 +253,7 @@
 }
 
 .contribute-type:hover {
-    background: white;
+    background: rgba(255, 255, 255, 1);
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
     border-color: var(--tableau-blue);
