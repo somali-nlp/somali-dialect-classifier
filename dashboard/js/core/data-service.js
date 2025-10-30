@@ -338,15 +338,8 @@ function normalizeFilterBreakdown(metric, quality, snapshot) {
         return {};
     }
 
-    return Object.entries(breakdown).reduce((acc, [key, value]) => {
-        const numeric = Number(value);
-        if (Number.isFinite(numeric) && numeric > 0) {
-            acc[key] = numeric;
-        } else if (numeric === 0) {
-            acc[key] = 0;
-        }
-        return acc;
-    }, {});
+    // Return all entries from source JSON to ensure accurate rejection count totals
+    return breakdown;
 }
 
 /**
