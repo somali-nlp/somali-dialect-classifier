@@ -33,6 +33,35 @@
     letter-spacing: 0.05em;
 }
 
+.comparison-table th.sortable {
+    cursor: pointer;
+    position: relative;
+    padding-right: var(--space-6);
+}
+
+.comparison-table th.sortable::after {
+    content: '';
+    position: absolute;
+    right: var(--space-3);
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 6px solid var(--gray-400);
+    transform: translateY(-50%);
+    opacity: 0.6;
+}
+
+.comparison-table th.sortable.desc::after {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.comparison-table th.sortable.active::after {
+    border-top-color: var(--tableau-blue);
+    opacity: 1;
+}
+
 .comparison-table td {
     font-size: var(--text-sm);
     color: var(--gray-900);

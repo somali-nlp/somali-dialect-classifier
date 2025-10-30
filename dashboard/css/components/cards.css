@@ -115,6 +115,135 @@
     color: var(--gray-500);
 }
 
+.mix-card {
+    background: white;
+    border-radius: var(--radius-card);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-height: 160px;
+}
+
+.mix-card-neutral {
+    border: 1px solid rgba(37, 99, 235, 0.12);
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(37, 99, 235, 0.02));
+}
+
+.mix-card-label {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+}
+
+.mix-card-value {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    color: var(--tableau-navy);
+}
+
+.mix-card-caption {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    line-height: 1.5;
+}
+
+.source-briefings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-6);
+}
+
+.source-briefing-card {
+    background: white;
+    border-radius: var(--radius-card);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-height: 260px;
+}
+
+.source-briefing-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.source-briefing-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    background: rgba(37, 99, 235, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--tableau-blue);
+}
+
+.source-briefing-icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.source-briefing-title {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--tableau-navy);
+}
+
+.source-briefing-role {
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+    margin-top: 0.25rem;
+}
+
+.briefing-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.briefing-chip {
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--tableau-navy);
+    border-radius: var(--radius-full);
+    padding: 0.35rem 0.75rem;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.briefing-chip.success {
+    background: rgba(16, 185, 129, 0.16);
+    color: #047857;
+}
+
+.briefing-chip.warning {
+    background: rgba(245, 158, 11, 0.16);
+    color: #92400e;
+}
+
+.briefing-chip.neutral {
+    background: rgba(107, 114, 128, 0.16);
+    color: var(--gray-600);
+}
+
+.source-briefing-text {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    line-height: 1.6;
+}
+
 /* Chart Cards */
 .chart-card {
     background: white;

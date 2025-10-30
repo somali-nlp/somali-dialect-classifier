@@ -49,6 +49,8 @@ import { initTabs } from './core/tabs.js';
 import { initCharts } from './core/charts.js';
 import {
     populateSourceTable,
+    populateSourceMixSnapshot,
+    populateSourceBriefings,
     populateQualityMetrics,
     populatePerformanceMetrics,
     populateOverviewCards,
@@ -111,6 +113,13 @@ async function init() {
         } catch (error) {
             Logger.error('Failed to populate source table', error);
             // Non-critical: table can fail without breaking dashboard
+        }
+
+        try {
+            populateSourceMixSnapshot();
+            populateSourceBriefings();
+        } catch (error) {
+            Logger.error('Failed to populate source mix snapshot', error);
         }
 
         try {

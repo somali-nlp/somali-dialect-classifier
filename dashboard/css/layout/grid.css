@@ -30,6 +30,30 @@
     grid-column: 1 / -1;
 }
 
+.source-mix-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-6);
+    margin-bottom: var(--space-10);
+}
+
+.comparison-table-section {
+    margin-top: var(--space-12);
+}
+
+.comparison-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.comparison-table-note {
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+}
+
 /* Story Cards */
 .story-cards {
     display: grid;

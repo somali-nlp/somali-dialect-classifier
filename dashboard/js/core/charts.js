@@ -25,7 +25,7 @@ export function initCharts() {
     }
 
     // Initialize all chart types
-    createSourceComparisonChart(metricsData);
+    createSourceTradeoffChart(metricsData);
     createTextLengthChart(metricsData);
     createDeduplicationChart(metricsData);
     createPerformanceBulletChart(metricsData);
@@ -35,74 +35,128 @@ export function initCharts() {
 
 
 /**
- * Create source comparison horizontal bar chart
+ * Create source tradeoff bubble chart
+ * Plots records delivered vs quality rate with bubble size indicating avg length
  */
-function createSourceComparisonChart(metricsData) {
-    const sourceCompCtx = document.getElementById('sourceComparisonChart');
+function createSourceTradeoffChart(metricsData) {
+    const tradeoffCtx = document.getElementById('sourceTradeoffChart');
 
-    // Bug Fix #10: Comprehensive validation before processing
-    if (!sourceCompCtx) {
-        Logger.warn('Chart container not found: sourceComparisonChart');
+    if (!tradeoffCtx) {
+        Logger.warn('Chart container not found: sourceTradeoffChart');
         return;
     }
 
     if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
-        Logger.warn('Invalid or empty metrics data for source comparison chart');
+        Logger.warn('Invalid or empty metrics data for source tradeoff chart');
         return;
     }
 
-    if (sourceCompCtx && metricsData.metrics && metricsData.metrics.length > 0) {
-        // Bug Fix #9: Use consistent source name normalization
-        const labels = metricsData.metrics.map(m => normalizeSourceName(m.source));
-        const data = metricsData.metrics.map(m => m.records_written);
-        const colors = metricsData.metrics.map(m => {
-            if (m.source.includes('Wikipedia')) return '#3b82f6';
-            if (m.source.includes('BBC')) return '#ef4444';
-            if (m.source.includes('HuggingFace')) return '#10b981';
-            return '#f59e0b';
-        });
+    const totalRecords = metricsData.metrics.reduce((sum, metric) => sum + (metric.records_written || 0), 0);
+    if (totalRecords === 0) {
+        tradeoffCtx.parentElement.innerHTML = '<p class="chart-empty-state">Source tradeoff data is not yet available.</p>';
+        return;
+    }
 
-        new Chart(sourceCompCtx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Records',
-                    data: data,
-                    backgroundColor: colors,
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        display: false
+    const colorMap = metric => {
+        const source = metric.source || '';
+        if (source.includes('Wikipedia')) return '#3b82f6';
+        if (source.includes('BBC')) return '#ef4444';
+        if (source.includes('HuggingFace')) return '#10b981';
+        return '#f59e0b';
+    };
+
+    const datasets = metricsData.metrics.map(metric => {
+        const label = normalizeSourceName(metric.source);
+        const records = metric.records_written || 0;
+        const share = totalRecords > 0 ? (records / totalRecords) * 100 : 0;
+        const qualityRate = (metric.quality_pass_rate || 0) * 100;
+        const meanLength = metric.text_length_stats?.mean || 0;
+        const bubbleRadius = Math.max(8, Math.min(24, Math.sqrt(meanLength) * 0.8));
+
+        return {
+            label,
+            data: [{
+                x: records,
+                y: qualityRate,
+                r: bubbleRadius,
+                share,
+                avgLength: meanLength
+            }],
+            backgroundColor: colorMap(metric) + 'CC',
+            borderColor: colorMap(metric),
+            borderWidth: 2,
+            hoverBorderWidth: 3
+        };
+    });
+
+    new Chart(tradeoffCtx, {
+        type: 'bubble',
+        data: { datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 14
                     }
                 },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return value.toLocaleString();
-                            }
+                tooltip: {
+                    callbacks: {
+                        title(context) {
+                            return context[0].dataset.label;
                         },
-                        grid: {
-                            color: '#f3f4f6'
-                        }
-                    },
-                    y: {
-                        grid: {
-                            display: false
+                        label(context) {
+                            const point = context.raw;
+                            const records = context.parsed.x.toLocaleString();
+                            const quality = context.parsed.y.toFixed(1) + '%';
+                            const share = point.share.toFixed(1) + '% of mix';
+                            const avgLength = Math.round(point.avgLength || 0).toLocaleString() + ' chars';
+                            return [
+                                `Records: ${records}`,
+                                `Quality: ${quality}`,
+                                `Share: ${share}`,
+                                `Avg Length: ${avgLength}`
+                            ];
                         }
                     }
                 }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Records Delivered',
+                        font: { size: 12, weight: 600 }
+                    },
+                    ticks: {
+                        callback: value => value >= 1000 ? (value / 1000).toFixed(0) + 'K' : value
+                    },
+                    grid: {
+                        color: '#f3f4f6'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Quality Pass Rate',
+                        font: { size: 12, weight: 600 }
+                    },
+                    ticks: {
+                        callback: value => value + '%'
+                    },
+                    grid: {
+                        color: '#f3f4f6'
+                    }
+                }
             }
-        });
-    }
+        }
+    });
 }
 
 /**

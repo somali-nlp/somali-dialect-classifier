@@ -639,39 +639,70 @@
 
         <!-- Tab 2: Data Sources -->
         <div class="tab-content" id="sources-panel" role="tabpanel" aria-labelledby="sources-tab" data-show-in="analyst">
-            <div class="tab-panel">
-                <h2 class="section-title">Data Sources Deep Dive</h2>
-                <p class="mb-8" style="color: var(--gray-600); font-size: var(--text-base);">
-                    Comprehensive analysis of each data source, including descriptions, quality metrics, and contribution to the overall corpus.
+            <div class="tab-panel tab-panel-wide">
+                <h2 class="section-title">Data Sources Mix</h2>
+                <p class="overview-narrative" id="source-mix-narrative" aria-live="polite">
+                    Loading source mix insights…
                 </p>
 
-                <!-- Source Comparison Chart -->
-                <div class="charts-section">
-                    <div class="chart-card">
+                <section class="source-mix-grid" aria-label="Source mix snapshot">
+                    <article class="mix-card" id="mix-card-share">
+                        <h3 class="mix-card-label">Share Leader</h3>
+                        <p class="mix-card-value" id="mix-share-leader-value">—</p>
+                        <p class="mix-card-caption" id="mix-share-leader-caption">Calculating share distribution…</p>
+                    </article>
+                    <article class="mix-card" id="mix-card-quality">
+                        <h3 class="mix-card-label">Quality Standout</h3>
+                        <p class="mix-card-value" id="mix-quality-standout-value">—</p>
+                        <p class="mix-card-caption" id="mix-quality-standout-caption">Checking latest pass rates…</p>
+                    </article>
+                    <article class="mix-card" id="mix-card-freshness">
+                        <h3 class="mix-card-label">Freshest Update</h3>
+                        <p class="mix-card-value" id="mix-freshness-value">—</p>
+                        <p class="mix-card-caption" id="mix-freshness-caption">Evaluating run recency…</p>
+                    </article>
+                    <article class="mix-card mix-card-neutral">
+                        <h3 class="mix-card-label">Intentionally Excluded</h3>
+                        <p class="mix-card-value">MADLAD‑400, OSCAR</p>
+                        <p class="mix-card-caption">
+                            High-noise corpora are left out per Decisions 001 &amp; 003 to protect corpus purity. Review the documentation before re-enabling.
+                        </p>
+                    </article>
+                </section>
+
+                <section class="charts-section">
+                    <div class="chart-card chart-card-wide">
                         <div class="chart-header">
-                            <h3 class="chart-title">Source Contribution (Records)</h3>
+                            <div>
+                                <h3 class="chart-title">Volume vs Quality Tradeoff</h3>
+                                <p class="chart-subtitle">Bubble size shows average character length</p>
+                            </div>
                             <div class="chart-actions">
-                                <button class="chart-action" onclick="downloadChart('sourceComparisonChart')">Export PNG</button>
+                                <button class="chart-action" onclick="downloadChart('sourceTradeoffChart')">Export PNG</button>
                             </div>
                         </div>
-                        <div class="chart-canvas">
-                            <canvas id="sourceComparisonChart" aria-label="Horizontal bar chart comparing record counts across sources"></canvas>
+                        <div class="chart-canvas chart-canvas-tall">
+                            <canvas id="sourceTradeoffChart" aria-label="Bubble chart showing records delivered versus quality pass rate by source"></canvas>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <!-- Source Details Table -->
-                <div class="mt-8">
-                    <h3 class="section-title">Source Comparison Table</h3>
+                <section class="comparison-table-section">
+                    <div class="comparison-table-header">
+                        <h3 class="section-title">Source Comparison Table</h3>
+                        <p class="comparison-table-note">Click a column header to sort. Shares calculated from the latest ingestion cycle.</p>
+                    </div>
                     <div class="comparison-table">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Source</th>
-                                    <th>Records</th>
-                                    <th>Quality Rate</th>
-                                    <th>Avg Length</th>
-                                    <th>Total Chars</th>
+                                    <th data-sort-key="name">Source</th>
+                                    <th data-sort-key="records" class="sortable desc">Records</th>
+                                    <th data-sort-key="share" class="sortable">Share</th>
+                                    <th data-sort-key="quality" class="sortable">Quality</th>
+                                    <th data-sort-key="avgLength" class="sortable">Avg Length</th>
+                                    <th data-sort-key="lastUpdated" class="sortable">Last Updated</th>
+                                    <th data-sort-key="role">Role</th>
                                 </tr>
                             </thead>
                             <tbody id="sourceTableBody">
@@ -679,64 +710,11 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </section>
 
-                <!-- Why This Matters -->
-                <div class="story-cards mt-8">
-                    <div class="story-card">
-                        <div class="story-card-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
-                                <path d="M8 7h6"/>
-                                <path d="M8 11h8"/>
-                            </svg>
-                        </div>
-                        <h3 class="story-card-title">Wikipedia: Encyclopedic Knowledge</h3>
-                        <p class="story-card-text">
-                            Wikipedia provides high-quality, structured Somali text covering diverse topics from history to science, forming the foundation of our corpus with comprehensive linguistic patterns.
-                        </p>
-                    </div>
-                    <div class="story-card">
-                        <div class="story-card-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
-                                <path d="M18 14h-8"/>
-                                <path d="M15 18h-5"/>
-                                <path d="M10 6h8v4h-8V6Z"/>
-                            </svg>
-                        </div>
-                        <h3 class="story-card-title">BBC: Contemporary News</h3>
-                        <p class="story-card-text">
-                            BBC Somali Service delivers professionally edited news articles reflecting modern language usage, current events, and journalistic style essential for dialect understanding.
-                        </p>
-                    </div>
-                    <div class="story-card">
-                        <div class="story-card-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                                <circle cx="12" cy="19" r="3"/>
-                            </svg>
-                        </div>
-                        <h3 class="story-card-title">HuggingFace: ML-Ready Data</h3>
-                        <p class="story-card-text">
-                            The HuggingFace dataset provides pre-processed, ML-optimized Somali text from web crawls, offering diverse informal language patterns and conversational styles.
-                        </p>
-                    </div>
-                    <div class="story-card">
-                        <div class="story-card-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/>
-                                <path d="M22 10v6"/>
-                                <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>
-                            </svg>
-                        </div>
-                        <h3 class="story-card-title">Språkbanken: Academic Corpus</h3>
-                        <p class="story-card-text">
-                            Sweden's language bank contributes linguistically annotated Somali text from academic research, providing high-quality linguistic metadata and formal language patterns.
-                        </p>
-                    </div>
-                </div>
+                <section class="source-briefings" id="sourceBriefings" aria-label="Source briefings">
+                    <!-- Populated by JavaScript -->
+                </section>
             </div>
         </div>
 
