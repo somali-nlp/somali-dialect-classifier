@@ -24,6 +24,41 @@ const SOURCE_TARGET_SHARE = {
     'Språkbanken': 0.10
 };
 
+const SOURCE_METADATA = {
+    'Wikipedia': {
+        pipelineType: 'file_processing',
+        qualityBenchmark: 0.5,
+        narrative: 'File pipeline (Wikipedia) where filters remove stub articles'
+    },
+    'Språkbanken': {
+        pipelineType: 'file_processing',
+        qualityBenchmark: 0.6,
+        narrative: 'Curated corpora with file-processing pipeline'
+    },
+    'BBC': {
+        pipelineType: 'web_scraping',
+        qualityBenchmark: 0.7,
+        narrative: 'Web scraping pipeline (BBC) monitoring article quality'
+    },
+    'HuggingFace MC4': {
+        pipelineType: 'stream_processing',
+        qualityBenchmark: 0.7,
+        narrative: 'Stream ingestion (MC4) with language and length guards'
+    }
+};
+
+const FILTER_LABELS = {
+    min_length_filter: 'min-length filter trimming stub articles',
+    langid_filter: 'language ID check keeping non-Somali text out',
+    empty_after_cleaning: 'empty-after-cleaning guard removing blank pages',
+    quality_score_filter: 'quality score threshold',
+    profanity_filter: 'profanity filter',
+    toxic_filter: 'toxicity filter',
+    duplicate_filter: 'duplicate detector'
+};
+
+const DEFAULT_FILTER_LABEL = 'quality filters';
+
 const QUALITY_TARGET = 0.85;
 const coverageCharts = {
     velocity: null,
@@ -45,6 +80,57 @@ function applyAlpha(hex, alpha) {
     const g = parseInt(sanitized.slice(2, 4), 16);
     const b = parseInt(sanitized.slice(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getVolumeMetric(metric) {
+    if (!metric) return 0;
+
+    const candidates = [
+        metric.records_written,
+        metric.records_passed_filters,
+        metric.records_extracted,
+        metric.records_received,
+        metric.urls_processed,
+        metric.urls_fetched,
+        metric.records_processed
+    ];
+
+    for (const candidate of candidates) {
+        const value = Number(candidate);
+        if (Number.isFinite(value) && value > 0) {
+            return value;
+        }
+    }
+
+    return 0;
+}
+
+function getTopFilterInsight(metrics) {
+    const totals = new Map();
+    metrics.forEach(metric => {
+        Object.entries(metric.filter_breakdown || {}).forEach(([reason, count]) => {
+            if (!Number.isFinite(count)) return;
+            totals.set(reason, (totals.get(reason) || 0) + count);
+        });
+    });
+
+    const sorted = Array.from(totals.entries())
+        .filter(([, count]) => count > 0)
+        .sort((a, b) => b[1] - a[1]);
+
+    if (!sorted.length) {
+        return null;
+    }
+
+    const [reason, count] = sorted[0];
+    const total = sorted.reduce((sum, [, value]) => sum + value, 0);
+    if (!total) {
+        return null;
+    }
+
+    const label = FILTER_LABELS[reason] || reason.replace(/_/g, ' ');
+    const percentage = (count / total) * 100;
+    return { reason, label, percentage };
 }
 
 function formatShortDate(dateStr) {
@@ -91,17 +177,24 @@ function aggregateDailyRecords(metrics, limit = 8) {
 
 function aggregateSourceTotals(metrics) {
     const totals = new Map();
+    const uniqueSources = new Set();
     let grandTotal = 0;
 
     metrics.forEach(metric => {
-        const records = Number(metric.records_written) || 0;
-        if (records <= 0) return;
+        if (!metric) return;
         const source = normalizeSourceName(metric.source);
-        totals.set(source, (totals.get(source) || 0) + records);
-        grandTotal += records;
+        uniqueSources.add(source);
+
+        const contribution = getVolumeMetric(metric);
+        if (Number.isFinite(contribution) && contribution > 0) {
+            totals.set(source, (totals.get(source) || 0) + contribution);
+            grandTotal += contribution;
+        } else if (!totals.has(source)) {
+            totals.set(source, 0);
+        }
     });
 
-    return { totals, grandTotal };
+    return { totals, grandTotal, uniqueSources };
 }
 
 function computeQualityBySource(metrics) {
@@ -186,38 +279,84 @@ function updateOverviewNarrative(aggregates, metrics = []) {
         return;
     }
 
-    const { totals, grandTotal } = aggregateSourceTotals(metrics);
-    const activeSources = totals.size || aggregates.activeSources || 0;
+    const { totals, grandTotal, uniqueSources } = aggregateSourceTotals(metrics);
+    const activeSources = uniqueSources.size || aggregates.activeSources || 0;
 
-    let leaderFragment = '';
-    if (grandTotal > 0 && totals.size > 0) {
-        const [leader, leaderValue] = Array.from(totals.entries())
-            .sort((a, b) => b[1] - a[1])[0];
-        const leaderShare = ((leaderValue / grandTotal) * 100).toFixed(1);
-        leaderFragment = `, led by ${leader} at ${leaderShare}% of volume`;
-    }
+    const positiveTotals = Array.from(totals.entries()).filter(([, value]) => value > 0);
+    const leaderEntry = grandTotal > 0 && positiveTotals.length > 0
+        ? positiveTotals.sort((a, b) => b[1] - a[1])[0]
+        : null;
+    const leaderName = leaderEntry ? leaderEntry[0] : null;
+    const leaderShare = leaderEntry ? ((leaderEntry[1] / grandTotal) * 100).toFixed(1) : null;
+    const leaderFragment = leaderName && leaderShare
+        ? `, led by ${leaderName} at ${leaderShare}% of submissions`
+        : '';
+    const dominantSourceMeta = leaderName ? SOURCE_METADATA[leaderName] : null;
 
-    const recordsText = aggregates.totalRecords.toLocaleString();
-    const qualityPercent = (aggregates.avgQualityRate * 100).toFixed(1);
-    const successPercent = (aggregates.avgSuccessRate * 100).toFixed(1);
+    const statements = [];
+    const totalRecords = Number.isFinite(aggregates.totalRecords) ? aggregates.totalRecords : 0;
 
-    let qualityAssessment = 'so the high-volume feeds carry more weight in the blended score.';
-    if (aggregates.avgQualityRate >= QUALITY_TARGET) {
-        qualityAssessment = 'which clears the 85% target and keeps downstream cleaning light.';
-    } else if (aggregates.avgQualityRate >= 0.7) {
-        qualityAssessment = 'which signals filters are catching noise while the largest sources continue to scale.';
+    if (totalRecords > 0) {
+        statements.push(`Ingestion has landed ${totalRecords.toLocaleString()} records across ${activeSources} active sources${leaderFragment}.`);
+    } else if (grandTotal > 0) {
+        statements.push(`Pipelines evaluated ${grandTotal.toLocaleString()} candidate records across ${activeSources} sources${leaderFragment}, with quality gates holding back new silver data until they pass validation.`);
     } else {
-        qualityAssessment = 'which flags that the filters need tightening before ramping volume further.';
+        statements.push(`Pipelines ran across ${activeSources} sources, but no new silver records were published in the latest cycle.`);
     }
 
-    let successAssessment = 'meaning every scheduled run is reaching storage even when low-quality documents are filtered out.';
-    if (aggregates.avgSuccessRate < 0.95) {
-        successAssessment = 'so a few runs are still retrying - worth auditing the crawl logs.';
-    } else if (aggregates.avgSuccessRate < 0.99) {
-        successAssessment = 'showing only light retry activity across the sources.';
+    const qualityValue = Number.isFinite(aggregates.avgQualityRate) ? aggregates.avgQualityRate : null;
+    const qualityInsight = getTopFilterInsight(metrics);
+    if (qualityValue === null) {
+        statements.push('Quality filters have not reported yet; check the Quality Insights panel for run-level details.');
+    } else {
+        const qualityPercent = (qualityValue * 100).toFixed(1);
+        const filterDetails = qualityInsight && qualityInsight.percentage >= 1
+            ? ` (${qualityInsight.label}, ${qualityInsight.percentage.toFixed(1)}% of rejections)`
+            : '';
+
+        if (qualityValue >= QUALITY_TARGET) {
+            let sentence = `Record-weighted quality sits at ${qualityPercent}%, clearing the 85% Stage 1 target`;
+            if (filterDetails) {
+                sentence += filterDetails;
+            }
+            statements.push(`${sentence}.`);
+        } else if (qualityValue >= 0.5) {
+            let expectationNote = 'consistent with the documented filters-first approach for Stage 1 ingestion';
+            if (dominantSourceMeta && dominantSourceMeta.pipelineType === 'file_processing') {
+                expectationNote = 'aligned with the >50% benchmark for file-based sources as documented in the dashboard guide';
+            }
+            if (qualityInsight && qualityInsight.reason === 'min_length_filter') {
+                expectationNote = 'showing the min-length filter is trimming stub articles before they reach analysts';
+            }
+            let sentence = `Record-weighted quality holds at ${qualityPercent}%, ${expectationNote}`;
+            if (filterDetails) {
+                sentence += filterDetails;
+            }
+            statements.push(`${sentence}.`);
+        } else {
+            let sentence = `Record-weighted quality is ${qualityPercent}%; review the Quality Insights section to confirm whether recent source changes or filter tuning is required`;
+            if (filterDetails) {
+                sentence += filterDetails;
+            }
+            statements.push(`${sentence}.`);
+        }
     }
 
-    narrativeEl.textContent = `Ingestion has landed ${recordsText} records across ${activeSources} active sources${leaderFragment}. Record-weighted quality sits at ${qualityPercent}%, ${qualityAssessment} Success rate holds at ${successPercent}%, ${successAssessment}`;
+    const successValue = Number.isFinite(aggregates.avgSuccessRate) ? aggregates.avgSuccessRate : null;
+    if (successValue === null) {
+        statements.push('Pipeline reliability metrics are still populating.');
+    } else {
+        const successPercent = (successValue * 100).toFixed(1);
+        if (successValue >= 0.99) {
+            statements.push(`Success rate remains at ${successPercent}%, indicating every scheduled run delivered data after retries.`);
+        } else if (successValue >= 0.95) {
+            statements.push(`Success rate is ${successPercent}%, showing only light retry activity across sources.`);
+        } else {
+            statements.push(`Success rate is ${successPercent}%; audit recent run logs to confirm connectors are healthy.`);
+        }
+    }
+
+    narrativeEl.textContent = statements.join(' ');
 }
 
 function updateVelocityNarrative(dailyRecords) {
@@ -605,62 +744,75 @@ function createQualityBulletChart(metricsData) {
         }
     };
 
+    const context = canvas.getContext('2d');
+    if (!context) {
+        renderEmptyState(canvas, 'Quality visualization is unavailable in this viewport.');
+        return;
+    }
+
     coverageCharts.quality?.destroy?.();
 
-    coverageCharts.quality = new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Quality Pass Rate',
-                data: qualityPercentages,
-                backgroundColor,
-                borderColor: labels.map(label => getSourceColor(label)),
-                borderWidth: 1.2,
-                borderRadius: 8,
-                barThickness: 26,
-                maxBarThickness: 30
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
+    try {
+        coverageCharts.quality = new Chart(context, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Quality Pass Rate',
+                    data: qualityPercentages,
+                    backgroundColor,
+                    borderColor: labels.map(label => getSourceColor(label)),
+                    borderWidth: 1.2,
+                    borderRadius: 8,
+                    barThickness: 26,
+                    maxBarThickness: 30
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label(context) {
+                                const quality = context.parsed.x.toFixed(1);
+                                const success = successPercentages[context.dataIndex];
+                                const successText = Number.isFinite(success) && success > 0
+                                    ? ` · Success ${success.toFixed(1)}%`
+                                    : '';
+                                return `${context.label}: Quality ${quality}%${successText}`;
+                            }
+                        }
+                    }
                 },
-                tooltip: {
-                    callbacks: {
-                        label(context) {
-                            const quality = context.parsed.x.toFixed(1);
-                            const success = successPercentages[context.dataIndex];
-                            const successText = success ? ` · Success ${success.toFixed(1)}%` : '';
-                            return `${context.label}: Quality ${quality}%${successText}`;
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: value => value + '%'
+                        },
+                        grid: {
+                            color: '#f3f4f6'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
                         }
                     }
                 }
             },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: {
-                        callback: value => value + '%'
-                    },
-                    grid: {
-                        color: '#f3f4f6'
-                    }
-                },
-                y: {
-                    grid: {
-                        display: false
-                    }
-                }
-            }
-        },
-        plugins: [qualityTargetPlugin]
-    });
+            plugins: [qualityTargetPlugin]
+        });
+    } catch (error) {
+        console.error('Failed to render quality chart', error);
+        renderEmptyState(canvas, 'Quality visualization is unavailable right now.');
+    }
 }
 
 /**
@@ -671,20 +823,21 @@ export function updateCoverageScorecard() {
     if (!metricsData || !metricsData.metrics) return;
 
     const aggregates = computePipelineAggregates(metricsData.metrics);
-    const { totals } = aggregateSourceTotals(metricsData.metrics);
-    const uniqueSources = totals.size || aggregates.activeSources;
-    const avgQualityPercent = aggregates.avgQualityRate * 100;
-    const avgSuccessPercent = aggregates.avgSuccessRate * 100;
+    const { totals, uniqueSources } = aggregateSourceTotals(metricsData.metrics);
+    const activeSourceCount = uniqueSources.size || aggregates.activeSources || metricsData.metrics.length || 0;
+    const avgQualityPercent = Number.isFinite(aggregates.avgQualityRate) ? aggregates.avgQualityRate * 100 : 0;
+    const avgSuccessPercent = Number.isFinite(aggregates.avgSuccessRate) ? aggregates.avgSuccessRate * 100 : 0;
+    const totalRecords = Number.isFinite(aggregates.totalRecords) ? aggregates.totalRecords : 0;
 
     const recordsEl = document.getElementById('coverage-total-records');
     const qualityEl = document.getElementById('coverage-quality-rate');
     const successEl = document.getElementById('coverage-success-rate');
     const sourcesEl = document.getElementById('coverage-sources');
 
-    if (recordsEl) recordsEl.textContent = aggregates.totalRecords.toLocaleString();
+    if (recordsEl) recordsEl.textContent = totalRecords.toLocaleString();
     if (qualityEl) qualityEl.textContent = avgQualityPercent.toFixed(1) + '%';
     if (successEl) successEl.textContent = avgSuccessPercent.toFixed(1) + '%';
-    if (sourcesEl) sourcesEl.textContent = uniqueSources;
+    if (sourcesEl) sourcesEl.textContent = activeSourceCount;
 
     const maxRecords = 50000;
     const recordsBar = document.getElementById('coverage-records-bar');
@@ -693,13 +846,13 @@ export function updateCoverageScorecard() {
     const sourcesBar = document.getElementById('coverage-sources-bar');
 
     if (recordsBar) {
-        const recordsPct = Math.min((aggregates.totalRecords / maxRecords) * 100, 100);
+        const recordsPct = Math.min((totalRecords / maxRecords) * 100, 100);
         setTimeout(() => recordsBar.style.width = recordsPct + '%', 100);
     }
     if (qualityBar) setTimeout(() => qualityBar.style.width = Math.min(avgQualityPercent, 100) + '%', 200);
     if (successBar) setTimeout(() => successBar.style.width = Math.min(avgSuccessPercent, 100) + '%', 300);
     if (sourcesBar) {
-        const sourcesPct = (uniqueSources / Math.max(SOURCE_ORDER.length, 1)) * 100;
+        const sourcesPct = (activeSourceCount / Math.max(SOURCE_ORDER.length, 1)) * 100;
         setTimeout(() => sourcesBar.style.width = Math.min(sourcesPct, 100) + '%', 400);
     }
 
