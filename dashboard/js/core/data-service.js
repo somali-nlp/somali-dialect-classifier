@@ -308,7 +308,7 @@ function normalizeMetricRecord(metric) {
                               mean: 0,
                               median: 0
                           },
-        filter_breakdown: quality.filter_breakdown || snapshot.filter_reasons || {},
+        filter_breakdown: normalizeFilterBreakdown(metric, quality, snapshot),
 
         // Duration
         duration_seconds: metric.duration_seconds || 0,
@@ -318,6 +318,35 @@ function normalizeMetricRecord(metric) {
     };
 
     return normalized;
+}
+
+/**
+ * Normalize filter breakdown information, preserving top-level values when present.
+ * @param {Object} metric
+ * @param {Object} quality
+ * @param {Object} snapshot
+ * @returns {Object}
+ */
+function normalizeFilterBreakdown(metric, quality, snapshot) {
+    const breakdown =
+        metric.filter_breakdown ||
+        quality.filter_breakdown ||
+        snapshot.filter_reasons ||
+        null;
+
+    if (!breakdown || typeof breakdown !== 'object') {
+        return {};
+    }
+
+    return Object.entries(breakdown).reduce((acc, [key, value]) => {
+        const numeric = Number(value);
+        if (Number.isFinite(numeric) && numeric > 0) {
+            acc[key] = numeric;
+        } else if (numeric === 0) {
+            acc[key] = 0;
+        }
+        return acc;
+    }, {});
 }
 
 /**
