@@ -122,7 +122,16 @@ export function computePipelineAggregates(metrics = []) {
 
         const recordsWritten = extractRecordsWritten(metric);
         const successRate = extractSuccessRate(metric);
-        const rejectedCount = Object.values(metric.filter_breakdown || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        let rejectedCount = Object.values(metric.filter_breakdown || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        const qualityRate = extractQualityRate(metric);
+
+        if (rejectedCount === 0 && recordsWritten > 0 && qualityRate > 0 && qualityRate < 1) {
+            const estimatedCandidates = Math.round(recordsWritten / qualityRate);
+            const estimatedRejected = Math.max(estimatedCandidates - recordsWritten, 0);
+            if (estimatedRejected > 0) {
+                rejectedCount = estimatedRejected;
+            }
+        }
 
         totalRecords += recordsWritten;
         totalCandidateRecords += recordsWritten + rejectedCount;
@@ -158,7 +167,8 @@ export const FILTER_REASON_LABELS = {
     duplicate_filter: 'Duplicate',
     invalid_charset_filter: 'Invalid charset',
     encoding_filter: 'Encoding',
-    stopword_filter: 'Stopword threshold'
+    stopword_filter: 'Stopword threshold',
+    unspecified_filter: 'Unspecified filter'
 };
 
 export function computeQualityAnalytics(metrics = []) {
@@ -192,8 +202,17 @@ export function computeQualityAnalytics(metrics = []) {
         const records = Number(metric.records_written) || 0;
         const qualityRate = Number(metric.quality_pass_rate) || 0;
         const dedupRate = Number(metric.deduplication_rate) || 0;
-        const filterBreakdown = metric.filter_breakdown || {};
-        const rejected = Object.values(filterBreakdown).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        let filterBreakdown = metric.filter_breakdown || {};
+        let rejected = Object.values(filterBreakdown).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        if (rejected === 0 && records > 0 && qualityRate > 0 && qualityRate < 1) {
+            const estimatedCandidates = Math.round(records / qualityRate);
+            const estimatedRejected = Math.max(estimatedCandidates - records, 0);
+            if (estimatedRejected > 0) {
+                rejected = estimatedRejected;
+                filterBreakdown = { ...filterBreakdown };
+                filterBreakdown.unspecified_filter = (filterBreakdown.unspecified_filter || 0) + estimatedRejected;
+            }
+        }
         const timestamp = metric.timestamp || null;
         const dateKey = timestamp ? new Date(timestamp).toISOString().slice(0, 10) : null;
 
