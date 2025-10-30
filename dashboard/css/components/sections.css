@@ -3,6 +3,14 @@
    ======================================== */
 
 /* Data Story Section - Tableau Style */
+.overview-narrative {
+    color: var(--gray-600);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    margin-bottom: var(--space-8);
+    max-width: 880px;
+}
+
 .data-story {
     background: var(--tableau-bg-light-blue);
     padding: var(--space-20) 0;

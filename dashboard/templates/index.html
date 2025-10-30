@@ -419,8 +419,8 @@
         <div class="tab-content active" id="overview-panel" role="tabpanel" aria-labelledby="overview-tab">
             <div class="tab-panel">
                 <h2 class="section-title">Data Ingestion Overview</h2>
-                <p class="mb-8" style="color: var(--gray-600); font-size: var(--text-base);">
-                    Operational view of Stage 1 — ingesting Somali text at scale while priming the annotation, modeling, evaluation, and deployment stages that follow.
+                <p class="overview-narrative" id="overview-narrative" aria-live="polite">
+                    Compiling latest ingestion snapshot…
                 </p>
 
                 <!-- Coverage Scorecard - Radial Progress -->
@@ -493,7 +493,7 @@
                             <div class="chart-canvas chart-canvas-compact">
                                 <canvas id="sourceBalanceChart" aria-label="Bar chart comparing actual and target source shares"></canvas>
                             </div>
-                            <div class="chart-footnote">Targets reflect coverage goals for Stage&nbsp;1 release.</div>
+                            <div class="chart-footnote" id="source-balance-footnote">Targets reflect coverage goals for Stage&nbsp;1 release.</div>
                         </div>
 
                         <div class="chart-card chart-card-quality">

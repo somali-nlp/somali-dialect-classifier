@@ -16,6 +16,7 @@ const SOURCE_COLOR_MAP = {
     'Språkbanken': '#f59e0b'
 };
 
+// Stage 1 ingestion coverage targets derived from product OKRs (Q4 2025)
 const SOURCE_TARGET_SHARE = {
     'Wikipedia': 0.45,
     'BBC': 0.20,
@@ -47,7 +48,7 @@ function applyAlpha(hex, alpha) {
 }
 
 function formatShortDate(dateStr) {
-    if (!dateStr) return '—';
+    if (!dateStr) return 'N/A';
     const date = new Date(dateStr);
     if (Number.isNaN(date.getTime())) return dateStr;
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -176,6 +177,49 @@ function resetCalloutClasses(element, ...classNames) {
     element.classList.remove(...classNames);
 }
 
+function updateOverviewNarrative(aggregates, metrics = []) {
+    const narrativeEl = document.getElementById('overview-narrative');
+    if (!narrativeEl) return;
+
+    if (!aggregates || !Array.isArray(metrics) || metrics.length === 0) {
+        narrativeEl.textContent = 'Run the ingestion pipelines to populate this overview.';
+        return;
+    }
+
+    const { totals, grandTotal } = aggregateSourceTotals(metrics);
+    const activeSources = totals.size || aggregates.activeSources || 0;
+
+    let leaderFragment = '';
+    if (grandTotal > 0 && totals.size > 0) {
+        const [leader, leaderValue] = Array.from(totals.entries())
+            .sort((a, b) => b[1] - a[1])[0];
+        const leaderShare = ((leaderValue / grandTotal) * 100).toFixed(1);
+        leaderFragment = `, led by ${leader} at ${leaderShare}% of volume`;
+    }
+
+    const recordsText = aggregates.totalRecords.toLocaleString();
+    const qualityPercent = (aggregates.avgQualityRate * 100).toFixed(1);
+    const successPercent = (aggregates.avgSuccessRate * 100).toFixed(1);
+
+    let qualityAssessment = 'so the high-volume feeds carry more weight in the blended score.';
+    if (aggregates.avgQualityRate >= QUALITY_TARGET) {
+        qualityAssessment = 'which clears the 85% target and keeps downstream cleaning light.';
+    } else if (aggregates.avgQualityRate >= 0.7) {
+        qualityAssessment = 'which signals filters are catching noise while the largest sources continue to scale.';
+    } else {
+        qualityAssessment = 'which flags that the filters need tightening before ramping volume further.';
+    }
+
+    let successAssessment = 'meaning every scheduled run is reaching storage even when low-quality documents are filtered out.';
+    if (aggregates.avgSuccessRate < 0.95) {
+        successAssessment = 'so a few runs are still retrying - worth auditing the crawl logs.';
+    } else if (aggregates.avgSuccessRate < 0.99) {
+        successAssessment = 'showing only light retry activity across the sources.';
+    }
+
+    narrativeEl.textContent = `Ingestion has landed ${recordsText} records across ${activeSources} active sources${leaderFragment}. Record-weighted quality sits at ${qualityPercent}%, ${qualityAssessment} Success rate holds at ${successPercent}%, ${successAssessment}`;
+}
+
 function updateVelocityNarrative(dailyRecords) {
     const latestValueEl = document.getElementById('velocity-latest-total');
     const deltaEl = document.getElementById('velocity-delta');
@@ -267,6 +311,14 @@ function updateBalanceNarrative(labels, actualPercentages, targetPercentages) {
     } else {
         calloutValue.classList.add('neutral');
     }
+
+    const footnote = document.getElementById('source-balance-footnote');
+    if (footnote) {
+        const targetSummary = SOURCE_ORDER
+            .filter(name => Object.prototype.hasOwnProperty.call(SOURCE_TARGET_SHARE, name))
+            .map(name => `${name} ${(SOURCE_TARGET_SHARE[name] * 100).toFixed(0)}%`);
+        footnote.textContent = `Targets reflect Stage 1 coverage goals (${targetSummary.join(', ')}).`;
+    }
 }
 
 function updateQualityNarrative(qualityData) {
@@ -288,7 +340,12 @@ function updateQualityNarrative(qualityData) {
         return;
     }
 
-    const avgQuality = qualityData.reduce((sum, item) => sum + (item.qualityRate ?? 0), 0) / qualityData.length;
+    const totalRecords = qualityData.reduce((sum, item) => sum + Math.max(item.records || 0, 0), 0);
+    const weightedQuality = totalRecords > 0
+        ? qualityData.reduce((sum, item) => sum + (item.qualityRate ?? 0) * Math.max(item.records || 0, 0), 0) / totalRecords
+        : qualityData.reduce((sum, item) => sum + (item.qualityRate ?? 0), 0) / qualityData.length;
+
+    const avgQuality = weightedQuality;
 
     if (calloutValue) {
         calloutValue.textContent = (avgQuality * 100).toFixed(1) + '%';
@@ -614,6 +671,8 @@ export function updateCoverageScorecard() {
     if (!metricsData || !metricsData.metrics) return;
 
     const aggregates = computePipelineAggregates(metricsData.metrics);
+    const { totals } = aggregateSourceTotals(metricsData.metrics);
+    const uniqueSources = totals.size || aggregates.activeSources;
     const avgQualityPercent = aggregates.avgQualityRate * 100;
     const avgSuccessPercent = aggregates.avgSuccessRate * 100;
 
@@ -625,7 +684,7 @@ export function updateCoverageScorecard() {
     if (recordsEl) recordsEl.textContent = aggregates.totalRecords.toLocaleString();
     if (qualityEl) qualityEl.textContent = avgQualityPercent.toFixed(1) + '%';
     if (successEl) successEl.textContent = avgSuccessPercent.toFixed(1) + '%';
-    if (sourcesEl) sourcesEl.textContent = aggregates.activeSources;
+    if (sourcesEl) sourcesEl.textContent = uniqueSources;
 
     const maxRecords = 50000;
     const recordsBar = document.getElementById('coverage-records-bar');
@@ -640,9 +699,11 @@ export function updateCoverageScorecard() {
     if (qualityBar) setTimeout(() => qualityBar.style.width = Math.min(avgQualityPercent, 100) + '%', 200);
     if (successBar) setTimeout(() => successBar.style.width = Math.min(avgSuccessPercent, 100) + '%', 300);
     if (sourcesBar) {
-        const sourcesPct = (aggregates.activeSources / 4) * 100;
+        const sourcesPct = (uniqueSources / Math.max(SOURCE_ORDER.length, 1)) * 100;
         setTimeout(() => sourcesBar.style.width = Math.min(sourcesPct, 100) + '%', 400);
     }
+
+    updateOverviewNarrative(aggregates, metricsData.metrics);
 }
 
 /**
