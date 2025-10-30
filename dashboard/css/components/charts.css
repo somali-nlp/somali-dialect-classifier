@@ -46,6 +46,102 @@
     height: 320px;
 }
 
+.chart-canvas-tall {
+    height: 360px;
+}
+
+.chart-canvas-compact {
+    height: 260px;
+}
+
+.chart-callout {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    background: rgba(1, 118, 211, 0.08);
+    border-radius: var(--radius-md);
+    padding: 0.6rem 1rem;
+    box-shadow: var(--shadow-sm);
+    min-width: 180px;
+}
+
+.chart-callout.compact {
+    min-width: 0;
+    padding: 0.5rem 0.85rem;
+}
+
+.chart-callout.positive {
+    background: rgba(0, 166, 81, 0.14);
+}
+
+.chart-callout.negative {
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.chart-callout-label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--gray-500);
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+
+.chart-callout-main {
+    display: flex;
+    align-items: baseline;
+    gap: 0.65rem;
+}
+
+.chart-callout-value {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--tableau-navy);
+}
+
+.chart-callout-value.positive {
+    color: var(--success);
+}
+
+.chart-callout-value.negative {
+    color: var(--error);
+}
+
+.chart-callout-value.neutral {
+    color: var(--gray-500);
+}
+
+.chart-callout-delta {
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.chart-callout-delta.positive {
+    color: var(--success);
+}
+
+.chart-callout-delta.negative {
+    color: var(--error);
+}
+
+.chart-callout-delta.neutral {
+    color: var(--gray-500);
+}
+
+.chart-footnote {
+    margin-top: var(--space-4);
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+    line-height: 1.4;
+}
+
+.chart-empty-state {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--gray-500);
+    font-size: var(--text-sm);
+}
+
 /* Ridge Plot Styles */
 .ridge-plot-container {
     position: relative;

@@ -188,7 +188,7 @@ test.describe('Chart Interactive States', () => {
   });
 
   test('chart tooltip on hover renders correctly @visual @chart', async ({ page }) => {
-    const chart = page.locator('canvas#sourceDistributionChart');
+    const chart = page.locator('canvas#sourceBalanceChart');
     await chart.scrollIntoViewIfNeeded();
 
     // Hover over chart to show tooltip

@@ -21,6 +21,15 @@
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
+.charts-grid-analytics {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.25fr);
+    align-items: stretch;
+}
+
+.charts-grid-analytics .chart-card-wide {
+    grid-column: 1 / -1;
+}
+
 /* Story Cards */
 .story-cards {
     display: grid;
