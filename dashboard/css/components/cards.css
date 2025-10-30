@@ -206,6 +206,15 @@
     margin-top: 0.25rem;
 }
 
+.source-briefing-samples {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+}
+
 .briefing-chip-row {
     display: flex;
     flex-wrap: wrap;

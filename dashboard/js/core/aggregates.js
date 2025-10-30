@@ -112,28 +112,23 @@ export function computePipelineAggregates(metrics = []) {
     }
 
     let totalRecords = 0;
-    let qualityNumerator = 0;
-    let qualityDenominator = 0;
     let successNumerator = 0;
     let successDenominator = 0;
     let activeSources = 0;
+    let totalCandidateRecords = 0;
 
     metrics.forEach(metric => {
         if (!metric) return;
 
         const recordsWritten = extractRecordsWritten(metric);
-        const qualityRate = extractQualityRate(metric);
         const successRate = extractSuccessRate(metric);
+        const rejectedCount = Object.values(metric.filter_breakdown || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
 
         totalRecords += recordsWritten;
+        totalCandidateRecords += recordsWritten + rejectedCount;
 
         if (recordsWritten > 0) {
             activeSources += 1;
-        }
-
-        if (recordsWritten > 0) {
-            qualityNumerator += qualityRate * recordsWritten;
-            qualityDenominator += recordsWritten;
         }
 
         if (recordsWritten > 0) {
@@ -142,7 +137,7 @@ export function computePipelineAggregates(metrics = []) {
         }
     });
 
-    const avgQualityRate = qualityDenominator > 0 ? qualityNumerator / qualityDenominator : 0;
+    const avgQualityRate = totalCandidateRecords > 0 ? totalRecords / totalCandidateRecords : 0;
     const avgSuccessRate = successDenominator > 0 ? successNumerator / successDenominator : 0;
 
     return {
@@ -221,7 +216,6 @@ export function computeQualityAnalytics(metrics = []) {
                 name: sourceName,
                 records: 0,
                 rejected: 0,
-                qualityWeighted: 0,
                 weight: 0,
                 dedupWeighted: 0,
                 filters: {},
@@ -233,7 +227,6 @@ export function computeQualityAnalytics(metrics = []) {
         const sourceEntry = sourceMap.get(sourceName);
         sourceEntry.records += records;
         sourceEntry.rejected += rejected;
-        sourceEntry.qualityWeighted += qualityRate * records;
         sourceEntry.weight += records;
         sourceEntry.dedupWeighted += dedupRate * records;
         Object.entries(filterBreakdown).forEach(([reason, count]) => {
@@ -264,11 +257,11 @@ export function computeQualityAnalytics(metrics = []) {
     });
 
     const perSource = Array.from(sourceMap.values()).map(entry => {
-        const quality = entry.weight > 0 ? entry.qualityWeighted / entry.weight : 0;
+        const candidateTotal = entry.records + entry.rejected;
+        const quality = candidateTotal > 0 ? entry.records / candidateTotal : 0;
         const dedupRate = entry.weight > 0 ? entry.dedupWeighted / entry.weight : 0;
         const share = totalRecords > 0 ? entry.records / totalRecords : 0;
-        const totalInputs = entry.records + entry.rejected;
-        const rejectionRate = totalInputs > 0 ? entry.rejected / totalInputs : 0;
+        const rejectionRate = candidateTotal > 0 ? entry.rejected / candidateTotal : 0;
 
         const filterEntries = Object.entries(entry.filters)
             .filter(([, count]) => Number(count) > 0)
@@ -316,7 +309,8 @@ export function computeQualityAnalytics(metrics = []) {
         }
         : null;
 
-    const avgQualityRate = qualityWeight > 0 ? qualityWeighted / qualityWeight : 0;
+    const combinedTotal = totalRecords + totalRejected;
+    const avgQualityRate = combinedTotal > 0 ? totalRecords / combinedTotal : 0;
     const avgDedupRate = dedupWeight > 0 ? dedupWeighted / dedupWeight : 0;
 
     return {

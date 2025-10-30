@@ -118,10 +118,14 @@ export const SankeyChart = {
 
         const width = container.offsetWidth || 800;
         const height = 500;
+        const desiredHeight = Math.max(height, 520);
+        container.style.minHeight = `${desiredHeight}px`;
+        container.style.height = `${desiredHeight}px`;
+
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('width', width);
-        svg.setAttribute('height', height);
-        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        svg.setAttribute('height', desiredHeight);
+        svg.setAttribute('viewBox', `0 0 ${width} ${desiredHeight}`);
         svg.style.width = '100%';
         svg.style.height = 'auto';
 
@@ -430,11 +434,14 @@ export const RidgePlot = {
         const ridgeHeight = 70;
         const spacing = 24;
         const height = sources.length * (ridgeHeight + spacing) + 120;
+        const desiredHeight = Math.max(height, 520);
+        container.style.minHeight = `${desiredHeight}px`;
+        container.style.height = `${desiredHeight}px`;
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('width', width);
-        svg.setAttribute('height', height);
-        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        svg.setAttribute('height', desiredHeight);
+        svg.setAttribute('viewBox', `0 0 ${width} ${desiredHeight}`);
         svg.style.width = '100%';
         svg.style.height = 'auto';
 
@@ -552,7 +559,7 @@ export const RidgePlot = {
         });
 
         const axisGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        axisGroup.setAttribute('transform', `translate(0, ${height - padding.bottom})`);
+        axisGroup.setAttribute('transform', `translate(0, ${desiredHeight - padding.bottom})`);
 
         const axisLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         axisLine.setAttribute('x1', padding.left);
@@ -595,7 +602,7 @@ export const RidgePlot = {
 
         const axisLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         axisLabel.setAttribute('x', padding.left + chartWidth / 2);
-        axisLabel.setAttribute('y', height - 20);
+        axisLabel.setAttribute('y', desiredHeight - 20);
         axisLabel.setAttribute('text-anchor', 'middle');
         axisLabel.setAttribute('fill', '#6b7280');
         axisLabel.setAttribute('font-size', '12');

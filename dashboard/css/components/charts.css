@@ -50,6 +50,11 @@
     height: 360px;
 }
 
+.chart-canvas-ridge {
+    height: auto;
+    min-height: 520px;
+}
+
 .chart-canvas-compact {
     height: 260px;
 }

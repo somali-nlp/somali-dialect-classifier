@@ -59,19 +59,22 @@ const SOURCE_METADATA = {
     }
 };
 
-const FILTER_LABELS = {
-    min_length_filter: 'min-length filter',
-    langid_filter: 'language ID check',
-    empty_after_cleaning: 'empty-after-cleaning guard',
-    quality_score_filter: 'quality score threshold',
-    profanity_filter: 'profanity filter',
-    toxic_filter: 'toxicity filter',
-    duplicate_filter: 'duplicate detector'
-};
-
 let sourceTableRows = [];
 let sourceTableSort = { key: 'records', direction: 'desc' };
 let sourceTableListenersAttached = false;
+
+function formatNameList(names = []) {
+    if (!names.length) return '';
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return `${names[0]} and ${names[1]}`;
+    return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+function formatFilterName(reason) {
+    if (!reason) return '';
+    const baseLabel = FILTER_REASON_LABELS[reason] || reason.replace(/_/g, ' ');
+    return /filter/i.test(baseLabel) ? baseLabel : `${baseLabel} filter`;
+}
 
 function getMetadataKey(sourceName) {
     if (!sourceName) return null;
@@ -93,9 +96,35 @@ function getTopFilterInsight(breakdown = {}) {
     if (!total) return null;
 
     const [reason, count] = entries[0];
-    const label = FILTER_LABELS[reason] || reason.replace(/_/g, ' ');
+    const label = FILTER_REASON_LABELS[reason] || reason.replace(/_/g, ' ');
     const percentage = (count / total) * 100;
     return { label, percentage };
+}
+
+function describeFilterReason(reason) {
+    switch (reason) {
+        case 'min_length_filter':
+            return 'so stub or very short entries stay in discovery';
+        case 'quality_score_filter':
+            return 'to drop low-signal pages flagged by the quality scorer';
+        case 'langid_filter':
+            return 'to keep non-Somali pages from reaching silver';
+        case 'duplicate_filter':
+            return 'to prevent repeats from earlier crawls';
+        case 'empty_after_cleaning':
+            return 'because text collapsed after cleaning';
+        case 'profanity_filter':
+            return 'to suppress content flagged as profane';
+        case 'toxic_filter':
+            return 'to remove toxicity that slipped through discovery';
+        case 'invalid_charset_filter':
+        case 'encoding_filter':
+            return 'because the text encoding was unreliable';
+        case 'stopword_filter':
+            return 'to reject pages dominated by stop words';
+        default:
+            return 'to remove low-signal content before analysts review it';
+    }
 }
 
 function buildSourceAnalytics() {
@@ -394,36 +423,123 @@ export function populateQualityOverview() {
         return;
     }
 
-    const { totalRecords, totalRejected, avgQualityRate, avgDedupRate, filterTotals, topFilter, perSource, trend } = analytics;
-    const latestTrend = trend.length ? trend[trend.length - 1] : null;
-    const previousTrend = trend.length > 1 ? trend[trend.length - 2] : null;
+    const {
+        totalRecords,
+        totalRejected,
+        avgQualityRate,
+        avgDedupRate,
+        filterTotals,
+        perSource,
+        trend
+    } = analytics;
 
-    const rejectionRate = (totalRecords + totalRejected) > 0 ? totalRejected / (totalRecords + totalRejected) : 0;
+    const candidateRecords = totalRecords + totalRejected;
+    const passPercent = candidateRecords > 0 ? (totalRecords / candidateRecords) * 100 : 0;
+    const rejectPercent = candidateRecords > 0 ? (totalRejected / candidateRecords) * 100 : 0;
     const languageRejected = filterTotals.langid_filter || 0;
-    const languageShare = totalRejected > 0 ? (languageRejected / totalRejected) : 0;
+    const languageShare = totalRejected > 0 ? (languageRejected / totalRejected) * 100 : 0;
+    const filterEntries = Object.entries(filterTotals)
+        .filter(([, count]) => Number(count) > 0)
+        .sort((a, b) => b[1] - a[1]);
 
-    if (qualityValueEl) qualityValueEl.textContent = (avgQualityRate * 100).toFixed(1) + '%';
+    if (qualityValueEl) qualityValueEl.textContent = passPercent.toFixed(1) + '%';
     if (qualityCaptionEl) {
+        const latestTrend = trend.length ? trend[trend.length - 1] : null;
+        const previousTrend = trend.length > 1 ? trend[trend.length - 2] : null;
         const trendDelta = latestTrend && previousTrend ? (latestTrend.quality - previousTrend.quality) * 100 : null;
-        const deltaText = trendDelta ? `${trendDelta >= 0 ? '+' : ''}${trendDelta.toFixed(1)} pts vs prior run` : 'Latest weighted pass rate';
+        const deltaText = trendDelta !== null
+            ? `${trendDelta >= 0 ? '+' : ''}${trendDelta.toFixed(1)} pts vs prior run`
+            : 'Latest weighted pass rate';
         qualityCaptionEl.textContent = deltaText;
     }
 
     if (rejectionValueEl) rejectionValueEl.textContent = totalRejected.toLocaleString();
-    if (rejectionCaptionEl) rejectionCaptionEl.textContent = `${(rejectionRate * 100).toFixed(1)}% of submissions filtered`;
+    if (rejectionCaptionEl) rejectionCaptionEl.textContent = `${rejectPercent.toFixed(1)}% of submissions filtered`;
 
     if (languageValueEl) languageValueEl.textContent = languageRejected.toLocaleString();
-    if (languageCaptionEl) languageCaptionEl.textContent = `${(languageShare * 100).toFixed(1)}% of rejections from language guard`;
+    if (languageCaptionEl) languageCaptionEl.textContent = `${languageShare.toFixed(1)}% of rejections flagged as non-Somali`;
 
     if (dedupValueEl) dedupValueEl.textContent = (avgDedupRate * 100).toFixed(1) + '%';
-    if (dedupCaptionEl) dedupCaptionEl.textContent = 'Record-weighted deduplication rate';
+    if (dedupCaptionEl) {
+        dedupCaptionEl.textContent = avgDedupRate < 0.0001
+            ? 'Fresh batch: negligible deduplication'
+            : 'Record-weighted deduplication rate';
+    }
 
     if (narrativeEl) {
-        const leader = perSource.slice().sort((a, b) => b.share - a.share)[0];
-        const leaderLabel = leader ? `${(leader.share * 100).toFixed(1)}% share from ${leader.name}` : 'Balanced sources';
-        const topFilterLabel = topFilter ? (FILTER_REASON_LABELS[topFilter.reason] || topFilter.reason.replace(/_/g, ' ')) : 'quality filters';
-        const topFilterPct = topFilter ? topFilter.percentage.toFixed(1) + '%' : '0%';
-        narrativeEl.textContent = `Quality filters accepted ${totalRecords.toLocaleString()} records at ${(avgQualityRate * 100).toFixed(1)}% while removing ${totalRejected.toLocaleString()} (${(rejectionRate * 100).toFixed(1)}%) — ${topFilterLabel} accounts for ${topFilterPct} of rejections. ${leaderLabel}, language guard flagged ${languageRejected.toLocaleString()} pages, and dedup holds at ${(avgDedupRate * 100).toFixed(1)}%.`;
+        const sortedSources = perSource.slice().sort((a, b) => b.share - a.share);
+        const dominantSource = sortedSources[0];
+        const secondarySource = sortedSources[1];
+        const highQualitySources = sortedSources.filter(source => source.quality >= 0.99);
+
+        const formatFilter = ([reason, count]) => {
+            const label = formatFilterName(reason);
+            const pct = totalRejected > 0 ? (count / totalRejected) * 100 : 0;
+            return `${label.toLowerCase()} — ${count.toLocaleString()} (${pct.toFixed(1)}%)`;
+        };
+
+        let filterSentence = '';
+        if (filterEntries.length) {
+            const [primary, ...rest] = filterEntries;
+            filterSentence = `The ${formatFilter(primary)} remains the dominant stop`;
+            if (rest.length === 1) {
+                filterSentence += `, followed by ${formatFilter(rest[0])}.`;
+            } else if (rest.length >= 2) {
+                filterSentence += `, followed by ${formatFilter(rest[0])} and ${formatFilter(rest[1])}.`;
+            } else {
+                filterSentence += '.';
+            }
+        }
+
+        let sourceSentence = '';
+        if (dominantSource) {
+            const dominantFilterName = dominantSource.topFilter
+                ? formatFilterName(dominantSource.topFilter.reason)
+                : null;
+            const dominantFilterSummary = dominantSource.topFilter
+                ? `${dominantFilterName.toLowerCase()} (${dominantSource.topFilter.count.toLocaleString()} / ${dominantSource.topFilter.percentage.toFixed(1)}%)`
+                : null;
+            const dominantShare = (dominantSource.share * 100).toFixed(1);
+            const dominantQuality = (dominantSource.quality * 100).toFixed(1);
+            if (dominantFilterSummary) {
+                sourceSentence += `${dominantSource.name} now supplies ${dominantShare}% of silver, yet only ${dominantQuality}% of its submissions clear because the ${dominantFilterSummary} trims low-signal pages before analysts see them.`;
+            } else {
+                sourceSentence += `${dominantSource.name} now supplies ${dominantShare}% of silver with a ${dominantQuality}% pass rate.`;
+            }
+        }
+
+        if (secondarySource) {
+            const secondaryQuality = (secondarySource.quality * 100).toFixed(1);
+            const secondaryRecords = secondarySource.records.toLocaleString();
+            const secondaryFilter = secondarySource.topFilter
+                ? formatFilterName(secondarySource.topFilter.reason)
+                : null;
+            const clause = secondaryFilter
+                ? ` after ${secondaryFilter.toLowerCase()} sweeps`
+                : '';
+            sourceSentence += ` ${secondarySource.name} lands ${secondaryRecords} records at ${secondaryQuality}% pass${clause}.`;
+        }
+
+        if (highQualitySources.length) {
+            const names = formatNameList(highQualitySources.map(source => source.name));
+            const minQuality = Math.min(...highQualitySources.map(source => source.quality * 100));
+            sourceSentence += ` ${names} arrive nearly pre-filtered, so their smaller batches show ≥${minQuality.toFixed(1)}% pass this run.`;
+        }
+
+        let dedupSentence = '';
+        if (avgDedupRate < 0.0001) {
+            dedupSentence = ' Deduplication remains negligible because this batch contained fresh content.';
+        } else {
+            dedupSentence = ` Deduplication removed ${(avgDedupRate * 100).toFixed(1)}% of records before quality scoring.`;
+        }
+
+        const languageSentence = languageRejected > 0
+            ? ` Language guard blocked ${languageRejected.toLocaleString()} non-Somali pages (${languageShare.toFixed(1)}% of rejections).`
+            : ' Language guard did not flag any content in this run.';
+
+        const intro = `Quality filters processed ${candidateRecords.toLocaleString()} candidate records this cycle. We kept ${totalRecords.toLocaleString()} (${passPercent.toFixed(1)}%) and filtered ${totalRejected.toLocaleString()} (${rejectPercent.toFixed(1)}%). `;
+
+        narrativeEl.textContent = `${intro}${filterSentence} ${sourceSentence}${languageSentence}${dedupSentence}`.replace(/\s+/g, ' ').trim();
     }
 }
 
@@ -466,18 +582,29 @@ function renderQualityBriefingCard(item) {
     const qualityPct = (item.quality * 100).toFixed(1);
     const benchmarkPct = (meta.qualityBenchmark * 100).toFixed(0);
     const qualityClass = item.quality >= meta.qualityBenchmark ? 'success' : 'warning';
+    const rejectedCount = item.rejected || 0;
     const rejectionPct = (item.rejectionRate * 100).toFixed(1);
-    const topFilterLabel = item.topFilter ? (FILTER_REASON_LABELS[item.topFilter.reason] || item.topFilter.reason.replace(/_/g, ' ')) : 'No rejections';
-    const topFilterPct = item.topFilter ? item.topFilter.percentage.toFixed(1) + '%' : '0%';
+    const topFilterName = item.topFilter ? formatFilterName(item.topFilter.reason) : null;
+    const topFilterPct = item.topFilter ? item.topFilter.percentage.toFixed(1) : null;
     const lastUpdated = item.lastUpdated ? formatDate(item.lastUpdated) : 'Not yet run';
+    const totalSubmissions = item.records + rejectedCount;
+    const trimmedChip = rejectedCount > 0
+        ? `Trimmed ${rejectedCount.toLocaleString()} • ${rejectionPct}%`
+        : 'No filters triggered';
+    const filterChip = topFilterName
+        ? `${topFilterName} ${topFilterPct}%`
+        : (rejectedCount > 0 ? 'Mixed filter load' : 'Clean batch');
 
-    let narrative = `${item.name} passes ${qualityPct}% of submissions (goal ${benchmarkPct}%) with ${rejectionPct}% filtered out.`;
+    let narrative = `${item.name} sent ${item.records.toLocaleString()} of ${totalSubmissions.toLocaleString()} candidate records into silver (${qualityPct}% kept; goal ${benchmarkPct}%).`;
     if (item.topFilter) {
-        narrative += ` Dominant filter: ${topFilterLabel} (${topFilterPct}).`;
+        const explanation = describeFilterReason(item.topFilter.reason);
+        narrative += ` ${topFilterName} removed ${item.topFilter.count.toLocaleString()} (${topFilterPct}%) ${explanation}.`;
+    } else if (rejectedCount > 0) {
+        narrative += ' Filters distributed evenly across reasons to trim residual noise.';
+    } else {
+        narrative += ' No filters tripped this run.';
     }
-    if (meta.description) {
-        narrative += ` ${meta.description}`;
-    }
+    if (meta.description) narrative += ` ${meta.description}`;
 
     return `
         <article class="source-briefing-card">
@@ -486,12 +613,14 @@ function renderQualityBriefingCard(item) {
                 <div>
                     <div class="source-briefing-title">${item.name}</div>
                     <div class="source-briefing-role">${meta.role} · ${meta.pipeline}</div>
+                    <span class="source-briefing-samples">${totalSubmissions.toLocaleString()} submissions</span>
                 </div>
             </div>
             <div class="briefing-chip-row">
                 <span class="briefing-chip">${sharePct}% Share</span>
-                <span class="briefing-chip ${qualityClass}">Quality ${qualityPct}%</span>
-                <span class="briefing-chip neutral">Rejected ${rejectionPct}%</span>
+                <span class="briefing-chip ${qualityClass}">${qualityPct}% Kept</span>
+                <span class="briefing-chip neutral">${trimmedChip}</span>
+                <span class="briefing-chip neutral">${filterChip}</span>
                 <span class="briefing-chip neutral">${lastUpdated}</span>
             </div>
             <p class="source-briefing-text">${narrative}</p>

@@ -4,7 +4,7 @@
  */
 
 import { getMetrics } from '../core/data-service.js';
-import { computePipelineAggregates } from '../core/aggregates.js';
+import { computePipelineAggregates, FILTER_REASON_LABELS } from '../core/aggregates.js';
 import { normalizeSourceName, formatDate } from '../utils/formatters.js';
 
 const SOURCE_ORDER = ['Wikipedia', 'BBC', 'HuggingFace MC4', 'Språkbanken'];
@@ -45,16 +45,6 @@ const SOURCE_METADATA = {
         qualityBenchmark: 0.7,
         narrative: 'Stream ingestion (MC4) with language and length guards'
     }
-};
-
-const FILTER_LABELS = {
-    min_length_filter: 'min-length filter trimming stub articles',
-    langid_filter: 'language ID check keeping non-Somali text out',
-    empty_after_cleaning: 'empty-after-cleaning guard removing blank pages',
-    quality_score_filter: 'quality score threshold',
-    profanity_filter: 'profanity filter',
-    toxic_filter: 'toxicity filter',
-    duplicate_filter: 'duplicate detector'
 };
 
 const DEFAULT_FILTER_LABEL = 'quality filters';
@@ -128,7 +118,7 @@ function getTopFilterInsight(metrics) {
         return null;
     }
 
-    const label = FILTER_LABELS[reason] || reason.replace(/_/g, ' ');
+    const label = FILTER_REASON_LABELS[reason] || reason.replace(/_/g, ' ');
     const percentage = (count / total) * 100;
     return { reason, label, percentage };
 }
