@@ -148,29 +148,28 @@
 
     .footer-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: var(--space-6);
+        grid-template-columns: 1fr;
+        gap: var(--space-8);
     }
 
     .footer-section {
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: var(--radius-card);
-        padding: var(--space-6);
-        box-shadow: var(--shadow-sm);
+        background: transparent;
+        padding: 0;
+        box-shadow: none;
     }
 
-    .footer-section:first-child {
-        grid-column: 1 / -1;
+    .footer-section h3 {
+        margin-bottom: var(--space-3);
+    }
+
+    .footer-links {
+        gap: var(--space-2);
     }
 }
 
 @media (max-width: 640px) {
     .executive-dashboard .story-cards {
         gap: var(--space-3);
-    }
-
-    .footer-grid {
-        grid-template-columns: 1fr;
     }
 
     .lifecycle-stages {
