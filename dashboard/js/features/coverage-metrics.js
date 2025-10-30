@@ -315,28 +315,21 @@ function updateOverviewNarrative(aggregates, metrics = []) {
             : '';
 
         if (qualityValue >= QUALITY_TARGET) {
-            let sentence = `Record-weighted quality sits at ${qualityPercent}%, clearing the 85% Stage 1 target`;
-            if (filterDetails) {
-                sentence += filterDetails;
+            let sentence = `Record-weighted quality sits at ${qualityPercent}%, comfortably above the 85% target`;
+            if (qualityInsight && qualityInsight.percentage >= 1) {
+                sentence += ` with the ${qualityInsight.label} covering ${qualityInsight.percentage.toFixed(1)}% of removals`;
             }
             statements.push(`${sentence}.`);
         } else if (qualityValue >= 0.5) {
-            let expectationNote = 'consistent with the documented filters-first approach for Stage 1 ingestion';
-            if (dominantSourceMeta && dominantSourceMeta.pipelineType === 'file_processing') {
-                expectationNote = 'aligned with the >50% benchmark for file-based sources as documented in the dashboard guide';
-            }
-            if (qualityInsight && qualityInsight.reason === 'min_length_filter') {
-                expectationNote = 'showing the min-length filter is trimming stub articles before they reach analysts';
-            }
-            let sentence = `Record-weighted quality holds at ${qualityPercent}%, ${expectationNote}`;
-            if (filterDetails) {
-                sentence += filterDetails;
+            let sentence = `Record-weighted quality holds at ${qualityPercent}%, showing filters are keeping short or off-topic records out of silver`;
+            if (qualityInsight && qualityInsight.percentage >= 1) {
+                sentence += ` (${qualityInsight.label}, ${qualityInsight.percentage.toFixed(1)}% of rejections)`;
             }
             statements.push(`${sentence}.`);
         } else {
-            let sentence = `Record-weighted quality is ${qualityPercent}%; review the Quality Insights section to confirm whether recent source changes or filter tuning is required`;
-            if (filterDetails) {
-                sentence += filterDetails;
+            let sentence = `Record-weighted quality is ${qualityPercent}%; review recent runs to confirm whether source shifts or filter tuning are needed`;
+            if (qualityInsight && qualityInsight.percentage >= 1) {
+                sentence += ` (${qualityInsight.label}, ${qualityInsight.percentage.toFixed(1)}% of rejections)`;
             }
             statements.push(`${sentence}.`);
         }
