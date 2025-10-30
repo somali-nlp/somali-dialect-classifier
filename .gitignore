@@ -31,6 +31,9 @@ data/analysis/        # Exclude analysis artifacts
 *.parquet
 *.jsonl              # Exclude large JSONL data files
 
+# Dashboard cache
+dashboard/data/       # Exclude dashboard cache files
+
 # Models (use Git LFS or external storage)
 models/*.bin
 models/*.pt
