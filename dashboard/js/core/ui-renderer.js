@@ -93,19 +93,19 @@ export function populateQualityMetrics() {
         'Språkbanken': metricsData.metrics.find(m => m.source.includes('Sprakbanken'))
     };
 
-    // Update Wikipedia Somali card
+    // Update Wikipedia card
     const wikipediaCard = document.querySelector('#quality-panel .source-grid .source-card:nth-child(1)');
     if (wikipediaCard && sourceQualityMap['Wikipedia']) {
         updateQualityCard(wikipediaCard, sourceQualityMap['Wikipedia']);
     }
 
-    // Update BBC Somali card
+    // Update BBC card
     const bbcCard = document.querySelector('#quality-panel .source-grid .source-card:nth-child(2)');
     if (bbcCard && sourceQualityMap['BBC']) {
         updateQualityCard(bbcCard, sourceQualityMap['BBC']);
     }
 
-    // Update HuggingFace MC4 card
+    // Update HuggingFace card
     const hfCard = document.querySelector('#quality-panel .source-grid .source-card:nth-child(3)');
     if (hfCard && sourceQualityMap['HuggingFace']) {
         updateQualityCard(hfCard, sourceQualityMap['HuggingFace']);
@@ -170,19 +170,19 @@ export function populatePerformanceMetrics() {
         'Språkbanken': metricsData.metrics.find(m => m.source.includes('Sprakbanken'))
     };
 
-    // Update Wikipedia Somali card
+    // Update Wikipedia card
     const wikipediaCard = document.querySelector('#pipeline-panel .source-grid .source-card:nth-child(1)');
     if (wikipediaCard && sourcePerfMap['Wikipedia']) {
         updatePerformanceCard(wikipediaCard, sourcePerfMap['Wikipedia']);
     }
 
-    // Update BBC Somali card
+    // Update BBC card
     const bbcCard = document.querySelector('#pipeline-panel .source-grid .source-card:nth-child(2)');
     if (bbcCard && sourcePerfMap['BBC']) {
         updatePerformanceCard(bbcCard, sourcePerfMap['BBC']);
     }
 
-    // Update HuggingFace MC4 card
+    // Update HuggingFace card
     const hfCard = document.querySelector('#pipeline-panel .source-grid .source-card:nth-child(3)');
     if (hfCard && sourcePerfMap['HuggingFace']) {
         updatePerformanceCard(hfCard, sourcePerfMap['HuggingFace']);
@@ -254,19 +254,19 @@ export function populateOverviewCards() {
         'Språkbanken': metricsData.metrics.find(m => m.source.includes('Sprakbanken'))
     };
 
-    // Update Wikipedia Somali card
+    // Update Wikipedia card
     const wikipediaCard = document.querySelector('#overview-panel .source-card.wikipedia');
     if (wikipediaCard && sourceDataMap['Wikipedia']) {
         updateOverviewCard(wikipediaCard, sourceDataMap['Wikipedia'], totalRecords);
     }
 
-    // Update BBC Somali card
+    // Update BBC card
     const bbcCard = document.querySelector('#overview-panel .source-card.bbc');
     if (bbcCard && sourceDataMap['BBC']) {
         updateOverviewCard(bbcCard, sourceDataMap['BBC'], totalRecords);
     }
 
-    // Update HuggingFace MC4 card
+    // Update HuggingFace card
     const hfCard = document.querySelector('#overview-panel .source-card.huggingface');
     if (hfCard && sourceDataMap['HuggingFace']) {
         updateOverviewCard(hfCard, sourceDataMap['HuggingFace'], totalRecords);

@@ -20,11 +20,22 @@ export function normalizeSourceName(source) {
         return 'Unknown Source';
     }
 
-    return source
-        .replace(/-Somali|_Somali_c4-so/, '')
-        .replace('Sprakbanken', 'Språkbanken')
-        .replace('HuggingFace', 'HuggingFace MC4')
-        .trim();
+    const normalized = source.toLowerCase();
+
+    if (normalized.includes('wikipedia')) {
+        return 'Wikipedia';
+    }
+    if (normalized.includes('bbc')) {
+        return 'BBC';
+    }
+    if (normalized.includes('huggingface') || normalized.includes('mc4')) {
+        return 'HuggingFace';
+    }
+    if (normalized.includes('sprak')) {
+        return 'Språkbanken';
+    }
+
+    return source.replace(/-Somali|_Somali_c4-so/, '').trim();
 }
 
 /**

@@ -462,7 +462,7 @@ function createPerformanceBulletChart(metricsData) {
         // Bug Fix #9: Use consistent source name normalization (with abbreviations for space)
         const sources = metrics.map(m => {
             const normalized = normalizeSourceName(m.source);
-            return normalized.replace('HuggingFace MC4', 'HF').replace('Språkbanken', 'Språk');
+            return normalized.replace('HuggingFace', 'HF').replace('Språkbanken', 'Språk');
         });
         // Bug Fix #3/#8: Use flattened records_per_minute with safety checks
         const recordsPerMin = metrics.map(m => m.records_per_minute || 0);
@@ -561,7 +561,7 @@ function createQualityVsSpeedChart(metricsData) {
         const datasets = metricsData.metrics.map(m => {
             // Bug Fix #9: Use consistent source name normalization (with abbreviations for space)
             const normalized = normalizeSourceName(m.source);
-            const sourceShort = normalized.replace('HuggingFace MC4', 'HF').replace('Språkbanken', 'Språk');
+            const sourceShort = normalized.replace('HuggingFace', 'HF').replace('Språkbanken', 'Språk');
             let color = m.source.includes('Wikipedia') ? '#3b82f6' :
                         m.source.includes('BBC') ? '#ef4444' :
                         m.source.includes('HuggingFace') ? '#10b981' : '#f59e0b';
@@ -653,7 +653,7 @@ function createCumulativeTimelineChart(metricsData) {
         const datasets = sources.map(source => {
             // Bug Fix #9: Use consistent source name normalization (with abbreviations for space)
             const normalized = normalizeSourceName(source);
-            const sourceShort = normalized.replace('HuggingFace MC4', 'HF').replace('Språkbanken', 'Språk');
+            const sourceShort = normalized.replace('HuggingFace', 'HF').replace('Språkbanken', 'Språk');
             let color = source.includes('Wikipedia') ? '#3b82f6' :
                         source.includes('BBC') ? '#ef4444' :
                         source.includes('HuggingFace') ? '#10b981' : '#f59e0b';
