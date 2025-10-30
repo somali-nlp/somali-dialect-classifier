@@ -51,10 +51,10 @@ import {
     populateSourceTable,
     populateSourceMixSnapshot,
     populateSourceBriefings,
-    populateQualityMetrics,
+    populateQualityOverview,
+    populateQualityBriefings,
     populatePerformanceMetrics,
     populateOverviewCards,
-    updateQualityMetrics
 } from './core/ui-renderer.js';
 
 // Import feature modules
@@ -123,10 +123,11 @@ async function init() {
         }
 
         try {
-            populateQualityMetrics();
+            populateQualityOverview();
+            populateQualityBriefings();
         } catch (error) {
-            Logger.error('Failed to populate quality metrics', error);
-            // Non-critical: quality metrics can fail without breaking dashboard
+            Logger.error('Failed to populate quality insights', error);
+            // Non-critical: quality insights can fail without breaking dashboard
         }
 
         try {
@@ -159,7 +160,8 @@ async function init() {
             initAudienceMode();
             updateCoverageScorecard();
             initCoverageCharts();
-            updateQualityMetrics();
+            populateQualityOverview();
+            populateQualityBriefings();
         } catch (error) {
             Logger.warn('Non-critical: Enhanced features failed to initialize', error);
         }

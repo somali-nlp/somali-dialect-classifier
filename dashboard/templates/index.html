@@ -720,140 +720,85 @@
 
         <!-- Tab 3: Quality Insights -->
         <div class="tab-content" id="quality-panel" role="tabpanel" aria-labelledby="quality-tab" data-show-in="analyst">
-            <div class="tab-panel">
-                <h2 class="section-title">Data Quality Analysis</h2>
-                <p class="mb-8" style="color: var(--gray-600); font-size: var(--text-base);">
-                    In-depth analysis of text characteristics, quality metrics, and data integrity across all sources.
+            <div class="tab-panel tab-panel-wide">
+                <h2 class="section-title">Quality Insights</h2>
+                <p class="overview-narrative" id="quality-overview-narrative" aria-live="polite">
+                    Loading quality story…
                 </p>
 
-                <!-- Quality Charts -->
-                <div class="charts-section">
-                    <div class="charts-grid">
+                <section class="quality-kpi-grid" aria-label="Quality health snapshot">
+                    <article class="quality-kpi-card">
+                        <h3 class="quality-kpi-label">Weighted Quality</h3>
+                        <p class="quality-kpi-value" id="quality-kpi-quality">—</p>
+                        <p class="quality-kpi-caption" id="quality-kpi-quality-caption">Awaiting data.</p>
+                    </article>
+                    <article class="quality-kpi-card">
+                        <h3 class="quality-kpi-label">Records Filtered</h3>
+                        <p class="quality-kpi-value" id="quality-kpi-rejections">—</p>
+                        <p class="quality-kpi-caption" id="quality-kpi-rejections-caption">Awaiting data.</p>
+                    </article>
+                    <article class="quality-kpi-card">
+                        <h3 class="quality-kpi-label">Language Guard</h3>
+                        <p class="quality-kpi-value" id="quality-kpi-language">—</p>
+                        <p class="quality-kpi-caption" id="quality-kpi-language-caption">Awaiting data.</p>
+                    </article>
+                    <article class="quality-kpi-card">
+                        <h3 class="quality-kpi-label">Dedup Rate</h3>
+                        <p class="quality-kpi-value" id="quality-kpi-dedup">—</p>
+                        <p class="quality-kpi-caption" id="quality-kpi-dedup-caption">Awaiting data.</p>
+                    </article>
+                </section>
+
+                <section class="charts-section quality-diagnostics">
+                    <div class="charts-grid quality-diagnostics-grid">
                         <div class="chart-card">
                             <div class="chart-header">
-                                <h3 class="chart-title">Text Length Distribution</h3>
+                                <div>
+                                    <h3 class="chart-title">Quality Trend</h3>
+                                    <p class="chart-subtitle">Record-weighted pass rate over recent runs</p>
+                                </div>
+                                <div class="chart-actions">
+                                    <button class="chart-action" onclick="downloadChart('qualityTrendChart')">Export PNG</button>
+                                </div>
                             </div>
                             <div class="chart-canvas">
-                                <canvas id="textLengthChart" aria-label="Bar chart showing average text length by source"></canvas>
+                                <canvas id="qualityTrendChart" aria-label="Line chart showing quality pass rate over time"></canvas>
                             </div>
                         </div>
                         <div class="chart-card">
                             <div class="chart-header">
-                                <h3 class="chart-title">Deduplication Status</h3>
+                                <div>
+                                    <h3 class="chart-title">Filter Load by Source</h3>
+                                    <p class="chart-subtitle">Rejections grouped by filter reason</p>
+                                </div>
+                                <div class="chart-actions">
+                                    <button class="chart-action" onclick="downloadChart('qualityFilterChart')">Export PNG</button>
+                                </div>
                             </div>
                             <div class="chart-canvas">
-                                <canvas id="deduplicationChart" aria-label="Chart showing deduplication rates"></canvas>
+                                <canvas id="qualityFilterChart" aria-label="Stacked bar chart showing filter rejections by source"></canvas>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Advanced Charts: Ridge Plot -->
-                    <div class="chart-card" style="grid-column: 1 / -1; margin-top: 2rem;">
+                    <div class="chart-card chart-card-wide">
                         <div class="chart-header">
-                            <h3 class="chart-title">Text Length Distribution by Source (Ridge Plot)</h3>
-                            <p style="font-size: var(--text-sm); color: var(--gray-600); margin-top: 0.5rem;">
-                                Overlapping density curves showing text length distributions across all sources
-                            </p>
+                            <div>
+                                <h3 class="chart-title">Text Length Density</h3>
+                                <p class="chart-subtitle">Ridge plot contrasting accepted text length profiles</p>
+                            </div>
                         </div>
-                        <div class="chart-canvas">
-                            <div id="ridgePlotContainer" style="min-height: 400px;"></div>
+                        <div class="chart-canvas chart-canvas-tall">
+                            <div id="ridgePlotContainer" style="min-height: 380px;"></div>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <!-- Quality Metrics Summary -->
-                <div class="mt-8">
-                    <h3 class="section-title">Quality Metrics by Source</h3>
-                    <div class="source-grid">
-                        <div class="source-card" data-quality-source="Wikipedia">
-                            <h4 class="source-card-title">Wikipedia</h4>
-                            <div class="source-card-metrics">
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Min Length</span>
-                                    <span class="source-metric-value quality-min">Loading...</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Max Length</span>
-                                    <span class="source-metric-value quality-max">Loading...</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Mean Length</span>
-                                    <span class="source-metric-value quality-mean">Loading...</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Median Length</span>
-                                    <span class="source-metric-value quality-median">Loading...</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="source-card" data-quality-source="BBC">
-                            <h4 class="source-card-title">BBC</h4>
-                            <div class="source-card-metrics">
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Min Length</span>
-                                    <span class="source-metric-value quality-min">Loading...</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Max Length</span>
-                                    <span class="source-metric-value quality-max">Loading...</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Mean Length</span>
-                                    <span class="source-metric-value quality-mean">Loading...</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Median Length</span>
-                                    <span class="source-metric-value quality-median">Loading...</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="source-card" data-quality-source="HuggingFace">
-                            <h4 class="source-card-title">HuggingFace</h4>
-                            <div class="source-card-metrics">
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Min Length</span>
-                                    <span class="source-metric-value quality-min">Loading...</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Max Length</span>
-                                    <span class="source-metric-value quality-max">Loading...</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Mean Length</span>
-                                    <span class="source-metric-value quality-mean">Loading...</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Median Length</span>
-                                    <span class="source-metric-value quality-median">Loading...</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="source-card" data-quality-source="Sprakbanken">
-                            <h4 class="source-card-title">Språkbanken</h4>
-                            <div class="source-card-metrics">
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Min Length</span>
-                                    <span class="source-metric-value quality-min">Loading...</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Max Length</span>
-                                    <span class="source-metric-value quality-max">Loading...</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Mean Length</span>
-                                    <span class="source-metric-value quality-mean">Loading...</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Median Length</span>
-                                    <span class="source-metric-value quality-median">Loading...</span>
-                                </div>
-                            </div>
-                        </div>
+                <section class="source-briefings quality-briefings" id="qualityBriefings" aria-label="Source quality briefings">
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--gray-500);">
+                        Loading quality briefings…
                     </div>
-                </div>
+                </section>
             </div>
         </div>
 

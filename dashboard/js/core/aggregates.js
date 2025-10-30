@@ -4,6 +4,7 @@
  */
 
 import { Logger } from '../utils/logger.js';
+import { normalizeSourceName } from '../utils/formatters.js';
 
 function toNumber(value, fallback = 0) {
     const num = Number(value);
@@ -149,5 +150,183 @@ export function computePipelineAggregates(metrics = []) {
         avgQualityRate,
         avgSuccessRate,
         activeSources
+    };
+}
+
+export const FILTER_REASON_LABELS = {
+    min_length_filter: 'Min-length',
+    langid_filter: 'Language ID',
+    empty_after_cleaning: 'Empty after cleaning',
+    quality_score_filter: 'Quality score',
+    profanity_filter: 'Profanity',
+    toxic_filter: 'Toxicity',
+    duplicate_filter: 'Duplicate',
+    invalid_charset_filter: 'Invalid charset',
+    encoding_filter: 'Encoding',
+    stopword_filter: 'Stopword threshold'
+};
+
+export function computeQualityAnalytics(metrics = []) {
+    if (!Array.isArray(metrics) || metrics.length === 0) {
+        return {
+            totalRecords: 0,
+            totalRejected: 0,
+            avgQualityRate: 0,
+            avgDedupRate: 0,
+            perSource: [],
+            trend: [],
+            filterTotals: {},
+            topFilter: null
+        };
+    }
+
+    let totalRecords = 0;
+    let totalRejected = 0;
+    let qualityWeighted = 0;
+    let qualityWeight = 0;
+    let dedupWeighted = 0;
+    let dedupWeight = 0;
+
+    const filterTotals = new Map();
+    const sourceMap = new Map();
+    const trendMap = new Map();
+
+    metrics.forEach(metric => {
+        if (!metric) return;
+
+        const records = Number(metric.records_written) || 0;
+        const qualityRate = Number(metric.quality_pass_rate) || 0;
+        const dedupRate = Number(metric.deduplication_rate) || 0;
+        const filterBreakdown = metric.filter_breakdown || {};
+        const rejected = Object.values(filterBreakdown).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        const timestamp = metric.timestamp || null;
+        const dateKey = timestamp ? new Date(timestamp).toISOString().slice(0, 10) : null;
+
+        totalRecords += records;
+        totalRejected += rejected;
+        qualityWeighted += qualityRate * records;
+        qualityWeight += records;
+        dedupWeighted += dedupRate * records;
+        dedupWeight += records;
+
+        Object.entries(filterBreakdown).forEach(([reason, count]) => {
+            const numeric = Number(count) || 0;
+            if (numeric <= 0) return;
+            filterTotals.set(reason, (filterTotals.get(reason) || 0) + numeric);
+        });
+
+        const sourceName = normalizeSourceName(metric.source || 'Unknown');
+        if (!sourceMap.has(sourceName)) {
+            sourceMap.set(sourceName, {
+                name: sourceName,
+                records: 0,
+                rejected: 0,
+                qualityWeighted: 0,
+                weight: 0,
+                dedupWeighted: 0,
+                filters: {},
+                lastUpdated: null,
+                lastUpdatedMs: null
+            });
+        }
+
+        const sourceEntry = sourceMap.get(sourceName);
+        sourceEntry.records += records;
+        sourceEntry.rejected += rejected;
+        sourceEntry.qualityWeighted += qualityRate * records;
+        sourceEntry.weight += records;
+        sourceEntry.dedupWeighted += dedupRate * records;
+        Object.entries(filterBreakdown).forEach(([reason, count]) => {
+            const numeric = Number(count) || 0;
+            if (numeric <= 0) return;
+            sourceEntry.filters[reason] = (sourceEntry.filters[reason] || 0) + numeric;
+        });
+
+        if (timestamp) {
+            const ms = Date.parse(timestamp);
+            if (!Number.isNaN(ms) && (!sourceEntry.lastUpdatedMs || ms > sourceEntry.lastUpdatedMs)) {
+                sourceEntry.lastUpdated = timestamp;
+                sourceEntry.lastUpdatedMs = ms;
+            }
+        }
+
+        if (dateKey) {
+            if (!trendMap.has(dateKey)) {
+                trendMap.set(dateKey, {
+                    qualityWeighted: 0,
+                    records: 0
+                });
+            }
+            const trendEntry = trendMap.get(dateKey);
+            trendEntry.qualityWeighted += qualityRate * records;
+            trendEntry.records += records;
+        }
+    });
+
+    const perSource = Array.from(sourceMap.values()).map(entry => {
+        const quality = entry.weight > 0 ? entry.qualityWeighted / entry.weight : 0;
+        const dedupRate = entry.weight > 0 ? entry.dedupWeighted / entry.weight : 0;
+        const share = totalRecords > 0 ? entry.records / totalRecords : 0;
+        const totalInputs = entry.records + entry.rejected;
+        const rejectionRate = totalInputs > 0 ? entry.rejected / totalInputs : 0;
+
+        const filterEntries = Object.entries(entry.filters)
+            .filter(([, count]) => Number(count) > 0)
+            .sort((a, b) => b[1] - a[1]);
+        const topFilter = filterEntries.length
+            ? {
+                reason: filterEntries[0][0],
+                count: filterEntries[0][1],
+                percentage: entry.rejected > 0 ? (filterEntries[0][1] / entry.rejected) * 100 : 0
+            }
+            : null;
+
+        return {
+            name: entry.name,
+            records: entry.records,
+            share,
+            quality,
+            dedupRate,
+            rejected: entry.rejected,
+            rejectionRate,
+            filters: entry.filters,
+            topFilter,
+            lastUpdated: entry.lastUpdated,
+            lastUpdatedMs: entry.lastUpdatedMs
+        };
+    });
+
+    const sortedTrend = Array.from(trendMap.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, value]) => ({
+            date,
+            quality: value.records > 0 ? value.qualityWeighted / value.records : 0,
+            records: value.records
+        }));
+
+    const filterTotalsObj = Object.fromEntries(filterTotals.entries());
+    const topFilterEntries = Object.entries(filterTotalsObj)
+        .filter(([, count]) => Number(count) > 0)
+        .sort((a, b) => b[1] - a[1]);
+    const topFilter = topFilterEntries.length
+        ? {
+            reason: topFilterEntries[0][0],
+            count: topFilterEntries[0][1],
+            percentage: totalRejected > 0 ? (topFilterEntries[0][1] / totalRejected) * 100 : 0
+        }
+        : null;
+
+    const avgQualityRate = qualityWeight > 0 ? qualityWeighted / qualityWeight : 0;
+    const avgDedupRate = dedupWeight > 0 ? dedupWeighted / dedupWeight : 0;
+
+    return {
+        totalRecords,
+        totalRejected,
+        avgQualityRate,
+        avgDedupRate,
+        perSource,
+        trend: sortedTrend,
+        filterTotals: filterTotalsObj,
+        topFilter
     };
 }

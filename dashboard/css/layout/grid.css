@@ -54,6 +54,13 @@
     color: var(--gray-500);
 }
 
+.quality-diagnostics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-6);
+    margin-bottom: var(--space-8);
+}
+
 /* Story Cards */
 .story-cards {
     display: grid;

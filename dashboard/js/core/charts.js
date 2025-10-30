@@ -6,6 +6,7 @@
 import { getMetrics } from './data-service.js';
 import { normalizeSourceName } from '../utils/formatters.js';
 import { Logger } from '../utils/logger.js';
+import { computeQualityAnalytics, FILTER_REASON_LABELS } from './aggregates.js';
 
 /**
  * Initialize all dashboard charts
@@ -26,8 +27,8 @@ export function initCharts() {
 
     // Initialize all chart types
     createSourceTradeoffChart(metricsData);
-    createTextLengthChart(metricsData);
-    createDeduplicationChart(metricsData);
+    createQualityTrendChart(metricsData);
+    createQualityFilterChart(metricsData);
     createPerformanceBulletChart(metricsData);
     createQualityVsSpeedChart(metricsData);
     createCumulativeTimelineChart(metricsData);
@@ -152,6 +153,219 @@ function createSourceTradeoffChart(metricsData) {
                     },
                     grid: {
                         color: '#f3f4f6'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createQualityTrendChart(metricsData) {
+    const trendCtx = document.getElementById('qualityTrendChart');
+    if (!trendCtx) {
+        Logger.warn('Chart container not found: qualityTrendChart');
+        return;
+    }
+
+    const analytics = computeQualityAnalytics(metricsData?.metrics || []);
+    const trend = analytics?.trend || [];
+    if (!trend.length) {
+        const wrapper = trendCtx.parentElement;
+        if (wrapper) {
+            wrapper.innerHTML = '<p class="chart-empty-state">Quality trend data is not yet available.</p>';
+        }
+        return;
+    }
+
+    const context = trendCtx.getContext('2d');
+    const trendDataset = trend.map(entry => ({
+        x: entry.date,
+        y: (entry.quality || 0) * 100,
+        records: entry.records || 0
+    }));
+
+    const latestQuality = trendDataset.length ? trendDataset[trendDataset.length - 1].y : 0;
+
+    new Chart(context, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'Quality Pass Rate',
+                    data: trendDataset,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    pointRadius: trendDataset.length === 1 ? 5 : 3,
+                    pointHoverRadius: 5,
+                    fill: false
+                },
+                {
+                    label: 'Target 85%',
+                    data: trendDataset.map(point => ({ x: point.x, y: 85 })),
+                    borderColor: '#9ca3af',
+                    borderDash: [6, 6],
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 12
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label(context) {
+                            const value = context.parsed.y;
+                            const records = context.raw?.records || 0;
+                            return `${context.dataset.label}: ${value.toFixed(1)}% (${records.toLocaleString()} records)`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day',
+                        tooltipFormat: 'MMM dd, yyyy'
+                    },
+                    grid: {
+                        color: '#f3f4f6'
+                    },
+                    ticks: {
+                        maxRotation: 0,
+                        autoSkip: true
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    max: Math.max(100, Math.ceil(latestQuality / 10) * 10),
+                    grid: {
+                        color: '#f3f4f6'
+                    },
+                    ticks: {
+                        callback: value => value + '%'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createQualityFilterChart(metricsData) {
+    const filterCtx = document.getElementById('qualityFilterChart');
+    if (!filterCtx) {
+        Logger.warn('Chart container not found: qualityFilterChart');
+        return;
+    }
+
+    const analytics = computeQualityAnalytics(metricsData?.metrics || []);
+    const sources = analytics?.perSource || [];
+    if (!sources.length) {
+        const wrapper = filterCtx.parentElement;
+        if (wrapper) {
+            wrapper.innerHTML = '<p class="chart-empty-state">Filter diagnostics will appear after the first successful run.</p>';
+        }
+        return;
+    }
+
+    const reasonEntries = Object.entries(analytics.filterTotals || {})
+        .filter(([, count]) => Number(count) > 0)
+        .sort((a, b) => b[1] - a[1]);
+
+    if (!reasonEntries.length) {
+        const wrapper = filterCtx.parentElement;
+        if (wrapper) {
+            wrapper.innerHTML = '<p class="chart-empty-state">No quality rejections recorded for the latest run.</p>';
+        }
+        return;
+    }
+
+    const reasons = reasonEntries.map(([reason]) => reason);
+    const labels = sources.map(source => source.name);
+    const palette = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#14b8a6', '#f97316', '#8b5cf6'];
+
+    const datasets = reasons.map((reason, index) => {
+        const data = sources.map(source => source.filters?.[reason] || 0);
+        const total = data.reduce((sum, value) => sum + value, 0);
+        if (total === 0) return null;
+        return {
+            label: FILTER_REASON_LABELS[reason] || reason.replace(/_/g, ' '),
+            data,
+            backgroundColor: palette[index % palette.length],
+            borderWidth: 0,
+            stack: 'filters'
+        };
+    }).filter(Boolean);
+
+    if (!datasets.length) {
+        const wrapper = filterCtx.parentElement;
+        if (wrapper) {
+            wrapper.innerHTML = '<p class="chart-empty-state">Filter diagnostics unavailable for the latest run.</p>';
+        }
+        return;
+    }
+
+    const context = filterCtx.getContext('2d');
+
+    new Chart(context, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 12
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label(context) {
+                            const value = context.parsed.x || 0;
+                            const totalForSource = sources[context.dataIndex].rejected || 0;
+                            const share = totalForSource > 0 ? (value / totalForSource) * 100 : 0;
+                            return `${context.dataset.label}: ${value.toLocaleString()} (${share.toFixed(1)}%)`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: {
+                        color: '#f3f4f6'
+                    },
+                    ticks: {
+                        callback: value => value >= 1000 ? (value / 1000).toFixed(0) + 'K' : value
+                    },
+                    title: {
+                        display: true,
+                        text: 'Records filtered'
+                    }
+                },
+                y: {
+                    stacked: true,
+                    grid: {
+                        display: false
                     }
                 }
             }
