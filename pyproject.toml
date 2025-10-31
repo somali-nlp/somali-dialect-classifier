@@ -18,6 +18,7 @@ dependencies = [
   "lxml>=4.9",  # XML parser for sitemap
   "feedparser>=6.0",  # RSS feed parsing for BBC scraping
   "datasketch>=1.6",  # MinHash LSH for near-duplicate detection
+  "apify-client==1.7.1",  # Apify API client for TikTok scraping
 ]
 
 [project.optional-dependencies]
@@ -76,6 +77,7 @@ wikisom-download = "somali_dialect_classifier.cli.download_wikisom:main"
 bbcsom-download = "somali_dialect_classifier.cli.download_bbcsom:main"
 hfsom-download = "somali_dialect_classifier.cli.download_hfsom:main"
 spraksom-download = "somali_dialect_classifier.cli.download_sprakbankensom:main"
+tiktoksom-download = "somali_dialect_classifier.cli.download_tiktoksom:main"
 somali-orchestrate = "somali_dialect_classifier.orchestration.flows:main"
 somali-deploy-dashboard = "somali_dialect_classifier.cli.deploy_dashboard:main"
 

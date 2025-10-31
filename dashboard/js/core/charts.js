@@ -63,7 +63,8 @@ function createSourceTradeoffChart(metricsData) {
         if (source.includes('Wikipedia')) return '#3b82f6';
         if (source.includes('BBC')) return '#ef4444';
         if (source.includes('HuggingFace')) return '#10b981';
-        return '#f59e0b';
+        if (source.includes('TikTok')) return '#ec4899';
+        return '#f59e0b';  // Default for Språkbanken and others
     };
 
     const datasets = metricsData.metrics.map(metric => {

@@ -6,11 +6,11 @@
 
 ## Overview
 
-The Somali Dialect Classifier employs a comprehensive data pipeline that collects text from four diverse sources, applies quality filters, removes duplicates, and outputs a unified silver dataset ready for model training.
+The Somali Dialect Classifier employs a comprehensive data pipeline that collects text from five diverse sources, applies quality filters, removes duplicates, and outputs a unified silver dataset ready for model training.
 
 ### Key Features
 
-- **Four Production Data Sources** - Wikipedia, BBC News, HuggingFace Datasets, Språkbanken Corpora
+- **Five Production Data Sources** - Wikipedia, BBC News, HuggingFace Datasets, Språkbanken Corpora, TikTok Comments (Social Media)
 - **Structured Logging** - JSON logs with automatic context injection (run_id, source, phase)
 - **Metrics Collection** - Discovery, fetch, processing metrics with automated quality reports
 - **Crawl Ledger** - Persistent URL state tracking with resume capability and conditional requests
@@ -26,20 +26,21 @@ The Somali Dialect Classifier employs a comprehensive data pipeline that collect
 ### Data Flow
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                     DATA SOURCES                              │
-├──────────────┬─────────────┬─────────────────┬───────────────┤
-│  Wikipedia   │  BBC News   │  HuggingFace    │  Språkbanken  │
-│  ~50K docs   │  News       │  MC4: ~100-200K │  23 corpora   │
-└──────┬───────┴──────┬──────┴────────┬────────┴───────┬───────┘
-       │              │               │                │
-       ▼              ▼               ▼                ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DATA SOURCES                                        │
+├──────────┬──────────┬──────────────┬──────────────┬────────────────────────┤
+│Wikipedia │BBC News  │ HuggingFace  │ Språkbanken  │  TikTok Comments       │
+│~50K docs │News      │MC4: ~100-200K│ 66 corpora   │  Social Media          │
+└────┬─────┴────┬─────┴──────┬───────┴──────┬───────┴──────┬─────────────────┘
+     │          │            │              │              │
+     ▼          ▼            ▼              ▼              ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    DISCOVERY PHASE                          │
 │  • URL Discovery & Ledger Tracking                         │
 │  • RSS Feed Scraping (BBC)                                 │
 │  • Manifest Creation (HuggingFace)                         │
 │  • Corpus Listing (Språkbanken)                            │
+│  • Video URL Collection (TikTok)                           │
 └─────────────────────┬───────────────────────────────────────┘
                       │
                       ▼
@@ -49,6 +50,7 @@ The Somali Dialect Classifier employs a comprehensive data pipeline that collect
 │  • Adaptive Rate Limiting                                  │
 │  • XML/JSON Parsing                                        │
 │  • JSONL Batching (Streaming)                              │
+│  • Apify API Scraping (TikTok Comments)                    │
 └─────────────────────┬───────────────────────────────────────┘
                       │
                       ▼
@@ -301,6 +303,53 @@ python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus cilmi
 
 ---
 
+### 5. TikTok Comments (Social Media)
+
+**Source**: TikTok via Apify API
+**License**: TikTok Terms of Service
+**Format**: JSON (from Apify actor)
+**Domain**: Social Media
+
+```bash
+# Create video URLs file
+cat > videos.txt <<EOF
+https://www.tiktok.com/@user/video/123
+https://www.tiktok.com/@user/video/456
+EOF
+
+# Run TikTok pipeline
+tiktoksom-download --video-urls videos.txt
+
+# Or with orchestration
+somali-orchestrate --pipeline tiktok \
+  --tiktok-video-urls videos.txt \
+  --tiktok-api-token YOUR_TOKEN
+```
+
+**Features**:
+- Colloquial Somali from social media comments
+- Diverse dialect representation from user-generated content
+- Cost: $1 per 1,000 comments via Apify
+- 67% emoji-only filtering (33% linguistic yield expected)
+- Automatic language detection and text cleaning
+- Exact duplicate removal (preserves natural comment diversity)
+
+**Setup Requirements**:
+- Apify account with API token
+- Video URL collection (txt or json format)
+- See [TikTok Integration Guide](../howto/tiktok-integration.md) for detailed setup
+- See [Cost Analysis](../cost-analysis/tiktok-apify-costs.md) for budget planning
+
+**Configuration** (.env):
+```bash
+SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN=apify_api_YOUR_TOKEN
+SDC_SCRAPING__TIKTOK__MAX_TOTAL_COMMENTS=30000
+SDC_SCRAPING__TIKTOK__MAX_COMMENTS_PER_VIDEO=500
+SDC_SCRAPING__TIKTOK__MIN_TEXT_LENGTH=3
+```
+
+---
+
 ## Unified Silver Dataset
 
 All sources write to a consistent Parquet schema:
@@ -310,10 +359,10 @@ All sources write to a consistent Parquet schema:
     "id": "uuid-v4",
     "text": "cleaned text content",
     "title": "article/document title",
-    "source": "Wikipedia-Somali | BBC-Somali | HuggingFace-Somali_* | Sprakbanken-Somali-*",
-    "source_type": "wiki | news | web | corpus",
+    "source": "Wikipedia-Somali | BBC-Somali | HuggingFace-Somali_* | Sprakbanken-Somali-* | TikTok-Somali",
+    "source_type": "wiki | news | web | corpus | social_media",
     "language": "so",
-    "license": "CC-BY-SA-3.0 | BBC Terms of Use | ODC-BY-1.0 | CC BY 4.0",
+    "license": "CC-BY-SA-3.0 | BBC Terms of Use | ODC-BY-1.0 | CC BY 4.0 | TikTok ToS",
     "tokens": 1234,
     "url": "source URL",
     "date_accessed": "2025-01-19",

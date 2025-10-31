@@ -34,6 +34,9 @@ export function normalizeSourceName(source) {
     if (normalized.includes('sprak')) {
         return 'Språkbanken';
     }
+    if (normalized.includes('tiktok')) {
+        return 'TikTok';
+    }
 
     return source.replace(/-Somali|_Somali_c4-so/, '').trim();
 }

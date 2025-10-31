@@ -249,6 +249,56 @@ if PYDANTIC_AVAILABLE:
         )
 
 
+    class TikTokScrapingConfig(BaseSettings):
+        """TikTok scraping configuration via Apify."""
+        model_config = SettingsConfigDict(
+            env_prefix='SDC_SCRAPING__TIKTOK__',
+            env_file='.env',
+            env_file_encoding='utf-8',
+            extra='ignore'
+        )
+
+        # Apify credentials
+        apify_api_token: Optional[str] = Field(
+            default=None,
+            description='Apify API token (required for TikTok scraping)'
+        )
+        apify_user_id: Optional[str] = Field(
+            default=None,
+            description='Apify user ID (optional, for reference)'
+        )
+
+        # Scraping limits
+        max_comments_per_video: Optional[int] = Field(
+            default=None,
+            description='Max comments per video (None = unlimited)'
+        )
+        max_total_comments: Optional[int] = Field(
+            default=30000,
+            description='Target total comments to collect'
+        )
+
+        # Quality filters (minimal for TikTok - user pays for all comments)
+        min_text_length: int = Field(
+            default=3,
+            description='Minimum comment length for linguistic value (characters)'
+        )
+
+        # Apify actor settings
+        poll_interval: int = Field(
+            default=15,
+            description='Seconds between actor status checks'
+        )
+        max_wait_time: int = Field(
+            default=3600,
+            description='Maximum wait time for actor completion (seconds)'
+        )
+        batch_size: int = Field(
+            default=1000,
+            description='Items per batch when fetching dataset'
+        )
+
+
     class ScrapingConfig(BaseSettings):
         """Scraping configuration."""
         model_config = SettingsConfigDict(
@@ -262,6 +312,7 @@ if PYDANTIC_AVAILABLE:
         wikipedia: WikipediaScrapingConfig = Field(default_factory=WikipediaScrapingConfig)
         huggingface: HuggingFaceScrapingConfig = Field(default_factory=HuggingFaceScrapingConfig)
         sprakbanken: SprakbankenScrapingConfig = Field(default_factory=SprakbankenScrapingConfig)
+        tiktok: TikTokScrapingConfig = Field(default_factory=TikTokScrapingConfig)
 
 
     class LoggingConfig(BaseSettings):

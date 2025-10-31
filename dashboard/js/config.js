@@ -53,7 +53,8 @@ export const Config = {
         wikipedia: '#3b82f6',
         bbc: '#ef4444',
         huggingface: '#10b981',
-        sprakbanken: '#f59e0b'
+        sprakbanken: '#f59e0b',
+        tiktok: '#ec4899'  // Pink for TikTok social media
     },
 
     /**

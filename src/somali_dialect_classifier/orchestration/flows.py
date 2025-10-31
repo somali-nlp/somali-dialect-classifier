@@ -241,6 +241,56 @@ def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> Dict[st
         }
 
 
+@task(retries=2, retry_delay_seconds=10)
+def run_tiktok_task(
+    video_urls: List[str],
+    apify_api_token: str,
+    apify_user_id: Optional[str] = None,
+    force: bool = False
+) -> Dict[str, Any]:
+    """
+    Task to run TikTok comments collection pipeline.
+
+    Args:
+        video_urls: List of TikTok video URLs to scrape
+        apify_api_token: Apify API token for authentication
+        apify_user_id: Apify user ID (optional, for reference)
+        force: Force reprocessing of existing data
+
+    Returns:
+        Dictionary with pipeline results and metrics
+    """
+    from ..preprocessing.tiktok_somali_processor import TikTokSomaliProcessor
+
+    logger.info(f"Starting TikTok pipeline for {len(video_urls)} videos...")
+    processor = TikTokSomaliProcessor(
+        apify_api_token=apify_api_token,
+        apify_user_id=apify_user_id,
+        video_urls=video_urls,
+        force=force,
+    )
+
+    try:
+        silver_path = processor.run()
+
+        # Get statistics
+        source = "TikTok-Somali"
+
+        return {
+            "source": source,
+            "status": "success",
+            "silver_path": str(silver_path),
+            "num_videos": len(video_urls),
+        }
+    except Exception as e:
+        logger.error(f"TikTok pipeline failed: {e}")
+        return {
+            "source": "TikTok-Somali",
+            "status": "failed",
+            "error": str(e),
+        }
+
+
 @flow(
     name="Wikipedia Data Collection",
     description="Collect and process Wikipedia Somali articles",
@@ -322,6 +372,36 @@ def run_sprakbanken_pipeline(corpus_id: str = "all", force: bool = False) -> Dic
         Pipeline execution results
     """
     return run_sprakbanken_task(corpus_id=corpus_id, force=force)
+
+
+@flow(
+    name="TikTok Comments Collection",
+    description="Collect and process TikTok Somali comments via Apify",
+)
+def run_tiktok_pipeline(
+    video_urls: List[str],
+    apify_api_token: str,
+    apify_user_id: Optional[str] = None,
+    force: bool = False
+) -> Dict[str, Any]:
+    """
+    Flow to orchestrate TikTok comments collection.
+
+    Args:
+        video_urls: List of TikTok video URLs to scrape
+        apify_api_token: Apify API token
+        apify_user_id: Apify user ID (optional)
+        force: Force reprocessing of existing data
+
+    Returns:
+        Pipeline execution results
+    """
+    return run_tiktok_task(
+        video_urls=video_urls,
+        apify_api_token=apify_api_token,
+        apify_user_id=apify_user_id,
+        force=force,
+    )
 
 
 @flow(
@@ -474,7 +554,7 @@ def main():
     )
     parser.add_argument(
         "--pipeline",
-        choices=["all", "wikipedia", "bbc", "huggingface", "sprakbanken"],
+        choices=["all", "wikipedia", "bbc", "huggingface", "sprakbanken", "tiktok"],
         default="all",
         help="Pipeline to run (default: all)",
     )
@@ -489,7 +569,7 @@ def main():
     parser.add_argument(
         "--skip-sources",
         nargs="+",
-        choices=["wikipedia", "bbc", "huggingface", "sprakbanken"],
+        choices=["wikipedia", "bbc", "huggingface", "sprakbanken", "tiktok"],
         help="Sources to skip when running 'all' pipelines",
     )
     parser.add_argument(
@@ -497,6 +577,16 @@ def main():
         type=str,
         default="all",
         help="Specific Språkbanken corpus ID to download (default: all)",
+    )
+    parser.add_argument(
+        "--tiktok-video-urls",
+        type=Path,
+        help="Path to TikTok video URLs file (txt or json format)",
+    )
+    parser.add_argument(
+        "--tiktok-api-token",
+        type=str,
+        help="Apify API token for TikTok scraping (overrides env var)",
     )
 
     args = parser.parse_args()
@@ -530,6 +620,39 @@ def main():
     elif args.pipeline == "sprakbanken":
         result = run_sprakbanken_pipeline(
             corpus_id=args.sprakbanken_corpus, force=args.force
+        )
+    elif args.pipeline == "tiktok":
+        # Load configuration for TikTok
+        from ..config import get_config
+        config = get_config()
+
+        # Get API token (CLI arg > env var)
+        api_token = args.tiktok_api_token or config.scraping.tiktok.apify_api_token
+
+        if not api_token:
+            logger.error("Apify API token not provided!")
+            logger.error("Please set SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN environment variable")
+            logger.error("or provide --tiktok-api-token argument")
+            sys.exit(1)
+
+        if not args.tiktok_video_urls:
+            logger.error("TikTok video URLs file not provided!")
+            logger.error("Please provide --tiktok-video-urls argument")
+            sys.exit(1)
+
+        # Load video URLs from file
+        from ..cli.download_tiktoksom import load_video_urls
+        try:
+            video_urls = load_video_urls(args.tiktok_video_urls)
+        except (FileNotFoundError, ValueError) as e:
+            logger.error(f"Failed to load video URLs: {e}")
+            sys.exit(1)
+
+        result = run_tiktok_pipeline(
+            video_urls=video_urls,
+            apify_api_token=api_token,
+            apify_user_id=config.scraping.tiktok.apify_user_id,
+            force=args.force,
         )
 
     # Print summary

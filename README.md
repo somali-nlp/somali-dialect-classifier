@@ -10,7 +10,7 @@ A production-ready data pipeline for collecting, processing, and preparing high-
 
 ## Key Features
 
-- **Multi-source data collection** - Wikipedia (~50k articles), BBC Somali news, HuggingFace MC4 (~100k-200k web docs), Språkbanken (66 academic corpora)
+- **Multi-source data collection** - Wikipedia (~50k articles), BBC Somali news, HuggingFace MC4 (~100k-200k web docs), Språkbanken (66 academic corpora), TikTok comments (social media)
 - **Production-grade MLOps** - Structured logging, automated metrics, quality reports, crawl ledger for resume capability
 - **Quality-first architecture** - Two-tier deduplication (exact + near-duplicate), pluggable quality filters, unified silver dataset schema
 - **Ethical web scraping** - Rate limiting, robots.txt compliance, conditional requests, configurable scraping policies
@@ -65,6 +65,7 @@ wikisom-download                          # Wikipedia Somali
 bbcsom-download --max-articles 100       # BBC Somali News
 hfsom-download mc4 --max-records 10000   # HuggingFace MC4
 spraksom-download --corpus all           # Språkbanken corpora
+tiktoksom-download --video-urls videos.txt  # TikTok comments (requires Apify account)
 
 # Or orchestrate all pipelines together
 somali-orchestrate --pipeline all
@@ -159,6 +160,26 @@ spraksom-download --corpus all
 # Use with orchestrator
 somali-orchestrate --pipeline sprakbanken --sprakbanken-corpus somali-ogaden
 ```
+
+**TikTok Comments** (Social media, colloquial Somali)
+```bash
+# Requires Apify account and API token
+# See docs/howto/tiktok-integration.md for setup
+
+# Create video URLs file
+echo "https://www.tiktok.com/@user/video/123" > videos.txt
+
+# Download comments from videos
+tiktoksom-download --video-urls videos.txt
+
+# With limits
+tiktoksom-download --video-urls videos.txt --max-comments 10000
+
+# Use with orchestrator
+somali-orchestrate --pipeline tiktok --tiktok-video-urls videos.txt --tiktok-api-token YOUR_TOKEN
+```
+
+**Note:** TikTok scraping costs $1 per 1,000 comments via Apify. See [Cost Analysis](docs/cost-analysis/tiktok-apify-costs.md) for budget planning.
 
 ### Accessing the Silver Dataset
 
@@ -279,7 +300,7 @@ python scripts/deduplicate_silver.py --output-dir data/silver_deduped
 
 **Current Phase:** Data Curation (Phase 1) - **COMPLETE**
 
-- ✅ Production data pipelines for all four sources
+- ✅ Production data pipelines for multiple sources (Wikipedia, BBC, HuggingFace, Språkbanken, TikTok)
 - ✅ Integrated MLOps infrastructure (logging, metrics, deduplication)
 - ✅ Unified silver dataset schema across all sources
 - ✅ 130,000-300,000 deduplicated Somali text records
@@ -374,9 +395,9 @@ If you use this project in your research, please cite:
 
 ## Acknowledgments
 
-- **Data Sources:** Wikimedia Foundation, BBC Somali, HuggingFace, Språkbanken (University of Gothenburg)
-- **Licenses:** CC-BY-SA-3.0 (Wikipedia), ODC-BY-1.0 (MC4), CC BY 4.0 (Språkbanken)
+- **Data Sources:** Wikimedia Foundation, BBC Somali, HuggingFace, Språkbanken (University of Gothenburg), Apify (TikTok scraping)
+- **Licenses:** CC-BY-SA-3.0 (Wikipedia), ODC-BY-1.0 (MC4), CC BY 4.0 (Språkbanken), TikTok Terms of Service
 
 ---
 
-**Last Updated:** 2025-10-29
+**Last Updated:** 2025-10-31

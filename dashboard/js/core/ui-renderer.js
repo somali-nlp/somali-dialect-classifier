@@ -56,6 +56,19 @@ const SOURCE_METADATA = {
                 <path d="M22 10v6"/>
                 <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>
             </svg>`
+    },
+    'TikTok': {
+        role: 'Social Media Comments',
+        pipeline: 'Apify Scraping',
+        description: 'Captures colloquial Somali from TikTok video comments with diverse dialects.',
+        qualityBenchmark: 0.3,
+        icon: `
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 8v5a5 5 0 0 1-5 5h-1a3 3 0 0 0-3 3"/>
+                <path d="M3 11v5a5 5 0 0 0 5 5h1a3 3 0 0 1 3 3"/>
+                <path d="M21 8l-5-5"/>
+                <path d="M21 3v5h-5"/>
+            </svg>`
     }
 };
 
@@ -82,6 +95,7 @@ function getMetadataKey(sourceName) {
     if (sourceName.includes('BBC')) return 'BBC';
     if (sourceName.includes('HuggingFace')) return 'HuggingFace';
     if (sourceName.includes('Spr')) return 'Språkbanken';
+    if (sourceName.includes('TikTok')) return 'TikTok';
     return sourceName;
 }
 
