@@ -311,18 +311,15 @@ python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus cilmi
 **Domain**: Social Media
 
 ```bash
-# Create video URLs file
-cat > videos.txt <<EOF
-https://www.tiktok.com/@user/video/123
-https://www.tiktok.com/@user/video/456
-EOF
+# Use the pre-configured URLs file (contains 5 verified URLs)
+tiktoksom-download --video-urls data/tiktok_urls.txt
 
-# Run TikTok pipeline
-tiktoksom-download --video-urls videos.txt
+# Or add your own URLs to data/tiktok_urls.txt and run
+tiktoksom-download --video-urls data/tiktok_urls.txt
 
 # Or with orchestration
 somali-orchestrate --pipeline tiktok \
-  --tiktok-video-urls videos.txt \
+  --tiktok-video-urls data/tiktok_urls.txt \
   --tiktok-api-token YOUR_TOKEN
 ```
 

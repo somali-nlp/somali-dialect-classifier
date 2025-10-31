@@ -121,7 +121,7 @@ SDC_SCRAPING__TIKTOK__MAX_COMMENTS_PER_VIDEO=500  # per-video limit
 
 Create a plain text file with one URL per line:
 
-**Example `videos.txt`:**
+**Example `data/tiktok_urls.txt`:**
 ```
 https://www.tiktok.com/@somaliuser1/video/7123456789012345678
 https://www.tiktok.com/@somaliuser2/video/7234567890123456789
@@ -148,7 +148,7 @@ Or use JSON format for metadata:
 ### Step 2: Run TikTok Scraper
 
 ```bash
-tiktoksom-download --video-urls videos.txt
+tiktoksom-download --video-urls data/tiktok_urls.txt
 ```
 
 **What happens:**
@@ -188,13 +188,13 @@ Control how many comments to scrape:
 
 ```bash
 # Limit total comments across all videos
-tiktoksom-download --video-urls videos.txt --max-comments 10000
+tiktoksom-download --video-urls data/tiktok_urls.txt --max-comments 10000
 
 # Limit comments per video
-tiktoksom-download --video-urls videos.txt --max-per-video 500
+tiktoksom-download --video-urls data/tiktok_urls.txt --max-per-video 500
 
 # Both limits (whichever hits first)
-tiktoksom-download --video-urls videos.txt --max-comments 10000 --max-per-video 500
+tiktoksom-download --video-urls data/tiktok_urls.txt --max-comments 10000 --max-per-video 500
 ```
 
 ### Cost Management Strategies
@@ -203,14 +203,14 @@ tiktoksom-download --video-urls videos.txt --max-comments 10000 --max-per-video 
 
 ```bash
 # Small test run (100 comments, ~$0.10)
-tiktoksom-download --video-urls test_videos.txt --max-comments 100
+tiktoksom-download --video-urls data/test_tiktok_urls.txt --max-comments 100
 
 # Phased collection (collect in batches)
-tiktoksom-download --video-urls batch1_videos.txt --max-comments 5000
-tiktoksom-download --video-urls batch2_videos.txt --max-comments 5000
+tiktoksom-download --video-urls data/batch1_tiktok_urls.txt --max-comments 5000
+tiktoksom-download --video-urls data/batch2_tiktok_urls.txt --max-comments 5000
 
 # Target collection (30k comments = ~$39)
-tiktoksom-download --video-urls curated_videos.txt --max-comments 30000
+tiktoksom-download --video-urls data/tiktok_urls.txt --max-comments 30000
 ```
 
 **Tips:**
@@ -225,11 +225,11 @@ Combine TikTok with other data sources:
 
 ```bash
 # Run TikTok only
-somali-orchestrate --pipeline tiktok --tiktok-video-urls videos.txt
+somali-orchestrate --pipeline tiktok --tiktok-video-urls data/tiktok_urls.txt
 
 # Run TikTok + Wikipedia + BBC
 somali-orchestrate --pipeline all \
-  --tiktok-video-urls videos.txt \
+  --tiktok-video-urls data/tiktok_urls.txt \
   --max-bbc-articles 100 \
   --skip-sources huggingface,sprakbanken
 ```
@@ -267,7 +267,7 @@ export SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN=apify_api_YOUR_TOKEN
 echo 'SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN=apify_api_YOUR_TOKEN' >> .env
 
 # Verify with --api-token flag:
-tiktoksom-download --video-urls videos.txt --api-token apify_api_YOUR_TOKEN
+tiktoksom-download --video-urls data/tiktok_urls.txt --api-token apify_api_YOUR_TOKEN
 ```
 
 ### Error: "No valid URLs found in file"
@@ -277,13 +277,13 @@ tiktoksom-download --video-urls videos.txt --api-token apify_api_YOUR_TOKEN
 **Solution:**
 ```bash
 # Check file contents
-cat videos.txt
+cat data/tiktok_urls.txt
 
 # Ensure URLs start with https://
 # Valid format: https://www.tiktok.com/@username/video/1234567890
 
 # Remove comments and empty lines
-grep -v '^#' videos.txt | grep -v '^$' > videos_clean.txt
+grep -v '^#' data/tiktok_urls.txt | grep -v '^$' > data/tiktok_urls_clean.txt
 ```
 
 ### Error: "Run FAILED"
@@ -323,7 +323,7 @@ curl -I https://api.apify.com/v2
 SDC_SCRAPING__TIKTOK__MAX_WAIT_TIME=7200  # 2 hours
 
 # Retry with exponential backoff
-tiktoksom-download --video-urls videos.txt --force
+tiktoksom-download --video-urls data/tiktok_urls.txt --force
 ```
 
 ---

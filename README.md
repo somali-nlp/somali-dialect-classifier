@@ -65,7 +65,7 @@ wikisom-download                          # Wikipedia Somali
 bbcsom-download --max-articles 100       # BBC Somali News
 hfsom-download mc4 --max-records 10000   # HuggingFace MC4
 spraksom-download --corpus all           # Språkbanken corpora
-tiktoksom-download --video-urls videos.txt  # TikTok comments (requires Apify account)
+tiktoksom-download --video-urls data/tiktok_urls.txt  # TikTok comments (requires Apify account)
 
 # Or orchestrate all pipelines together
 somali-orchestrate --pipeline all
@@ -166,17 +166,17 @@ somali-orchestrate --pipeline sprakbanken --sprakbanken-corpus somali-ogaden
 # Requires Apify account and API token
 # See docs/howto/tiktok-integration.md for setup
 
-# Create video URLs file
-echo "https://www.tiktok.com/@user/video/123" > videos.txt
+# Use the pre-configured URLs file (contains 5 verified URLs)
+tiktoksom-download --video-urls data/tiktok_urls.txt
 
-# Download comments from videos
-tiktoksom-download --video-urls videos.txt
+# Or add your own URLs to data/tiktok_urls.txt
+# Format: one URL per line, https://www.tiktok.com/@user/video/ID
 
 # With limits
-tiktoksom-download --video-urls videos.txt --max-comments 10000
+tiktoksom-download --video-urls data/tiktok_urls.txt --max-comments 10000
 
 # Use with orchestrator
-somali-orchestrate --pipeline tiktok --tiktok-video-urls videos.txt --tiktok-api-token YOUR_TOKEN
+somali-orchestrate --pipeline tiktok --tiktok-video-urls data/tiktok_urls.txt --tiktok-api-token YOUR_TOKEN
 ```
 
 **Note:** TikTok scraping costs $1 per 1,000 comments via Apify. See [Cost Analysis](docs/cost-analysis/tiktok-apify-costs.md) for budget planning.

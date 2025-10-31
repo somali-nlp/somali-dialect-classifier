@@ -1,0 +1,27 @@
+# TikTok Video URLs for Somali Dialect Data Collection
+#
+# These URLs were used in the test run (2025-10-28) that successfully scraped
+# 1,111 comments with 303 linguistic comments (27.3% yield after emoji filtering).
+#
+# Format: One URL per line
+# URL structure: https://www.tiktok.com/@username/video/VIDEO_ID
+#
+# Usage:
+#   tiktoksom-download --video-urls data/tiktok_urls.txt
+#   somali-orchestrate --pipeline tiktok --tiktok-video-urls data/tiktok_urls.txt
+#
+# Cost estimation: ~$1 per 1,000 comments scraped
+# Expected yield: ~33% linguistic content (67% emoji-only filtered)
+#
+# ---
+# Verified Working URLs (Scraped 2025-10-28):
+
+https://www.tiktok.com/@loosey8.1/video/7564865308406648086
+https://www.tiktok.com/@faatima_qurux04/video/7564285346972847371
+https://www.tiktok.com/@mosaalax.1/video/7560639879516785937
+https://www.tiktok.com/@allaayahdeek/video/7565125454806535480
+https://www.tiktok.com/@apazmohametezmail/video/7559134450144005388
+
+# ---
+# Add more URLs below (one per line):
+# https://www.tiktok.com/@username/video/VIDEO_ID
