@@ -6,20 +6,17 @@ This script scrapes Somali comments from TikTok videos using Apify's
 TikTok Comments Scraper actor.
 
 Usage:
-    # Create video URLs file
-    cat > videos.txt <<EOF
-    https://www.tiktok.com/@user/video/123
-    https://www.tiktok.com/@user/video/456
-    EOF
+    # Use the pre-configured URLs file (contains 5 verified URLs)
+    tiktoksom-download --video-urls data/tiktok_urls.txt
 
-    # Download and process comments
-    python -m somali_dialect_classifier.cli.download_tiktoksom --video-urls videos.txt
+    # Or add your own URLs to data/tiktok_urls.txt
+    # Format: one URL per line, https://www.tiktok.com/@user/video/ID
 
     # With comment limits
-    python -m somali_dialect_classifier.cli.download_tiktoksom --video-urls videos.txt --max-comments 10000
+    tiktoksom-download --video-urls data/tiktok_urls.txt --max-comments 10000
 
     # Force reprocessing
-    python -m somali_dialect_classifier.cli.download_tiktoksom --video-urls videos.txt --force
+    tiktoksom-download --video-urls data/tiktok_urls.txt --force
 """
 
 import argparse
