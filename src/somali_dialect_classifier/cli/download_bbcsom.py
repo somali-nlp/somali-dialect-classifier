@@ -73,14 +73,14 @@ def main() -> None:
     parser.add_argument(
         '--min-delay',
         type=int,
-        default=3,
-        help='Minimum delay between requests in seconds (default: 3)'
+        default=1,
+        help='Minimum delay between requests in seconds (default: 1)'
     )
     parser.add_argument(
         '--max-delay',
         type=int,
-        default=6,
-        help='Maximum delay between requests in seconds (default: 6)'
+        default=3,
+        help='Maximum delay between requests in seconds (default: 3)'
     )
     parser.add_argument(
         '--force',

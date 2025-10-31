@@ -666,7 +666,7 @@ class BBCSomaliProcessor(BasePipeline):
             article_links = self._extract_article_links_from_soup(homepage_soup)
 
             self.logger.info(f"  ✓ Homepage: {len(article_links)} articles")
-            time.sleep(random.uniform(2, 4))
+            time.sleep(random.uniform(1, 2))
 
             return article_links, homepage_soup
 
@@ -708,7 +708,7 @@ class BBCSomaliProcessor(BasePipeline):
                 added = len(article_links) - before_count
                 self.logger.info(f"  ✓ {section_name}: +{added} articles")
 
-                time.sleep(random.uniform(2, 4))
+                time.sleep(random.uniform(1, 2))
 
             except (requests.RequestException, ValueError) as e:
                 self.logger.warning(f"  ✗ {section_name}: {e}")

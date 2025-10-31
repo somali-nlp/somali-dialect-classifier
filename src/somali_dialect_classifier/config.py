@@ -381,8 +381,8 @@ else:
         check_frequency_hours: int = 24
 
         # Rate limiting configuration
-        delay_range: tuple = (3, 6)
-        max_requests_per_hour: Optional[int] = 60
+        delay_range: tuple = (1, 3)
+        max_requests_per_hour: Optional[int] = 100
         backoff_multiplier: float = 2.0
         max_backoff: float = 300.0
         jitter: bool = True
