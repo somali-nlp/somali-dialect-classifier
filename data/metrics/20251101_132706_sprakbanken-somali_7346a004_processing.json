@@ -1,8 +1,8 @@
 {
   "_schema_version": "3.0",
   "_pipeline_type": "file_processing",
-  "_timestamp": "2025-10-29T16:59:38.144813+00:00",
-  "_run_id": "20251029_165927_sprakbanken-somali_ed7d70d2",
+  "_timestamp": "2025-11-01T13:27:20.518578+00:00",
+  "_run_id": "20251101_132706_sprakbanken-somali_7346a004",
   "_source": "Sprakbanken-Somali",
   "layered_metrics": {
     "connectivity": {
@@ -12,8 +12,8 @@
       "connection_error": null
     },
     "extraction": {
-      "files_discovered": 1,
-      "files_processed": 1,
+      "files_discovered": 2,
+      "files_processed": 2,
       "files_failed": 0,
       "records_extracted": 5053,
       "extraction_errors": {}
@@ -35,10 +35,10 @@
   },
   "legacy_metrics": {
     "snapshot": {
-      "timestamp": "2025-10-29T16:59:38.144813+00:00",
-      "run_id": "20251029_165927_sprakbanken-somali_ed7d70d2",
+      "timestamp": "2025-11-01T13:27:20.518578+00:00",
+      "run_id": "20251101_132706_sprakbanken-somali_7346a004",
       "source": "Sprakbanken-Somali",
-      "duration_seconds": 10.629185199737549,
+      "duration_seconds": 14.374915838241577,
       "pipeline_type": "file_processing",
       "urls_discovered": 0,
       "urls_fetched": 0,
@@ -46,8 +46,8 @@
       "urls_failed": 0,
       "urls_skipped": 0,
       "urls_deduplicated": 0,
-      "files_discovered": 1,
-      "files_processed": 1,
+      "files_discovered": 2,
+      "files_processed": 2,
       "records_extracted": 5053,
       "datasets_opened": 0,
       "records_fetched": 0,
@@ -65,8 +65,9 @@
       "error_types": {},
       "fetch_durations_ms": [],
       "process_durations_ms": [
-        7065,
-        7066
+        7417,
+        210,
+        7636
       ],
       "text_lengths": [
         48,
@@ -1083,12 +1084,12 @@
       "fetch_success_rate": 1.0,
       "fetch_failure_rate": 0.0,
       "process_duration_stats": {
-        "min": 7065,
-        "max": 7066,
-        "mean": 7065.5,
-        "median": 7065.5,
-        "p95": 7066,
-        "p99": 7066
+        "min": 210,
+        "max": 7636,
+        "mean": 5087.666666666667,
+        "median": 7417,
+        "p95": 7636,
+        "p99": 7636
       },
       "text_length_stats": {
         "min": 6,
@@ -1098,9 +1099,9 @@
         "total_chars": 133388
       },
       "throughput": {
-        "urls_per_second": 377.1690797239085,
+        "urls_per_second": 278.88858933941447,
         "bytes_per_second": 0.0,
-        "records_per_minute": 22630.14478343451
+        "records_per_minute": 16733.315360364868
       },
       "_metric_semantics": {
         "file_extraction_success_rate": "File-level extraction success (local file I/O, not HTTP)",
