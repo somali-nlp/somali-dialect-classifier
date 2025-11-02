@@ -141,31 +141,60 @@ function getSourceTargetShare() {
         'TikTok': 0.0
     };
 
-    try {
-        const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
-        const shareTargets = metadata?.source_mix_targets?.share || metadata?.source_mix_targets || {};
-        const normalized = { ...defaultShare };
+    const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
+    const shareTargets = metadata?.source_mix_targets?.share;
+    const volumeTargets = metadata?.source_mix_targets?.volumes;
 
+    const normalized = {};
+    let populated = false;
+
+    if (shareTargets && Object.keys(shareTargets).length > 0) {
         Object.entries(shareTargets).forEach(([key, value]) => {
             const normalizedKey = normalizeSourceName(key);
             const numericValue = Number(value);
             if (Number.isFinite(numericValue)) {
                 normalized[normalizedKey] = numericValue;
+                populated = true;
             }
         });
-
-        cachedSourceTargetShare = normalized;
-        if (metadata?.source_mix_targets?.volumes) {
+        if (volumeTargets && Object.keys(volumeTargets).length > 0) {
             cachedSourceTargetVolumes = Object.fromEntries(
-                Object.entries(metadata.source_mix_targets.volumes).map(([key, value]) => [
+                Object.entries(volumeTargets).map(([key, value]) => [
                     normalizeSourceName(key),
                     value
                 ])
             );
         }
-    } catch (error) {
-        console.warn('Failed to load source mix targets from metadata, using defaults:', error);
+    }
+
+    if (!populated && volumeTargets && Object.keys(volumeTargets).length > 0) {
+        const normalizedVolumes = Object.fromEntries(
+            Object.entries(volumeTargets).map(([key, value]) => [
+                normalizeSourceName(key),
+                Number(value) || 0
+            ])
+        );
+        const totalVolume = Object.values(normalizedVolumes).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        if (totalVolume > 0) {
+            Object.entries(normalizedVolumes).forEach(([key, value]) => {
+                normalized[key] = (Number(value) || 0) / totalVolume;
+            });
+            cachedSourceTargetVolumes = normalizedVolumes;
+            populated = true;
+        }
+    } else if (volumeTargets && Object.keys(volumeTargets).length > 0) {
+        cachedSourceTargetVolumes = Object.fromEntries(
+            Object.entries(volumeTargets).map(([key, value]) => [
+                normalizeSourceName(key),
+                value
+            ])
+        );
+    }
+
+    if (!populated) {
         cachedSourceTargetShare = defaultShare;
+    } else {
+        cachedSourceTargetShare = { ...defaultShare, ...normalized };
     }
 
     return cachedSourceTargetShare;
@@ -918,8 +947,9 @@ function createIngestionVelocityChart(metricsData) {
         }),
         borderColor: getSourceColor(source),
         borderWidth: 1,
-        borderRadius: 8,
-        stack: 'records'
+        borderRadius: 6,
+        barPercentage: 0.75,
+        categoryPercentage: 0.7
     }));
 
     datasets.push({
@@ -984,13 +1014,13 @@ function createIngestionVelocityChart(metricsData) {
             },
             scales: {
                 x: {
-                    stacked: true,
+                    stacked: false,
                     grid: {
                         display: false
                     }
                 },
                 y: {
-                    stacked: true,
+                    stacked: false,
                     beginAtZero: true,
                     ticks: {
                         callback: value => value.toLocaleString()

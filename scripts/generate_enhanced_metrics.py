@@ -416,7 +416,7 @@ def main():
     source_mix_share = {}
     source_mix_volumes = {}
     source_mix_config = {}
-    targets_path = project_root / "docs" / "reference" / "source_mix_targets.json"
+    targets_path = project_root / "dashboard" / "data" / "source_mix_targets.json"
     if targets_path.exists():
         try:
             with open(targets_path, 'r', encoding='utf-8') as f:
