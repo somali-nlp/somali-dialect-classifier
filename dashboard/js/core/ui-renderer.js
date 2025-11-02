@@ -665,7 +665,8 @@ export function populatePerformanceMetrics() {
         'Wikipedia': metricsData.metrics.find(m => m.source.includes('Wikipedia')),
         'BBC': metricsData.metrics.find(m => m.source.includes('BBC')),
         'HuggingFace': metricsData.metrics.find(m => m.source.includes('HuggingFace')),
-        'Språkbanken': metricsData.metrics.find(m => m.source.includes('Sprakbanken'))
+        'Språkbanken': metricsData.metrics.find(m => m.source.includes('Sprakbanken')),
+        'TikTok': metricsData.metrics.find(m => m.source.includes('TikTok'))
     };
 
     // Update Wikipedia card

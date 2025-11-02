@@ -146,6 +146,7 @@ function getSourceTargetShare() {
 
         cachedSourceTargetShare = normalized;
     } catch (error) {
+        console.warn('Failed to load source mix targets from metadata, using defaults:', error);
         cachedSourceTargetShare = defaults;
     }
 
@@ -254,7 +255,7 @@ function computePipelineStageTotals(metrics = []) {
 
         const filteredTotal = Object.values(metric.filter_breakdown || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
         const discovered = Number(metric.urls_discovered) || 0;
-        const fetched = Number(metric.urls_fetched) || discovered;
+        const fetched = Number(metric.urls_fetched) || 0;
         const extracted = Number(metric.records_extracted) || Number(metric.records_written) || 0;
         const written = Number(metric.records_written) || 0;
         const qualityReceived = written + filteredTotal;
