@@ -626,6 +626,10 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             if not cleaned:
                 records_filtered += 1
                 filter_stats["empty_after_cleaning"] += 1
+
+                # Record filter reason in metrics if available
+                if hasattr(self, 'metrics') and self.metrics is not None:
+                    self.metrics.record_filter_reason("empty_after_cleaning")
                 continue
 
             # Execute record filters
@@ -641,6 +645,10 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                         filter_stats[f"filtered_by_{filter_name}"] += 1
                         records_filtered += 1
                         passed_all_filters = False
+
+                        # Record filter reason in metrics if available
+                        if hasattr(self, 'metrics') and self.metrics is not None:
+                            self.metrics.record_filter_reason(filter_name)
                         break
 
                     filter_metadata.update(metadata_updates)

@@ -67,7 +67,7 @@ hfsom-download mc4 --max-records 10000   # HuggingFace MC4
 spraksom-download --corpus all           # Språkbanken corpora
 tiktoksom-download --video-urls data/tiktok_urls.txt  # TikTok comments (requires Apify account)
 
-# Or orchestrate all pipelines together
+# Or orchestrate all pipelines together (TikTok auto-includes if data/tiktok_urls.txt exists)
 somali-orchestrate --pipeline all
 ```
 
@@ -175,8 +175,11 @@ tiktoksom-download --video-urls data/tiktok_urls.txt
 # With limits
 tiktoksom-download --video-urls data/tiktok_urls.txt --max-comments 10000
 
-# Use with orchestrator
-somali-orchestrate --pipeline tiktok --tiktok-video-urls data/tiktok_urls.txt --tiktok-api-token YOUR_TOKEN
+# Use with orchestrator (uses data/tiktok_urls.txt by default)
+somali-orchestrate --pipeline tiktok
+
+# Or specify custom URL file
+somali-orchestrate --pipeline tiktok --tiktok-video-urls /custom/path.txt
 ```
 
 **Note:** TikTok scraping costs $1 per 1,000 comments via Apify. See [Cost Analysis](docs/cost-analysis/tiktok-apify-costs.md) for budget planning.

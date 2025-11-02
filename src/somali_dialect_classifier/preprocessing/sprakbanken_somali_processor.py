@@ -135,17 +135,22 @@ class SprakbankenSomaliProcessor(BasePipeline):
             force: Force reprocessing even if output files exist
             batch_size: Batch size for silver dataset writing
         """
-        # Validate corpus_id
-        if corpus_id != "all" and corpus_id not in CORPUS_INFO:
-            raise ValueError(
-                f"Unknown corpus_id: {corpus_id}. "
-                f"Available: {list(CORPUS_INFO.keys())} or 'all'"
-            )
-
         self.corpus_id = corpus_id
-        self.corpora_to_process = (
-            list(CORPUS_INFO.keys()) if corpus_id == "all" else [corpus_id]
-        )
+        # Support comma-separated corpus IDs: "somali-cilmi,somali-cb"
+        if corpus_id == "all":
+            self.corpora_to_process = list(CORPUS_INFO.keys())
+        elif "," in corpus_id:
+            self.corpora_to_process = [c.strip() for c in corpus_id.split(",")]
+        else:
+            self.corpora_to_process = [corpus_id]
+
+        # Validate each corpus ID in the list
+        for cid in self.corpora_to_process:
+            if cid not in CORPUS_INFO:
+                raise ValueError(
+                    f"Unknown corpus_id: {cid}. "
+                    f"Available: {list(CORPUS_INFO.keys())} or 'all'"
+                )
 
         # Load config FIRST
         config = get_config()
@@ -549,7 +554,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         """Extract text from sentence element."""
         tokens = []
         for token in sentence_elem.findall('.//token'):
-            word = token.get('word', '')
+            word = token.text or ''
             if word:
                 tokens.append(word)
         return ' '.join(tokens)

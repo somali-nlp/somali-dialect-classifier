@@ -42,7 +42,7 @@ class BBCSomaliProcessor(BasePipeline):
     BBC-specific scraping logic with ethical rate limiting.
     """
 
-    def __init__(self, max_articles: Optional[int] = None, delay_range: tuple = (3, 6), force: bool = False):
+    def __init__(self, max_articles: Optional[int] = None, delay_range: tuple = (1, 3), force: bool = False):
         """
         Initialize BBC Somali processor.
 

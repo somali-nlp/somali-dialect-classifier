@@ -1,17 +1,18 @@
 # Processing Pipelines Guide
 
-**Last Updated**: 2025-10-19
+**Last Updated**: 2025-11-01
 
 This guide provides step-by-step walkthroughs for processing data from each supported source.
 
 ## Overview
 
-The Somali Dialect Classifier supports **four primary data sources**, all integrated with production MLOps infrastructure:
+The Somali Dialect Classifier supports **five primary data sources**, all integrated with production MLOps infrastructure:
 
 1. **Wikipedia-Somali** - Encyclopedia articles (formal, educational content)
 2. **BBC-Somali** - News articles (journalistic, current events)
 3. **HuggingFace Datasets** - Large-scale web corpora (MC4 only)
 4. **Språkbanken Corpora** - Academic corpora (23 diverse corpora from University of Gothenburg)
+5. **TikTok Comments** - Social media comments (colloquial, conversational Somali)
 
 All processors follow the same three-phase pipeline with integrated observability:
 
@@ -22,6 +23,56 @@ All processors follow the same three-phase pipeline with integrated observabilit
 **MLOps Infrastructure:** All processors include structured logging, metrics collection, crawl ledger state tracking, deduplication, and automated quality reporting.
 
 **Note**: Each source has a dedicated integration guide with comprehensive documentation. This guide provides quick-start examples and comparisons. For detailed documentation, see the integration guides linked below.
+
+## Quick Start
+
+### Run Individual Pipelines
+
+```bash
+# Wikipedia (formal encyclopedia content)
+wikisom-download
+
+# BBC Somali (news articles)
+bbcsom-download --max-articles 100
+
+# HuggingFace MC4 (web corpus)
+hfsom-download mc4 --max-records 10000
+
+# Språkbanken (academic corpora)
+python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus all
+
+# TikTok (social media comments)
+tiktoksom-download --video-urls data/tiktok_urls.txt
+```
+
+### Orchestrate Multiple Pipelines
+
+```bash
+# Run ALL five sources (Wikipedia, BBC, HuggingFace, Språkbanken, TikTok)
+somali-orchestrate --pipeline all \
+  --max-bbc-articles 100 \
+  --max-hf-records 10000 \
+  --tiktok-video-urls data/tiktok_urls.txt
+
+# Run specific sources only
+somali-orchestrate --pipeline all \
+  --skip-sources huggingface,sprakbanken
+
+# Run TikTok only
+somali-orchestrate --pipeline tiktok \
+  --tiktok-video-urls data/tiktok_urls.txt
+
+# Combine formal and colloquial sources
+somali-orchestrate --pipeline all \
+  --skip-sources huggingface \
+  --max-bbc-articles 50
+```
+
+**Note:** TikTok pipeline requires:
+- Apify API token (set via `SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN` env var)
+- Video URLs file (default: `data/tiktok_urls.txt`)
+
+---
 
 ## Wikipedia-Somali Pipeline
 
@@ -128,6 +179,7 @@ from somali_dialect_classifier.preprocessing import BBCSomaliProcessor
 
 processor = BBCSomaliProcessor(max_articles=100, force=False)
 processor.run()
+# Expected duration: ~85-100 minutes for 100 articles
 ```
 
 ### Step-by-Step
@@ -139,21 +191,32 @@ processor = BBCSomaliProcessor(
     force=False
 )
 
-# Phase 1: Discover article URLs
+# Phase 1: Discover article URLs (fast - ~1-2 minutes)
 raw_path = processor.download()
 # Creates: data/raw/source=BBC-Somali/date_accessed=2025-10-16/bbc-somali_20251016_150230_raw_article-links.json
 
-# Phase 2: Scrape articles
+# Phase 2: Scrape articles (longest phase - ~50-60 seconds per article)
 staging_path = processor.extract()
 # Creates: data/staging/source=BBC-Somali/date_accessed=2025-10-16/bbc-somali_20251016_150230_staging_articles.jsonl
+# Expected duration for 100 articles: ~85-100 minutes
 
-# Phase 3: Process and enrich
+# Phase 3: Process and enrich (fast - ~2-5 minutes for 100 articles)
 processed_path = processor.process()
 # Creates:
 #   - data/processed/source=BBC-Somali/date_accessed=2025-10-16/bbc-somali_20251016_150230_processed_cleaned.txt
 #   - data/processed/silver/source=BBC-Somali/date_accessed=2025-10-16/bbc-somali_20251016_150230_silver_part-0000.parquet
 #   - data/processed/silver/source=BBC-Somali/date_accessed=2025-10-16/bbc-somali_20251016_150230_silver_metadata.json
 ```
+
+### Performance Expectations
+
+**Scraping is intentionally slow due to external factors:**
+- **Per article**: 50-60 seconds average (BBC server response time + network latency)
+- **10 articles**: ~10 minutes (testing/development)
+- **50 articles**: ~45-50 minutes (small datasets)
+- **100 articles**: ~85-100 minutes (production datasets)
+
+The primary bottleneck is BBC's server processing time (~45-55s per article), not code efficiency. This is expected and normal for ethical web scraping. See the [BBC Integration Guide](bbc-integration.md#performance-characteristics) for detailed performance analysis.
 
 ### Filters Applied
 
@@ -510,6 +573,217 @@ python -m somali_dialect_classifier.cli.download_sprakbankensom --info ogaden
 
 ---
 
+## TikTok Comments Pipeline
+
+### Quick Start
+
+```bash
+# Download comments from video URLs
+tiktoksom-download --video-urls data/tiktok_urls.txt
+
+# Or use orchestration
+somali-orchestrate --pipeline tiktok \
+  --tiktok-video-urls data/tiktok_urls.txt
+```
+
+### Prerequisites
+
+1. **Apify API Token**:
+   ```bash
+   # Get token from https://console.apify.com/account/integrations
+   export SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN=apify_api_YOUR_TOKEN
+
+   # Or add to .env file
+   echo 'SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN=apify_api_YOUR_TOKEN' >> .env
+   ```
+
+2. **Video URLs File**:
+   Create `data/tiktok_urls.txt` with one URL per line:
+   ```
+   https://www.tiktok.com/@somaliuser1/video/7123456789012345678
+   https://www.tiktok.com/@somaliuser2/video/7234567890123456789
+   https://www.tiktok.com/@somaliuser3/video/7345678901234567890
+   ```
+
+### Step-by-Step
+
+```python
+from somali_dialect_classifier.preprocessing import TikTokSomaliProcessor
+
+# Initialize processor
+processor = TikTokSomaliProcessor(
+    video_urls_file="data/tiktok_urls.txt",
+    max_total_comments=30000,  # Total budget across all videos
+    max_comments_per_video=500,  # Per-video limit
+    apify_api_token="apify_api_YOUR_TOKEN",  # Or set via env var
+    force=False
+)
+
+# Phase 1: Prepare video URLs manifest
+manifest_path = processor.download()
+# Creates: data/raw/source=TikTok-Somali/date_accessed=2025-10-31/tiktok-somali_20251031_064341_raw_manifest.json
+
+# Phase 2: Scrape comments via Apify
+staging_path = processor.extract()
+# Creates:
+#   - data/raw/source=TikTok-Somali/date_accessed=2025-10-31/tiktok-somali_20251031_064341_raw_apify-dataset.json
+#   - data/staging/source=TikTok-Somali/date_accessed=2025-10-31/tiktok-somali_20251031_064341_staging_comments.jsonl
+# Expected duration: ~2 minutes for 5 videos (~1,200 comments)
+
+# Phase 3: Process and clean
+processed_path = processor.process()
+# Creates:
+#   - data/processed/source=TikTok-Somali/date_accessed=2025-10-31/tiktok-somali_20251031_064341_processed_cleaned.txt
+#   - data/processed/silver/source=TikTok-Somali/date_accessed=2025-10-31/tiktok-somali_20251031_064341_silver_part-0000.parquet
+#   - data/processed/silver/source=TikTok-Somali/date_accessed=2025-10-31/tiktok-somali_20251031_064341_silver_metadata.json
+```
+
+### Performance Expectations
+
+**Fast scraping via Apify API:**
+- **5 videos**: ~2 minutes (~1,200 comments)
+- **10 videos**: ~3-4 minutes (~2,400 comments)
+- **50 videos**: ~10-15 minutes (~12,000 comments)
+
+**Actual production run (2025-10-31):**
+- 5 videos → 1,176 raw comments → 321 linguistic comments (27% emoji-only filtered)
+- Total time: ~2 minutes
+- Cost: ~$0.01-0.05
+
+The primary speed factor is Apify's actor execution time. The scraper is significantly faster than BBC scraping because it uses an API actor rather than direct web scraping.
+
+### Filters Applied
+
+1. **emoji_only_filter** - Removes comments with only emojis (e.g., "😂😂😂")
+2. **min_length_filter** (threshold=3 characters) - Very permissive for social media
+3. **langid_filter** (disabled by default) - Optional language detection
+4. **exact_duplicate_removal** - Fuzzy deduplication disabled to preserve paid data
+
+**Note:** TikTok pipeline uses minimal filtering because you pay for every comment scraped. The goal is to preserve as much linguistic data as possible.
+
+### Data Preservation Strategy
+
+**Key principle:** You pay for every comment, so we keep them ALL!
+
+- **No fuzzy deduplication:** MinHash disabled (only exact duplicates removed)
+- **Minimal filtering:** Only emoji-only comments removed
+- **All metadata preserved:** Author, timestamps, likes, replies
+- **Expected yield:** ~73% linguistic comments (27% emoji-only)
+
+### Cost Management
+
+```bash
+# Small test run (100 comments, ~$0.10)
+tiktoksom-download --video-urls data/test_urls.txt --max-comments 100
+
+# Budget-conscious collection (5k comments, ~$5)
+tiktoksom-download --video-urls data/tiktok_urls.txt --max-comments 5000
+
+# Production collection (30k comments, ~$30-40)
+tiktoksom-download --video-urls data/tiktok_urls.txt --max-comments 30000
+
+# Limit per-video to avoid over-collecting from viral videos
+tiktoksom-download --video-urls data/tiktok_urls.txt \
+  --max-comments 30000 \
+  --max-per-video 500
+```
+
+**Pricing:**
+- **Raw cost:** $1 per 1,000 Apify results
+- **Effective cost:** ~$3.67 per 1,000 linguistic comments (after emoji filtering)
+- **Target budget:** 30,000 comments = ~$39 (within Apify Starter plan)
+
+See [TikTok Cost Analysis](../cost-analysis/tiktok-apify-costs.md) for detailed breakdown.
+
+### Orchestration Integration
+
+TikTok integrates seamlessly with other pipelines via the orchestration CLI:
+
+```bash
+# Run TikTok with Wikipedia and BBC (mix formal + colloquial)
+somali-orchestrate --pipeline all \
+  --skip-sources huggingface,sprakbanken \
+  --max-bbc-articles 100 \
+  --tiktok-video-urls data/tiktok_urls.txt
+
+# TikTok-only via orchestration
+somali-orchestrate --pipeline tiktok \
+  --tiktok-video-urls data/tiktok_urls.txt \
+  --tiktok-api-token YOUR_TOKEN
+
+# All five sources for comprehensive dataset
+somali-orchestrate --pipeline all \
+  --max-bbc-articles 200 \
+  --max-hf-records 50000 \
+  --tiktok-video-urls data/tiktok_urls.txt
+```
+
+**Orchestration parameters:**
+- `--pipeline tiktok` - Run TikTok only
+- `--pipeline all` - Include TikTok with other sources
+- `--tiktok-video-urls PATH` - Path to video URLs file (default: `data/tiktok_urls.txt`)
+- `--tiktok-api-token TOKEN` - Apify API token (optional if set via env var)
+- `--tiktok-user-id ID` - Optional Apify user ID
+
+### MLOps Outputs
+
+Each run produces:
+- **Metrics:** `data/metrics/{run_id}_discovery.json`, `{run_id}_extraction.json`, `{run_id}_processing.json`
+- **Quality Report:** `data/reports/{run_id}_extraction_quality_report.md`, `{run_id}_final_quality_report.md`
+- **Logs:** `logs/tiktok_somali.log` (JSON format with run_id)
+
+Quality report includes:
+- ✅ Health status (Healthy/Warning/Critical)
+- Processing success/failure rates
+- Performance metrics (Apify actor runtime)
+- Comment yield statistics (emoji-only filter rate)
+- Cost tracking and recommendations
+
+### Common Issues
+
+**Issue**: "Apify API token not provided"
+```bash
+# Solution: Set environment variable
+export SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN=apify_api_YOUR_TOKEN
+
+# Or use CLI flag
+tiktoksom-download --video-urls data/tiktok_urls.txt --api-token apify_api_YOUR_TOKEN
+```
+
+**Issue**: "No valid URLs found in file"
+```bash
+# Solution: Check file format
+cat data/tiktok_urls.txt
+
+# Ensure URLs start with https://
+# Valid format: https://www.tiktok.com/@username/video/1234567890
+
+# Remove comments and empty lines
+grep -v '^#' data/tiktok_urls.txt | grep -v '^$' > data/tiktok_urls_clean.txt
+```
+
+**Issue**: Apify run failed
+```bash
+# Solution: Check Apify console
+# Visit https://console.apify.com/actors/runs
+# Common causes:
+#   - Invalid video URLs (not public/accessible)
+#   - Age-restricted content
+#   - Rate limits (reduce video count)
+#   - Insufficient Apify credits
+```
+
+**Issue**: Low comment yield
+```bash
+# Solution: Curate better video URLs
+# - Select videos with 100+ comments
+# - Verify Somali language content
+# - Check video engagement before adding to list
+# - Mix popular creators and topics
+```
+
+---
+
 ## CLI Usage
 
 All processors have CLI wrappers:
@@ -563,6 +837,24 @@ python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus all
 python -m somali_dialect_classifier.cli.download_sprakbankensom --corpus all --force
 ```
 
+### TikTok
+
+```bash
+# Download comments (uses data/tiktok_urls.txt by default)
+tiktoksom-download --video-urls data/tiktok_urls.txt
+
+# With API token override
+tiktoksom-download --video-urls data/tiktok_urls.txt --api-token apify_api_YOUR_TOKEN
+
+# With comment limits
+tiktoksom-download --video-urls data/tiktok_urls.txt \
+  --max-comments 10000 \
+  --max-per-video 500
+
+# Force reprocessing
+tiktoksom-download --video-urls data/tiktok_urls.txt --force
+```
+
 ---
 
 ## Silver Dataset Schema
@@ -600,26 +892,152 @@ All processors write to a unified silver schema (v2.1):
 ```
 
 **Register field (NEW in v2.1)**:
-- `"formal"` - All 4 current sources (Wikipedia, BBC, HuggingFace MC4, Språkbanken)
-- `"informal"` - Future social media sources (TikTok, etc.)
-- `"colloquial"` - Future conversational/speech sources
+- `"formal"` - Wikipedia, BBC, HuggingFace MC4, Språkbanken
+- `"colloquial"` - TikTok (social media comments)
+- `"informal"` - Future conversational/speech sources
 
 See [Silver Schema Reference](../reference/silver-schema.md) for complete field documentation.
 
 ---
 
+
+---
+
+## Filter Telemetry
+
+### Overview
+
+Filter telemetry tracks which filters reject records and provides counts for each filter reason. This enables:
+
+- **Filter effectiveness monitoring** - Which filters remove most content?
+- **Quality diagnostics** - Why is a specific source underperforming?
+- **Pipeline optimization** - Which filter thresholds should be adjusted?
+
+All processors track filter applications during the quality validation phase. The results are available in three places:
+
+1. **Raw metrics JSON** - `data/metrics/{run_id}_extraction.json` (contains `filter_breakdown`)
+2. **Quality reports** - `data/reports/{run_id}_final_quality_report.md` (human-readable summaries)
+3. **Dashboard** - Quality Insights tab shows filter footprint charts for each source
+
+### Finding Filter Breakdowns
+
+#### In Metrics JSON
+
+```bash
+# View filter breakdown for a specific run
+cat data/metrics/20251101_132706_bbc-somali_e02325d4_extraction.json | jq '.layered_metrics.quality.filter_breakdown'
+
+# Output example:
+# {
+#   "min_length_filter": 45,
+#   "langid_filter": 12,
+#   "dialect_heuristic_filter": 3
+# }
+```
+
+#### In Consolidated Dashboard Data
+
+```bash
+# View all filters across all sources
+cat _site/data/all_metrics.json | jq '.metrics[].filter_breakdown'
+
+# Filter by specific source
+cat _site/data/all_metrics.json | jq '.metrics[] | select(.source == "TikTok-Somali") | .filter_breakdown'
+```
+
+### Filter Catalog
+
+All available filters are defined in the central filter catalog: `src/somali_dialect_classifier/pipeline/filters/catalog.py`
+
+This catalog provides:
+- **Human-readable labels** - "Minimum length (50 chars)" instead of "min_length_filter"
+- **Descriptions** - Why each filter exists and what it checks
+- **Categories** - Filters grouped by type (length, language, content)
+
+For the complete list of available filters, see the [Filter Catalog Reference](../reference/filters.md).
+
+### Adding New Filters
+
+To add a new filter and have it tracked in telemetry:
+
+**Step 1:** Define filter in catalog
+```python
+# src/somali_dialect_classifier/pipeline/filters/catalog.py
+FILTER_CATALOG["my_new_filter"] = (
+    "Filter Label",
+    "Description of what this filter does",
+    "category"  # length, language, content, etc.
+)
+```
+
+**Step 2:** Implement filter logic
+```python
+# In your processor (e.g., wikipedia_somali_processor.py)
+def apply_my_new_filter(text):
+    if some_condition_fails:
+        if hasattr(self, 'metrics') and self.metrics:
+            self.metrics.record_filter_reason("my_new_filter")
+        return None
+    return text
+```
+
+**Step 3:** Add to processor pipeline
+```python
+# Ensure the filter is called during quality validation phase
+text = self.apply_my_new_filter(text)
+```
+
+**Step 4:** Update dashboard labels
+```javascript
+// dashboard/js/core/aggregates.js
+const FILTER_REASON_LABELS = {
+    "my_new_filter": "Filter Label",  // Match catalog label
+    // ... existing filters
+}
+```
+
+### Example Filter Breakdown JSON
+
+```json
+{
+  "_schema_version": "3.0",
+  "_source": "BBC-Somali",
+  "_run_id": "20251101_132706_bbc-somali_e02325d4",
+  "layered_metrics": {
+    "quality": {
+      "records_received": 500,
+      "records_passed_filters": 430,
+      "filter_breakdown": {
+        "min_length_filter": 45,
+        "langid_filter": 15,
+        "dialect_heuristic_filter": 10
+      }
+    }
+  }
+}
+```
+
+### See Also
+
+- **[Metrics Schema Reference](../reference/metrics-schema.md#filter-telemetry)** - Complete `filter_breakdown` field specification
+- **[Filter Catalog Reference](../reference/filters.md)** - All available filters with descriptions
+- **[TikTok Integration Guide](tiktok-integration.md#filter-telemetry)** - TikTok-specific filter stages
+
 ## Comparison by Source
 
-| Aspect | Wikipedia | BBC | HuggingFace | Språkbanken |
-|--------|-----------|-----|-------------|-------------|
-| **Content Type** | Encyclopedia | News | Web scrapes | Academic corpora |
-| **Language Style** | Formal, educational | Journalistic | Informal, varied | Domain-specific |
-| **Size** | ~50k articles | ~500+ articles | ~100k-200k records | 23 corpora (varied sizes) |
-| **License** | CC-BY-SA-3.0 | BBC Terms of Use | ODC-BY-1.0 | CC BY 4.0 |
-| **Update Frequency** | Weekly dumps | Daily (scraping) | Static snapshot | Static corpora |
-| **Metadata Richness** | Medium | High (topics) | Low | Very High (domains, authors, dates) |
-| **Processing Time** | ~5 minutes | ~1 hour (500 articles) | ~1.5 hours (100k) | ~30-60 minutes (all 23) |
-| **Best For** | Formal baseline | Current events, topics | Large-scale training | Domain diversity |
+| Aspect | Wikipedia | BBC | HuggingFace | Språkbanken | TikTok |
+|--------|-----------|-----|-------------|-------------|---------|
+| **Content Type** | Encyclopedia | News | Web scrapes | Academic corpora | Social media comments |
+| **Language Style** | Formal, educational | Journalistic | Informal, varied | Domain-specific | Colloquial, conversational |
+| **Register** | Formal | Formal | Formal | Formal | Colloquial |
+| **Size** | ~50k articles | ~500+ articles | ~100k-200k records | 23 corpora (varied) | 300-1,500 per run |
+| **License** | CC-BY-SA-3.0 | BBC Terms of Use | ODC-BY-1.0 | CC BY 4.0 | TikTok Terms of Service |
+| **Update Frequency** | Weekly dumps | Daily (scraping) | Static snapshot | Static corpora | On-demand (API) |
+| **Metadata Richness** | Medium | High (topics) | Low | Very High (domains) | High (engagement, authors) |
+| **Processing Time** | ~5 minutes | ~10 min (10 articles)<br>~1.5 hrs (100 articles)<br>~7-8 hrs (500 articles) | ~1.5 hours (100k) | ~30-60 min (all 23) | ~2 min (5 videos)<br>~10-15 min (50 videos) |
+| **Performance Note** | Fast (local XML) | Slow (server response)<br>~50-60s per article | Medium (streaming) | Fast (static files) | Fast (API actor) |
+| **Cost** | Free | Free (ethical scraping) | Free | Free | $1 per 1k comments<br>(~$3.67 per 1k linguistic) |
+| **Best For** | Formal baseline | Current events, topics | Large-scale training | Domain diversity | Dialect diversity, colloquial Somali |
 
 ---
 
@@ -631,6 +1049,7 @@ See [Silver Schema Reference](../reference/silver-schema.md) for complete field 
 - **[BBC Integration Guide](bbc-integration.md)** - Ethical web scraping, topic enrichment, and rate limiting
 - **[HuggingFace Integration Guide](huggingface-integration.md)** - Streaming datasets, manifests, and JSONL batching
 - **[Språkbanken Integration Guide](sprakbanken-integration.md)** - All 23 corpora, domain mapping, and metadata extraction
+- **[TikTok Integration Guide](tiktok-integration.md)** - Apify API setup, video curation, cost management, and colloquial Somali collection
 
 ### Other Documentation
 
@@ -642,5 +1061,5 @@ See [Silver Schema Reference](../reference/silver-schema.md) for complete field 
 
 ---
 
-**Last Updated**: 2025-10-20
+**Last Updated**: 2025-11-01
 **Maintainers**: Somali NLP Contributors

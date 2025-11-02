@@ -418,13 +418,17 @@ def run_all_pipelines(
     run_bbc: bool = True,
     run_huggingface: bool = True,
     run_sprakbanken: bool = True,
+    run_tiktok: bool = True,
+    tiktok_video_urls: Optional[List[str]] = None,
+    tiktok_api_token: Optional[str] = None,
+    tiktok_user_id: Optional[str] = None,
     auto_deploy: bool = False,
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
     Flow to orchestrate all data collection pipelines in parallel.
 
     This is the main orchestration flow that coordinates execution of
-    all four data sources with parallel execution where possible.
+    all five data sources with parallel execution where possible.
 
     Args:
         force: Force reprocessing of existing data
@@ -435,6 +439,10 @@ def run_all_pipelines(
         run_bbc: Enable BBC pipeline
         run_huggingface: Enable HuggingFace pipeline
         run_sprakbanken: Enable Språkbanken pipeline
+        run_tiktok: Enable TikTok pipeline
+        tiktok_video_urls: List of TikTok video URLs to scrape
+        tiktok_api_token: Apify API token for TikTok scraping
+        tiktok_user_id: Apify user ID (optional)
         auto_deploy: Automatically deploy dashboard after pipeline completes
 
     Returns:
@@ -466,6 +474,18 @@ def run_all_pipelines(
         if run_sprakbanken:
             results.append(run_sprakbanken_task.submit(corpus_id=sprakbanken_corpus, force=force))
 
+        if run_tiktok and tiktok_video_urls and tiktok_api_token:
+            results.append(run_tiktok_task.submit(
+                video_urls=tiktok_video_urls,
+                apify_api_token=tiktok_api_token,
+                apify_user_id=tiktok_user_id,
+                force=force,
+            ))
+        elif run_tiktok and tiktok_video_urls:
+            logger.warning("TikTok pipeline skipped: API token not provided")
+        elif run_tiktok:
+            logger.warning("TikTok pipeline skipped: video URLs not provided")
+
         # Wait for all results
         completed_results = [result.result() for result in results]
     else:
@@ -488,6 +508,18 @@ def run_all_pipelines(
 
         if run_sprakbanken:
             completed_results.append(run_sprakbanken_task(corpus_id=sprakbanken_corpus, force=force))
+
+        if run_tiktok and tiktok_video_urls and tiktok_api_token:
+            completed_results.append(run_tiktok_task(
+                video_urls=tiktok_video_urls,
+                apify_api_token=tiktok_api_token,
+                apify_user_id=tiktok_user_id,
+                force=force,
+            ))
+        elif run_tiktok and tiktok_video_urls:
+            logger.warning("TikTok pipeline skipped: API token not provided")
+        elif run_tiktok:
+            logger.warning("TikTok pipeline skipped: video URLs not provided")
 
     # Aggregate results
     successful = [r for r in completed_results if r["status"] == "success"]
@@ -581,7 +613,7 @@ def main():
     parser.add_argument(
         "--tiktok-video-urls",
         type=Path,
-        help="Path to TikTok video URLs file (txt or json format)",
+        help="Path to TikTok video URLs file (default: data/tiktok_urls.txt)",
     )
     parser.add_argument(
         "--tiktok-api-token",
@@ -600,6 +632,54 @@ def main():
     if args.pipeline == "all":
         # Determine which pipelines to run based on --skip-sources
         skip_sources = args.skip_sources or []
+
+        # Handle TikTok parameters
+        tiktok_video_urls = None
+        tiktok_api_token = None
+        tiktok_user_id = None
+        run_tiktok_pipeline = "tiktok" not in skip_sources
+
+        if run_tiktok_pipeline:
+            # Load configuration for TikTok
+            from ..config import get_config
+            config = get_config()
+
+            # Get API token (CLI arg > env var)
+            tiktok_api_token = args.tiktok_api_token or config.scraping.tiktok.apify_api_token
+            tiktok_user_id = config.scraping.tiktok.apify_user_id
+
+            # Determine video URLs source (CLI arg > default file location)
+            DEFAULT_TIKTOK_URLS_PATH = Path("data/tiktok_urls.txt")
+            urls_file_path = args.tiktok_video_urls or DEFAULT_TIKTOK_URLS_PATH
+
+            # Load video URLs from file (default or custom path)
+            if urls_file_path.exists():
+                from ..cli.download_tiktoksom import load_video_urls
+                try:
+                    tiktok_video_urls = load_video_urls(urls_file_path)
+                    source_info = "custom path" if args.tiktok_video_urls else "default location"
+                    logger.info(f"TikTok: Loaded {len(tiktok_video_urls)} video URLs from {source_info}: {urls_file_path}")
+                except (FileNotFoundError, ValueError) as e:
+                    logger.error(f"TikTok: Failed to load video URLs from {urls_file_path}: {e}")
+                    logger.warning("TikTok pipeline will be skipped")
+                    run_tiktok_pipeline = False
+            else:
+                if args.tiktok_video_urls:
+                    # User specified a path but file doesn't exist - this is an error
+                    logger.error(f"TikTok: Video URLs file not found: {urls_file_path}")
+                    logger.warning("TikTok pipeline will be skipped")
+                else:
+                    # Default file doesn't exist - this is expected/normal, just skip
+                    logger.info(f"TikTok: Skipping (default URLs file not found: {DEFAULT_TIKTOK_URLS_PATH})")
+                    logger.info(f"TikTok: To enable, create {DEFAULT_TIKTOK_URLS_PATH} or use --tiktok-video-urls")
+                run_tiktok_pipeline = False
+
+            # Validate API token requirement
+            if run_tiktok_pipeline and not tiktok_api_token:
+                logger.warning("TikTok: API token not provided, pipeline will be skipped")
+                logger.info("TikTok: Set SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN or use --tiktok-api-token")
+                run_tiktok_pipeline = False
+
         result = run_all_pipelines(
             force=args.force,
             max_bbc_articles=args.max_bbc_articles,
@@ -609,6 +689,10 @@ def main():
             run_bbc="bbc" not in skip_sources,
             run_huggingface="huggingface" not in skip_sources,
             run_sprakbanken="sprakbanken" not in skip_sources,
+            run_tiktok=run_tiktok_pipeline,
+            tiktok_video_urls=tiktok_video_urls,
+            tiktok_api_token=tiktok_api_token,
+            tiktok_user_id=tiktok_user_id,
             auto_deploy=args.auto_deploy,
         )
     elif args.pipeline == "wikipedia":

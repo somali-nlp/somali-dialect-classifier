@@ -497,6 +497,213 @@ These fields may still appear in legacy_metrics sections for backward compatibil
 }
 ```
 
+
+---
+
+## Filter Telemetry
+
+### Overview
+
+The `filter_breakdown` field within the Quality layer tracks how many records were rejected by each filter. This enables precise diagnosis of which quality checks are removing data.
+
+### Field Specification
+
+**Location:** `layered_metrics.quality.filter_breakdown`
+
+**Type:** Object (map of filter_name → count)
+
+**Required:** No (optional, may be absent if no filters applied)
+
+**Example:**
+```json
+{
+  "min_length_filter": 45,
+  "langid_filter": 15,
+  "dialect_heuristic_filter": 10,
+  "emoji_only_comment": 8,
+  "empty_after_cleaning": 3
+}
+```
+
+### Filter Keys and Labels
+
+All filter keys are defined in the central filter catalog: `src/somali_dialect_classifier/pipeline/filters/catalog.py`
+
+The catalog maps filter keys to human-readable labels:
+
+| Filter Key | Label | Category | Description |
+|------------|-------|----------|-------------|
+| `min_length_filter` | Minimum length (50 chars) | length | Text must be at least 50 characters |
+| `langid_filter` | Language ID (non-Somali) | language | Content must be primarily Somali |
+| `empty_after_cleaning` | Empty after cleaning | content | Text must contain non-whitespace after cleanup |
+| `emoji_only_comment` | Emoji-only comment | content | Removes comments with only emojis (TikTok) |
+| `text_too_short_after_cleanup` | Very short text (<3 chars) | length | Removes very short text (TikTok) |
+| `dialect_heuristic_filter` | Dialect heuristics | dialect | Enriches with dialect markers (not strictly filtering) |
+| `namespace_filter` | Wikipedia namespace exclusion | content | Skips non-article pages (Wikipedia) |
+
+See [Filter Catalog Reference](filters.md) for the complete list.
+
+### Validation Rules
+
+**Constraints:**
+- All counts must be integers >= 0
+- Sum of all filter_breakdown counts ≤ `records_received`
+- Each filter_breakdown entry represents records rejected, not passed
+
+**Validation:**
+```python
+# All counts are non-negative
+assert all(count >= 0 for count in filter_breakdown.values())
+
+# Total rejected <= received
+total_rejected = sum(filter_breakdown.values())
+assert total_rejected <= records_received
+
+# Consistency check
+assert records_passed_filters == records_received - total_rejected
+```
+
+### Examples by Source
+
+#### Web Scraping (BBC-Somali)
+
+```json
+"filter_breakdown": {
+  "min_length_filter": 45,
+  "langid_filter": 15,
+  "dialect_heuristic_filter": 10
+}
+```
+
+#### Encyclopedia (Wikipedia-Somali)
+
+```json
+"filter_breakdown": {
+  "min_length_filter": 450,
+  "langid_filter": 75,
+  "namespace_filter": 25
+}
+```
+
+#### Social Media (TikTok-Somali)
+
+```json
+"filter_breakdown": {
+  "emoji_only_comment": 250,
+  "text_too_short_after_cleanup": 85,
+  "min_length_filter": 45,
+  "langid_filter": 12,
+  "empty_after_cleaning": 8
+}
+```
+
+#### Streaming Dataset (HuggingFace MC4)
+
+```json
+"filter_breakdown": {
+  "min_length_filter": 5000,
+  "langid_filter": 1200
+}
+```
+
+### Complete Example with Context
+
+```json
+{
+  "_schema_version": "3.0",
+  "_source": "TikTok-Somali",
+  "_run_id": "20251101_132706_tiktok-somali_8fa6c534",
+  "_timestamp": "2025-11-01T13:27:06.123456+00:00",
+  "_pipeline_type": "stream_processing",
+
+  "layered_metrics": {
+    "connectivity": {
+      "connection_attempted": true,
+      "connection_successful": true,
+      "connection_duration_ms": 2150.5,
+      "connection_error": null
+    },
+    "extraction": {
+      "http_requests_attempted": 5,
+      "http_requests_successful": 5,
+      "http_status_distribution": {"200": 5},
+      "pages_parsed": 5,
+      "content_extracted": 1200
+    },
+    "quality": {
+      "records_received": 1200,
+      "records_passed_filters": 726,
+      "filter_breakdown": {
+        "emoji_only_comment": 250,
+        "text_too_short_after_cleanup": 85,
+        "min_length_filter": 45,
+        "langid_filter": 12,
+        "empty_after_cleaning": 8
+      }
+    },
+    "volume": {
+      "records_written": 726,
+      "bytes_downloaded": 0,
+      "total_chars": 145000
+    }
+  }
+}
+```
+
+### Interpretation Guide
+
+**High filter counts indicate:**
+- **min_length_filter**: Source has naturally short content (TikTok, tweets) or aggressive curation needed
+- **langid_filter**: Source may have code-switching, transliteration issues, or language detection problems
+- **emoji_only_comment**: Social media source with strong emoji culture (TikTok, Twitter) - expect 20-30%
+- **empty_after_cleaning**: Text normalization is removing all content - may indicate preprocessing issue
+
+**Zero filter counts indicate:**
+- Source content naturally meets all quality thresholds
+- Filters may be too lenient for the source
+- Data quality is consistently high (Wikipedia, professional news)
+
+### Dashboard Integration
+
+The filter_breakdown is used by the dashboard to display:
+- **Filter Footprint chart** - Stacked bar showing rejected vs. passed records
+- **Filter Breakdown table** - Detailed view of each filter's rejection count
+- **Quality Insights narrative** - Human-readable summary of filtering impact
+
+See [Dashboard Architecture](../reference/dashboard-architecture.md) for how filter_breakdown is visualized.
+
+### Adding New Filters
+
+When adding a new filter to the pipeline:
+
+1. **Define in catalog** → `src/somali_dialect_classifier/pipeline/filters/catalog.py`
+2. **Implement filter logic** → Call `metrics.record_filter_reason("new_filter_key")`
+3. **Update dashboard labels** → `dashboard/js/core/aggregates.js`
+4. **Document in schema** → This file (add to table above)
+
+Example:
+```python
+# Step 1: Add to catalog
+FILTER_CATALOG["sentiment_filter"] = (
+    "Negative sentiment",
+    "Removes comments with negative sentiment",
+    "semantic"
+)
+
+# Step 2: Use in processor
+if detect_negative_sentiment(text):
+    self.metrics.record_filter_reason("sentiment_filter")
+    return None
+```
+
+### Cross-References
+
+- **[Filter Catalog Reference](filters.md)** - Complete filter definitions and categories
+- **[Processing Pipelines Guide](../howto/processing-pipelines.md#filter-telemetry)** - How-to for adding new filters
+- **[TikTok Integration Guide](../howto/tiktok-integration.md#filter-telemetry)** - TikTok-specific filter stages
+- **[Quality Layer Specification](#quality-layer)** - Field constraints and validation
+
+## Support
 ## Support
 
 For questions or issues with the schema:

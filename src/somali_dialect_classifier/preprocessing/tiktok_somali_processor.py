@@ -417,10 +417,16 @@ class TikTokSomaliProcessor(BasePipeline):
 
             # If nothing left after removing symbols, it's emoji-only
             if not text_alphanumeric_only:
+                # Track emoji-only filter reason for metrics telemetry
+                if hasattr(self, 'metrics') and self.metrics:
+                    self.metrics.record_filter_reason("emoji_only_comment")
                 return None  # Skip emoji-only comments like "😂😂😂" or "🔥🔥"
 
             # Also skip if text is too short (less than 3 characters of actual text)
             if len(text_alphanumeric_only) < 3:
+                # Track short-text filter reason for metrics telemetry
+                if hasattr(self, 'metrics') and self.metrics:
+                    self.metrics.record_filter_reason("text_too_short_after_cleanup")
                 return None  # Skip very short comments like "!!" or "??"
 
             # Build unique URL for comment (video URL + comment ID)

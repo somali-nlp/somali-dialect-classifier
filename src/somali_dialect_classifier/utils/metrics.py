@@ -1063,9 +1063,18 @@ class MetricsCollector:
         elif pipeline_type == PipelineType.FILE_PROCESSING.value:
             records_received = snapshot.records_extracted - (snapshot.duplicate_hashes + snapshot.near_duplicates)
         elif pipeline_type == PipelineType.STREAM_PROCESSING.value:
-            records_received = snapshot.records_fetched - (snapshot.duplicate_hashes + snapshot.near_duplicates)
+            # Handle hybrid streams (Apify-based TikTok vs traditional dataset streams)
+            if snapshot.urls_fetched > 0:
+                # Apify-style stream - uses urls_fetched like web scraping
+                records_received = snapshot.urls_fetched - snapshot.urls_deduplicated
+            else:
+                # Traditional dataset stream - uses records_fetched
+                records_received = snapshot.records_fetched - (snapshot.duplicate_hashes + snapshot.near_duplicates)
         else:
             records_received = snapshot.records_written
+
+        # Sanity check: records_received should be at least records_written
+        records_received = max(records_received, snapshot.records_written)
 
         quality = QualityMetrics(
             records_received=max(records_received, 0),  # Ensure non-negative

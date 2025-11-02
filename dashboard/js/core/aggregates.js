@@ -157,17 +157,38 @@ export function computePipelineAggregates(metrics = []) {
     };
 }
 
+// TODO: Load dynamically from catalog.export_for_javascript() (GitHub issue: migrate to dynamic filter labels)
+// This ensures dashboard labels stay in sync with the canonical filter catalog in Python
 export const FILTER_REASON_LABELS = {
-    min_length_filter: 'Min-length',
-    langid_filter: 'Language ID',
+    // Length filters
+    min_length_filter: 'Minimum length (50 chars)',
+
+    // Language filters
+    langid_filter: 'Language ID (non-Somali)',
+
+    // Cleaning filters
     empty_after_cleaning: 'Empty after cleaning',
-    quality_score_filter: 'Quality score',
-    profanity_filter: 'Profanity',
-    toxic_filter: 'Toxicity',
-    duplicate_filter: 'Duplicate',
-    invalid_charset_filter: 'Invalid charset',
-    encoding_filter: 'Encoding',
+
+    // TikTok early-stage filters
+    emoji_only_comment: 'Emoji-only comment',
+    text_too_short_after_cleanup: 'Very short text (<3 chars)',
+
+    // Dialect/topic filters
+    dialect_heuristic_filter: 'Dialect heuristics',
+
+    // Wikipedia-specific
+    namespace_filter: 'Wikipedia namespace exclusion',
+
+    // Future filters
+    quality_score_filter: 'Quality score threshold',
+    profanity_filter: 'Profanity detection',
+    toxic_filter: 'Toxicity detection',
+    duplicate_filter: 'Duplicate content',
+    invalid_charset_filter: 'Invalid character encoding',
+    encoding_filter: 'Encoding issues',
     stopword_filter: 'Stopword threshold',
+
+    // Fallback
     unspecified_filter: 'Unspecified filter'
 };
 

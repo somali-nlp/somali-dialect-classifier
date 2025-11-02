@@ -216,6 +216,7 @@ processor.process()
 ```bash
 # Run BBC pipeline
 bbcsom-download --max-articles 500
+# Expected duration: ~7-8 hours for 500 articles
 
 # Or with Python
 from somali_dialect_classifier.preprocessing import BBCSomaliProcessor
@@ -223,12 +224,19 @@ processor = BBCSomaliProcessor(max_articles=500, force=False)
 processor.process()
 ```
 
+**Performance Note**: BBC scraping processes at ~50-60 seconds per article due to BBC server response times and network latency. This is expected for ethical web scraping:
+- **10 articles**: ~10 minutes (testing)
+- **100 articles**: ~85-100 minutes (production)
+- **500 articles**: ~7-8 hours (large-scale collection)
+
+See [BBC Integration Guide](../howto/bbc-integration.md#performance-characteristics) for detailed timing analysis.
+
 **Features**:
 - **RSS Feeds** - Primary source with frequency throttling (24-hour default)
 - **Web Scraping** - Fallback if RSS yields < 50 articles
-- **Adaptive Rate Limiting** - Exponential backoff with jitter
+- **Adaptive Rate Limiting** - Exponential backoff with jitter (1-3 second delays)
 - **Conditional Requests** - If-None-Match/If-Modified-Since headers
-- **Ethical Scraping** - Respects robots.txt, 3-6 second delays, max 60 req/hour
+- **Ethical Scraping** - Respects robots.txt, industry-standard delays, max 60 req/hour
 
 **RSS Configuration**:
 ```python
