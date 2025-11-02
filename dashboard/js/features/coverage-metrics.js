@@ -6,6 +6,7 @@
 import { getMetrics, getDashboardMetadata } from '../core/data-service.js';
 import { computePipelineAggregates, FILTER_REASON_LABELS } from '../core/aggregates.js';
 import { normalizeSourceName, formatDate } from '../utils/formatters.js';
+import sourceMixTargetsData from '../../data/source_mix_targets.json' assert { type: 'json' };
 
 const SOURCE_ORDER = ['Wikipedia', 'BBC', 'HuggingFace', 'Språkbanken', 'TikTok'];
 
@@ -58,6 +59,62 @@ const coverageCharts = {
     balance: null,
     quality: null
 };
+
+function buildStaticSourceMixTargets(rawTargets) {
+    if (!rawTargets || typeof rawTargets !== 'object') {
+        return {
+            share: {},
+            volumes: {},
+            version: null
+        };
+    }
+
+    const rawVolumes = rawTargets.volumes && typeof rawTargets.volumes === 'object'
+        ? rawTargets.volumes
+        : {};
+
+    const normalizedVolumes = Object.fromEntries(
+        Object.entries(rawVolumes).map(([key, value]) => {
+            const normalizedKey = normalizeSourceName(key);
+            const numericValue = Number(value);
+            return [
+                normalizedKey,
+                Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 0
+            ];
+        })
+    );
+
+    const totalVolume = Object.values(normalizedVolumes).reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const share = totalVolume > 0
+        ? Object.fromEntries(
+            Object.entries(normalizedVolumes).map(([key, value]) => [
+                key,
+                (Number(value) || 0) / totalVolume
+            ])
+        )
+        : {};
+
+    return {
+        share,
+        volumes: normalizedVolumes,
+        version: typeof rawTargets.version === 'string' ? rawTargets.version : null
+    };
+}
+
+const STATIC_SOURCE_MIX = buildStaticSourceMixTargets(sourceMixTargetsData);
+const STATIC_SOURCE_MIX_VERSION_KEY = STATIC_SOURCE_MIX.version
+    ? `static:${STATIC_SOURCE_MIX.version}`
+    : `static:${JSON.stringify(STATIC_SOURCE_MIX.volumes || {})}`;
+
+function getSourceMixVersionKey(metadata) {
+    if (metadata?.source_mix_targets_version) {
+        return metadata.source_mix_targets_version;
+    }
+    if (metadata?.source_mix_targets) {
+        return JSON.stringify(metadata.source_mix_targets);
+    }
+    return STATIC_SOURCE_MIX_VERSION_KEY;
+}
 
 function getSourceColor(label, alpha = 1) {
     const match = SOURCE_ORDER.find(source => label.includes(source));
@@ -130,24 +187,10 @@ let cachedSourceTargetShare = null;
 let cachedSourceTargetVolumes = null;
 let cachedSourceTargetVersion = null;
 function getSourceTargetShare() {
-    const defaultShare = {
-        'Wikipedia': 14900 / 64400,
-        'BBC': 1500 / 64400,
-        'HuggingFace': 10000 / 64400,
-        'Språkbanken': 8000 / 64400,
-        'TikTok': 30000 / 64400
-    };
-    const defaultVolumes = {
-        'Wikipedia': 14900,
-        'BBC': 1500,
-        'HuggingFace': 10000,
-        'Språkbanken': 8000,
-        'TikTok': 30000
-    };
-
     const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
-    const versionKey = metadata?.source_mix_targets_version ||
-        JSON.stringify(metadata?.source_mix_targets || {});
+    const defaultShare = STATIC_SOURCE_MIX.share || {};
+    const defaultVolumes = STATIC_SOURCE_MIX.volumes || {};
+    const versionKey = getSourceMixVersionKey(metadata);
 
     if (cachedSourceTargetShare && cachedSourceTargetVersion === versionKey) {
         return cachedSourceTargetShare;
@@ -160,73 +203,77 @@ function getSourceTargetShare() {
     const shareTargets = metadata?.source_mix_targets?.share;
     const volumeTargets = metadata?.source_mix_targets?.volumes;
 
-    const normalized = {};
+    const normalizedShare = {};
     let normalizedVolumes = {};
-    let populated = false;
+    let sharePopulated = false;
 
     if (shareTargets && Object.keys(shareTargets).length > 0) {
         Object.entries(shareTargets).forEach(([key, value]) => {
             const normalizedKey = normalizeSourceName(key);
             const numericValue = Number(value);
             if (Number.isFinite(numericValue)) {
-                const shareValue = numericValue > 1 ? numericValue / 100 : numericValue;
-                normalized[normalizedKey] = shareValue;
-                populated = true;
+                const ratio = numericValue > 1 ? numericValue / 100 : numericValue;
+                const safeRatio = Math.max(0, Math.min(ratio, 1));
+                if (Number.isFinite(safeRatio)) {
+                    normalizedShare[normalizedKey] = safeRatio;
+                    sharePopulated = true;
+                }
             }
         });
     }
 
-    if (!populated && volumeTargets && Object.keys(volumeTargets).length > 0) {
+    if (volumeTargets && Object.keys(volumeTargets).length > 0) {
         normalizedVolumes = Object.fromEntries(
-            Object.entries(volumeTargets).map(([key, value]) => [
-                normalizeSourceName(key),
-                Number(value) || 0
-            ])
+            Object.entries(volumeTargets).map(([key, value]) => {
+                const normalizedKey = normalizeSourceName(key);
+                const numericValue = Number(value);
+                return [
+                    normalizedKey,
+                    Number.isFinite(numericValue) && numericValue >= 0 ? numericValue : 0
+                ];
+            })
         );
-        const totalVolume = Object.values(normalizedVolumes).reduce((sum, value) => sum + (Number(value) || 0), 0);
-        if (totalVolume > 0) {
-            Object.entries(normalizedVolumes).forEach(([key, value]) => {
-                normalized[key] = (Number(value) || 0) / totalVolume;
-            });
-            populated = true;
-        }
-    } else if (volumeTargets && Object.keys(volumeTargets).length > 0) {
-        normalizedVolumes = Object.fromEntries(
-            Object.entries(volumeTargets).map(([key, value]) => [
-                normalizeSourceName(key),
-                Number(value) || 0
-            ])
-        );
-        const totalVolume = Object.values(normalizedVolumes).reduce((sum, value) => sum + (Number(value) || 0), 0);
-        if (totalVolume > 0) {
-            Object.entries(normalizedVolumes).forEach(([key, value]) => {
-                if (typeof normalized[key] !== 'number') {
-                    normalized[key] = (Number(value) || 0) / totalVolume;
-                }
-            });
+
+        if (!sharePopulated) {
+            const totalVolume = Object.values(normalizedVolumes).reduce((sum, value) => sum + (Number(value) || 0), 0);
+            if (totalVolume > 0) {
+                Object.entries(normalizedVolumes).forEach(([key, value]) => {
+                    normalizedShare[key] = (Number(value) || 0) / totalVolume;
+                });
+                sharePopulated = true;
+            }
         }
     }
 
-    if (Object.keys(normalizedVolumes).length > 0) {
-        cachedSourceTargetVolumes = normalizedVolumes;
-    } else if (!cachedSourceTargetVolumes) {
-        cachedSourceTargetVolumes = { ...defaultVolumes };
+    if (!Object.keys(normalizedVolumes).length && Object.keys(defaultVolumes).length) {
+        normalizedVolumes = { ...defaultVolumes };
     }
 
-    if (!populated) {
-        cachedSourceTargetShare = { ...defaultShare };
-        cachedSourceTargetVolumes = { ...defaultVolumes };
-    } else {
-        cachedSourceTargetShare = { ...defaultShare, ...normalized };
+    if (!sharePopulated && Object.keys(normalizedVolumes).length > 0) {
+        const totalVolume = Object.values(normalizedVolumes).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        if (totalVolume > 0) {
+            Object.entries(normalizedVolumes).forEach(([key, value]) => {
+                normalizedShare[key] = (Number(value) || 0) / totalVolume;
+            });
+            sharePopulated = true;
+        }
     }
+
+    const mergedShare = sharePopulated
+        ? { ...(defaultShare || {}), ...normalizedShare }
+        : { ...(defaultShare || {}) };
+
+    cachedSourceTargetShare = mergedShare;
+    cachedSourceTargetVolumes = Object.keys(normalizedVolumes).length
+        ? { ...(defaultVolumes || {}), ...normalizedVolumes }
+        : { ...(defaultVolumes || {}) };
 
     return cachedSourceTargetShare;
 }
 
 function getSourceTargetVolumes() {
     const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
-    const versionKey = metadata?.source_mix_targets_version ||
-        JSON.stringify(metadata?.source_mix_targets || {});
+    const versionKey = getSourceMixVersionKey(metadata);
 
     if (!cachedSourceTargetVolumes || cachedSourceTargetVersion !== versionKey) {
         getSourceTargetShare();
