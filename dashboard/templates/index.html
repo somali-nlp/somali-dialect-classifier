@@ -496,21 +496,22 @@
                             <div class="chart-footnote" id="source-balance-footnote">Targets reflect coverage goals for Stage&nbsp;1 release.</div>
                         </div>
 
-                        <div class="chart-card chart-card-quality">
+                        <div class="chart-card chart-card-efficiency">
                             <div class="chart-header">
                                 <div>
-                                    <h4 class="chart-title">Quality &amp; Reliability</h4>
-                                    <p class="chart-subtitle">Weighted quality pass rate with success backdrop</p>
+                                    <h4 class="chart-title">Pipeline Efficiency</h4>
+                                    <p class="chart-subtitle">Retention through discovery → silver dataset</p>
                                 </div>
-                                <div class="chart-callout compact" id="quality-callout" aria-live="polite">
-                                    <span class="chart-callout-label">Avg quality</span>
-                                    <span class="chart-callout-value" id="quality-average-label">0%</span>
+                                <div class="chart-callout compact" id="efficiency-callout" aria-live="polite">
+                                    <span class="chart-callout-label">Silver yield</span>
+                                    <span class="chart-callout-value" id="efficiency-yield-label">–</span>
                                 </div>
                             </div>
-                            <div class="chart-canvas chart-canvas-compact">
-                                <canvas id="qualityBulletChart" aria-label="Bullet chart showing quality performance by source"></canvas>
+                            <div class="pipeline-efficiency-wrapper">
+                                <div class="pipeline-efficiency-bar" id="pipelineEfficiencyBar" role="presentation" aria-hidden="true"></div>
+                                <ul class="pipeline-efficiency-stats" id="pipelineEfficiencyStats" aria-label="Pipeline stage retention"></ul>
                             </div>
-                            <div class="chart-footnote" id="quality-freshness-note">Quality targets set at 85% minimum pass rate.</div>
+                            <div class="chart-footnote" id="pipeline-efficiency-footnote">Retention values update after each orchestration run.</div>
                         </div>
                     </div>
                 </div>
@@ -518,7 +519,7 @@
                 <!-- Source Status Cards -->
                 <div class="source-grid" data-show-in="analyst">
                     <!-- Wikipedia -->
-                    <article class="source-card wikipedia">
+                    <article class="source-card wikipedia" data-source="Wikipedia">
                         <div class="source-card-header">
                             <h3 class="source-card-title">Wikipedia</h3>
                             <span class="source-card-badge complete">
@@ -547,7 +548,7 @@
                     </article>
 
                     <!-- BBC -->
-                    <article class="source-card bbc">
+                    <article class="source-card bbc" data-source="BBC">
                         <div class="source-card-header">
                             <h3 class="source-card-title">BBC</h3>
                             <span class="source-card-badge complete">
@@ -576,7 +577,7 @@
                     </article>
 
                     <!-- HuggingFace -->
-                    <article class="source-card huggingface">
+                    <article class="source-card huggingface" data-source="HuggingFace">
                         <div class="source-card-header">
                             <h3 class="source-card-title">HuggingFace</h3>
                             <span class="source-card-badge complete">
@@ -605,7 +606,7 @@
                     </article>
 
                     <!-- Språkbanken -->
-                    <article class="source-card sprakbanken">
+                    <article class="source-card sprakbanken" data-source="Språkbanken">
                         <div class="source-card-header">
                             <h3 class="source-card-title">Språkbanken</h3>
                             <span class="source-card-badge complete">
@@ -630,6 +631,35 @@
                         <div class="source-card-footer">
                             <span>No data yet</span>
                             <span style="color: var(--success)">●</span>
+                        </div>
+                    </article>
+
+                    <!-- TikTok -->
+                    <article class="source-card tiktok" data-source="TikTok">
+                        <div class="source-card-header">
+                            <h3 class="source-card-title">TikTok</h3>
+                            <span class="source-card-badge upcoming">
+                                <span>⏳</span>
+                                <span>Ingesting</span>
+                            </span>
+                        </div>
+                        <div class="source-card-metrics">
+                            <div class="source-metric">
+                                <span class="source-metric-label">Records</span>
+                                <span class="source-metric-value" data-value="0">0</span>
+                            </div>
+                            <div class="source-metric">
+                                <span class="source-metric-label">Percentage</span>
+                                <span class="source-metric-value">0%</span>
+                            </div>
+                            <div class="source-metric">
+                                <span class="source-metric-label">Quality Rate</span>
+                                <span class="source-metric-value">0%</span>
+                            </div>
+                        </div>
+                        <div class="source-card-footer">
+                            <span>No data yet</span>
+                            <span style="color: var(--gray-400)">●</span>
                         </div>
                     </article>
                 </div>
@@ -765,21 +795,37 @@
                                 <canvas id="qualityTrendChart" aria-label="Line chart showing quality pass rate over time"></canvas>
                             </div>
                         </div>
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <div>
-                                    <h3 class="chart-title">Filter Load by Source</h3>
-                                    <p class="chart-subtitle">Rejections grouped by filter reason</p>
-                                </div>
-                                <div class="chart-actions">
-                                    <button class="chart-action" onclick="downloadChart('qualityFilterChart')">Export PNG</button>
-                                </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 class="chart-title">Filter Load by Source</h3>
+                                <p class="chart-subtitle">Rejections grouped by filter reason</p>
                             </div>
-                            <div class="chart-canvas">
-                                <canvas id="qualityFilterChart" aria-label="Stacked bar chart showing filter rejections by source"></canvas>
+                            <div class="chart-actions">
+                                <button class="chart-action" onclick="downloadChart('qualityFilterChart')">Export PNG</button>
                             </div>
                         </div>
+                        <div class="chart-canvas">
+                            <canvas id="qualityFilterChart" aria-label="Stacked bar chart showing filter rejections by source"></canvas>
+                        </div>
                     </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 class="chart-title">Quality &amp; Reliability</h3>
+                                <p class="chart-subtitle">Weighted quality pass rate with success backdrop</p>
+                            </div>
+                            <div class="chart-callout compact" id="quality-callout" aria-live="polite">
+                                <span class="chart-callout-label">Avg quality</span>
+                                <span class="chart-callout-value" id="quality-average-label">0%</span>
+                            </div>
+                        </div>
+                        <div class="chart-canvas chart-canvas-compact">
+                            <canvas id="qualityBulletChart" aria-label="Bullet chart showing quality performance by source"></canvas>
+                        </div>
+                        <div class="chart-footnote" id="quality-freshness-note">Quality targets set at 85% minimum pass rate.</div>
+                    </div>
+                </div>
 
                     <div class="chart-card chart-card-wide">
                         <div class="chart-header">

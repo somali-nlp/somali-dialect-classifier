@@ -727,85 +727,111 @@ function updatePerformanceCard(card, metric) {
  * Populate overview source cards
  */
 export function populateOverviewCards() {
-    const metricsData = getMetrics();
+    const analytics = buildSourceAnalytics();
+    const cards = document.querySelectorAll('#overview-panel .source-card[data-source]');
 
-    if (!metricsData || !metricsData.metrics || metricsData.metrics.length === 0) {
-        // Set all cards to empty state
-        const sourceCards = document.querySelectorAll('#overview-panel .source-card');
-        sourceCards.forEach(card => {
+    if (!analytics || !analytics.items.length) {
+        cards.forEach(card => {
             const metrics = card.querySelectorAll('.source-metric-value');
             metrics.forEach(m => m.textContent = '0');
+            const badgeText = card.querySelector('.source-card-badge span:last-child');
+            const badgeIcon = card.querySelector('.source-card-badge span:first-child');
+            if (badgeText) badgeText.textContent = 'Pending';
+            if (badgeIcon) badgeIcon.textContent = '⏳';
             const footer = card.querySelector('.source-card-footer span:first-child');
             if (footer) footer.textContent = 'No data yet';
+            const statusDot = card.querySelector('.source-card-footer span:last-child');
+            if (statusDot) statusDot.style.color = 'var(--gray-400)';
         });
         return;
     }
 
-    // Calculate total records for percentages
-    const totalRecords = metricsData.metrics.reduce((sum, m) => sum + m.records_written, 0);
+    const totalRecords = analytics.totalRecords || 0;
+    const itemsMap = new Map(analytics.items.map(item => [item.name, item]));
 
-    // Create a map of sources to their data
-    const sourceDataMap = {
-        'Wikipedia': metricsData.metrics.find(m => m.source.includes('Wikipedia')),
-        'BBC': metricsData.metrics.find(m => m.source.includes('BBC')),
-        'HuggingFace': metricsData.metrics.find(m => m.source.includes('HuggingFace')),
-        'Språkbanken': metricsData.metrics.find(m => m.source.includes('Sprakbanken'))
-    };
-
-    // Update Wikipedia card
-    const wikipediaCard = document.querySelector('#overview-panel .source-card.wikipedia');
-    if (wikipediaCard && sourceDataMap['Wikipedia']) {
-        updateOverviewCard(wikipediaCard, sourceDataMap['Wikipedia'], totalRecords);
-    }
-
-    // Update BBC card
-    const bbcCard = document.querySelector('#overview-panel .source-card.bbc');
-    if (bbcCard && sourceDataMap['BBC']) {
-        updateOverviewCard(bbcCard, sourceDataMap['BBC'], totalRecords);
-    }
-
-    // Update HuggingFace card
-    const hfCard = document.querySelector('#overview-panel .source-card.huggingface');
-    if (hfCard && sourceDataMap['HuggingFace']) {
-        updateOverviewCard(hfCard, sourceDataMap['HuggingFace'], totalRecords);
-    }
-
-    // Update Språkbanken card
-    const sprakCard = document.querySelector('#overview-panel .source-card.sprakbanken');
-    if (sprakCard && sourceDataMap['Språkbanken']) {
-        updateOverviewCard(sprakCard, sourceDataMap['Språkbanken'], totalRecords);
-    }
+    cards.forEach(card => {
+        const sourceKey = card.getAttribute('data-source');
+        const item = itemsMap.get(sourceKey);
+        updateOverviewCard(card, item, totalRecords);
+    });
 }
 
 /**
  * Update a single overview card with metric data
  */
-function updateOverviewCard(card, metric, totalRecords) {
-    if (!card || !metric) return;
+function updateOverviewCard(card, item, totalRecords) {
+    if (!card) return;
 
     const metrics = card.querySelectorAll('.source-metric-value');
+    const footer = card.querySelector('.source-card-footer span:first-child');
+    const statusDot = card.querySelector('.source-card-footer span:last-child');
+    const badge = card.querySelector('.source-card-badge');
+    const badgeText = badge ? badge.querySelector('span:last-child') : null;
+    const badgeIcon = badge ? badge.querySelector('span:first-child') : null;
+
+    if (!item) {
+        metrics.forEach(m => m.textContent = '0');
+        if (footer) footer.textContent = 'No data yet';
+        if (statusDot) statusDot.style.color = 'var(--gray-400)';
+        if (badge) {
+            badge.classList.remove('complete', 'upcoming', 'planned');
+            badge.classList.add('planned');
+        }
+        if (badgeText) badgeText.textContent = 'Pending';
+        if (badgeIcon) badgeIcon.textContent = '⏳';
+        return;
+    }
+
     if (metrics.length === 3) {
-        // Records
-        const records = metric.records_written || 0;
+        const records = Number(item.records) || 0;
         metrics[0].textContent = records.toLocaleString();
         metrics[0].setAttribute('data-value', records);
 
-        // Percentage
         const percentage = totalRecords > 0 ? (records / totalRecords * 100) : 0;
         metrics[1].textContent = percentage.toFixed(1) + '%';
 
-        // Quality Rate (pipeline-specific)
-        // Bug Fix #2: Use flattened quality_pass_rate (normalized by data-service)
-        const qualityRate = metric.quality_pass_rate || 0;
+        const qualityRate = Number.isFinite(item.quality) ? item.quality : 0;
         metrics[2].textContent = (qualityRate * 100).toFixed(1) + '%';
     }
 
-    // Update last run date
-    const footer = card.querySelector('.source-card-footer span:first-child');
-    if (footer && metric.timestamp) {
-        const date = new Date(metric.timestamp);
-        const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        footer.textContent = `Last run: ${formattedDate}`;
+    if (footer) {
+        if (item.lastUpdated) {
+            const date = new Date(item.lastUpdated);
+            if (!Number.isNaN(date.getTime())) {
+                footer.textContent = `Last run: ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+            } else {
+                footer.textContent = `Last run: ${item.lastUpdated}`;
+            }
+        } else {
+            footer.textContent = 'No data yet';
+        }
+    }
+
+    if (statusDot) {
+        const metadataKey = getMetadataKey(item.name);
+        const qualityBenchmark = SOURCE_METADATA[metadataKey]?.qualityBenchmark ?? 0.7;
+        const meetsBenchmark = Number.isFinite(item.quality) ? item.quality >= qualityBenchmark : false;
+        statusDot.style.color = meetsBenchmark ? 'var(--success)' : 'var(--warning)';
+    }
+
+    if (badge) {
+        badge.classList.remove('complete', 'upcoming', 'planned');
+    }
+
+    if (badgeText && badgeIcon) {
+        if (item.records > 0) {
+            badge?.classList.add('complete');
+            badgeText.textContent = 'Complete';
+            badgeIcon.textContent = '✓';
+        } else if (item.lastUpdated) {
+            badge?.classList.add('upcoming');
+            badgeText.textContent = 'Ingesting';
+            badgeIcon.textContent = '⏳';
+        } else {
+            badge?.classList.add('planned');
+            badgeText.textContent = 'Planned';
+            badgeIcon.textContent = '•';
+        }
     }
 }
 

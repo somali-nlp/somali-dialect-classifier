@@ -120,6 +120,18 @@
         width: 100%;
     }
 
+    .pipeline-efficiency-stage {
+        grid-template-columns: auto 1fr;
+        grid-template-rows: auto auto;
+        align-items: start;
+    }
+
+    .pipeline-stage-value,
+    .pipeline-stage-percent {
+        grid-column: 2 / 3;
+        justify-self: start;
+    }
+
     .contribute-types {
         grid-template-columns: 1fr;
     }

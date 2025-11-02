@@ -3,25 +3,19 @@
  * Manages coverage scorecard and redesigned processing summary visuals
  */
 
-import { getMetrics } from '../core/data-service.js';
+import { getMetrics, getDashboardMetadata } from '../core/data-service.js';
 import { computePipelineAggregates, FILTER_REASON_LABELS } from '../core/aggregates.js';
 import { normalizeSourceName, formatDate } from '../utils/formatters.js';
 
-const SOURCE_ORDER = ['Wikipedia', 'BBC', 'HuggingFace MC4', 'Språkbanken'];
+const SOURCE_ORDER = ['Wikipedia', 'BBC', 'HuggingFace', 'Språkbanken', 'TikTok'];
 
 const SOURCE_COLOR_MAP = {
     'Wikipedia': '#3b82f6',
     'BBC': '#ef4444',
+    'HuggingFace': '#00A651',
     'HuggingFace MC4': '#00A651',
-    'Språkbanken': '#f59e0b'
-};
-
-// Stage 1 ingestion coverage targets derived from product OKRs (Q4 2025)
-const SOURCE_TARGET_SHARE = {
-    'Wikipedia': 0.45,
-    'BBC': 0.20,
-    'HuggingFace MC4': 0.25,
-    'Språkbanken': 0.10
+    'Språkbanken': '#f59e0b',
+    'TikTok': '#ec4899'
 };
 
 const SOURCE_METADATA = {
@@ -123,46 +117,253 @@ function getTopFilterInsight(metrics) {
     return { reason, label, percentage };
 }
 
-function formatShortDate(dateStr) {
-    if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
-    if (Number.isNaN(date.getTime())) return dateStr;
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+let cachedSourceTargetShare = null;
+function getSourceTargetShare() {
+    if (cachedSourceTargetShare) {
+        return cachedSourceTargetShare;
+    }
+
+    const defaults = {
+        'Wikipedia': 0.45,
+        'BBC': 0.20,
+        'HuggingFace': 0.25,
+        'Språkbanken': 0.10,
+        'TikTok': 0.0
+    };
+
+    try {
+        const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
+        const targets = metadata?.source_mix_targets || {};
+        const normalized = { ...defaults };
+
+        Object.entries(targets).forEach(([key, value]) => {
+            const normalizedKey = normalizeSourceName(key);
+            const numericValue = Number(value);
+            if (Number.isFinite(numericValue)) {
+                normalized[normalizedKey] = numericValue;
+            }
+        });
+
+        cachedSourceTargetShare = normalized;
+    } catch (error) {
+        cachedSourceTargetShare = defaults;
+    }
+
+    return cachedSourceTargetShare;
 }
 
 function extractTimestamp(metric) {
     return metric.last_successful_write || metric.timestamp || metric.snapshot?.timestamp || null;
 }
 
-function aggregateDailyRecords(metrics, limit = 8) {
-    const dayMap = new Map();
-
+function aggregateRunSeries(metrics, limit = 8) {
+    const runMap = new Map();
     metrics.forEach(metric => {
+        if (!metric) return;
+
         const records = Number(metric.records_written) || 0;
-        if (records <= 0) return;
-
-        const timestamp = extractTimestamp(metric);
-        if (!timestamp) return;
-
-        const dateKey = timestamp.slice(0, 10);
         const source = normalizeSourceName(metric.source);
-        if (!source) return;
+        const runId = metric.run_id || metric._run_id || extractTimestamp(metric) || `run-${runMap.size}`;
+        const timestamp = extractTimestamp(metric);
 
-        const dayEntry = dayMap.get(dateKey) || { total: 0, sources: {} };
-        dayEntry.total += records;
-        dayEntry.sources[source] = (dayEntry.sources[source] || 0) + records;
-        dayMap.set(dateKey, dayEntry);
+        let entry = runMap.get(runId);
+        if (!entry) {
+            entry = {
+                runId,
+                timestamp,
+                sources: {},
+                total: 0,
+                throughputWeighted: 0,
+                throughputWeight: 0,
+                activeSources: new Set()
+            };
+            runMap.set(runId, entry);
+        }
+
+        if (timestamp && (!entry.timestamp || timestamp > entry.timestamp)) {
+            entry.timestamp = timestamp;
+        }
+
+        if (Number.isFinite(records) && records > 0) {
+            entry.sources[source] = (entry.sources[source] || 0) + records;
+            entry.total += records;
+            entry.activeSources.add(source);
+        } else if (!entry.sources[source]) {
+            entry.sources[source] = 0;
+        }
+
+        const rpm = Number(metric.records_per_minute);
+        if (Number.isFinite(rpm) && rpm >= 0) {
+            const weight = records > 0 ? records : 1;
+            entry.throughputWeighted += rpm * weight;
+            entry.throughputWeight += weight;
+        }
     });
 
-    const sorted = Array.from(dayMap.entries())
-        .sort((a, b) => a[0].localeCompare(b[0]))
+    const runs = Array.from(runMap.values())
+        .map(entry => ({
+            runId: entry.runId,
+            timestamp: entry.timestamp,
+            sources: entry.sources,
+            total: entry.total,
+            avgThroughput: entry.throughputWeight > 0
+                ? entry.throughputWeighted / entry.throughputWeight
+                : null,
+            activeSources: entry.activeSources.size || Object.keys(entry.sources).length
+        }))
+        .sort((a, b) => {
+            const tsA = new Date(a.timestamp || 0).getTime();
+            const tsB = new Date(b.timestamp || 0).getTime();
+            return tsA - tsB;
+        })
         .slice(-limit);
 
-    return sorted.map(([date, entry]) => ({
-        date,
-        total: entry.total,
-        sources: entry.sources
-    }));
+    return runs;
+}
+
+function formatRunTimestamp(timestamp) {
+    if (!timestamp) return 'Latest run';
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) {
+        return timestamp;
+    }
+    return date.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function computePipelineStageTotals(metrics = []) {
+    const totals = {
+        discovered: 0,
+        fetched: 0,
+        extracted: 0,
+        quality_received: 0,
+        passed_quality: 0,
+        written: 0
+    };
+
+    if (!Array.isArray(metrics) || !metrics.length) {
+        return totals;
+    }
+
+    metrics.forEach(metric => {
+        if (!metric) return;
+
+        const filteredTotal = Object.values(metric.filter_breakdown || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        const discovered = Number(metric.urls_discovered) || 0;
+        const fetched = Number(metric.urls_fetched) || discovered;
+        const extracted = Number(metric.records_extracted) || Number(metric.records_written) || 0;
+        const written = Number(metric.records_written) || 0;
+        const qualityReceived = written + filteredTotal;
+
+        totals.discovered += discovered;
+        totals.fetched += fetched;
+        totals.extracted += extracted;
+        totals.quality_received += qualityReceived;
+        totals.passed_quality += written;
+        totals.written += written;
+    });
+
+    totals.fetched = Math.min(totals.fetched, totals.discovered);
+    totals.extracted = Math.min(totals.extracted, totals.fetched);
+    totals.quality_received = Math.min(totals.quality_received, totals.extracted);
+    totals.passed_quality = Math.min(totals.passed_quality, totals.quality_received);
+    totals.written = Math.min(totals.written, totals.passed_quality);
+
+    return totals;
+}
+
+function renderPipelineEfficiency(metricsData) {
+    const barContainer = document.getElementById('pipelineEfficiencyBar');
+    const statsList = document.getElementById('pipelineEfficiencyStats');
+    const calloutValue = document.getElementById('efficiency-yield-label');
+    const footnote = document.getElementById('pipeline-efficiency-footnote');
+
+    if (!barContainer || !statsList) {
+        return;
+    }
+
+    barContainer.innerHTML = '';
+    statsList.innerHTML = '';
+
+    const stages = computePipelineStageTotals(metricsData?.metrics || []);
+    const baseline = Math.max(
+        stages.discovered,
+        stages.fetched,
+        stages.extracted,
+        stages.quality_received,
+        stages.written
+    );
+
+    if (!baseline) {
+        if (calloutValue) {
+            calloutValue.textContent = '—';
+        }
+        statsList.innerHTML = `<li class="pipeline-efficiency-empty">Run the ingestion orchestrator to view retention across pipeline stages.</li>`;
+        barContainer.innerHTML = '<div class="chart-empty-state">Pipeline efficiency visualization will appear after the next run.</div>';
+        if (footnote) {
+            footnote.textContent = 'Retention values update after each orchestration run.';
+        }
+        return;
+    }
+
+    const stageOrder = [
+        { key: 'discovered', label: 'Discovered', color: '#94a3b8' },
+        { key: 'fetched', label: 'Fetched', color: '#60a5fa' },
+        { key: 'extracted', label: 'Extracted', color: '#3b82f6' },
+        { key: 'quality_received', label: 'Quality Check', color: '#2563eb' },
+        { key: 'written', label: 'Silver Dataset', color: '#10b981' }
+    ];
+
+    const segments = stageOrder.map(stage => {
+        const value = stages[stage.key] || 0;
+        const width = baseline > 0 ? Math.max((value / baseline) * 100, value > 0 ? 2 : 0) : 0;
+        return `<div class="pipeline-efficiency-segment" aria-hidden="true" style="width:${width}%;background-color:${stage.color};" title="${stage.label}: ${value.toLocaleString()} records"></div>`;
+    });
+
+    barContainer.innerHTML = segments.join('');
+
+    let previousValue = baseline;
+    const statsItems = stageOrder.map((stage, index) => {
+        const value = stages[stage.key] || 0;
+        const originShare = baseline > 0 ? (value / baseline) * 100 : 0;
+        const relativeShare = index === 0
+            ? 100
+            : previousValue > 0
+                ? (value / previousValue) * 100
+                : 0;
+        previousValue = value;
+
+        return `
+            <li class="pipeline-efficiency-stage">
+                <span class="pipeline-stage-dot" style="background-color:${stage.color};"></span>
+                <span class="pipeline-stage-label">${stage.label}</span>
+                <span class="pipeline-stage-value">${value.toLocaleString()}</span>
+                <span class="pipeline-stage-percent">${originShare.toFixed(1)}% of origin${index > 0 ? ` · ${relativeShare.toFixed(1)}% vs prior` : ''}</span>
+            </li>
+        `;
+    });
+
+    statsList.innerHTML = statsItems.join('');
+
+    if (calloutValue) {
+        const silverYield = baseline > 0 ? (stages.written / baseline) * 100 : 0;
+        calloutValue.textContent = `${silverYield.toFixed(1)}%`;
+    }
+
+    if (footnote) {
+        const latestTimestamp = (metricsData?.metrics || [])
+            .map(metric => metric.timestamp)
+            .filter(Boolean)
+            .sort()
+            .pop();
+        if (latestTimestamp) {
+            footnote.textContent = `Latest data from ${formatRunTimestamp(latestTimestamp)}.`;
+        }
+    }
 }
 
 function aggregateSourceTotals(metrics) {
@@ -277,11 +478,10 @@ function updateOverviewNarrative(aggregates, metrics = []) {
         ? positiveTotals.sort((a, b) => b[1] - a[1])[0]
         : null;
     const leaderName = leaderEntry ? leaderEntry[0] : null;
-    const leaderShare = leaderEntry ? ((leaderEntry[1] / grandTotal) * 100).toFixed(1) : null;
+    const leaderShare = leaderEntry ? ((leaderEntry[1] / Math.max(grandTotal, 1)) * 100).toFixed(1) : null;
     const leaderFragment = leaderName && leaderShare
         ? `, led by ${leaderName} at ${leaderShare}% of submissions`
         : '';
-    const dominantSourceMeta = leaderName ? SOURCE_METADATA[leaderName] : null;
 
     const statements = [];
     const totalRecords = Number.isFinite(aggregates.totalRecords) ? aggregates.totalRecords : 0;
@@ -300,28 +500,22 @@ function updateOverviewNarrative(aggregates, metrics = []) {
         statements.push('Quality filters have not reported yet; check the Quality Insights panel for run-level details.');
     } else {
         const qualityPercent = (qualityValue * 100).toFixed(1);
-        const filterDetails = qualityInsight && qualityInsight.percentage >= 1
-            ? ` (${qualityInsight.label}, ${qualityInsight.percentage.toFixed(1)}% of rejections)`
-            : '';
 
         if (qualityValue >= QUALITY_TARGET) {
-            let sentence = `Record-weighted quality sits at ${qualityPercent}%, comfortably above the 85% target`;
-            if (qualityInsight && qualityInsight.percentage >= 1) {
-                sentence += ` with the ${qualityInsight.label} covering ${qualityInsight.percentage.toFixed(1)}% of removals`;
-            }
-            statements.push(`${sentence}.`);
+            const filterSentence = qualityInsight && qualityInsight.percentage >= 1
+                ? ` with ${qualityInsight.label.toLowerCase()} accounting for ${qualityInsight.percentage.toFixed(1)}% of removals`
+                : '';
+            statements.push(`Record-weighted quality sits at ${qualityPercent}%, comfortably above the 85% target${filterSentence}.`);
         } else if (qualityValue >= 0.5) {
-            let sentence = `Record-weighted quality holds at ${qualityPercent}%, showing filters are keeping short or off-topic records out of silver`;
-            if (qualityInsight && qualityInsight.percentage >= 1) {
-                sentence += ` (${qualityInsight.label}, ${qualityInsight.percentage.toFixed(1)}% of rejections)`;
-            }
-            statements.push(`${sentence}.`);
+            const filterSentence = qualityInsight && qualityInsight.percentage >= 1
+                ? ` (${qualityInsight.label}, ${qualityInsight.percentage.toFixed(1)}% of rejections)`
+                : '';
+            statements.push(`Record-weighted quality holds at ${qualityPercent}%, showing filters are keeping short or off-topic records out of silver${filterSentence}.`);
         } else {
-            let sentence = `Record-weighted quality is ${qualityPercent}%; review recent runs to confirm whether source shifts or filter tuning are needed`;
-            if (qualityInsight && qualityInsight.percentage >= 1) {
-                sentence += ` (${qualityInsight.label}, ${qualityInsight.percentage.toFixed(1)}% of rejections)`;
-            }
-            statements.push(`${sentence}.`);
+            const filterSentence = qualityInsight && qualityInsight.percentage >= 1
+                ? ` (${qualityInsight.label}, ${qualityInsight.percentage.toFixed(1)}% of rejections)`
+                : '';
+            statements.push(`Record-weighted quality is ${qualityPercent}%; review recent runs to confirm whether source shifts or filter tuning are needed${filterSentence}.`);
         }
     }
 
@@ -339,20 +533,38 @@ function updateOverviewNarrative(aggregates, metrics = []) {
         }
     }
 
+    const freshestMetric = metrics
+        .filter(metric => metric && metric.timestamp)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+
+    if (freshestMetric) {
+        const freshestSource = normalizeSourceName(freshestMetric.source);
+        const freshestTime = new Date(freshestMetric.timestamp);
+        const timestampLabel = Number.isFinite(freshestTime.getTime())
+            ? freshestTime.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : formatDate(freshestMetric.timestamp);
+        const freshestRecords = Number(freshestMetric.records_written) || 0;
+        const freshestThroughput = Number(freshestMetric.records_per_minute);
+        const throughputLabel = Number.isFinite(freshestThroughput) && freshestThroughput > 0
+            ? ` at ~${Math.round(freshestThroughput).toLocaleString()} records/min`
+            : '';
+        statements.push(`Most recent run: ${freshestSource} on ${timestampLabel}, landing ${freshestRecords.toLocaleString()} records${throughputLabel}.`);
+    }
+
     narrativeEl.textContent = statements.join(' ');
 }
 
-function updateVelocityNarrative(dailyRecords) {
+function updateVelocityNarrative(runSeries) {
     const latestValueEl = document.getElementById('velocity-latest-total');
     const deltaEl = document.getElementById('velocity-delta');
     const callout = document.getElementById('velocity-callout');
     const footnote = document.getElementById('velocity-footnote');
 
-    const latest = dailyRecords.length ? dailyRecords[dailyRecords.length - 1] : null;
-    const previous = dailyRecords.length > 1 ? dailyRecords[dailyRecords.length - 2] : null;
+    const latest = runSeries.length ? runSeries[runSeries.length - 1] : null;
+    const previous = runSeries.length > 1 ? runSeries[runSeries.length - 2] : null;
 
     if (latestValueEl) {
-        latestValueEl.textContent = latest ? latest.total.toLocaleString() : '0';
+        latestValueEl.textContent = latest ? (latest.total || 0).toLocaleString() : '0';
     }
 
     if (deltaEl) {
@@ -361,15 +573,21 @@ function updateVelocityNarrative(dailyRecords) {
             deltaEl.textContent = '–';
             deltaEl.classList.add('neutral');
         } else {
-            const diff = latest.total - previous.total;
-            if (diff === 0) {
-                deltaEl.textContent = 'No change vs prior';
-                deltaEl.classList.add('neutral');
-            } else {
-                const sign = diff > 0 ? '+' : '';
-                deltaEl.textContent = `${sign}${diff.toLocaleString()} vs prior`;
-                deltaEl.classList.add(diff > 0 ? 'positive' : 'negative');
+            const diff = (latest.total || 0) - (previous.total || 0);
+            const throughputDiff = Number.isFinite(latest.avgThroughput) && Number.isFinite(previous.avgThroughput)
+                ? latest.avgThroughput - previous.avgThroughput
+                : null;
+
+            let label = diff === 0
+                ? 'No change vs prior run'
+                : `${diff > 0 ? '+' : ''}${diff.toLocaleString()} vs prior run`;
+
+            if (throughputDiff !== null && Math.abs(throughputDiff) >= 1) {
+                label += ` · ${throughputDiff > 0 ? '+' : ''}${Math.round(throughputDiff)} rpm`;
             }
+
+            deltaEl.textContent = label;
+            deltaEl.classList.add(diff > 0 ? 'positive' : diff < 0 ? 'negative' : 'neutral');
         }
     }
 
@@ -386,9 +604,10 @@ function updateVelocityNarrative(dailyRecords) {
         if (!latest) {
             footnote.textContent = 'Waiting for pipeline runs…';
         } else {
-            const activeSources = Object.keys(latest.sources).length;
+            const activeSources = latest.activeSources || Object.keys(latest.sources || {}).length;
             const plural = activeSources === 1 ? '' : 's';
-            footnote.textContent = `Latest update ${formatDate(latest.date)} · ${activeSources} active source${plural}.`;
+            const timestampLabel = formatRunTimestamp(latest.timestamp);
+            footnote.textContent = `${timestampLabel} · ${activeSources} active source${plural}.`;
         }
     }
 }
@@ -436,10 +655,14 @@ function updateBalanceNarrative(labels, actualPercentages, targetPercentages) {
 
     const footnote = document.getElementById('source-balance-footnote');
     if (footnote) {
+        const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
+        const targetsVersion = metadata?.source_mix_targets_version;
+        const targets = getSourceTargetShare();
         const targetSummary = SOURCE_ORDER
-            .filter(name => Object.prototype.hasOwnProperty.call(SOURCE_TARGET_SHARE, name))
-            .map(name => `${name} ${(SOURCE_TARGET_SHARE[name] * 100).toFixed(0)}%`);
-        footnote.textContent = `Targets reflect Stage 1 coverage goals (${targetSummary.join(', ')}).`;
+            .filter(name => Object.prototype.hasOwnProperty.call(targets, name))
+            .map(name => `${name} ${(targets[name] * 100).toFixed(0)}%`);
+        const versionLabel = targetsVersion ? ` (v${targetsVersion})` : '';
+        footnote.textContent = `Targets reflect Stage 1 coverage goals${versionLabel}: ${targetSummary.join(', ')}.`;
     }
 }
 
@@ -499,20 +722,20 @@ function createIngestionVelocityChart(metricsData) {
     const canvas = document.getElementById('ingestionVelocityChart');
     if (!canvas) return;
 
-    const dailyRecords = aggregateDailyRecords(metricsData.metrics);
+    const runSeries = aggregateRunSeries(metricsData.metrics);
 
-    if (!dailyRecords.length) {
+    if (!runSeries.length) {
         updateVelocityNarrative([]);
         renderEmptyState(canvas, 'Ingestion runs have not produced records yet.');
         return;
     }
 
-    updateVelocityNarrative(dailyRecords);
+    updateVelocityNarrative(runSeries);
 
-    const labels = dailyRecords.map(entry => formatShortDate(entry.date));
+    const labels = runSeries.map(run => formatRunTimestamp(run.timestamp));
     const uniqueSources = new Set();
-    dailyRecords.forEach(entry => {
-        Object.keys(entry.sources).forEach(source => uniqueSources.add(source));
+    runSeries.forEach(run => {
+        Object.keys(run.sources).forEach(source => uniqueSources.add(source));
     });
 
     const orderedSources = SOURCE_ORDER
@@ -521,9 +744,9 @@ function createIngestionVelocityChart(metricsData) {
 
     const datasets = orderedSources.map(source => ({
         label: source,
-        data: dailyRecords.map(entry => entry.sources[source] || 0),
-        backgroundColor: dailyRecords.map((_, idx) => {
-            const isLatest = idx === dailyRecords.length - 1;
+        data: runSeries.map(entry => entry.sources[source] || 0),
+        backgroundColor: runSeries.map((_, idx) => {
+            const isLatest = idx === runSeries.length - 1;
             return getSourceColor(source, isLatest ? 0.95 : 0.6);
         }),
         borderColor: getSourceColor(source),
@@ -531,6 +754,21 @@ function createIngestionVelocityChart(metricsData) {
         borderRadius: 8,
         stack: 'records'
     }));
+
+    datasets.push({
+        type: 'line',
+        label: 'Avg throughput',
+        data: runSeries.map(entry => entry.avgThroughput ?? 0),
+        yAxisID: 'y1',
+        borderColor: '#0ea5e9',
+        backgroundColor: 'rgba(14, 165, 233, 0.2)',
+        tension: 0.35,
+        fill: false,
+        pointRadius: 4,
+        pointBackgroundColor: '#0ea5e9',
+        pointBorderWidth: 2,
+        spanGaps: true
+    });
 
     coverageCharts.velocity?.destroy?.();
 
@@ -555,11 +793,17 @@ function createIngestionVelocityChart(metricsData) {
                     callbacks: {
                         title(context) {
                             const idx = context[0].dataIndex;
-                            const entry = dailyRecords[idx];
-                            return `${formatDate(entry.date)} • ${entry.total.toLocaleString()} records`;
+                            const entry = runSeries[idx];
+                            const throughput = Number.isFinite(entry.avgThroughput)
+                                ? ` · ${Math.round(entry.avgThroughput).toLocaleString()} rec/min`
+                                : '';
+                            return `${labels[idx]} • ${entry.total.toLocaleString()} records${throughput}`;
                         },
                         label(context) {
-                            const total = dailyRecords[context.dataIndex].total;
+                            if (context.dataset.type === 'line') {
+                                return `Avg throughput: ${Math.round((context.parsed.y ?? 0)).toLocaleString()} rec/min`;
+                            }
+                            const total = runSeries[context.dataIndex].total || 0;
                             const value = context.parsed.y ?? 0;
                             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
                             return `${context.dataset.label}: ${value.toLocaleString()} records (${percentage}%)`;
@@ -582,6 +826,21 @@ function createIngestionVelocityChart(metricsData) {
                     },
                     grid: {
                         color: '#f3f4f6'
+                    }
+                },
+                y1: {
+                    position: 'right',
+                    beginAtZero: true,
+                    grid: {
+                        drawOnChartArea: false
+                    },
+                    ticks: {
+                        callback: value => Math.round(value).toLocaleString()
+                    },
+                    title: {
+                        display: true,
+                        text: 'Records per minute',
+                        font: { size: 12, weight: 600 }
                     }
                 }
             }
@@ -609,8 +868,9 @@ function createSourceBalanceChart(metricsData) {
         return idxA - idxB;
     });
 
+    const targetMix = getSourceTargetShare();
     const actualPercentages = labels.map(label => ((totals.get(label) || 0) / grandTotal) * 100);
-    const targetPercentages = labels.map(label => (SOURCE_TARGET_SHARE[label] ?? 0) * 100);
+    const targetPercentages = labels.map(label => (targetMix[label] ?? 0) * 100);
 
     updateBalanceNarrative(labels, actualPercentages, targetPercentages);
 
@@ -822,7 +1082,7 @@ export function updateCoverageScorecard() {
     if (successEl) successEl.textContent = avgSuccessPercent.toFixed(1) + '%';
     if (sourcesEl) sourcesEl.textContent = activeSourceCount;
 
-    const maxRecords = 50000;
+    const maxRecords = Math.max(50000, totalRecords * 1.1);
     const recordsBar = document.getElementById('coverage-records-bar');
     const qualityBar = document.getElementById('coverage-quality-bar');
     const successBar = document.getElementById('coverage-success-bar');
@@ -851,10 +1111,12 @@ export function initCoverageCharts() {
         updateVelocityNarrative([]);
         updateBalanceNarrative([], [], []);
         updateQualityNarrative([]);
+        renderPipelineEfficiency({ metrics: [] });
         return;
     }
 
     createIngestionVelocityChart(metricsData);
     createSourceBalanceChart(metricsData);
     createQualityBulletChart(metricsData);
+    renderPipelineEfficiency(metricsData);
 }

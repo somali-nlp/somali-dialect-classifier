@@ -276,6 +276,7 @@ function normalizeMetricRecord(metric) {
         source: metric.source || 'unknown',
         pipeline_type: metric.pipeline_type || 'unknown',
         timestamp: metric.timestamp || new Date().toISOString(),
+        run_id: metric.run_id || metric._run_id || snapshot.run_id || null,
 
         // Data volume metrics
         records_written: metric.records_written || 0,

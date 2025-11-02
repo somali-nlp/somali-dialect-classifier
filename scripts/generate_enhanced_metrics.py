@@ -412,6 +412,19 @@ def main():
             "total_runs": len(metrics)
         }
 
+    # Load source mix targets (Stage 1 planning)
+    source_mix_targets = {}
+    source_mix_config = {}
+    targets_path = project_root / "docs" / "reference" / "source_mix_targets.json"
+    if targets_path.exists():
+        try:
+            with open(targets_path, 'r', encoding='utf-8') as f:
+                source_mix_config = json.load(f)
+                if isinstance(source_mix_config, dict):
+                    source_mix_targets = source_mix_config.get("targets", {})
+        except Exception as exc:
+            print(f"⚠ Warning: Failed to load source mix targets from {targets_path}: {exc}", file=sys.stderr)
+
     # Build dashboard summary
     sources = sorted(set(m.get("source", "") for m in metrics if m.get("source")))
     source_breakdown = {}
@@ -501,6 +514,8 @@ def main():
         "schema_version": "4.0",
         "metrics_count": len(metrics),
         "sources_count": len(sources),
+        "source_mix_targets": source_mix_targets,
+        "source_mix_targets_version": source_mix_config.get("version") if isinstance(source_mix_config, dict) else None,
         "visualizations": viz_data.model_dump() if SCHEMA_VALIDATION_AVAILABLE else {},
         "cache_key": cache_key,
         "cache_ttl_seconds": 3600

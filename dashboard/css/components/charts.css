@@ -147,6 +147,80 @@
     font-size: var(--text-sm);
 }
 
+.chart-card-efficiency .chart-canvas {
+    height: auto;
+}
+
+.pipeline-efficiency-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.pipeline-efficiency-bar {
+    display: flex;
+    width: 100%;
+    height: 18px;
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    background: var(--gray-200);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+.pipeline-efficiency-segment {
+    height: 100%;
+    transition: width 300ms ease;
+}
+
+.pipeline-efficiency-stats {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.pipeline-efficiency-stage {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    align-items: baseline;
+    gap: 0.65rem;
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+}
+
+.pipeline-stage-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.pipeline-stage-label {
+    font-weight: 600;
+    color: var(--tableau-navy);
+}
+
+.pipeline-stage-value {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--tableau-text-secondary);
+    justify-self: end;
+}
+
+.pipeline-stage-percent {
+    grid-column: 3 / 4;
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+}
+
+.pipeline-efficiency-empty {
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+}
+
 /* Ridge Plot Styles */
 .ridge-plot-container {
     position: relative;

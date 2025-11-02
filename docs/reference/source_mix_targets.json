@@ -1,0 +1,11 @@
+{
+  "version": "2025-10-stage1",
+  "notes": "Stage 1 ingestion coverage goals aligned with docs/guides/data-pipeline.md",
+  "targets": {
+    "Wikipedia": 0.45,
+    "BBC": 0.2,
+    "HuggingFace": 0.25,
+    "Språkbanken": 0.1,
+    "TikTok": 0.0
+  }
+}

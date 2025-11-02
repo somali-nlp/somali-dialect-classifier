@@ -82,6 +82,16 @@
     color: #065f46;
 }
 
+.source-card-badge.upcoming {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.source-card-badge.planned {
+    background: var(--gray-200);
+    color: var(--gray-600);
+}
+
 .source-card-metrics {
     display: grid;
     gap: var(--space-4);
