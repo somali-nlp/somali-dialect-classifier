@@ -93,6 +93,21 @@ def load_all_metrics() -> List[Dict[str, Any]]:
             volume = layered.get("volume", {})
             quality = layered.get("quality", {})
 
+            # CRITICAL FIX: Calculate quality_pass_rate from filter_breakdown
+            # Bug: Pre-calculated quality_pass_rate in stats was wrong for TikTok/HuggingFace
+            # Correct formula: passed / (passed + sum(filter_breakdown))
+            filter_breakdown = quality.get("filter_breakdown", {})
+            records_passed = quality.get("records_passed_filters", 0)
+
+            if filter_breakdown and sum(filter_breakdown.values()) > 0:
+                # Calculate from actual filter data (most accurate)
+                total_filtered = sum(filter_breakdown.values())
+                total_input = records_passed + total_filtered
+                quality_pass_rate = records_passed / total_input if total_input > 0 else 0
+            else:
+                # Fallback to pre-calculated value
+                quality_pass_rate = stats.get("quality_pass_rate") or 0
+
             metric_entry = {
                 "run_id": run_id,
                 "source": source,
@@ -112,7 +127,7 @@ def load_all_metrics() -> List[Dict[str, Any]]:
                 # Quality metrics (from statistics) - handle None for non-web pipelines
                 "http_request_success_rate": stats.get("http_request_success_rate") or 0,
                 "content_extraction_success_rate": stats.get("content_extraction_success_rate") or 0,
-                "quality_pass_rate": stats.get("quality_pass_rate") or 0,
+                "quality_pass_rate": quality_pass_rate,  # Now correctly calculated
                 "deduplication_rate": stats.get("deduplication_rate") or 0,
 
                 # Throughput metrics

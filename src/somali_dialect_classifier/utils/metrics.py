@@ -1057,24 +1057,32 @@ class MetricsCollector:
             extraction = ExtractionMetrics()
 
         # Layer 3: Quality
-        # Calculate records received based on pipeline type
-        if pipeline_type == PipelineType.WEB_SCRAPING.value:
-            records_received = snapshot.urls_fetched - snapshot.urls_deduplicated
-        elif pipeline_type == PipelineType.FILE_PROCESSING.value:
-            records_received = snapshot.records_extracted - (snapshot.duplicate_hashes + snapshot.near_duplicates)
-        elif pipeline_type == PipelineType.STREAM_PROCESSING.value:
-            # Handle hybrid streams (Apify-based TikTok vs traditional dataset streams)
-            if snapshot.urls_fetched > 0:
-                # Apify-style stream - uses urls_fetched like web scraping
-                records_received = snapshot.urls_fetched - snapshot.urls_deduplicated
-            else:
-                # Traditional dataset stream - uses records_fetched
-                records_received = snapshot.records_fetched - (snapshot.duplicate_hashes + snapshot.near_duplicates)
+        # CRITICAL: Calculate records_received from filter_breakdown when available
+        # This is the TRUE total input = passed + filtered
+        # Bug fix: Previously used urls_fetched which missed early-filtered items
+        if snapshot.filter_reasons and sum(snapshot.filter_reasons.values()) > 0:
+            # Most accurate: Sum of passed + all filtered items
+            filter_breakdown_total = sum(snapshot.filter_reasons.values())
+            records_received = snapshot.records_written + filter_breakdown_total
         else:
-            records_received = snapshot.records_written
+            # Fallback: Calculate based on pipeline type
+            if pipeline_type == PipelineType.WEB_SCRAPING.value:
+                records_received = snapshot.urls_fetched - snapshot.urls_deduplicated
+            elif pipeline_type == PipelineType.FILE_PROCESSING.value:
+                records_received = snapshot.records_extracted - (snapshot.duplicate_hashes + snapshot.near_duplicates)
+            elif pipeline_type == PipelineType.STREAM_PROCESSING.value:
+                # Handle hybrid streams (Apify-based TikTok vs traditional dataset streams)
+                if snapshot.urls_fetched > 0:
+                    # Apify-style stream - uses urls_fetched like web scraping
+                    records_received = snapshot.urls_fetched - snapshot.urls_deduplicated
+                else:
+                    # Traditional dataset stream - uses records_fetched
+                    records_received = snapshot.records_fetched - (snapshot.duplicate_hashes + snapshot.near_duplicates)
+            else:
+                records_received = snapshot.records_written
 
-        # Sanity check: records_received should be at least records_written
-        records_received = max(records_received, snapshot.records_written)
+            # Sanity check: records_received should be at least records_written
+            records_received = max(records_received, snapshot.records_written)
 
         quality = QualityMetrics(
             records_received=max(records_received, 0),  # Ensure non-negative
