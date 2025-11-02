@@ -9,6 +9,15 @@ import { normalizeSourceName, formatDate } from '../utils/formatters.js';
 
 const SOURCE_ORDER = ['Wikipedia', 'BBC', 'HuggingFace', 'Språkbanken', 'TikTok'];
 
+// Pipeline stage colors - extracted for maintainability
+const PIPELINE_STAGE_COLORS = {
+    discovered: '#94a3b8',      // Slate 400 - earliest stage
+    fetched: '#60a5fa',         // Blue 400
+    extracted: '#3b82f6',       // Blue 600
+    quality_received: '#2563eb',// Blue 700
+    written: '#10b981'          // Green 500 - final stage (success)
+};
+
 const SOURCE_COLOR_MAP = {
     'Wikipedia': '#3b82f6',
     'BBC': '#ef4444',
@@ -312,16 +321,24 @@ function renderPipelineEfficiency(metricsData) {
     }
 
     const stageOrder = [
-        { key: 'discovered', label: 'Discovered', color: '#94a3b8' },
-        { key: 'fetched', label: 'Fetched', color: '#60a5fa' },
-        { key: 'extracted', label: 'Extracted', color: '#3b82f6' },
-        { key: 'quality_received', label: 'Quality Check', color: '#2563eb' },
-        { key: 'written', label: 'Silver Dataset', color: '#10b981' }
+        { key: 'discovered', label: 'Discovered', color: PIPELINE_STAGE_COLORS.discovered },
+        { key: 'fetched', label: 'Fetched', color: PIPELINE_STAGE_COLORS.fetched },
+        { key: 'extracted', label: 'Extracted', color: PIPELINE_STAGE_COLORS.extracted },
+        { key: 'quality_received', label: 'Quality Check', color: PIPELINE_STAGE_COLORS.quality_received },
+        { key: 'written', label: 'Silver Dataset', color: PIPELINE_STAGE_COLORS.written }
     ];
 
     const segments = stageOrder.map(stage => {
         const value = stages[stage.key] || 0;
-        const width = baseline > 0 ? Math.max((value / baseline) * 100, value > 0 ? 2 : 0) : 0;
+        // Calculate width percentage, ensuring minimum 2% visibility for non-zero values
+        let width = 0;
+        if (baseline > 0) {
+            width = (value / baseline) * 100;
+            // Ensure minimum 2% width for non-zero values (visibility)
+            if (value > 0) {
+                width = Math.max(width, 2);
+            }
+        }
         return `<div class="pipeline-efficiency-segment" aria-hidden="true" style="width:${width}%;background-color:${stage.color};" title="${stage.label}: ${value.toLocaleString()} records"></div>`;
     });
 

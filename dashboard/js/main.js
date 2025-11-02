@@ -161,10 +161,12 @@ async function init() {
         }
 
         // Initialize enhanced features
+        // NOTE: These must run AFTER loadMetrics() completes to ensure metadata is available
         try {
             initAudienceMode();
+            // Wait for metadata to be available before calling functions that depend on it
             updateCoverageScorecard();
-            initCoverageCharts();
+            initCoverageCharts();  // Calls getSourceTargetShare() which needs metadata
             populateQualityOverview();
             populateQualityBriefings();
         } catch (error) {
