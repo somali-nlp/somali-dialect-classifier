@@ -1136,7 +1136,7 @@ function createIngestionVelocityChart(metricsData) {
     datasets.push({
         type: 'line',
         label: 'Avg throughput',
-        data: timelineEntries.map(entry => entry.run.avgThroughput ?? null),
+        data: timelineEntries.map(entry => entry.isFirstInRun ? (entry.run.avgThroughput ?? null) : null),
         yAxisID: 'y1',
         borderColor: '#0ea5e9',
         backgroundColor: 'rgba(14, 165, 233, 0.2)',
@@ -1189,7 +1189,7 @@ function createIngestionVelocityChart(metricsData) {
                         label(context) {
                             if (context.dataset.type === 'line') {
                                 const value = context.parsed.y;
-                                if (!Number.isFinite(value)) return 'Avg throughput: n/a';
+                                if (!Number.isFinite(value)) return null;
                                 return `Avg throughput: ${Math.round(value).toLocaleString()} rec/min`;
                             }
                             const entry = timelineEntries[context.dataIndex];
