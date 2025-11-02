@@ -128,24 +128,40 @@ function getTopFilterInsight(metrics) {
 
 let cachedSourceTargetShare = null;
 let cachedSourceTargetVolumes = null;
+let cachedSourceTargetVersion = null;
 function getSourceTargetShare() {
-    if (cachedSourceTargetShare) {
-        return cachedSourceTargetShare;
-    }
-
     const defaultShare = {
-        'Wikipedia': 0.45,
-        'BBC': 0.20,
-        'HuggingFace': 0.25,
-        'Språkbanken': 0.10,
-        'TikTok': 0.0
+        'Wikipedia': 14900 / 64400,
+        'BBC': 1500 / 64400,
+        'HuggingFace': 10000 / 64400,
+        'Språkbanken': 8000 / 64400,
+        'TikTok': 30000 / 64400
+    };
+    const defaultVolumes = {
+        'Wikipedia': 14900,
+        'BBC': 1500,
+        'HuggingFace': 10000,
+        'Språkbanken': 8000,
+        'TikTok': 30000
     };
 
     const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
+    const versionKey = metadata?.source_mix_targets_version ||
+        JSON.stringify(metadata?.source_mix_targets || {});
+
+    if (cachedSourceTargetShare && cachedSourceTargetVersion === versionKey) {
+        return cachedSourceTargetShare;
+    }
+
+    cachedSourceTargetVersion = versionKey;
+    cachedSourceTargetShare = null;
+    cachedSourceTargetVolumes = null;
+
     const shareTargets = metadata?.source_mix_targets?.share;
     const volumeTargets = metadata?.source_mix_targets?.volumes;
 
     const normalized = {};
+    let normalizedVolumes = {};
     let populated = false;
 
     if (shareTargets && Object.keys(shareTargets).length > 0) {
@@ -153,22 +169,15 @@ function getSourceTargetShare() {
             const normalizedKey = normalizeSourceName(key);
             const numericValue = Number(value);
             if (Number.isFinite(numericValue)) {
-                normalized[normalizedKey] = numericValue;
+                const shareValue = numericValue > 1 ? numericValue / 100 : numericValue;
+                normalized[normalizedKey] = shareValue;
                 populated = true;
             }
         });
-        if (volumeTargets && Object.keys(volumeTargets).length > 0) {
-            cachedSourceTargetVolumes = Object.fromEntries(
-                Object.entries(volumeTargets).map(([key, value]) => [
-                    normalizeSourceName(key),
-                    value
-                ])
-            );
-        }
     }
 
     if (!populated && volumeTargets && Object.keys(volumeTargets).length > 0) {
-        const normalizedVolumes = Object.fromEntries(
+        normalizedVolumes = Object.fromEntries(
             Object.entries(volumeTargets).map(([key, value]) => [
                 normalizeSourceName(key),
                 Number(value) || 0
@@ -179,20 +188,34 @@ function getSourceTargetShare() {
             Object.entries(normalizedVolumes).forEach(([key, value]) => {
                 normalized[key] = (Number(value) || 0) / totalVolume;
             });
-            cachedSourceTargetVolumes = normalizedVolumes;
             populated = true;
         }
     } else if (volumeTargets && Object.keys(volumeTargets).length > 0) {
-        cachedSourceTargetVolumes = Object.fromEntries(
+        normalizedVolumes = Object.fromEntries(
             Object.entries(volumeTargets).map(([key, value]) => [
                 normalizeSourceName(key),
-                value
+                Number(value) || 0
             ])
         );
+        const totalVolume = Object.values(normalizedVolumes).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        if (totalVolume > 0) {
+            Object.entries(normalizedVolumes).forEach(([key, value]) => {
+                if (typeof normalized[key] !== 'number') {
+                    normalized[key] = (Number(value) || 0) / totalVolume;
+                }
+            });
+        }
+    }
+
+    if (Object.keys(normalizedVolumes).length > 0) {
+        cachedSourceTargetVolumes = normalizedVolumes;
+    } else if (!cachedSourceTargetVolumes) {
+        cachedSourceTargetVolumes = { ...defaultVolumes };
     }
 
     if (!populated) {
-        cachedSourceTargetShare = defaultShare;
+        cachedSourceTargetShare = { ...defaultShare };
+        cachedSourceTargetVolumes = { ...defaultVolumes };
     } else {
         cachedSourceTargetShare = { ...defaultShare, ...normalized };
     }
@@ -201,18 +224,14 @@ function getSourceTargetShare() {
 }
 
 function getSourceTargetVolumes() {
-    if (!cachedSourceTargetVolumes) {
-        const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
-        const volumeTargets = metadata?.source_mix_targets?.volumes;
-        if (volumeTargets) {
-            cachedSourceTargetVolumes = Object.fromEntries(
-                Object.entries(volumeTargets).map(([key, value]) => [
-                    normalizeSourceName(key),
-                    value
-                ])
-            );
-        }
+    const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
+    const versionKey = metadata?.source_mix_targets_version ||
+        JSON.stringify(metadata?.source_mix_targets || {});
+
+    if (!cachedSourceTargetVolumes || cachedSourceTargetVersion !== versionKey) {
+        getSourceTargetShare();
     }
+
     return cachedSourceTargetVolumes || {};
 }
 
@@ -851,9 +870,11 @@ function updateBalanceNarrative(labels, actualPercentages, targetPercentages) {
         const targetSummary = SOURCE_ORDER
             .filter(name => Object.prototype.hasOwnProperty.call(targets, name))
             .map(name => {
-                const sharePct = (targets[name] * 100).toFixed(0);
-                const volumeLabel = volumes && Number.isFinite(Number(volumes[name]))
-                    ? `${Number(volumes[name]).toLocaleString()} (~${sharePct}%)`
+                const shareValue = Number(targets[name]) || 0;
+                const sharePct = (shareValue * 100).toFixed(1);
+                const volumeValue = Number(volumes[name]);
+                const volumeLabel = Number.isFinite(volumeValue)
+                    ? `${volumeValue.toLocaleString()} (~${sharePct}%)`
                     : `${sharePct}%`;
                 return `${name} ${volumeLabel}`;
             });
@@ -938,7 +959,7 @@ function createIngestionVelocityChart(metricsData) {
         .filter(source => uniqueSources.has(source))
         .concat(Array.from(uniqueSources).filter(source => !SOURCE_ORDER.includes(source)).sort());
 
-    const datasets = orderedSources.map(source => ({
+    const datasets = orderedSources.map((source, datasetIndex) => ({
         label: source,
         data: runSeries.map(entry => entry.sources[source] || 0),
         backgroundColor: runSeries.map((_, idx) => {
@@ -947,9 +968,10 @@ function createIngestionVelocityChart(metricsData) {
         }),
         borderColor: getSourceColor(source),
         borderWidth: 1,
-        borderRadius: 6,
-        barPercentage: 0.75,
-        categoryPercentage: 0.7
+        borderRadius: 8,
+        categoryPercentage: 0.7,
+        barPercentage: 0.85,
+        order: datasetIndex
     }));
 
     datasets.push({
@@ -959,12 +981,14 @@ function createIngestionVelocityChart(metricsData) {
         yAxisID: 'y1',
         borderColor: '#0ea5e9',
         backgroundColor: 'rgba(14, 165, 233, 0.2)',
-        tension: 0.35,
+        tension: 0.45,
+        cubicInterpolationMode: 'monotone',
         fill: false,
         pointRadius: 4,
         pointBackgroundColor: '#0ea5e9',
         pointBorderWidth: 2,
-        spanGaps: true
+        spanGaps: true,
+        order: orderedSources.length + 1
     });
 
     coverageCharts.velocity?.destroy?.();
@@ -978,6 +1002,10 @@ function createIngestionVelocityChart(metricsData) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             plugins: {
                 legend: {
                     position: 'bottom',
