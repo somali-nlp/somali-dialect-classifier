@@ -112,6 +112,7 @@ def load_all_metrics() -> List[Dict[str, Any]]:
                 "run_id": run_id,
                 "source": source,
                 "timestamp": data.get("_timestamp") or snapshot.get("timestamp", ""),
+                "pipeline_type": data.get("_pipeline_type", "unknown"),
                 "duration_seconds": snapshot.get("duration_seconds", 0),
 
                 # Discovery metrics
