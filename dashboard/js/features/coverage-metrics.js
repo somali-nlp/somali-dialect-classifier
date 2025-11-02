@@ -127,12 +127,13 @@ function getTopFilterInsight(metrics) {
 }
 
 let cachedSourceTargetShare = null;
+let cachedSourceTargetVolumes = null;
 function getSourceTargetShare() {
     if (cachedSourceTargetShare) {
         return cachedSourceTargetShare;
     }
 
-    const defaults = {
+    const defaultShare = {
         'Wikipedia': 0.45,
         'BBC': 0.20,
         'HuggingFace': 0.25,
@@ -142,10 +143,10 @@ function getSourceTargetShare() {
 
     try {
         const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
-        const targets = metadata?.source_mix_targets || {};
-        const normalized = { ...defaults };
+        const shareTargets = metadata?.source_mix_targets?.share || metadata?.source_mix_targets || {};
+        const normalized = { ...defaultShare };
 
-        Object.entries(targets).forEach(([key, value]) => {
+        Object.entries(shareTargets).forEach(([key, value]) => {
             const normalizedKey = normalizeSourceName(key);
             const numericValue = Number(value);
             if (Number.isFinite(numericValue)) {
@@ -154,12 +155,36 @@ function getSourceTargetShare() {
         });
 
         cachedSourceTargetShare = normalized;
+        if (metadata?.source_mix_targets?.volumes) {
+            cachedSourceTargetVolumes = Object.fromEntries(
+                Object.entries(metadata.source_mix_targets.volumes).map(([key, value]) => [
+                    normalizeSourceName(key),
+                    value
+                ])
+            );
+        }
     } catch (error) {
         console.warn('Failed to load source mix targets from metadata, using defaults:', error);
-        cachedSourceTargetShare = defaults;
+        cachedSourceTargetShare = defaultShare;
     }
 
     return cachedSourceTargetShare;
+}
+
+function getSourceTargetVolumes() {
+    if (!cachedSourceTargetVolumes) {
+        const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
+        const volumeTargets = metadata?.source_mix_targets?.volumes;
+        if (volumeTargets) {
+            cachedSourceTargetVolumes = Object.fromEntries(
+                Object.entries(volumeTargets).map(([key, value]) => [
+                    normalizeSourceName(key),
+                    value
+                ])
+            );
+        }
+    }
+    return cachedSourceTargetVolumes || {};
 }
 
 function extractTimestamp(metric) {
@@ -172,26 +197,48 @@ function aggregateRunSeries(metrics, limit = 8) {
         if (!metric) return;
 
         const records = Number(metric.records_written) || 0;
+        const durationSeconds = Number(metric.duration_seconds) || 0;
         const source = normalizeSourceName(metric.source);
-        const runId = metric.run_id || metric._run_id || extractTimestamp(metric) || `run-${runMap.size}`;
         const timestamp = extractTimestamp(metric);
+        if (!timestamp || !source) return;
 
-        let entry = runMap.get(runId);
-        if (!entry) {
-            entry = {
-                runId,
-                timestamp,
-                sources: {},
-                total: 0,
-                throughputWeighted: 0,
-                throughputWeight: 0,
-                activeSources: new Set()
-            };
-            runMap.set(runId, entry);
+        const rawRunId = metric.run_id || metric._run_id || '';
+        let runKey = null;
+        if (rawRunId) {
+            const parts = rawRunId.split('_');
+            if (parts.length >= 2) {
+                runKey = `${parts[0]}_${parts[1]}`;
+            } else {
+                runKey = parts[0];
+            }
+        }
+        if (!runKey) {
+            runKey = timestamp.slice(0, 16);
         }
 
-        if (timestamp && (!entry.timestamp || timestamp > entry.timestamp)) {
-            entry.timestamp = timestamp;
+        let entry = runMap.get(runKey);
+        if (!entry) {
+            entry = {
+                runId: runKey,
+                startTimestamp: timestamp,
+                endTimestamp: timestamp,
+                sources: {},
+                total: 0,
+                durationSeconds: 0,
+                throughputWeighted: 0,
+                throughputWeight: 0,
+                activeSources: new Set(),
+                timestamps: new Set()
+            };
+            runMap.set(runKey, entry);
+        }
+
+        entry.timestamps.add(timestamp);
+        if (timestamp < entry.startTimestamp) {
+            entry.startTimestamp = timestamp;
+        }
+        if (timestamp > entry.endTimestamp) {
+            entry.endTimestamp = timestamp;
         }
 
         if (Number.isFinite(records) && records > 0) {
@@ -202,6 +249,8 @@ function aggregateRunSeries(metrics, limit = 8) {
             entry.sources[source] = 0;
         }
 
+        entry.durationSeconds += durationSeconds;
+
         const rpm = Number(metric.records_per_minute);
         if (Number.isFinite(rpm) && rpm >= 0) {
             const weight = records > 0 ? records : 1;
@@ -211,16 +260,28 @@ function aggregateRunSeries(metrics, limit = 8) {
     });
 
     const runs = Array.from(runMap.values())
-        .map(entry => ({
-            runId: entry.runId,
-            timestamp: entry.timestamp,
-            sources: entry.sources,
-            total: entry.total,
-            avgThroughput: entry.throughputWeight > 0
-                ? entry.throughputWeighted / entry.throughputWeight
-                : null,
-            activeSources: entry.activeSources.size || Object.keys(entry.sources).length
-        }))
+        .map(entry => {
+            const durationMinutes = entry.durationSeconds > 0 ? entry.durationSeconds / 60 : null;
+            const avgThroughput = durationMinutes && durationMinutes > 0
+                ? entry.total / durationMinutes
+                : null;
+
+            return {
+                runId: entry.runId,
+                timestamp: entry.endTimestamp || entry.startTimestamp,
+                startTimestamp: entry.startTimestamp,
+                endTimestamp: entry.endTimestamp,
+                sources: entry.sources,
+                total: entry.total,
+                avgThroughput: avgThroughput !== null
+                    ? avgThroughput
+                    : (entry.throughputWeight > 0
+                        ? entry.throughputWeighted / entry.throughputWeight
+                        : null),
+                activeSources: entry.activeSources.size || Object.keys(entry.sources).length,
+                timestampCount: entry.timestamps.size
+            };
+        })
         .sort((a, b) => {
             const tsA = new Date(a.timestamp || 0).getTime();
             const tsB = new Date(b.timestamp || 0).getTime();
@@ -245,6 +306,59 @@ function formatRunTimestamp(timestamp) {
     });
 }
 
+function formatRunWindow(start, end, { long = false } = {}) {
+    if (!start && !end) return 'Latest run';
+    const startDate = start ? new Date(start) : null;
+    const endDate = end ? new Date(end) : null;
+
+    if (!startDate || Number.isNaN(startDate.getTime())) {
+        return formatRunTimestamp(end);
+    }
+
+    if (!endDate || Number.isNaN(endDate.getTime())) {
+        return formatRunTimestamp(start);
+    }
+
+    if (startDate.getTime() === endDate.getTime()) {
+        return startDate.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+    }
+
+    const sameDay = startDate.toDateString() === endDate.toDateString();
+    const dayPrefix = sameDay
+        ? startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · '
+        : '';
+    const startLabel = sameDay
+        ? startDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+        : startDate.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+    const endLabel = endDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+    if (long && !sameDay) {
+        return `${startDate.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        })} – ${endDate.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        })}`;
+    }
+
+    return `${dayPrefix}${startLabel} – ${endLabel}`;
+}
+
 function computePipelineStageTotals(metrics = []) {
     const totals = {
         discovered: 0,
@@ -263,11 +377,30 @@ function computePipelineStageTotals(metrics = []) {
         if (!metric) return;
 
         const filteredTotal = Object.values(metric.filter_breakdown || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
-        const discovered = Number(metric.urls_discovered) || 0;
-        const fetched = Number(metric.urls_fetched) || 0;
-        const extracted = Number(metric.records_extracted) || Number(metric.records_written) || 0;
         const written = Number(metric.records_written) || 0;
-        const qualityReceived = written + filteredTotal;
+
+        let qualityReceived = Number(metric.records_received);
+        if (!Number.isFinite(qualityReceived) || qualityReceived <= 0) {
+            qualityReceived = written + filteredTotal;
+        }
+
+        let extracted = Number(metric.records_extracted);
+        if (!Number.isFinite(extracted) || extracted <= 0) {
+            extracted = Number(metric.records_processed) || Number(metric.urls_processed) || qualityReceived;
+        }
+        extracted = Math.max(extracted, qualityReceived);
+
+        let fetched = Number(metric.urls_fetched);
+        if (!Number.isFinite(fetched) || fetched <= 0) {
+            fetched = extracted;
+        }
+        fetched = Math.max(fetched, extracted);
+
+        let discovered = Number(metric.urls_discovered);
+        if (!Number.isFinite(discovered) || discovered <= 0) {
+            discovered = fetched;
+        }
+        discovered = Math.max(discovered, fetched);
 
         totals.discovered += discovered;
         totals.fetched += fetched;
@@ -354,12 +487,13 @@ function renderPipelineEfficiency(metricsData) {
                 ? (value / previousValue) * 100
                 : 0;
         previousValue = value;
+        const roundedValue = Math.round(value);
 
         return `
             <li class="pipeline-efficiency-stage">
                 <span class="pipeline-stage-dot" style="background-color:${stage.color};"></span>
                 <span class="pipeline-stage-label">${stage.label}</span>
-                <span class="pipeline-stage-value">${value.toLocaleString()}</span>
+                <span class="pipeline-stage-value">${roundedValue.toLocaleString()}</span>
                 <span class="pipeline-stage-percent">${originShare.toFixed(1)}% of origin${index > 0 ? ` · ${relativeShare.toFixed(1)}% vs prior` : ''}</span>
             </li>
         `;
@@ -373,13 +507,18 @@ function renderPipelineEfficiency(metricsData) {
     }
 
     if (footnote) {
-        const latestTimestamp = (metricsData?.metrics || [])
-            .map(metric => metric.timestamp)
-            .filter(Boolean)
-            .sort()
-            .pop();
-        if (latestTimestamp) {
-            footnote.textContent = `Latest data from ${formatRunTimestamp(latestTimestamp)}.`;
+        const latestRun = aggregateRunSeries(metricsData?.metrics || [], 1)[0];
+        if (latestRun) {
+            footnote.textContent = `Latest data from ${formatRunWindow(latestRun.startTimestamp, latestRun.endTimestamp, { long: true })}.`;
+        } else {
+            const latestTimestamp = (metricsData?.metrics || [])
+                .map(metric => metric.timestamp)
+                .filter(Boolean)
+                .sort()
+                .pop();
+            if (latestTimestamp) {
+                footnote.textContent = `Latest data from ${formatRunTimestamp(latestTimestamp)}.`;
+            }
         }
     }
 }
@@ -596,15 +735,18 @@ function updateVelocityNarrative(runSeries) {
                 ? latest.avgThroughput - previous.avgThroughput
                 : null;
 
-            let label = diff === 0
-                ? 'No change vs prior run'
-                : `${diff > 0 ? '+' : ''}${diff.toLocaleString()} vs prior run`;
-
-            if (throughputDiff !== null && Math.abs(throughputDiff) >= 1) {
-                label += ` · ${throughputDiff > 0 ? '+' : ''}${Math.round(throughputDiff)} rpm`;
+            const parts = [];
+            if (diff === 0) {
+                parts.push('No change vs prior run');
+            } else {
+                parts.push(`${diff > 0 ? '+' : ''}${diff.toLocaleString()} vs prior run`);
             }
 
-            deltaEl.textContent = label;
+            if (throughputDiff !== null && Math.abs(throughputDiff) >= 1) {
+                parts.push(`${throughputDiff > 0 ? '+' : ''}${Math.round(throughputDiff)} rpm`);
+            }
+
+            deltaEl.textContent = parts.join(' · ');
             deltaEl.classList.add(diff > 0 ? 'positive' : diff < 0 ? 'negative' : 'neutral');
         }
     }
@@ -624,8 +766,8 @@ function updateVelocityNarrative(runSeries) {
         } else {
             const activeSources = latest.activeSources || Object.keys(latest.sources || {}).length;
             const plural = activeSources === 1 ? '' : 's';
-            const timestampLabel = formatRunTimestamp(latest.timestamp);
-            footnote.textContent = `${timestampLabel} · ${activeSources} active source${plural}.`;
+            const windowLabel = formatRunWindow(latest.startTimestamp, latest.endTimestamp, { long: true });
+            footnote.textContent = `${windowLabel} · ${activeSources} active source${plural}.`;
         }
     }
 }
@@ -676,11 +818,18 @@ function updateBalanceNarrative(labels, actualPercentages, targetPercentages) {
         const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
         const targetsVersion = metadata?.source_mix_targets_version;
         const targets = getSourceTargetShare();
+        const volumes = getSourceTargetVolumes();
         const targetSummary = SOURCE_ORDER
             .filter(name => Object.prototype.hasOwnProperty.call(targets, name))
-            .map(name => `${name} ${(targets[name] * 100).toFixed(0)}%`);
-        const versionLabel = targetsVersion ? ` (v${targetsVersion})` : '';
-        footnote.textContent = `Targets reflect Stage 1 coverage goals${versionLabel}: ${targetSummary.join(', ')}.`;
+            .map(name => {
+                const sharePct = (targets[name] * 100).toFixed(0);
+                const volumeLabel = volumes && Number.isFinite(Number(volumes[name]))
+                    ? `${Number(volumes[name]).toLocaleString()} (~${sharePct}%)`
+                    : `${sharePct}%`;
+                return `${name} ${volumeLabel}`;
+            });
+        const versionLabel = targetsVersion ? `v${targetsVersion}` : '';
+        footnote.textContent = `Targets reflect planned dataset volumes${versionLabel ? ` (${versionLabel})` : ''}: ${targetSummary.join(', ')}.`;
     }
 }
 
@@ -750,7 +899,7 @@ function createIngestionVelocityChart(metricsData) {
 
     updateVelocityNarrative(runSeries);
 
-    const labels = runSeries.map(run => formatRunTimestamp(run.timestamp));
+    const labels = runSeries.map(run => formatRunWindow(run.startTimestamp, run.endTimestamp));
     const uniqueSources = new Set();
     runSeries.forEach(run => {
         Object.keys(run.sources).forEach(source => uniqueSources.add(source));
@@ -776,7 +925,7 @@ function createIngestionVelocityChart(metricsData) {
     datasets.push({
         type: 'line',
         label: 'Avg throughput',
-        data: runSeries.map(entry => entry.avgThroughput ?? 0),
+        data: runSeries.map(entry => entry.avgThroughput ?? null),
         yAxisID: 'y1',
         borderColor: '#0ea5e9',
         backgroundColor: 'rgba(14, 165, 233, 0.2)',
@@ -815,11 +964,15 @@ function createIngestionVelocityChart(metricsData) {
                             const throughput = Number.isFinite(entry.avgThroughput)
                                 ? ` · ${Math.round(entry.avgThroughput).toLocaleString()} rec/min`
                                 : '';
-                            return `${labels[idx]} • ${entry.total.toLocaleString()} records${throughput}`;
+                            const sources = entry.activeSources;
+                            const sourceLabel = sources ? ` · ${sources} source${sources === 1 ? '' : 's'}` : '';
+                            return `${labels[idx]} • ${entry.total.toLocaleString()} records${throughput}${sourceLabel}`;
                         },
                         label(context) {
                             if (context.dataset.type === 'line') {
-                                return `Avg throughput: ${Math.round((context.parsed.y ?? 0)).toLocaleString()} rec/min`;
+                                const value = context.parsed.y;
+                                if (!Number.isFinite(value)) return 'Avg throughput: n/a';
+                                return `Avg throughput: ${Math.round(value).toLocaleString()} rec/min`;
                             }
                             const total = runSeries[context.dataIndex].total || 0;
                             const value = context.parsed.y ?? 0;

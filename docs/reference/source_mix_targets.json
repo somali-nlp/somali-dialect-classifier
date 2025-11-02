@@ -1,11 +1,11 @@
 {
-  "version": "2025-10-stage1",
-  "notes": "Stage 1 ingestion coverage goals aligned with docs/guides/data-pipeline.md",
-  "targets": {
-    "Wikipedia": 0.45,
-    "BBC": 0.2,
-    "HuggingFace": 0.25,
-    "Språkbanken": 0.1,
-    "TikTok": 0.0
+  "version": "2025-10-volume-plan",
+  "notes": "Planned ingestion volumes drawn from docs/guides/data-pipeline.md and docs/howto/tiktok-integration.md",
+  "volumes": {
+    "Wikipedia": 14900,
+    "BBC": 1500,
+    "HuggingFace": 10000,
+    "Språkbanken": 8000,
+    "TikTok": 30000
   }
 }

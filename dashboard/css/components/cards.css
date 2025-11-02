@@ -39,6 +39,10 @@
     background: var(--sprakbanken);
 }
 
+.source-card.tiktok::before {
+    background: var(--tiktok);
+}
+
 .source-card:hover {
     box-shadow: var(--shadow-lg);
     transform: translateY(-4px);

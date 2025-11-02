@@ -134,15 +134,15 @@ def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optio
                 "total_chars": volume.total_chars,
 
                 # Quality metrics
-                "http_request_success_rate": stats.http_request_success_rate,
-                "content_extraction_success_rate": stats.content_extraction_success_rate,
-                "quality_pass_rate": stats.quality_pass_rate,
-                "deduplication_rate": stats.deduplication_rate,
+                "http_request_success_rate": stats.http_request_success_rate or 0,
+                "content_extraction_success_rate": stats.content_extraction_success_rate or 0,
+                "quality_pass_rate": stats.quality_pass_rate or 0,
+                "deduplication_rate": stats.deduplication_rate or 0,
 
                 # Throughput metrics
-                "urls_per_second": stats.throughput.urls_per_second,
-                "bytes_per_second": stats.throughput.bytes_per_second,
-                "records_per_minute": stats.throughput.records_per_minute,
+                "urls_per_second": stats.throughput.urls_per_second or 0,
+                "bytes_per_second": stats.throughput.bytes_per_second or 0,
+                "records_per_minute": stats.throughput.records_per_minute or 0,
             }
 
             # Optional stats
@@ -413,7 +413,8 @@ def main():
         }
 
     # Load source mix targets (Stage 1 planning)
-    source_mix_targets = {}
+    source_mix_share = {}
+    source_mix_volumes = {}
     source_mix_config = {}
     targets_path = project_root / "docs" / "reference" / "source_mix_targets.json"
     if targets_path.exists():
@@ -421,7 +422,19 @@ def main():
             with open(targets_path, 'r', encoding='utf-8') as f:
                 source_mix_config = json.load(f)
                 if isinstance(source_mix_config, dict):
-                    source_mix_targets = source_mix_config.get("targets", {})
+                    candidate_volumes = source_mix_config.get("volumes")
+                    if isinstance(candidate_volumes, dict):
+                        source_mix_volumes = candidate_volumes
+                        total_volume = sum(
+                            value for value in candidate_volumes.values()
+                            if isinstance(value, (int, float)) and value > 0
+                        )
+                        if total_volume > 0:
+                            source_mix_share = {
+                                key: float(value) / total_volume
+                                for key, value in candidate_volumes.items()
+                                if isinstance(value, (int, float)) and value >= 0
+                            }
         except Exception as exc:
             print(f"⚠ Warning: Failed to load source mix targets from {targets_path}: {exc}", file=sys.stderr)
 
@@ -514,7 +527,10 @@ def main():
         "schema_version": "4.0",
         "metrics_count": len(metrics),
         "sources_count": len(sources),
-        "source_mix_targets": source_mix_targets,
+        "source_mix_targets": {
+            "volumes": source_mix_volumes,
+            "share": source_mix_share
+        },
         "source_mix_targets_version": source_mix_config.get("version") if isinstance(source_mix_config, dict) else None,
         "visualizations": viz_data.model_dump() if SCHEMA_VALIDATION_AVAILABLE else {},
         "cache_key": cache_key,
