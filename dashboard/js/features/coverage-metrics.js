@@ -6,7 +6,6 @@
 import { getMetrics, getDashboardMetadata } from '../core/data-service.js';
 import { computePipelineAggregates, FILTER_REASON_LABELS } from '../core/aggregates.js';
 import { normalizeSourceName, formatDate } from '../utils/formatters.js';
-import sourceMixTargetsData from '../../data/source_mix_targets.json' assert { type: 'json' };
 
 const SOURCE_ORDER = ['Wikipedia', 'BBC', 'HuggingFace', 'Språkbanken', 'TikTok'];
 
@@ -60,59 +59,114 @@ const coverageCharts = {
     quality: null
 };
 
-function buildStaticSourceMixTargets(rawTargets) {
-    if (!rawTargets || typeof rawTargets !== 'object') {
-        return {
-            share: {},
-            volumes: {},
-            version: null
-        };
-    }
-
-    const rawVolumes = rawTargets.volumes && typeof rawTargets.volumes === 'object'
-        ? rawTargets.volumes
-        : {};
-
-    const normalizedVolumes = Object.fromEntries(
-        Object.entries(rawVolumes).map(([key, value]) => {
-            const normalizedKey = normalizeSourceName(key);
-            const numericValue = Number(value);
-            return [
-                normalizedKey,
-                Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 0
-            ];
-        })
-    );
-
-    const totalVolume = Object.values(normalizedVolumes).reduce((sum, value) => sum + (Number(value) || 0), 0);
-    const share = totalVolume > 0
-        ? Object.fromEntries(
-            Object.entries(normalizedVolumes).map(([key, value]) => [
-                key,
-                (Number(value) || 0) / totalVolume
-            ])
-        )
-        : {};
-
-    return {
-        share,
-        volumes: normalizedVolumes,
-        version: typeof rawTargets.version === 'string' ? rawTargets.version : null
-    };
-}
-
-const STATIC_SOURCE_MIX = buildStaticSourceMixTargets(sourceMixTargetsData);
+// Hardcoded fallback for offline/error cases
+const STATIC_SOURCE_MIX = {
+    share: {
+        'Wikipedia': 0.231,
+        'BBC': 0.023,
+        'HuggingFace': 0.155,
+        'Språkbanken': 0.124,
+        'TikTok': 0.466
+    },
+    volumes: {
+        'Wikipedia': 14900,
+        'BBC': 1500,
+        'HuggingFace': 10000,
+        'Språkbanken': 8000,
+        'TikTok': 30000
+    },
+    version: '2025-10-volume-plan'
+};
 const STATIC_SOURCE_MIX_VERSION_KEY = STATIC_SOURCE_MIX.version
     ? `static:${STATIC_SOURCE_MIX.version}`
     : `static:${JSON.stringify(STATIC_SOURCE_MIX.volumes || {})}`;
 
+// Module-level storage for dynamically loaded source mix targets
+let loadedSourceMixTargets = null;
+let sourceMixLoadAttempted = false;
+
+/**
+ * Load source mix targets from JSON file
+ * Uses fetch() with graceful fallback to hardcoded values
+ * @returns {Promise<Object>} Source mix targets object
+ */
+async function loadSourceMixTargets() {
+    if (sourceMixLoadAttempted && loadedSourceMixTargets) {
+        return loadedSourceMixTargets;
+    }
+
+    sourceMixLoadAttempted = true;
+
+    try {
+        const response = await fetch('data/source_mix_targets.json');
+        if (!response.ok) {
+            console.warn(`Could not load source_mix_targets.json (status ${response.status}), using fallback`);
+            loadedSourceMixTargets = STATIC_SOURCE_MIX;
+            return loadedSourceMixTargets;
+        }
+
+        const data = await response.json();
+        loadedSourceMixTargets = buildSourceMixTargetsFromJSON(data);
+        console.info('Source mix targets loaded from JSON file:', loadedSourceMixTargets.version);
+        return loadedSourceMixTargets;
+    } catch (error) {
+        console.warn('Error loading source_mix_targets.json:', error.message);
+        loadedSourceMixTargets = STATIC_SOURCE_MIX;
+        return loadedSourceMixTargets;
+    }
+}
+
+/**
+ * Build source mix targets object from loaded JSON data
+ * @param {Object} data - Raw JSON data from source_mix_targets.json
+ * @returns {Object} Normalized source mix targets
+ */
+function buildSourceMixTargetsFromJSON(data) {
+    if (!data || !data.volumes) {
+        console.warn('Invalid source_mix_targets.json structure, using fallback');
+        return STATIC_SOURCE_MIX;
+    }
+
+    const volumes = {};
+    const totalVolume = Object.values(data.volumes).reduce((sum, v) => sum + (Number(v) || 0), 0);
+    const share = {};
+
+    for (const [key, value] of Object.entries(data.volumes)) {
+        const normalized = normalizeSourceName(key);
+        const numericValue = Number(value);
+
+        if (Number.isFinite(numericValue) && numericValue >= 0) {
+            volumes[normalized] = numericValue;
+            share[normalized] = totalVolume > 0 ? numericValue / totalVolume : 0;
+        }
+    }
+
+    return {
+        share,
+        volumes,
+        version: data.version || null
+    };
+}
+
+/**
+ * Get source mix version key for cache invalidation
+ * @param {Object} metadata - Dashboard metadata
+ * @returns {string} Version key
+ */
 function getSourceMixVersionKey(metadata) {
+    // Check if we have loaded targets
+    if (loadedSourceMixTargets?.version) {
+        return `loaded:${loadedSourceMixTargets.version}`;
+    }
+
+    // Fall back to metadata-based detection
     if (metadata?.source_mix_targets_version) {
         return metadata.source_mix_targets_version;
     }
     if (metadata?.source_mix_targets) {
         return JSON.stringify(metadata.source_mix_targets);
     }
+
     return STATIC_SOURCE_MIX_VERSION_KEY;
 }
 
@@ -186,22 +240,39 @@ function getTopFilterInsight(metrics) {
 let cachedSourceTargetShare = null;
 let cachedSourceTargetVolumes = null;
 let cachedSourceTargetVersion = null;
+
+/**
+ * Get source target share percentages
+ * Priority: 1) Loaded JSON file, 2) Dashboard metadata, 3) Hardcoded fallback
+ * @returns {Object} Source share targets (0-1 ratios)
+ */
 function getSourceTargetShare() {
     const metadata = typeof getDashboardMetadata === 'function' ? getDashboardMetadata() : null;
-    const defaultShare = STATIC_SOURCE_MIX.share || {};
-    const defaultVolumes = STATIC_SOURCE_MIX.volumes || {};
     const versionKey = getSourceMixVersionKey(metadata);
 
+    // Return cached values if version hasn't changed
     if (cachedSourceTargetShare && cachedSourceTargetVersion === versionKey) {
         return cachedSourceTargetShare;
     }
 
+    // Invalidate cache
     cachedSourceTargetVersion = versionKey;
     cachedSourceTargetShare = null;
     cachedSourceTargetVolumes = null;
 
+    // Priority 1: Use dynamically loaded targets from JSON file
+    if (loadedSourceMixTargets && loadedSourceMixTargets.share && Object.keys(loadedSourceMixTargets.share).length > 0) {
+        cachedSourceTargetShare = loadedSourceMixTargets.share;
+        cachedSourceTargetVolumes = loadedSourceMixTargets.volumes;
+        return cachedSourceTargetShare;
+    }
+
+    // Priority 2: Use dashboard metadata (if available)
     const shareTargets = metadata?.source_mix_targets?.share;
     const volumeTargets = metadata?.source_mix_targets?.volumes;
+
+    const defaultShare = STATIC_SOURCE_MIX.share || {};
+    const defaultVolumes = STATIC_SOURCE_MIX.volumes || {};
 
     const normalizedShare = {};
     let normalizedVolumes = {};
@@ -259,6 +330,7 @@ function getSourceTargetShare() {
         }
     }
 
+    // Priority 3: Fall back to hardcoded values
     const mergedShare = sharePopulated
         ? { ...(defaultShare || {}), ...normalizedShare }
         : { ...(defaultShare || {}) };
@@ -996,7 +1068,6 @@ function createIngestionVelocityChart(metricsData) {
 
     updateVelocityNarrative(runSeries);
 
-    const labels = runSeries.map(run => formatRunWindow(run.startTimestamp, run.endTimestamp));
     const uniqueSources = new Set();
     runSeries.forEach(run => {
         Object.keys(run.sources).forEach(source => uniqueSources.add(source));
@@ -1006,25 +1077,66 @@ function createIngestionVelocityChart(metricsData) {
         .filter(source => uniqueSources.has(source))
         .concat(Array.from(uniqueSources).filter(source => !SOURCE_ORDER.includes(source)).sort());
 
+    const timelineEntries = [];
+    runSeries.forEach((run, index) => {
+        const runLabel = formatRunWindow(run.startTimestamp, run.endTimestamp);
+        const sourcesInRun = orderedSources.filter(source => (run.sources[source] || 0) > 0);
+        const fallbackSources = Object.keys(run.sources || {})
+            .filter(source => !orderedSources.includes(source) && (run.sources[source] || 0) > 0)
+            .sort();
+
+        const orderedRunSources = sourcesInRun.concat(fallbackSources);
+
+        if (!orderedRunSources.length) {
+            timelineEntries.push({
+                run,
+                source: 'Unknown',
+                records: 0,
+                label: `${runLabel}\nUnknown`,
+                runLabel,
+                isFirstInRun: true,
+                isLastInRun: true
+            });
+            return;
+        }
+
+        orderedRunSources.forEach((source, idxInRun) => {
+            const records = run.sources[source] || 0;
+            timelineEntries.push({
+                run,
+                source,
+                records,
+                label: idxInRun === 0 ? `${runLabel}\n${source}` : `\n${source}`,
+                runLabel,
+                isFirstInRun: idxInRun === 0,
+                isLastInRun: idxInRun === orderedRunSources.length - 1
+            });
+        });
+    });
+
+    const labels = timelineEntries.map(entry => entry.label);
+
     const datasets = orderedSources.map((source, datasetIndex) => ({
         label: source,
-        data: runSeries.map(entry => entry.sources[source] || 0),
-        backgroundColor: runSeries.map((_, idx) => {
-            const isLatest = idx === runSeries.length - 1;
-            return getSourceColor(source, isLatest ? 0.95 : 0.6);
+        data: timelineEntries.map(entry => entry.source === source ? entry.records : null),
+        backgroundColor: timelineEntries.map((entry, idx) => {
+            if (entry.source !== source) return 'rgba(0,0,0,0)';
+            const isLatestRun = entry.run === runSeries[runSeries.length - 1];
+            return getSourceColor(source, isLatestRun ? 0.95 : 0.6);
         }),
         borderColor: getSourceColor(source),
         borderWidth: 1,
         borderRadius: 8,
         categoryPercentage: 0.7,
         barPercentage: 0.85,
-        order: datasetIndex
+        order: datasetIndex,
+        skipNull: true
     }));
 
     datasets.push({
         type: 'line',
         label: 'Avg throughput',
-        data: runSeries.map(entry => entry.avgThroughput ?? null),
+        data: timelineEntries.map(entry => entry.run.avgThroughput ?? null),
         yAxisID: 'y1',
         borderColor: '#0ea5e9',
         backgroundColor: 'rgba(14, 165, 233, 0.2)',
@@ -1065,13 +1177,14 @@ function createIngestionVelocityChart(metricsData) {
                     callbacks: {
                         title(context) {
                             const idx = context[0].dataIndex;
-                            const entry = runSeries[idx];
-                            const throughput = Number.isFinite(entry.avgThroughput)
-                                ? ` · ${Math.round(entry.avgThroughput).toLocaleString()} rec/min`
+                            const entry = timelineEntries[idx];
+                            const run = entry.run;
+                            const throughput = Number.isFinite(run.avgThroughput)
+                                ? ` · ${Math.round(run.avgThroughput).toLocaleString()} rec/min`
                                 : '';
-                            const sources = entry.activeSources;
+                            const sources = run.activeSources;
                             const sourceLabel = sources ? ` · ${sources} source${sources === 1 ? '' : 's'}` : '';
-                            return `${labels[idx]} • ${entry.total.toLocaleString()} records${throughput}${sourceLabel}`;
+                            return `${entry.runLabel} • ${run.total.toLocaleString()} records${throughput}${sourceLabel}`;
                         },
                         label(context) {
                             if (context.dataset.type === 'line') {
@@ -1079,7 +1192,11 @@ function createIngestionVelocityChart(metricsData) {
                                 if (!Number.isFinite(value)) return 'Avg throughput: n/a';
                                 return `Avg throughput: ${Math.round(value).toLocaleString()} rec/min`;
                             }
-                            const total = runSeries[context.dataIndex].total || 0;
+                            const entry = timelineEntries[context.dataIndex];
+                            if (!Number.isFinite(context.parsed.y) || context.parsed.y === null) {
+                                return null;
+                            }
+                            const total = entry.run.total || 0;
                             const value = context.parsed.y ?? 0;
                             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
                             return `${context.dataset.label}: ${value.toLocaleString()} records (${percentage}%)`;
@@ -1092,6 +1209,20 @@ function createIngestionVelocityChart(metricsData) {
                     stacked: false,
                     grid: {
                         display: false
+                    },
+                    ticks: {
+                        autoSkip: false,
+                        maxRotation: 0,
+                        callback(value) {
+                            const label = typeof value === 'string' ? value : this.getLabelForValue(value);
+                            if (typeof label === 'string') {
+                                return label.split('\n');
+                            }
+                            if (Array.isArray(label)) {
+                                return label;
+                            }
+                            return label ?? '';
+                        }
                     }
                 },
                 y: {
@@ -1395,4 +1526,14 @@ export function initCoverageCharts() {
     createSourceBalanceChart(metricsData);
     createQualityBulletChart(metricsData);
     renderPipelineEfficiency(metricsData);
+}
+
+/**
+ * Initialize coverage metrics module
+ * Loads source mix targets from JSON file with fallback to hardcoded values
+ * Should be called during dashboard initialization, before rendering charts
+ * @returns {Promise<void>}
+ */
+export async function initCoverageMetrics() {
+    await loadSourceMixTargets();
 }

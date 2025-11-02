@@ -60,7 +60,7 @@ import { initializeFilterLabels } from './core/aggregates.js';
 
 // Import feature modules
 import { initAudienceMode } from './features/audience-mode.js';
-import { updateCoverageScorecard, initCoverageCharts } from './features/coverage-metrics.js';
+import { updateCoverageScorecard, initCoverageCharts, initCoverageMetrics } from './features/coverage-metrics.js';
 import { ThemeManager } from './features/theme-manager.js';
 import { FilterManager } from './features/filter-manager.js';
 import { ExportManager } from './features/export-manager.js';
@@ -93,6 +93,10 @@ async function init() {
             displayEmptyState();
             return;
         }
+
+        // Initialize coverage metrics (loads source mix targets from JSON)
+        // This must happen after loadMetrics() but before any chart rendering
+        await initCoverageMetrics();
 
         // Update all stats from loaded data
         updateStats();
