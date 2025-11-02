@@ -194,7 +194,8 @@ const FALLBACK_FILTER_LABELS = {
 };
 
 // Dynamic filter labels (loaded from catalog at runtime)
-let FILTER_REASON_LABELS = null;
+// Initialize with fallback to prevent null reference errors during async loading
+export let FILTER_REASON_LABELS = { ...FALLBACK_FILTER_LABELS };
 
 /**
  * Initialize filter labels from dynamic catalog.
@@ -243,8 +244,7 @@ export function getFilterLabel(filterKey) {
         .replace(/\b\w/g, c => c.toUpperCase());
 }
 
-// Export for backward compatibility (will be populated after initialization)
-export const FILTER_LABELS = FILTER_REASON_LABELS;
+// FILTER_LABELS export removed - FILTER_REASON_LABELS is now exported directly
 
 export function computeQualityAnalytics(metrics = []) {
     if (!Array.isArray(metrics) || metrics.length === 0) {
