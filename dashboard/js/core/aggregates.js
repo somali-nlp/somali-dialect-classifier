@@ -5,6 +5,7 @@
 
 import { Logger } from '../utils/logger.js';
 import { normalizeSourceName } from '../utils/formatters.js';
+import { loadFilterCatalog, extractLabels } from '../data/filter-catalog-loader.js';
 
 function toNumber(value, fallback = 0) {
     const num = Number(value);
@@ -157,9 +158,9 @@ export function computePipelineAggregates(metrics = []) {
     };
 }
 
-// TODO: Load dynamically from catalog.export_for_javascript() (GitHub issue: migrate to dynamic filter labels)
-// This ensures dashboard labels stay in sync with the canonical filter catalog in Python
-export const FILTER_REASON_LABELS = {
+// Fallback filter labels (used if dynamic catalog loading fails)
+// DO NOT DELETE - This is the safety net for catalog loading failures
+const FALLBACK_FILTER_LABELS = {
     // Length filters
     min_length_filter: 'Minimum length (50 chars)',
 
@@ -191,6 +192,59 @@ export const FILTER_REASON_LABELS = {
     // Fallback
     unspecified_filter: 'Unspecified filter'
 };
+
+// Dynamic filter labels (loaded from catalog at runtime)
+let FILTER_REASON_LABELS = null;
+
+/**
+ * Initialize filter labels from dynamic catalog.
+ *
+ * This function should be called once during app initialization
+ * to load filter labels from the Python-generated catalog JSON.
+ * Falls back to FALLBACK_FILTER_LABELS if loading fails.
+ *
+ * @returns {Promise<Object>} Loaded filter labels map
+ */
+export async function initializeFilterLabels() {
+    try {
+        const catalog = await loadFilterCatalog();
+        FILTER_REASON_LABELS = extractLabels(catalog);
+        Logger.info('Filter labels initialized from catalog');
+        return FILTER_REASON_LABELS;
+    } catch (error) {
+        Logger.error('Failed to initialize filter labels from catalog:', error);
+        FILTER_REASON_LABELS = { ...FALLBACK_FILTER_LABELS };
+        Logger.warn('Using fallback filter labels');
+        return FILTER_REASON_LABELS;
+    }
+}
+
+/**
+ * Get human-readable label for a filter key.
+ *
+ * Provides synchronous access to filter labels after initialization.
+ * If labels haven't been initialized, falls back to FALLBACK_FILTER_LABELS.
+ *
+ * @param {string} filterKey - Filter identifier (e.g., "min_length_filter")
+ * @returns {string} Human-readable label
+ */
+export function getFilterLabel(filterKey) {
+    // Use loaded labels if available
+    const labels = FILTER_REASON_LABELS || FALLBACK_FILTER_LABELS;
+
+    // Return label if found, otherwise format the key
+    if (labels[filterKey]) {
+        return labels[filterKey];
+    }
+
+    // Fallback: Convert snake_case to Title Case
+    return filterKey
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Export for backward compatibility (will be populated after initialization)
+export const FILTER_LABELS = FILTER_REASON_LABELS;
 
 export function computeQualityAnalytics(metrics = []) {
     if (!Array.isArray(metrics) || metrics.length === 0) {

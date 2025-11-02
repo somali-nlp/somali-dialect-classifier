@@ -1,0 +1,116 @@
+{
+  "filters": {
+    "min_length_filter": {
+      "label": "Minimum length (50 chars)",
+      "description": "Text must be at least 50 characters to ensure meaningful content",
+      "category": "length"
+    },
+    "langid_filter": {
+      "label": "Language ID (non-Somali)",
+      "description": "Text identified as non-Somali language using langid library",
+      "category": "language"
+    },
+    "empty_after_cleaning": {
+      "label": "Empty after cleaning",
+      "description": "Text becomes empty after whitespace and normalization",
+      "category": "cleaning"
+    },
+    "emoji_only_comment": {
+      "label": "Emoji-only comment",
+      "description": "TikTok comment contains only emoji characters with no text",
+      "category": "tiktok"
+    },
+    "text_too_short_after_cleanup": {
+      "label": "Very short text (<3 chars)",
+      "description": "Text is too short after cleanup (less than 3 characters)",
+      "category": "tiktok"
+    },
+    "dialect_heuristic_filter": {
+      "label": "Dialect heuristics",
+      "description": "Filtered by dialect classification heuristics",
+      "category": "dialect"
+    },
+    "namespace_filter": {
+      "label": "Wikipedia namespace exclusion",
+      "description": "Wikipedia article namespace excluded (e.g., Talk, User, Template)",
+      "category": "wikipedia"
+    },
+    "quality_score_filter": {
+      "label": "Quality score threshold",
+      "description": "Content quality score below acceptance threshold",
+      "category": "quality"
+    },
+    "profanity_filter": {
+      "label": "Profanity detection",
+      "description": "Text contains profanity or offensive language",
+      "category": "quality"
+    },
+    "toxic_filter": {
+      "label": "Toxicity detection",
+      "description": "Text flagged as toxic or harmful content",
+      "category": "quality"
+    },
+    "duplicate_filter": {
+      "label": "Duplicate content",
+      "description": "Duplicate or near-duplicate content detected",
+      "category": "quality"
+    },
+    "invalid_charset_filter": {
+      "label": "Invalid character encoding",
+      "description": "Invalid character encoding or non-UTF-8 characters detected",
+      "category": "technical"
+    },
+    "encoding_filter": {
+      "label": "Encoding issues",
+      "description": "Text encoding issues preventing proper processing",
+      "category": "technical"
+    },
+    "stopword_filter": {
+      "label": "Stopword threshold",
+      "description": "Stopword ratio exceeds acceptable threshold",
+      "category": "quality"
+    },
+    "unspecified_filter": {
+      "label": "Unspecified filter",
+      "description": "Filter reason not specified or unknown",
+      "category": "other"
+    }
+  },
+  "categories": {
+    "length": [
+      "min_length_filter"
+    ],
+    "language": [
+      "langid_filter"
+    ],
+    "cleaning": [
+      "empty_after_cleaning"
+    ],
+    "tiktok": [
+      "emoji_only_comment",
+      "text_too_short_after_cleanup"
+    ],
+    "dialect": [
+      "dialect_heuristic_filter"
+    ],
+    "wikipedia": [
+      "namespace_filter"
+    ],
+    "quality": [
+      "quality_score_filter",
+      "profanity_filter",
+      "toxic_filter",
+      "duplicate_filter",
+      "stopword_filter"
+    ],
+    "technical": [
+      "invalid_charset_filter",
+      "encoding_filter"
+    ],
+    "other": [
+      "unspecified_filter"
+    ]
+  },
+  "version": "1.13.0",
+  "last_updated": "2025-11-02T12:46:00Z"
+}

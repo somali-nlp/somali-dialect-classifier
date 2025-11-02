@@ -8,11 +8,23 @@ A production-ready data pipeline for collecting, processing, and preparing high-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Dashboard](https://img.shields.io/badge/Dashboard-Live-blue)](https://somali-nlp.github.io/somali-dialect-classifier/)
 
+## What's New (v2.0)
+
+**Enhanced Filter Observability & Analytics** - Four major enhancements transform the project from operational to enterprise-grade:
+
+1. **Dynamic Filter Catalog Loading** - Dashboard automatically loads filter labels from Python catalog (zero manual sync)
+2. **CI Metrics Anomaly Alerts** - Automated GitHub Issues for metrics calculation bugs (prevents production incidents)
+3. **Filter Coverage Regression Tests** - Automated tests prevent filter telemetry regressions (100% detection coverage)
+4. **Historical Filter Export** - Export filter metrics to Parquet for trend analysis and data warehouse integration
+
+See [Filter Analytics Guide](docs/howto/filter-analytics.md) and [CI Monitoring Guide](docs/howto/ci-metrics-anomaly-detection.md) for details.
+
 ## Key Features
 
 - **Multi-source data collection** - Wikipedia (~50k articles), BBC Somali news, HuggingFace MC4 (~100k-200k web docs), Språkbanken (66 academic corpora), TikTok comments (social media)
 - **Production-grade MLOps** - Structured logging, automated metrics, quality reports, crawl ledger for resume capability
 - **Quality-first architecture** - Two-tier deduplication (exact + near-duplicate), pluggable quality filters, unified silver dataset schema
+- **Advanced filter telemetry** - Per-filter breakdown tracking, historical analytics, regression prevention, automated anomaly detection
 - **Ethical web scraping** - Rate limiting, robots.txt compliance, conditional requests, configurable scraping policies
 - **Reproducible pipelines** - Timestamped artifacts, manifest versioning, Parquet storage with metadata sidecars
 - **Comprehensive testing** - 165+ tests with CI/CD on Ubuntu and macOS (Python 3.9-3.11)
@@ -286,10 +298,19 @@ python scripts/deduplicate_silver.py --output-dir data/silver_deduped
 
 ### Quick Links by Task
 
+**Getting Started:**
 - **Get started:** [Processing Pipelines](docs/howto/processing-pipelines.md)
 - **Add new data source:** [Architecture Overview](docs/overview/architecture.md)
 - **Add custom filter:** [Custom Filters Guide](docs/howto/custom-filters.md)
 - **Configure pipelines:** [Configuration Guide](docs/howto/configuration.md)
+
+**New Features (v2.0):**
+- **Filter analytics:** [Filter Analytics Guide](docs/howto/filter-analytics.md) - Historical analysis and trends
+- **CI monitoring:** [CI Anomaly Detection](docs/howto/ci-metrics-anomaly-detection.md) - Automated quality gates
+- **Dashboard usage:** [Dashboard Guide](docs/guides/dashboard.md) - Interactive metrics visualization
+- **Regression testing:** [CONTRIBUTING.md](CONTRIBUTING.md#regression-tests) - Running filter coverage tests
+
+**Operations:**
 - **Deploy to production:** [Deployment Guide](docs/operations/deployment.md)
 - **Troubleshooting:** [Troubleshooting Guide](docs/howto/troubleshooting.md)
 

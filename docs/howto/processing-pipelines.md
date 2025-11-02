@@ -956,6 +956,15 @@ This catalog provides:
 
 For the complete list of available filters, see the [Filter Catalog Reference](../reference/filters.md).
 
+**Dynamic Loading (New in v2.0):** The dashboard now loads filter metadata dynamically from a JSON export of the Python catalog, eliminating manual label synchronization.
+
+```bash
+# Export filter catalog for dashboard
+python scripts/export_filter_catalog.py
+
+# Output: dashboard/data/filter_catalog.json
+```
+
 ### Adding New Filters
 
 To add a new filter and have it tracked in telemetry:
@@ -1017,11 +1026,88 @@ const FILTER_REASON_LABELS = {
 }
 ```
 
+### Historical Analytics (New in v2.0)
+
+**Export filter metrics to Parquet for trend analysis and data warehouse integration:**
+
+```bash
+# Export all historical filter metrics
+python scripts/export_filters_to_parquet.py
+
+# Query with DuckDB
+python scripts/query_filter_history.py
+
+# Outputs:
+#   - data/warehouse/filter_history.parquet/ (partitioned by source and month)
+#   - Query results showing filter trends over time
+```
+
+**Example queries:**
+
+```python
+import duckdb
+
+con = duckdb.connect()
+
+# Top filters by volume (last 90 days)
+query = """
+SELECT
+    filter_label,
+    filter_category,
+    SUM(records_filtered) AS total_filtered,
+    AVG(records_filtered::FLOAT / total_records_filtered) AS avg_percentage
+FROM read_parquet('data/warehouse/filter_history.parquet/**/*.parquet')
+WHERE timestamp >= CURRENT_DATE - INTERVAL '90 days'
+GROUP BY filter_label, filter_category
+ORDER BY total_filtered DESC
+"""
+
+df = con.execute(query).df()
+print(df)
+```
+
+See [Filter Analytics Guide](filter-analytics.md) for comprehensive examples, Jupyter notebooks, and data warehouse integration.
+
+### Regression Testing (New in v2.0)
+
+**Automated tests prevent filter telemetry regressions:**
+
+```bash
+# Run regression tests
+pytest tests/regression/test_filter_telemetry.py -v
+
+# Expected output:
+# test_filter_breakdown_not_empty_when_filtering ... PASSED
+# test_filter_breakdown_sum_consistency ... PASSED
+# test_critical_filters_tracked ... PASSED
+```
+
+**What regression tests check:**
+
+1. **Coverage:** `filter_breakdown` not empty when `records_filtered > 0`
+2. **Consistency:** Sum of filter counts ≤ total records filtered
+3. **Critical filters:** Source-specific filters are tracked (e.g., TikTok must track `emoji_only_comment`)
+
+**Updating test baselines:**
+
+```bash
+# Generate new baseline after intentional filter changes
+python tests/regression/fixtures/generate_test_metrics.py
+
+# Commit with explanation
+git add tests/regression/fixtures/
+git commit -m "test: update filter baselines after adding profanity_filter"
+```
+
+See [CONTRIBUTING.md](../../CONTRIBUTING.md#regression-tests) for complete testing guide.
+
 ### See Also
 
 - **[Metrics Schema Reference](../reference/metrics-schema.md#filter-telemetry)** - Complete `filter_breakdown` field specification
 - **[Filter Catalog Reference](../reference/filters.md)** - All available filters with descriptions
 - **[TikTok Integration Guide](tiktok-integration.md#filter-telemetry)** - TikTok-specific filter stages
+- **[Filter Analytics Guide](filter-analytics.md)** - Historical analysis with Parquet export (NEW)
+- **[CI Monitoring Guide](ci-metrics-anomaly-detection.md)** - Automated anomaly detection (NEW)
 
 ## Comparison by Source
 

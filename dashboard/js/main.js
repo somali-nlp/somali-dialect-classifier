@@ -56,6 +56,7 @@ import {
     populatePerformanceMetrics,
     populateOverviewCards,
 } from './core/ui-renderer.js';
+import { initializeFilterLabels } from './core/aggregates.js';
 
 // Import feature modules
 import { initAudienceMode } from './features/audience-mode.js';
@@ -80,7 +81,11 @@ async function init() {
     Logger.info('Initializing dashboard...');
 
     try {
-        // Load data first - critical step
+        // Load filter labels before loading metrics
+        // This ensures filter display labels are available when rendering
+        await initializeFilterLabels();
+
+        // Load data - critical step
         const metricsData = await loadMetrics();
 
         if (!metricsData || !metricsData.metrics || metricsData.metrics.length === 0) {

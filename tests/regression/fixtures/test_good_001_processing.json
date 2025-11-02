@@ -1,0 +1,125 @@
+{
+  "_schema_version": "3.0",
+  "_pipeline_type": "test_fixture",
+  "_timestamp": "2025-11-02T10:00:00.000000+00:00",
+  "_run_id": "test_good_001",
+  "_source": "Test-Source-Good",
+  "layered_metrics": {
+    "connectivity": {
+      "connection_attempted": true,
+      "connection_successful": true,
+      "connection_duration_ms": 100.0,
+      "connection_error": null
+    },
+    "extraction": {
+      "stream_opened": true,
+      "total_records_available": 500,
+      "batches_attempted": 5,
+      "batches_completed": 5,
+      "batches_failed": 0,
+      "records_fetched": 500
+    },
+    "quality": {
+      "records_received": 500,
+      "records_passed_filters": 300,
+      "filter_breakdown": {
+        "min_length_filter": 120,
+        "emoji_only_comment": 50,
+        "text_too_short_after_cleanup": 30
+      }
+    },
+    "volume": {
+      "records_written": 300,
+      "bytes_downloaded": 50000,
+      "total_chars": 15000
+    }
+  },
+  "legacy_metrics": {
+    "snapshot": {
+      "timestamp": "2025-11-02T10:00:00.000000+00:00",
+      "run_id": "test_good_001",
+      "source": "Test-Source-Good",
+      "duration_seconds": 120.5,
+      "pipeline_type": "test_fixture",
+      "urls_discovered": 100,
+      "urls_fetched": 100,
+      "urls_processed": 100,
+      "urls_failed": 0,
+      "urls_skipped": 0,
+      "urls_deduplicated": 0,
+      "files_discovered": 0,
+      "files_processed": 0,
+      "records_extracted": 0,
+      "datasets_opened": 0,
+      "records_fetched": 500,
+      "records_processed": 300,
+      "batches_completed": 5,
+      "bytes_downloaded": 50000,
+      "records_written": 300,
+      "records_filtered": 200,
+      "http_status_codes": {},
+      "filter_reasons": {
+        "min_length_filter": 120,
+        "emoji_only_comment": 50,
+        "text_too_short_after_cleanup": 30
+      },
+      "error_types": {},
+      "fetch_durations_ms": [
+        100.0,
+        105.0,
+        98.0,
+        102.0,
+        99.0
+      ],
+      "process_durations_ms": [
+        10.0,
+        12.0,
+        11.0,
+        10.5,
+        11.5
+      ],
+      "text_lengths": [
+        75,
+        82,
+        90,
+        65,
+        78,
+        88,
+        95,
+        70,
+        85,
+        92
+      ],
+      "unique_hashes": 300,
+      "duplicate_hashes": 0,
+      "near_duplicates": 0
+    },
+    "statistics": {
+      "http_request_success_rate": 1.0,
+      "content_extraction_success_rate": 1.0,
+      "http_request_failure_rate": 0.0,
+      "quality_pass_rate": 0.6,
+      "deduplication_rate": 0.0,
+      "fetch_duration_stats": {
+        "min": 98.0,
+        "max": 105.0,
+        "mean": 100.8,
+        "median": 100.0,
+        "p95": 104.0,
+        "p99": 105.0
+      },
+      "text_length_stats": {
+        "min": 65,
+        "max": 95,
+        "mean": 82.0,
+        "median": 82.0,
+        "total_chars": 15000
+      },
+      "throughput": {
+        "urls_per_second": 0.83,
+        "bytes_per_second": 414.9,
+        "records_per_minute": 149.5
+      }
+    }
+  }
+}

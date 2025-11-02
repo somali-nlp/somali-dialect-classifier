@@ -696,6 +696,87 @@ if detect_negative_sentiment(text):
     return None
 ```
 
+### Catalog Versioning (New in v2.0)
+
+The filter catalog is versioned and exported to JSON for dashboard consumption:
+
+**Catalog location:** `src/somali_dialect_classifier/pipeline/filters/catalog.py`
+
+**Export location:** `dashboard/data/filter_catalog.json`
+
+**Schema:**
+```json
+{
+  "filters": {
+    "filter_key": {
+      "label": "Human-readable label",
+      "description": "Detailed description",
+      "category": "length|language|content_quality|..."
+    }
+  },
+  "categories": {
+    "length": ["min_length_filter", "text_too_short_after_cleanup"],
+    "language": ["langid_filter"],
+    "content_quality": ["emoji_only_comment", "empty_after_cleaning"]
+  },
+  "version": "1.13.0",
+  "last_updated": "2025-11-02T12:00:00Z"
+}
+```
+
+**Generating catalog export:**
+```bash
+python scripts/export_filter_catalog.py
+# Output: dashboard/data/filter_catalog.json
+```
+
+**Usage:** The dashboard dynamically loads this file to display filter labels, eliminating manual synchronization.
+
+### Historical Export to Parquet (New in v2.0)
+
+Filter breakdown data can be exported to Parquet for historical analysis:
+
+**Export location:** `data/warehouse/filter_history.parquet/`
+
+**Partition structure:** `source=<SOURCE>/month=<YYYY-MM>/part-0.parquet`
+
+**Schema:**
+```python
+{
+    "timestamp": datetime,           # ISO 8601 with timezone
+    "source": str,                   # "Wikipedia-Somali", "TikTok-Somali", etc.
+    "run_id": str,                   # Unique run identifier
+    "filter_key": str,               # "min_length_filter", etc.
+    "filter_label": str,             # "Minimum length (50 chars)"
+    "filter_category": str,          # "length", "content_quality", etc.
+    "records_filtered": int,         # Count for this filter
+    "total_records_filtered": int,   # Total across all filters
+    "records_written": int,          # Final record count
+    "quality_pass_rate": float       # Overall quality rate (0.0-1.0)
+}
+```
+
+**Exporting:**
+```bash
+python scripts/export_filters_to_parquet.py
+```
+
+**Querying with DuckDB:**
+```python
+import duckdb
+
+con = duckdb.connect()
+df = con.execute("""
+    SELECT filter_label, SUM(records_filtered) AS total
+    FROM read_parquet('data/warehouse/filter_history.parquet/**/*.parquet')
+    WHERE timestamp >= CURRENT_DATE - INTERVAL '30 days'
+    GROUP BY filter_label
+    ORDER BY total DESC
+""").df()
+```
+
+See [Filter Analytics Guide](../howto/filter-analytics.md) for complete documentation.
+
 ### Cross-References
 
 - **[Filter Catalog Reference](filters.md)** - Complete filter definitions and categories

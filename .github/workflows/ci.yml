@@ -56,9 +56,167 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: Generate regression test fixtures
+        run: |
+          echo "Generating regression test fixtures..."
+          python tests/regression/fixtures/generate_test_metrics.py
+
+      - name: Run regression tests
+        run: |
+          echo "Running filter telemetry regression tests..."
+          pytest tests/regression/test_filter_telemetry.py -v --tb=short
+        continue-on-error: false
+
       - name: Run tests with coverage
         run: |
           pytest --cov --cov-report=xml --cov-report=term-missing
+
+      - name: Check for metrics anomalies
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
+        id: anomaly_check
+        run: |
+          echo "Running metrics anomaly detection..."
+          python scripts/check_metrics_anomalies.py --warning-threshold 3 || echo "anomaly_exit_code=$?" >> $GITHUB_OUTPUT
+
+          # Check if anomalies.json exists and parse it
+          if [ -f test-results/anomalies.json ]; then
+            ANOMALY_COUNT=$(python -c "import json; data=json.load(open('test-results/anomalies.json')); print(data['total_anomalies'])")
+            ERROR_COUNT=$(python -c "import json; data=json.load(open('test-results/anomalies.json')); print(data['error_count'])")
+            WARNING_COUNT=$(python -c "import json; data=json.load(open('test-results/anomalies.json')); print(data['warning_count'])")
+            SOURCES=$(python -c "import json; data=json.load(open('test-results/anomalies.json')); print(','.join(data['sources_affected']))")
+
+            echo "anomaly_count=$ANOMALY_COUNT" >> $GITHUB_OUTPUT
+            echo "error_count=$ERROR_COUNT" >> $GITHUB_OUTPUT
+            echo "warning_count=$WARNING_COUNT" >> $GITHUB_OUTPUT
+            echo "sources_affected=$SOURCES" >> $GITHUB_OUTPUT
+
+            if [ "$ERROR_COUNT" -gt 0 ]; then
+              echo "::error::Found $ERROR_COUNT error-level metrics anomalies - see test results"
+              exit 1
+            elif [ "$WARNING_COUNT" -ge 3 ]; then
+              echo "::warning::Found $WARNING_COUNT warning-level metrics anomalies - see test results"
+            fi
+          else
+            echo "anomaly_count=0" >> $GITHUB_OUTPUT
+            echo "error_count=0" >> $GITHUB_OUTPUT
+            echo "warning_count=0" >> $GITHUB_OUTPUT
+            echo "sources_affected=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Issue for metrics anomalies
+        if: |
+          matrix.os == 'ubuntu-latest' &&
+          matrix.python-version == '3.9' &&
+          (steps.anomaly_check.outputs.warning_count >= 3 || steps.anomaly_check.outputs.error_count > 0)
+        uses: actions/github-script@v7
+        env:
+          ANOMALY_COUNT: ${{ steps.anomaly_check.outputs.anomaly_count }}
+          ERROR_COUNT: ${{ steps.anomaly_check.outputs.error_count }}
+          WARNING_COUNT: ${{ steps.anomaly_check.outputs.warning_count }}
+          SOURCES: ${{ steps.anomaly_check.outputs.sources_affected }}
+        with:
+          script: |
+            const fs = require('fs');
+            const anomalyCount = process.env.ANOMALY_COUNT;
+            const errorCount = process.env.ERROR_COUNT;
+            const warningCount = process.env.WARNING_COUNT;
+            const sources = process.env.SOURCES;
+
+            // Load anomaly details from JSON
+            let anomalyDetails = '';
+            try {
+              const anomalyData = JSON.parse(fs.readFileSync('test-results/anomalies.json', 'utf8'));
+              anomalyDetails = anomalyData.anomalies
+                .slice(0, 10)  // Show first 10 anomalies
+                .map(a => `- **[${a.level.toUpperCase()}]** ${a.source}: ${a.message}`)
+                .join('\n');
+
+              if (anomalyData.anomalies.length > 10) {
+                anomalyDetails += `\n\n_... and ${anomalyData.anomalies.length - 10} more anomalies (see artifact)_`;
+              }
+            } catch (err) {
+              anomalyDetails = '_Failed to load anomaly details from test-results/anomalies.json_';
+            }
+
+            // Check if issue already exists
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'metrics-anomaly,automated'
+            });
+
+            const issueBody = `## Metrics Calculation Anomalies Detected
+
+            **Total Anomalies:** ${anomalyCount}
+            **Error-level:** ${errorCount}
+            **Warning-level:** ${warningCount}
+            **Sources Affected:** ${sources || 'None'}
+            **Commit:** ${context.sha.substring(0, 7)}
+            **Workflow Run:** [View Details](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+
+            ### Anomaly Details
+
+            ${anomalyDetails}
+
+            ### What This Means
+
+            The CI pipeline detected metrics calculation anomalies. These indicate potential bugs in:
+            - \`src/somali_dialect_classifier/utils/metrics.py\`
+            - \`src/somali_dialect_classifier/utils/metrics_schema.py\`
+            - Data source processors (e.g., \`preprocessing/*_processor.py\`)
+
+            ### Action Required
+
+            1. **Review Test Results:** Download the \`test-results\` artifact from the workflow run
+            2. **Check Anomaly Report:** Review \`test-results/anomalies.json\` for full details
+            3. **Investigate Root Cause:** Check the affected data source processors
+            4. **Fix Calculation Bug:** Update metrics calculation logic as needed
+            5. **Verify Fix:** Run \`python scripts/check_metrics_anomalies.py\` locally
+
+            ### Threshold Configuration
+
+            - **Warning Threshold:** 3+ warning-level anomalies → Issue created
+            - **Error Threshold:** 1+ error-level anomalies → Build fails + Issue created
+
+            ### Related Documentation
+
+            - [Metrics Schema Reference](docs/reference/metrics-schema.md)
+            - [Processing Pipelines Guide](docs/howto/processing-pipelines.md)
+
+            ---
+            _This issue was automatically created by the CI pipeline._
+            `;
+
+            if (existingIssues.data.length === 0) {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `⚠️ Metrics Anomaly Alert: ${anomalyCount} anomalies detected`,
+                body: issueBody,
+                labels: ['bug', 'metrics-anomaly', 'automated', 'high-priority']
+              });
+              console.log('Created new metrics anomaly issue');
+            } else {
+              // Add comment to existing issue
+              const existingIssue = existingIssues.data[0];
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `### New Anomalies Detected\n\n${issueBody}`
+              });
+              console.log(`Added comment to existing issue #${existingIssue.number}`);
+            }
+
+      - name: Upload anomaly report
+        if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
+        uses: actions/upload-artifact@v4
+        with:
+          name: metrics-anomaly-report
+          path: test-results/anomalies.json
+          retention-days: 30
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'

@@ -1,0 +1,113 @@
+{
+  "_schema_version": "3.0",
+  "_pipeline_type": "test_fixture",
+  "_timestamp": "2025-11-02T10:05:00.000000+00:00",
+  "_run_id": "test_bad_001",
+  "_source": "Test-Source-Bad",
+  "layered_metrics": {
+    "connectivity": {
+      "connection_attempted": true,
+      "connection_successful": true,
+      "connection_duration_ms": 100.0,
+      "connection_error": null
+    },
+    "extraction": {
+      "stream_opened": true,
+      "total_records_available": 400,
+      "batches_attempted": 4,
+      "batches_completed": 4,
+      "batches_failed": 0,
+      "records_fetched": 400
+    },
+    "quality": {
+      "records_received": 400,
+      "records_passed_filters": 300,
+      "filter_breakdown": {}
+    },
+    "volume": {
+      "records_written": 300,
+      "bytes_downloaded": 40000,
+      "total_chars": 12000
+    }
+  },
+  "legacy_metrics": {
+    "snapshot": {
+      "timestamp": "2025-11-02T10:05:00.000000+00:00",
+      "run_id": "test_bad_001",
+      "source": "Test-Source-Bad",
+      "duration_seconds": 115.3,
+      "pipeline_type": "test_fixture",
+      "urls_discovered": 80,
+      "urls_fetched": 80,
+      "urls_processed": 80,
+      "urls_failed": 0,
+      "urls_skipped": 0,
+      "urls_deduplicated": 0,
+      "files_discovered": 0,
+      "files_processed": 0,
+      "records_extracted": 0,
+      "datasets_opened": 0,
+      "records_fetched": 400,
+      "records_processed": 300,
+      "batches_completed": 4,
+      "bytes_downloaded": 40000,
+      "records_written": 300,
+      "records_filtered": 100,
+      "http_status_codes": {},
+      "filter_reasons": {},
+      "error_types": {},
+      "fetch_durations_ms": [
+        95.0,
+        100.0,
+        98.0,
+        97.0
+      ],
+      "process_durations_ms": [
+        9.0,
+        11.0,
+        10.0,
+        10.5
+      ],
+      "text_lengths": [
+        70,
+        75,
+        80,
+        85,
+        90,
+        95,
+        100,
+        105
+      ],
+      "unique_hashes": 300,
+      "duplicate_hashes": 0,
+      "near_duplicates": 0
+    },
+    "statistics": {
+      "http_request_success_rate": 1.0,
+      "content_extraction_success_rate": 1.0,
+      "http_request_failure_rate": 0.0,
+      "quality_pass_rate": 0.75,
+      "deduplication_rate": 0.0,
+      "fetch_duration_stats": {
+        "min": 95.0,
+        "max": 100.0,
+        "mean": 97.5,
+        "median": 97.5,
+        "p95": 99.5,
+        "p99": 100.0
+      },
+      "text_length_stats": {
+        "min": 70,
+        "max": 105,
+        "mean": 87.5,
+        "median": 87.5,
+        "total_chars": 12000
+      },
+      "throughput": {
+        "urls_per_second": 0.69,
+        "bytes_per_second": 346.9,
+        "records_per_minute": 156.2
+      }
+    }
+  }
+}

@@ -304,6 +304,63 @@ def compress_json_file(input_file: Path, output_file: Path) -> None:
     print(f"  Compressed {input_file.name}: {original_size:,} → {compressed_size:,} bytes ({ratio:.1f}% reduction)")
 
 
+def export_filter_catalog(output_dir: Path) -> None:
+    """
+    Export filter catalog to JSON for dashboard consumption.
+
+    Args:
+        output_dir: Directory where filter_catalog.json should be written
+    """
+    try:
+        from somali_dialect_classifier.pipeline.filters.catalog import (
+            FILTER_CATALOG,
+            get_all_categories
+        )
+
+        # Build filters dictionary
+        filters = {}
+        for key, (label, description, category) in FILTER_CATALOG.items():
+            filters[key] = {
+                "label": label,
+                "description": description,
+                "category": category
+            }
+
+        # Get categories
+        categories = get_all_categories()
+
+        # Calculate semantic version
+        version = f"1.{len(FILTER_CATALOG)}.0"
+
+        # Build output structure
+        catalog_export = {
+            "filters": filters,
+            "categories": categories,
+            "metadata": {
+                "version": version,
+                "generated_at": datetime.utcnow().isoformat() + "Z",
+                "filter_count": len(filters),
+                "category_count": len(categories),
+                "schema_version": "1.0"
+            }
+        }
+
+        # Write to file
+        output_file = output_dir / "filter_catalog.json"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(catalog_export, f, indent=2, ensure_ascii=False)
+
+        print(f"✓ Exported filter catalog: {len(filters)} filters, {len(categories)} categories")
+
+    except ImportError as e:
+        print(f"⚠ Warning: Could not export filter catalog: {e}", file=sys.stderr)
+        print("  Filter catalog will not be available to dashboard", file=sys.stderr)
+    except Exception as e:
+        print(f"⚠ Warning: Failed to export filter catalog: {e}", file=sys.stderr)
+
+
 def main():
     """Main execution function."""
     parser = argparse.ArgumentParser(description="Generate enhanced consolidated metrics with visualizations")
@@ -339,8 +396,12 @@ def main():
     # Create output directory
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Export filter catalog for dashboard
+    print("\n=== Exporting Filter Catalog ===")
+    export_filter_catalog(output_dir)
+
     # Generate basic summary (backward compatible)
-    print("\nGenerating summary statistics...")
+    print("\n=== Generating Summary Statistics ===")
     if SCHEMA_VALIDATION_AVAILABLE:
         summary_stats = calculate_summary_stats(metrics)
     else:
