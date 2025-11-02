@@ -1,52 +1,61 @@
 {
-  "total_records": 13775,
-  "total_urls_processed": 13680,
-  "avg_success_rate": 0.96,
-  "total_data_downloaded_bytes": 14280506,
+  "total_records": 13048,
+  "total_urls_processed": 12858,
+  "avg_success_rate": 1.0,
+  "total_data_downloaded_bytes": 14810598,
   "sources": [
     "BBC-Somali",
     "HuggingFace-Somali_c4-so",
     "Sprakbanken-Somali",
+    "TikTok-Somali",
     "Wikipedia-Somali"
   ],
-  "last_update": "2025-10-29T17:49:30.970194+00:00",
-  "total_runs": 4,
+  "last_update": "2025-11-02T08:13:51.987789+00:00",
+  "total_runs": 5,
   "date_range": {
-    "start": "2025-10-29T16:59:38.144813+00:00",
-    "end": "2025-10-29T17:49:30.970194+00:00"
+    "start": "2025-11-02T07:11:10.541149+00:00",
+    "end": "2025-11-02T08:13:51.987789+00:00"
   },
   "source_breakdown": {
     "BBC-Somali": {
-      "records": 48,
+      "records": 49,
       "runs": 1,
-      "avg_success_rate": 0.96,
-      "avg_quality_pass_rate": 1.0,
-      "total_chars": 214002,
-      "last_run": "2025-10-29T17:49:30.970194+00:00"
+      "avg_success_rate": 1.0,
+      "avg_quality_pass_rate": 0.98,
+      "total_chars": 204380,
+      "last_run": "2025-11-02T08:01:07.657717+00:00"
     },
     "HuggingFace-Somali_c4-so": {
-      "records": 95,
+      "records": 190,
       "runs": 1,
       "avg_success_rate": 0.0,
       "avg_quality_pass_rate": 1.0,
-      "total_chars": 481547,
-      "last_run": "2025-10-29T17:01:41.941349+00:00"
+      "total_chars": 922843,
+      "last_run": "2025-11-02T08:13:51.987789+00:00"
     },
     "Sprakbanken-Somali": {
-      "records": 4009,
+      "records": 2527,
       "runs": 1,
       "avg_success_rate": 0.0,
-      "avg_quality_pass_rate": 0.7933900653077379,
-      "total_chars": 133388,
-      "last_run": "2025-10-29T16:59:38.144813+00:00"
+      "avg_quality_pass_rate": 0.8373094764744864,
+      "total_chars": 93081,
+      "last_run": "2025-11-02T07:11:10.541149+00:00"
+    },
+    "TikTok-Somali": {
+      "records": 322,
+      "runs": 1,
+      "avg_success_rate": 0.0,
+      "avg_quality_pass_rate": 0.8235294117647058,
+      "total_chars": 13508,
+      "last_run": "2025-11-02T07:13:10.369606+00:00"
     },
     "Wikipedia-Somali": {
-      "records": 9623,
+      "records": 9960,
       "runs": 1,
       "avg_success_rate": 0.0,
-      "avg_quality_pass_rate": 0.6357690274841438,
-      "total_chars": 4415740,
-      "last_run": "2025-10-29T16:59:44.596575+00:00"
+      "avg_quality_pass_rate": 0.6422905784484426,
+      "total_chars": 5463570,
+      "last_run": "2025-11-02T07:11:22.260509+00:00"
     }
   }
 }

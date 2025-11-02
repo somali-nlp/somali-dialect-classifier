@@ -60,10 +60,11 @@ def load_all_metrics() -> List[Dict[str, Any]]:
             if SCHEMA_VALIDATION_AVAILABLE:
                 try:
                     validated = validate_processing_json(data)
-                    layered = validated.layered_metrics
-                    legacy = validated.legacy_metrics
-                    snapshot = legacy.snapshot
-                    stats = legacy.statistics
+                    # Convert Pydantic models to dicts for uniform access
+                    layered = validated.layered_metrics.model_dump() if hasattr(validated.layered_metrics, 'model_dump') else validated.layered_metrics.dict()
+                    legacy = validated.legacy_metrics.model_dump() if hasattr(validated.legacy_metrics, 'model_dump') else validated.legacy_metrics.dict()
+                    snapshot = legacy.get("snapshot", {})
+                    stats = legacy.get("statistics", {})
                 except Exception as e:
                     print(f"Schema validation failed for {metrics_file.name}: {e}", file=sys.stderr)
                     continue
@@ -108,11 +109,11 @@ def load_all_metrics() -> List[Dict[str, Any]]:
                 "bytes_downloaded": volume.get("bytes_downloaded", 0),
                 "total_chars": volume.get("total_chars", 0),
 
-                # Quality metrics (from statistics)
-                "http_request_success_rate": stats.get("http_request_success_rate", 0),
-                "content_extraction_success_rate": stats.get("content_extraction_success_rate", 0),
-                "quality_pass_rate": stats.get("quality_pass_rate", 0),
-                "deduplication_rate": stats.get("deduplication_rate", 0),
+                # Quality metrics (from statistics) - handle None for non-web pipelines
+                "http_request_success_rate": stats.get("http_request_success_rate") or 0,
+                "content_extraction_success_rate": stats.get("content_extraction_success_rate") or 0,
+                "quality_pass_rate": stats.get("quality_pass_rate") or 0,
+                "deduplication_rate": stats.get("deduplication_rate") or 0,
 
                 # Throughput metrics
                 "urls_per_second": stats.get("throughput", {}).get("urls_per_second", 0),
@@ -184,8 +185,8 @@ def generate_summary(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
     total_urls = sum(m["urls_processed"] for m in metrics)
     total_bytes = sum(m["bytes_downloaded"] for m in metrics)
 
-    # Use http_request_success_rate as primary metric
-    success_rates = [m["http_request_success_rate"] for m in metrics if m["http_request_success_rate"] > 0]
+    # Use http_request_success_rate as primary metric (handle None values)
+    success_rates = [m["http_request_success_rate"] for m in metrics if m.get("http_request_success_rate") and m["http_request_success_rate"] > 0]
     avg_success_rate = sum(success_rates) / len(success_rates) if success_rates else 0
 
     sources = sorted(list(set(m["source"] for m in metrics)))
@@ -208,11 +209,15 @@ def generate_summary(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
     source_stats = {}
     for source in sources:
         source_metrics = [m for m in metrics if m["source"] == source]
+        # Handle None values in success rates
+        http_rates = [m["http_request_success_rate"] for m in source_metrics if m.get("http_request_success_rate") is not None]
+        quality_rates = [m["quality_pass_rate"] for m in source_metrics if m.get("quality_pass_rate") is not None]
+
         source_stats[source] = {
             "records": sum(m["records_written"] for m in source_metrics),
             "runs": len(source_metrics),
-            "avg_success_rate": sum(m["http_request_success_rate"] for m in source_metrics) / len(source_metrics),
-            "avg_quality_pass_rate": sum(m["quality_pass_rate"] for m in source_metrics) / len(source_metrics),
+            "avg_success_rate": sum(http_rates) / len(http_rates) if http_rates else 0,
+            "avg_quality_pass_rate": sum(quality_rates) / len(quality_rates) if quality_rates else 0,
             "total_chars": sum(m["total_chars"] for m in source_metrics),
             "last_run": max(m["timestamp"] for m in source_metrics)
         }
