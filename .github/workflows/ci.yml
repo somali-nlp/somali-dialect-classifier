@@ -38,6 +38,7 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: ['3.9', '3.10', '3.11']
@@ -228,7 +229,6 @@ jobs:
   test-dashboard:
     name: Dashboard Visual Tests
     runs-on: ubuntu-latest
-    needs: [lint-and-type-check]
 
     steps:
       - name: Checkout repository
@@ -362,3 +362,31 @@ jobs:
           name: playwright-html-report
           path: test-results/html-report/
           retention-days: 30
+
+  status-check:
+    name: CI Status Check
+    runs-on: ubuntu-latest
+    needs: [lint-and-type-check, test, test-dashboard]
+    if: always()
+
+    steps:
+      - name: Check all jobs passed
+        run: |
+          echo "## CI Pipeline Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| lint-and-type-check | ${{ needs.lint-and-type-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| test | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| test-dashboard | ${{ needs.test-dashboard.result }} |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.lint-and-type-check.result }}" != "success" ] || \
+             [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.test-dashboard.result }}" != "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ CI pipeline failed - see individual job logs for details" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All CI jobs passed" >> $GITHUB_STEP_SUMMARY
