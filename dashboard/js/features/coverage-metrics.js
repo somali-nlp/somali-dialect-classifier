@@ -1142,7 +1142,7 @@ function createIngestionVelocityChart(metricsData) {
                 records: 0,
                 throughput: null,
                 durationSeconds: null,
-                label: [runLabel, 'Unknown'],
+                label: 'Unknown',
                 runLabel,
                 isFirstInRun: true,
                 isLastInRun: true
@@ -1160,10 +1160,7 @@ function createIngestionVelocityChart(metricsData) {
                 records,
                 throughput,
                 durationSeconds,
-                label: [
-                    idxInRun === 0 ? runLabel : '',
-                    source
-                ],
+                label: source,
                 runLabel,
                 isFirstInRun: idxInRun === 0,
                 isLastInRun: idxInRun === orderedRunSources.length - 1
@@ -1207,6 +1204,114 @@ function createIngestionVelocityChart(metricsData) {
         order: orderedSources.length + 1
     });
 
+    /**
+     * Custom Chart.js plugin to render run label badges above bar clusters.
+     * Displays run time windows grouped above their corresponding sources.
+     */
+    const velocityRunLabelPlugin = {
+        id: 'velocityRunLabels',
+        afterDatasetsDraw(chart) {
+            const { ctx, chartArea, scales } = chart;
+            if (!chartArea || !scales?.x) return;
+
+            // Get timeline entries from closure scope
+            const entries = timelineEntries;
+            if (!entries || !entries.length) return;
+
+            // Find run boundaries (indices where new run starts)
+            const runGroups = [];
+            let currentRun = null;
+            let startIdx = 0;
+
+            entries.forEach((entry, idx) => {
+                if (entry.isFirstInRun) {
+                    if (currentRun) {
+                        runGroups.push({
+                            run: currentRun,
+                            startIdx,
+                            endIdx: idx - 1,
+                            label: formatRunWindow(currentRun.startTimestamp, currentRun.endTimestamp)
+                        });
+                    }
+                    currentRun = entry.run;
+                    startIdx = idx;
+                }
+
+                // Handle last group
+                if (idx === entries.length - 1) {
+                    runGroups.push({
+                        run: currentRun,
+                        startIdx,
+                        endIdx: idx,
+                        label: formatRunWindow(currentRun.startTimestamp, currentRun.endTimestamp)
+                    });
+                }
+            });
+
+            // Render badges for each run group
+            ctx.save();
+            ctx.font = '12px system-ui, -apple-system, "Segoe UI", sans-serif';
+
+            runGroups.forEach(group => {
+                // Calculate badge position (centered above group)
+                const startPixel = scales.x.getPixelForValue(group.startIdx);
+                const endPixel = scales.x.getPixelForValue(group.endIdx);
+                const centerX = (startPixel + endPixel) / 2;
+                const groupWidth = endPixel - startPixel;
+                const badgeY = chartArea.top - 20;  // 20px above chart
+
+                // Smart text truncation
+                let displayText = group.label;
+                const maxTextWidth = groupWidth - 20;  // 10px margin each side
+                let textWidth = ctx.measureText(displayText).width;
+
+                if (textWidth > maxTextWidth && maxTextWidth > 40) {
+                    // Truncate and add ellipsis
+                    while (textWidth > maxTextWidth - 10 && displayText.length > 10) {
+                        displayText = displayText.slice(0, -1);
+                        textWidth = ctx.measureText(displayText + '…').width;
+                    }
+                    displayText += '…';
+                }
+
+                // Badge dimensions
+                const hPadding = 12;
+                const badgeWidth = ctx.measureText(displayText).width + hPadding * 2;
+                const badgeHeight = 22;
+                const badgeX = centerX - badgeWidth / 2;
+
+                // Draw rounded background
+                ctx.fillStyle = '#f8fafc';    // Slate-50
+                ctx.strokeStyle = '#e2e8f0';  // Slate-200
+                ctx.lineWidth = 1;
+
+                // Rounded rectangle (with polyfill fallback)
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 12);
+                } else {
+                    // Fallback for older browsers
+                    const r = 12;
+                    ctx.moveTo(badgeX + r, badgeY);
+                    ctx.arcTo(badgeX + badgeWidth, badgeY, badgeX + badgeWidth, badgeY + badgeHeight, r);
+                    ctx.arcTo(badgeX + badgeWidth, badgeY + badgeHeight, badgeX, badgeY + badgeHeight, r);
+                    ctx.arcTo(badgeX, badgeY + badgeHeight, badgeX, badgeY, r);
+                    ctx.arcTo(badgeX, badgeY, badgeX + badgeWidth, badgeY, r);
+                    ctx.closePath();
+                }
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw text
+                ctx.fillStyle = '#64748b';  // Slate-500
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(displayText, centerX, badgeY + badgeHeight / 2);
+            });
+            ctx.restore();
+        }
+    };
+
     coverageCharts.velocity?.destroy?.();
 
     coverageCharts.velocity = new Chart(canvas, {
@@ -1218,6 +1323,11 @@ function createIngestionVelocityChart(metricsData) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    top: 35
+                }
+            },
             interaction: {
                 mode: 'index',
                 intersect: false
@@ -1242,6 +1352,22 @@ function createIngestionVelocityChart(metricsData) {
 
                             return labels.map(label => {
                                 const dataset = chart.data.datasets[label.datasetIndex];
+
+                                // Special styling for line dataset
+                                if (dataset.type === 'line') {
+                                    return {
+                                        text: 'Source throughput (rec/min)',
+                                        datasetIndex: label.datasetIndex,
+                                        hidden: label.hidden,
+                                        lineWidth: 2,
+                                        strokeStyle: '#0ea5e9',
+                                        fillStyle: '#0ea5e9',
+                                        pointStyle: 'line',
+                                        fontColor: '#0ea5e9'
+                                    };
+                                }
+
+                                // Keep bar datasets with default styling
                                 const palette = Array.isArray(dataset.backgroundColor)
                                     ? dataset.backgroundColor
                                     : [dataset.backgroundColor];
@@ -1300,12 +1426,6 @@ function createIngestionVelocityChart(metricsData) {
                         maxRotation: 0,
                         callback(value) {
                             const label = typeof value === 'string' ? value : this.getLabelForValue(value);
-                            if (typeof label === 'string') {
-                                return label.split('\n');
-                            }
-                            if (Array.isArray(label)) {
-                                return label;
-                            }
                             return label ?? '';
                         }
                     }
@@ -1336,7 +1456,8 @@ function createIngestionVelocityChart(metricsData) {
                     }
                 }
             }
-        }
+        },
+        plugins: [velocityRunLabelPlugin]
     });
 }
 
