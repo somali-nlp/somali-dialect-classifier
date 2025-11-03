@@ -49,6 +49,20 @@ else
     echo "⚠ Warning: source_mix_targets.json not found"
 fi
 
+if [ -f "dashboard/data/source_catalog.json" ]; then
+    cp dashboard/data/source_catalog.json _site/data/
+    echo "✓ Copied source_catalog.json"
+else
+    echo "⚠ Warning: source_catalog.json not found"
+fi
+
+if [ -f "dashboard/data/source_pipeline_status.json" ]; then
+    cp dashboard/data/source_pipeline_status.json _site/data/
+    echo "✓ Copied source_pipeline_status.json"
+else
+    echo "⚠ Warning: source_pipeline_status.json not found"
+fi
+
 # Copy favicon
 if [ -f "dashboard/favicon.svg" ]; then
     cp dashboard/favicon.svg _site/favicon.svg

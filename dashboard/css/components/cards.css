@@ -380,6 +380,350 @@
     line-height: 1.7;
 }
 
+.source-intro {
+    margin-bottom: var(--space-10);
+    max-width: 960px;
+}
+
+.source-intro-lede {
+    font-size: var(--text-lg);
+    line-height: 1.7;
+    color: var(--gray-700);
+    margin-bottom: var(--space-3);
+}
+
+.source-intro-detail {
+    font-size: var(--text-base);
+    line-height: 1.6;
+    color: var(--gray-600);
+}
+
+.source-roster-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-6);
+    margin-bottom: var(--space-10);
+}
+
+.roster-card {
+    background: white;
+    border-radius: var(--radius-card);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.roster-card h3 {
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--gray-500);
+}
+
+.roster-value {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    color: var(--tableau-navy);
+}
+
+.roster-caption {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+    line-height: 1.5;
+}
+
+.acquisition-insights {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    margin-bottom: var(--space-12);
+}
+
+.treemap-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    min-height: 240px;
+    align-content: flex-start;
+}
+
+.treemap-node {
+    position: relative;
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    color: white;
+    min-height: 120px;
+    flex: 1 1 180px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.treemap-node strong {
+    font-size: var(--text-base);
+    font-family: var(--font-display);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.treemap-node span {
+    font-size: var(--text-sm);
+    opacity: 0.85;
+}
+
+.ingestion-timeline {
+    margin-bottom: var(--space-12);
+}
+
+.timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.timeline-caption {
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+}
+
+.timeline-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.timeline-column {
+    background: white;
+    border-radius: var(--radius-card);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-sm);
+}
+
+.timeline-column h4 {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--tableau-navy);
+    margin-bottom: 0.5rem;
+}
+
+.timeline-segment {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.35rem;
+}
+
+.timeline-segment button {
+    border: none;
+    border-radius: 6px;
+    height: 16px;
+    background: var(--gray-200);
+    position: relative;
+    cursor: pointer;
+}
+
+.timeline-segment button[data-active="true"] {
+    background: var(--tableau-blue);
+}
+
+.timeline-segment button:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+}
+
+.timeline-segment button span {
+    position: absolute;
+    left: -9999px;
+}
+
+.source-relationship-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-6);
+    margin-bottom: var(--space-12);
+}
+
+.relationship-card {
+    background: white;
+    border-radius: var(--radius-card);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.relationship-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.relationship-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--tableau-blue);
+}
+
+.relationship-meta {
+    display: flex;
+    flex-direction: column;
+}
+
+.relationship-name {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--tableau-navy);
+}
+
+.relationship-role {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    color: var(--gray-500);
+    letter-spacing: 0.08em;
+}
+
+.relationship-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.relationship-chip {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.65rem;
+    border-radius: var(--radius-full);
+    background: rgba(15, 118, 110, 0.16);
+    color: #0f766e;
+}
+
+.relationship-chip.warning {
+    background: rgba(220, 38, 38, 0.16);
+    color: #991b1b;
+}
+
+.relationship-chip.neutral {
+    background: rgba(79, 70, 229, 0.16);
+    color: #4338ca;
+}
+
+.relationship-details {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    line-height: 1.6;
+}
+
+.relationship-dependencies {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.relationship-dependencies span {
+    background: rgba(107, 114, 128, 0.16);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-full);
+}
+
+.integration-roadmap {
+    margin-top: var(--space-12);
+}
+
+.roadmap-grid {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.roadmap-card {
+    background: white;
+    border-radius: var(--radius-card);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.roadmap-card h4 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--tableau-navy);
+    margin: 0;
+}
+
+.roadmap-card span {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--gray-500);
+}
+
+.roadmap-card p {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    line-height: 1.6;
+}
+
+.roadmap-card.decommissioned {
+    border-left: 4px solid rgba(248, 113, 113, 0.9);
+}
+
+.roadmap-card.planned {
+    border-left: 4px solid rgba(110, 231, 183, 0.9);
+}
+
+.comparison-table-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: var(--space-4);
+}
+
+.filter-chip {
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-full);
+    padding: 0.4rem 0.75rem;
+    background: white;
+    color: var(--gray-600);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.filter-chip[aria-pressed="true"] {
+    background: var(--tableau-blue);
+    border-color: var(--tableau-blue);
+    color: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.filter-chip-label {
+    background: transparent;
+    border-color: transparent;
+    color: var(--gray-500);
+    cursor: default;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+}
 /* Report Cards */
 .report-card {
     background: white;

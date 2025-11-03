@@ -37,6 +37,18 @@ export const Config = {
         '../data/text_distributions.json',
         '/data/text_distributions.json'
     ],
+    SOURCE_CATALOG_PATHS: [
+        'data/source_catalog.json',
+        './data/source_catalog.json',
+        '../data/source_catalog.json',
+        '/data/source_catalog.json'
+    ],
+    PIPELINE_STATUS_PATHS: [
+        'data/source_pipeline_status.json',
+        './data/source_pipeline_status.json',
+        '../data/source_pipeline_status.json',
+        '/data/source_pipeline_status.json'
+    ],
 
     /**
      * Network settings

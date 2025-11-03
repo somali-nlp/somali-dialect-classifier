@@ -48,9 +48,11 @@ import { updateStats } from './core/stats.js';
 import { initTabs } from './core/tabs.js';
 import { initCharts } from './core/charts.js';
 import {
+    buildSourceAnalytics,
     populateSourceTable,
     populateSourceMixSnapshot,
     populateSourceBriefings,
+    populateIntegrationRoadmap,
     populateQualityOverview,
     populateQualityBriefings,
     populatePerformanceMetrics,
@@ -60,7 +62,7 @@ import { initializeFilterLabels } from './core/aggregates.js';
 
 // Import feature modules
 import { initAudienceMode } from './features/audience-mode.js';
-import { updateCoverageScorecard, initCoverageCharts, initCoverageMetrics } from './features/coverage-metrics.js';
+import { updateCoverageScorecard, initCoverageCharts, initCoverageMetrics, refreshDataSourceCharts } from './features/coverage-metrics.js';
 import { ThemeManager } from './features/theme-manager.js';
 import { FilterManager } from './features/filter-manager.js';
 import { ExportManager } from './features/export-manager.js';
@@ -127,6 +129,7 @@ async function init() {
         try {
             populateSourceMixSnapshot();
             populateSourceBriefings();
+            populateIntegrationRoadmap();
         } catch (error) {
             Logger.error('Failed to populate source mix snapshot', error);
         }
@@ -301,6 +304,12 @@ function initAdvancedFeatures() {
             // Update advanced charts with filtered data
             SankeyChart.create('sankeyContainer', filteredMetrics);
             RidgePlot.create('ridgePlotContainer', filteredMetrics);
+
+            const analytics = buildSourceAnalytics(filteredMetrics);
+            populateSourceMixSnapshot(analytics);
+            populateSourceTable(analytics);
+            populateSourceBriefings(analytics);
+            refreshDataSourceCharts(filteredMetrics);
         });
 
         // Create advanced charts

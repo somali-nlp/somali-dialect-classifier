@@ -670,57 +670,88 @@
         <!-- Tab 2: Data Sources -->
         <div class="tab-content" id="sources-panel" role="tabpanel" aria-labelledby="sources-tab" data-show-in="analyst">
             <div class="tab-panel tab-panel-wide">
-                <h2 class="section-title">Data Sources Mix</h2>
-                <p class="overview-narrative" id="source-mix-narrative" aria-live="polite">
-                    Loading source mix insights…
-                </p>
+                <h2 class="section-title">Source Portfolio &amp; ETL Readiness</h2>
+                <div class="source-intro">
+                    <p class="source-intro-lede" id="source-mix-narrative" aria-live="polite">
+                        Mapping current corpus composition…
+                    </p>
+                    <p class="source-intro-detail" id="source-etl-narrative" aria-live="polite">
+                        Building ETL readiness overview…
+                    </p>
+                </div>
 
-                <section class="source-mix-grid" aria-label="Source mix snapshot">
-                    <article class="mix-card" id="mix-card-share">
-                        <h3 class="mix-card-label">Share Leader</h3>
-                        <p class="mix-card-value" id="mix-share-leader-value">—</p>
-                        <p class="mix-card-caption" id="mix-share-leader-caption">Calculating share distribution…</p>
+                <section class="source-roster-grid" aria-label="Source roster summary">
+                    <article class="roster-card" id="roster-active-sources">
+                        <h3>Active Sources</h3>
+                        <p class="roster-value" id="roster-active-count">—</p>
+                        <p class="roster-caption" id="roster-active-caption">Counting active feeds…</p>
                     </article>
-                    <article class="mix-card" id="mix-card-quality">
-                        <h3 class="mix-card-label">Quality Standout</h3>
-                        <p class="mix-card-value" id="mix-quality-standout-value">—</p>
-                        <p class="mix-card-caption" id="mix-quality-standout-caption">Checking latest pass rates…</p>
+                    <article class="roster-card" id="roster-planned-sources">
+                        <h3>Planned Adds</h3>
+                        <p class="roster-value" id="roster-planned-count">—</p>
+                        <p class="roster-caption" id="roster-planned-caption">Reviewing roadmap…</p>
                     </article>
-                    <article class="mix-card" id="mix-card-freshness">
-                        <h3 class="mix-card-label">Freshest Update</h3>
-                        <p class="mix-card-value" id="mix-freshness-value">—</p>
-                        <p class="mix-card-caption" id="mix-freshness-caption">Evaluating run recency…</p>
+                    <article class="roster-card" id="roster-pipeline-types">
+                        <h3>Pipeline Types</h3>
+                        <p class="roster-value" id="roster-pipeline-count">—</p>
+                        <p class="roster-caption" id="roster-pipeline-caption">Compiling pipeline coverage…</p>
                     </article>
-                    <article class="mix-card mix-card-neutral">
-                        <h3 class="mix-card-label">Intentionally Excluded</h3>
-                        <p class="mix-card-value">MADLAD‑400, OSCAR</p>
-                        <p class="mix-card-caption">
-                            High-noise corpora are left out per Decisions 001 &amp; 003 to protect corpus purity. Review the documentation before re-enabling.
-                        </p>
+                    <article class="roster-card" id="roster-target-progress">
+                        <h3>Coverage vs Target</h3>
+                        <p class="roster-value" id="roster-target-progress-value">—</p>
+                        <p class="roster-caption" id="roster-target-progress-caption">Calculating variance…</p>
                     </article>
                 </section>
 
-                <section class="charts-section">
-                    <div class="chart-card chart-card-wide">
+                <section class="acquisition-insights" aria-label="Acquisition insights">
+                    <div class="chart-card">
                         <div class="chart-header">
                             <div>
-                                <h3 class="chart-title">Volume vs Quality Tradeoff</h3>
-                                <p class="chart-subtitle">Bubble size shows average character length</p>
+                                <h3 class="chart-title">Pipeline Stage Allocation</h3>
+                                <p class="chart-subtitle">Share of records at Discovery → Extraction → Silver per source</p>
                             </div>
                             <div class="chart-actions">
-                                <button class="chart-action" onclick="downloadChart('sourceTradeoffChart')">Export PNG</button>
+                                <button class="chart-action" onclick="downloadChart('sourceStageChart')">Export PNG</button>
                             </div>
                         </div>
-                        <div class="chart-canvas chart-canvas-tall">
-                            <canvas id="sourceTradeoffChart" aria-label="Bubble chart showing records delivered versus quality pass rate by source"></canvas>
+                        <div class="chart-canvas">
+                            <canvas id="sourceStageChart" aria-label="Stacked bar chart showing pipeline stage allocation by source"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 class="chart-title">Acquisition Method Treemap</h3>
+                                <p class="chart-subtitle">Relative volume by acquisition approach</p>
+                            </div>
+                        </div>
+                        <div class="treemap-container" id="acquisitionTreemap" role="list" aria-label="Acquisition method treemap">
+                            <!-- Populated by JavaScript -->
                         </div>
                     </div>
                 </section>
 
-                <section class="comparison-table-section">
+                <section class="ingestion-timeline" aria-label="Ingestion cadence timeline">
+                    <div class="timeline-header">
+                        <h3 class="section-title">Ingestion Cadence</h3>
+                        <p class="timeline-caption" id="timeline-caption">Tracking latest orchestrations…</p>
+                    </div>
+                    <div class="timeline-grid" id="ingestionTimeline" role="list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+
+                <section class="source-relationship-cards" id="sourceBriefings" aria-label="Source relationship overview">
+                    <!-- Populated by JavaScript -->
+                </section>
+
+                <section class="comparison-table-section checklist">
                     <div class="comparison-table-header">
-                        <h3 class="section-title">Source Comparison Table</h3>
-                        <p class="comparison-table-note">Click a column header to sort. Shares calculated from the latest ingestion cycle.</p>
+                        <h3 class="section-title">Source Readiness Checklist</h3>
+                        <p class="comparison-table-note">Filter by acquisition method or SLA to focus on workstreams.</p>
+                    </div>
+                    <div class="comparison-table-filters" id="sourceChecklistFilters" aria-label="Source checklist filters">
+                        <!-- Filter chips injected via JavaScript -->
                     </div>
                     <div class="comparison-table">
                         <table>
@@ -729,10 +760,12 @@
                                     <th data-sort-key="name">Source</th>
                                     <th data-sort-key="records" class="sortable desc">Records</th>
                                     <th data-sort-key="share" class="sortable">Share</th>
-                                    <th data-sort-key="quality" class="sortable">Quality</th>
                                     <th data-sort-key="avgLength" class="sortable">Avg Length</th>
+                                    <th data-sort-key="acquisitionMethod" class="sortable">Acquisition</th>
+                                    <th data-sort-key="refreshSla" class="sortable">Refresh SLA</th>
+                                    <th data-sort-key="pipelineOwner" class="sortable">Owner</th>
+                                    <th data-sort-key="integrationStage" class="sortable">Stage</th>
                                     <th data-sort-key="lastUpdated" class="sortable">Last Updated</th>
-                                    <th data-sort-key="role">Role</th>
                                 </tr>
                             </thead>
                             <tbody id="sourceTableBody">
@@ -742,8 +775,14 @@
                     </div>
                 </section>
 
-                <section class="source-briefings" id="sourceBriefings" aria-label="Source briefings">
-                    <!-- Populated by JavaScript -->
+                <section class="integration-roadmap" aria-label="Integration roadmap">
+                    <div class="roadmap-header">
+                        <h3 class="section-title">Integration Roadmap</h3>
+                        <p class="roadmap-caption">Upcoming sources and sunset decisions</p>
+                    </div>
+                    <div class="roadmap-grid" id="integrationRoadmap">
+                        <!-- Populated by JavaScript -->
+                    </div>
                 </section>
             </div>
         </div>
@@ -824,6 +863,20 @@
                             <canvas id="qualityBulletChart" aria-label="Bullet chart showing quality performance by source"></canvas>
                         </div>
                         <div class="chart-footnote" id="quality-freshness-note">Quality targets set at 85% minimum pass rate.</div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 class="chart-title">Volume vs Quality Tradeoff</h3>
+                                <p class="chart-subtitle">Bubble size shows average character length</p>
+                            </div>
+                            <div class="chart-actions">
+                                <button class="chart-action" onclick="downloadChart('sourceTradeoffChart')">Export PNG</button>
+                            </div>
+                        </div>
+                        <div class="chart-canvas chart-canvas-tall">
+                            <canvas id="sourceTradeoffChart" aria-label="Bubble chart showing records delivered versus quality pass rate by source"></canvas>
+                        </div>
                     </div>
                 </div>
 

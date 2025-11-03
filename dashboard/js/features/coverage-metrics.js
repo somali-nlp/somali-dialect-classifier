@@ -3,7 +3,7 @@
  * Manages coverage scorecard and redesigned processing summary visuals
  */
 
-import { getMetrics, getDashboardMetadata } from '../core/data-service.js';
+import { getMetrics, getDashboardMetadata, getSourceCatalog } from '../core/data-service.js';
 import { computePipelineAggregates, FILTER_REASON_LABELS } from '../core/aggregates.js';
 import { normalizeSourceName, formatDate } from '../utils/formatters.js';
 
@@ -25,6 +25,15 @@ const SOURCE_COLOR_MAP = {
     'HuggingFace MC4': '#00A651',
     'Språkbanken': '#f59e0b',
     'TikTok': '#ec4899'
+};
+
+const ACQUISITION_COLOR_MAP = {
+    'API + file snapshots': '#2563eb',
+    'Web crawler': '#f97316',
+    'Dataset API': '#059669',
+    'Partner file drop': '#8b5cf6',
+    'Apify actor': '#db2777',
+    'Uncategorized': '#6b7280'
 };
 
 const SOURCE_METADATA = {
@@ -56,7 +65,8 @@ const QUALITY_TARGET = 0.85;
 const coverageCharts = {
     velocity: null,
     balance: null,
-    quality: null
+    quality: null,
+    stageAllocation: null
 };
 
 // Hardcoded fallback for offline/error cases
@@ -1725,6 +1735,9 @@ export function initCoverageCharts() {
         updateBalanceNarrative([], [], []);
         updateQualityNarrative([]);
         renderPipelineEfficiency({ metrics: [] });
+        renderStageAllocationChart(null);
+        renderAcquisitionTreemap(null);
+        renderIngestionTimeline(null);
         return;
     }
 
@@ -1732,6 +1745,9 @@ export function initCoverageCharts() {
     createSourceBalanceChart(metricsData);
     createQualityBulletChart(metricsData);
     renderPipelineEfficiency(metricsData);
+    renderStageAllocationChart(metricsData);
+    renderAcquisitionTreemap(metricsData);
+    renderIngestionTimeline(metricsData);
 }
 
 /**
@@ -1742,4 +1758,305 @@ export function initCoverageCharts() {
  */
 export async function initCoverageMetrics() {
     await loadSourceMixTargets();
+}
+
+export function getSourceMixTargetsSnapshot() {
+    return loadedSourceMixTargets || STATIC_SOURCE_MIX;
+}
+
+export function refreshDataSourceCharts(filteredMetrics = null) {
+    const metricsData = filteredMetrics ? { metrics: filteredMetrics } : getMetrics();
+    renderStageAllocationChart(metricsData);
+    renderAcquisitionTreemap(metricsData);
+    renderIngestionTimeline(metricsData);
+}
+
+function renderStageAllocationChart(metricsData) {
+    const canvas = document.getElementById('sourceStageChart');
+    if (!canvas) {
+        return;
+    }
+    const wrapper = canvas.parentElement;
+    if (!wrapper) return;
+
+    const showEmpty = message => {
+        canvas.style.display = 'none';
+        let empty = wrapper.querySelector('.chart-empty-state');
+        if (!empty) {
+            empty = document.createElement('p');
+            empty.className = 'chart-empty-state';
+            wrapper.appendChild(empty);
+        }
+        empty.textContent = message;
+    };
+
+    const clearEmpty = () => {
+        canvas.style.display = '';
+        const empty = wrapper.querySelector('.chart-empty-state');
+        if (empty) {
+            empty.remove();
+        }
+    };
+
+    if (coverageCharts.stageAllocation) {
+        coverageCharts.stageAllocation.destroy();
+        coverageCharts.stageAllocation = null;
+    }
+
+    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+        showEmpty('Stage allocation will appear after the next ingestion run.');
+        return;
+    }
+
+    const stageSegments = buildStageSegments(metricsData.metrics);
+    const sourceLabels = stageSegments.map(segment => segment.name);
+
+    if (!sourceLabels.length) {
+        showEmpty('Stage allocation will appear after the next ingestion run.');
+        return;
+    }
+
+    clearEmpty();
+
+    const datasets = [
+        {
+            label: 'Silver Dataset',
+            data: stageSegments.map(segment => segment.segments.silver),
+            backgroundColor: PIPELINE_STAGE_COLORS.written
+        },
+        {
+            label: 'Quality Filters',
+            data: stageSegments.map(segment => segment.segments.qualityLoss),
+            backgroundColor: '#fbbf24'
+        },
+        {
+            label: 'Extraction Drop',
+            data: stageSegments.map(segment => segment.segments.extractionLoss),
+            backgroundColor: PIPELINE_STAGE_COLORS.extracted
+        },
+        {
+            label: 'Discovery Backlog',
+            data: stageSegments.map(segment => segment.segments.discoveryBacklog),
+            backgroundColor: PIPELINE_STAGE_COLORS.discovered
+        }
+    ];
+
+    const context = canvas.getContext('2d');
+    coverageCharts.stageAllocation = new Chart(context, {
+        type: 'bar',
+        data: {
+            labels: sourceLabels,
+            datasets
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    stacked: true,
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: value => `${value}%`
+                    },
+                    title: {
+                        display: true,
+                        text: 'Share of discovered records',
+                        font: { size: 12, weight: 600 }
+                    }
+                },
+                y: {
+                    stacked: true,
+                    title: {
+                        display: true,
+                        text: 'Source',
+                        font: { size: 12, weight: 600 }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { usePointStyle: true }
+                },
+                tooltip: {
+                    callbacks: {
+                        label(context) {
+                            const value = context.parsed.x?.toFixed(1) || 0;
+                            return `${context.dataset.label}: ${value}%`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function buildStageSegments(metrics = []) {
+    const bySource = new Map();
+
+    metrics.forEach(metric => {
+        const source = normalizeSourceName(metric.source || 'Unknown');
+        if (!bySource.has(source)) {
+            bySource.set(source, {
+                discovered: 0,
+                fetched: 0,
+                extracted: 0,
+                quality: 0,
+                written: 0,
+                filters: 0
+            });
+        }
+
+        const entry = bySource.get(source);
+        const discovered = Number(metric.urls_discovered) || 0;
+        const fetched = Number(metric.urls_fetched) || discovered;
+        const extracted = Number(metric.records_extracted) || Number(metric.records_written) || 0;
+        const written = Number(metric.records_written) || 0;
+        const filtered = Object.values(metric.filter_breakdown || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        const qualityReceived = written + filtered;
+
+        entry.discovered += discovered;
+        entry.fetched += Math.min(fetched, discovered);
+        entry.extracted += Math.min(extracted, fetched);
+        entry.quality += Math.min(qualityReceived, extracted || qualityReceived);
+        entry.written += written;
+        entry.filters += filtered;
+    });
+
+    return Array.from(bySource.entries()).map(([name, entry]) => {
+        const totalDiscovered = entry.discovered || entry.quality || 1;
+        const discoveryBacklog = Math.max(entry.discovered - entry.fetched, 0);
+        const extractionLoss = Math.max(entry.fetched - entry.quality, 0);
+        const qualityLoss = Math.max(entry.quality - entry.written, 0);
+        const silver = Math.max(entry.written, 0);
+        const denominator = discoveryBacklog + extractionLoss + qualityLoss + silver || 1;
+
+        return {
+            name,
+            segments: {
+                discoveryBacklog: (discoveryBacklog / denominator) * 100,
+                extractionLoss: (extractionLoss / denominator) * 100,
+                qualityLoss: (qualityLoss / denominator) * 100,
+                silver: (silver / denominator) * 100
+            }
+        };
+    }).sort((a, b) => b.segments.silver - a.segments.silver);
+}
+
+function renderAcquisitionTreemap(metricsData) {
+    const container = document.getElementById('acquisitionTreemap');
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML = '';
+    const catalog = getSourceCatalog();
+
+    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+        container.innerHTML = '<p class="chart-empty-state">Acquisition mix will appear after the next ingestion run.</p>';
+        return;
+    }
+
+    const methodTotals = new Map();
+    let totalRecords = 0;
+
+    metricsData.metrics.forEach(metric => {
+        const source = normalizeSourceName(metric.source || 'Unknown');
+        const records = Number(metric.records_written) || 0;
+        if (records <= 0) {
+            return;
+        }
+        totalRecords += records;
+        const method = catalog?.sources?.[source]?.acquisitionMethod || 'Uncategorized';
+        methodTotals.set(method, (methodTotals.get(method) || 0) + records);
+    });
+
+    if (!totalRecords || methodTotals.size === 0) {
+        container.innerHTML = '<p class="chart-empty-state">Acquisition mix will appear after the next ingestion run.</p>';
+        return;
+    }
+
+    const nodes = Array.from(methodTotals.entries())
+        .map(([method, records]) => ({
+            method,
+            records,
+            share: (records / totalRecords) * 100
+        }))
+        .sort((a, b) => b.share - a.share);
+
+    nodes.forEach(node => {
+        const div = document.createElement('div');
+        div.className = 'treemap-node';
+        div.setAttribute('role', 'listitem');
+        div.setAttribute('aria-label', `${node.method} ${node.share.toFixed(1)} percent of volume`);
+        div.style.background = ACQUISITION_COLOR_MAP[node.method] || ACQUISITION_COLOR_MAP.Uncategorized;
+        div.style.flexBasis = `${Math.max(node.share * 4, 160)}px`;
+        div.style.flexGrow = Math.max(node.share / 10, 1);
+        div.title = `${node.method} · ${node.share.toFixed(1)}% (${node.records.toLocaleString()} records)`;
+        div.innerHTML = `
+            <strong>${node.method}</strong>
+            <span>${node.share.toFixed(1)}% · ${node.records.toLocaleString()} records</span>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function renderIngestionTimeline(metricsData) {
+    const container = document.getElementById('ingestionTimeline');
+    const caption = document.getElementById('timeline-caption');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+        if (caption) caption.textContent = 'Timeline will populate after the next orchestration run.';
+        container.innerHTML = '<p class="chart-empty-state">Timeline will populate after the next orchestration run.</p>';
+        return;
+    }
+
+    const runSeries = aggregateRunSeries(metricsData.metrics, 8);
+    if (!runSeries.length) {
+        if (caption) caption.textContent = 'Timeline will populate after the next orchestration run.';
+        container.innerHTML = '<p class="chart-empty-state">Timeline will populate after the next orchestration run.</p>';
+        return;
+    }
+
+    const runs = runSeries.slice(-8);
+    const sources = Array.from(new Set(runs.flatMap(run => Object.keys(run.sources || {}))))
+        .filter(Boolean);
+
+    if (caption) {
+        const latest = runs[runs.length - 1];
+        caption.textContent = `Latest orchestration ${formatRunWindow(latest.startTimestamp, latest.endTimestamp)} · ${runs.length} runs shown`;
+    }
+
+    const orderedSources = SOURCE_ORDER.filter(source => sources.includes(source))
+        .concat(sources.filter(source => !SOURCE_ORDER.includes(source)));
+
+    orderedSources.forEach(source => {
+        const column = document.createElement('div');
+        column.className = 'timeline-column';
+        const header = document.createElement('h4');
+        header.textContent = source;
+        column.appendChild(header);
+
+        const segment = document.createElement('div');
+        segment.className = 'timeline-segment';
+
+        runs.forEach(run => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            const hasRun = (run.sources && run.sources[source]) ? run.sources[source] > 0 : false;
+            button.dataset.active = hasRun.toString();
+            const sr = document.createElement('span');
+            sr.textContent = `${source} ${hasRun ? 'delivered' : 'idle'} · ${formatRunWindow(run.startTimestamp, run.endTimestamp)}`;
+            button.appendChild(sr);
+            segment.appendChild(button);
+        });
+
+        column.appendChild(segment);
+        container.appendChild(column);
+    });
 }

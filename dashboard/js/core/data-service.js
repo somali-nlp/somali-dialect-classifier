@@ -5,6 +5,7 @@
  */
 
 import { Config } from '../config.js';
+import { normalizeSourceName } from '../utils/formatters.js';
 import { Logger, DataLoadError, DataValidationError } from '../utils/logger.js';
 
 // Store dashboard data globally for the module
@@ -12,7 +13,9 @@ let dashboardData = {
     metrics: [],
     metadata: {},
     sankey: null,
-    textDistributions: null
+    textDistributions: null,
+    sourceCatalog: null,
+    pipelineStatus: null
 };
 
 /**
@@ -24,11 +27,20 @@ export async function loadMetrics() {
     Logger.info('Starting dashboard data load...');
 
     try {
-        const [rawMetrics, metadata, sankey, textDistributions] = await Promise.all([
+        const [
+            rawMetrics,
+            metadata,
+            sankey,
+            textDistributions,
+            sourceCatalog,
+            pipelineStatus
+        ] = await Promise.all([
             fetchWithFallback(Config.DATA_PATHS),
             fetchWithOptionalFallback(Config.METADATA_PATHS),
             fetchWithOptionalFallback(Config.SANKEY_PATHS),
-            fetchWithOptionalFallback(Config.TEXT_DISTRIBUTION_PATHS)
+            fetchWithOptionalFallback(Config.TEXT_DISTRIBUTION_PATHS),
+            fetchWithOptionalFallback(Config.SOURCE_CATALOG_PATHS),
+            fetchWithOptionalFallback(Config.PIPELINE_STATUS_PATHS)
         ]);
 
         if (!rawMetrics) {
@@ -37,7 +49,9 @@ export async function loadMetrics() {
                 metrics: [],
                 metadata: metadata || {},
                 sankey: normalizeSankeyData(sankey),
-                textDistributions: normalizeTextDistributions(textDistributions)
+                textDistributions: normalizeTextDistributions(textDistributions),
+                sourceCatalog: normalizeSourceCatalog(sourceCatalog),
+                pipelineStatus: normalizePipelineStatus(pipelineStatus)
             };
             return dashboardData;
         }
@@ -48,7 +62,9 @@ export async function loadMetrics() {
             metrics: normalizedMetrics.metrics,
             metadata: metadata || rawMetrics.metadata || {},
             sankey: normalizeSankeyData(sankey || rawMetrics.sankey_flow),
-            textDistributions: normalizeTextDistributions(textDistributions || rawMetrics.text_distributions)
+            textDistributions: normalizeTextDistributions(textDistributions || rawMetrics.text_distributions),
+            sourceCatalog: normalizeSourceCatalog(sourceCatalog),
+            pipelineStatus: normalizePipelineStatus(pipelineStatus)
         };
 
         Logger.info(`Dashboard data loaded: metrics=${dashboardData.metrics.length}, sankey=${dashboardData.sankey ? 'yes' : 'no'}, distributions=${dashboardData.textDistributions ? 'yes' : 'no'}`);
@@ -60,7 +76,9 @@ export async function loadMetrics() {
             metrics: [],
             metadata: {},
             sankey: null,
-            textDistributions: null
+            textDistributions: null,
+            sourceCatalog: null,
+            pipelineStatus: null
         };
         return dashboardData;
     }
@@ -424,6 +442,14 @@ export function getDashboardMetadata() {
     return dashboardData.metadata;
 }
 
+export function getSourceCatalog() {
+    return dashboardData.sourceCatalog;
+}
+
+export function getPipelineStatus() {
+    return dashboardData.pipelineStatus;
+}
+
 /**
  * Validate metrics data structure
  * @param {Object} data - Data to validate
@@ -462,4 +488,53 @@ export function validateMetrics(data) {
 export async function refreshMetrics() {
     Logger.info('Refreshing metrics data...');
     return await loadMetrics();
+}
+
+function normalizeSourceCatalog(data) {
+    if (!data || typeof data !== 'object') {
+        return null;
+    }
+    const sources = data.sources || {};
+    const normalized = Object.fromEntries(
+        Object.entries(sources).map(([key, value]) => {
+            const info = value || {};
+            return [normalizeSourceName(key), {
+                acquisitionMethod: info.acquisition_method || 'Unspecified',
+                pipelineOwner: info.pipeline_owner || 'Unassigned',
+                refreshSla: info.refresh_sla || 'Unknown',
+                integrationStage: info.integration_stage || 'Planned',
+                dependencies: Array.isArray(info.dependencies) ? info.dependencies : [],
+                notes: info.notes || ''
+            }];
+        })
+    );
+
+    return {
+        version: data.version || null,
+        sources: normalized
+    };
+}
+
+function normalizePipelineStatus(data) {
+    if (!data || typeof data !== 'object') {
+        return null;
+    }
+
+    const planned = Array.isArray(data.planned_sources) ? data.planned_sources.map(item => ({
+        name: item.name || 'Unnamed',
+        status: item.status || 'Planned',
+        eta: item.eta || 'TBD',
+        notes: item.notes || ''
+    })) : [];
+
+    const sunset = Array.isArray(data.decommissioned) ? data.decommissioned.map(item => ({
+        name: item.name || 'Unnamed',
+        reason: item.reason || ''
+    })) : [];
+
+    return {
+        version: data.version || null,
+        plannedSources: planned,
+        decommissioned: sunset
+    };
 }

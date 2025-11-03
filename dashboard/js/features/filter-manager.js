@@ -1,3 +1,5 @@
+import { getSourceCatalog } from '../core/data-service.js';
+
 /**
  * Filter Manager - Advanced Filtering and Date Range Selection
  * Handles source filtering, quality thresholds, date ranges, and URL state management
@@ -12,17 +14,23 @@ export const FilterManager = {
             start: null,
             end: null,
             preset: 'all' // 'all', 'last7days', 'last30days', 'custom'
-        }
+        },
+        acquisitionMethods: [],
+        integrationStages: []
     },
 
     allMetrics: [], // Store all metrics for filtering
     listeners: [],
+    lastFilteredMetrics: [],
+    catalog: null,
+    chipUpdateCallback: null,
 
     /**
      * Initialize filter manager
      */
     init(metrics) {
         this.allMetrics = metrics || [];
+        this.catalog = getSourceCatalog();
 
         // Load filters from URL or localStorage
         this.loadFiltersFromURL();
@@ -106,6 +114,10 @@ export const FilterManager = {
                         <label class="filter-checkbox">
                             <input type="checkbox" value="Sprakbanken" checked>
                             <span class="filter-checkbox-label">Språkbanken</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="TikTok" checked>
+                            <span class="filter-checkbox-label">TikTok</span>
                         </label>
                     </div>
                 </div>
@@ -286,6 +298,18 @@ export const FilterManager = {
                 return false;
             }
 
+            const sourceInfo = this.catalog?.sources?.[sourceName] || {};
+            const acquisitionMethod = sourceInfo.acquisitionMethod || 'Unspecified';
+            const integrationStage = sourceInfo.integrationStage || 'Planned';
+
+            if (this.filters.acquisitionMethods.length > 0 && !this.filters.acquisitionMethods.includes(acquisitionMethod)) {
+                return false;
+            }
+
+            if (this.filters.integrationStages.length > 0 && !this.filters.integrationStages.includes(integrationStage)) {
+                return false;
+            }
+
             // Quality threshold filter
             const qualityRate = this.getQualityRate(metric);
             if (qualityRate < this.filters.qualityThreshold) {
@@ -315,6 +339,8 @@ export const FilterManager = {
             return true;
         });
 
+        this.lastFilteredMetrics = filtered;
+
         // Update filter count badge
         this.updateFilterCount();
 
@@ -325,6 +351,44 @@ export const FilterManager = {
         this.notifyListeners(filtered);
 
         return filtered;
+    },
+
+    setChipUpdateCallback(callback) {
+        this.chipUpdateCallback = callback;
+    },
+
+    isAcquisitionMethodActive(method) {
+        return this.filters.acquisitionMethods.includes(method);
+    },
+
+    isIntegrationStageActive(stage) {
+        return this.filters.integrationStages.includes(stage);
+    },
+
+    toggleAcquisitionMethod(method) {
+        if (!method) return;
+        if (this.isAcquisitionMethodActive(method)) {
+            this.filters.acquisitionMethods = this.filters.acquisitionMethods.filter(value => value !== method);
+        } else {
+            this.filters.acquisitionMethods = [...this.filters.acquisitionMethods, method];
+        }
+        this.applyFilters();
+        if (typeof this.chipUpdateCallback === 'function') {
+            this.chipUpdateCallback();
+        }
+    },
+
+    toggleIntegrationStage(stage) {
+        if (!stage) return;
+        if (this.isIntegrationStageActive(stage)) {
+            this.filters.integrationStages = this.filters.integrationStages.filter(value => value !== stage);
+        } else {
+            this.filters.integrationStages = [...this.filters.integrationStages, stage];
+        }
+        this.applyFilters();
+        if (typeof this.chipUpdateCallback === 'function') {
+            this.chipUpdateCallback();
+        }
     },
 
     /**
@@ -339,7 +403,9 @@ export const FilterManager = {
                 start: null,
                 end: null,
                 preset: 'all'
-            }
+            },
+            acquisitionMethods: [],
+            integrationStages: []
         };
 
         // Reset UI
@@ -367,6 +433,9 @@ export const FilterManager = {
         }
 
         this.applyFilters();
+        if (typeof this.chipUpdateCallback === 'function') {
+            this.chipUpdateCallback();
+        }
     },
 
     /**
@@ -387,9 +456,10 @@ export const FilterManager = {
         if (!badge) return;
 
         let activeFilters = 0;
+        const totalSources = Object.keys(this.catalog?.sources || {}).length || 0;
 
         // Count active filters
-        if (this.filters.sources.length > 0 && this.filters.sources.length < 4) {
+        if (this.filters.sources.length > 0 && (totalSources === 0 || this.filters.sources.length < totalSources)) {
             activeFilters++;
         }
 
@@ -402,6 +472,14 @@ export const FilterManager = {
         }
 
         if (this.filters.dateRange.preset !== 'all') {
+            activeFilters++;
+        }
+
+        if (this.filters.acquisitionMethods.length > 0) {
+            activeFilters++;
+        }
+
+        if (this.filters.integrationStages.length > 0) {
             activeFilters++;
         }
 
@@ -443,6 +521,16 @@ export const FilterManager = {
         if (datePreset) {
             this.setDatePreset(datePreset);
         }
+
+        const acquisition = params.get('acquisition');
+        if (acquisition) {
+            this.filters.acquisitionMethods = acquisition.split(',');
+        }
+
+        const stage = params.get('stage');
+        if (stage) {
+            this.filters.integrationStages = stage.split(',');
+        }
     },
 
     /**
@@ -452,7 +540,8 @@ export const FilterManager = {
         const params = new URLSearchParams();
 
         // Add filters to URL
-        if (this.filters.sources.length > 0 && this.filters.sources.length < 4) {
+        const totalSources = Object.keys(this.catalog?.sources || {}).length || 0;
+        if (this.filters.sources.length > 0 && (totalSources === 0 || this.filters.sources.length < totalSources)) {
             params.set('sources', this.filters.sources.join(','));
         }
 
@@ -466,6 +555,14 @@ export const FilterManager = {
 
         if (this.filters.dateRange.preset !== 'all') {
             params.set('datePreset', this.filters.dateRange.preset);
+        }
+
+        if (this.filters.acquisitionMethods.length > 0) {
+            params.set('acquisition', this.filters.acquisitionMethods.join(','));
+        }
+
+        if (this.filters.integrationStages.length > 0) {
+            params.set('stage', this.filters.integrationStages.join(','));
         }
 
         // Update URL without reload

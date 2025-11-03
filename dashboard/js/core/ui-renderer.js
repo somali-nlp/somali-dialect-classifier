@@ -3,9 +3,11 @@
  * Populates DOM elements with metrics data
  */
 
-import { getMetrics } from './data-service.js';
+import { getMetrics, getSourceCatalog, getPipelineStatus } from './data-service.js';
 import { normalizeSourceName, formatDate } from '../utils/formatters.js';
 import { computeQualityAnalytics, FILTER_REASON_LABELS } from './aggregates.js';
+import { getSourceMixTargetsSnapshot } from '../features/coverage-metrics.js';
+import { FilterManager } from '../features/filter-manager.js';
 
 const SOURCE_METADATA = {
     'Wikipedia': {
@@ -141,15 +143,16 @@ function describeFilterReason(reason) {
     }
 }
 
-function buildSourceAnalytics() {
-    const metricsData = getMetrics();
-    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+export function buildSourceAnalytics(customMetrics = null) {
+    const metricsArray = Array.isArray(customMetrics) ? customMetrics : (getMetrics()?.metrics || []);
+    if (!metricsArray.length) {
         return null;
     }
 
-    const totalRecords = metricsData.metrics.reduce((sum, metric) => sum + (metric.records_written || 0), 0);
+    const totalRecords = metricsArray.reduce((sum, metric) => sum + (metric.records_written || 0), 0);
+    const catalog = getSourceCatalog();
 
-    const items = metricsData.metrics.map(metric => {
+    const items = metricsArray.map(metric => {
         const sourceName = normalizeSourceName(metric.source);
         const metadataKey = getMetadataKey(sourceName);
         const meta = SOURCE_METADATA[metadataKey] || {
@@ -159,6 +162,14 @@ function buildSourceAnalytics() {
             qualityBenchmark: 0.7,
             icon: ''
         };
+
+        const catalogInfo = catalog?.sources?.[sourceName] || {};
+        const acquisitionMethod = catalogInfo.acquisitionMethod || 'Unspecified';
+        const pipelineOwner = catalogInfo.pipelineOwner || 'Unassigned';
+        const refreshSla = catalogInfo.refreshSla || 'Not set';
+        const integrationStage = catalogInfo.integrationStage || 'Planned';
+        const dependencies = Array.isArray(catalogInfo.dependencies) ? catalogInfo.dependencies : [];
+        const notes = catalogInfo.notes || meta.description || '';
 
         const records = metric.records_written || 0;
         const share = totalRecords > 0 ? (records / totalRecords) * 100 : 0;
@@ -186,7 +197,13 @@ function buildSourceAnalytics() {
             qualityBenchmark: meta.qualityBenchmark,
             icon: meta.icon,
             filterBreakdown,
-            topFilter
+            topFilter,
+            acquisitionMethod,
+            pipelineOwner,
+            refreshSla,
+            integrationStage,
+            dependencies,
+            notes
         };
     });
 
@@ -205,7 +222,7 @@ function sortSourceRows(rows) {
         let valA = a[key];
         let valB = b[key];
 
-        if (key === 'name' || key === 'role') {
+        if (['name', 'role', 'acquisitionMethod', 'refreshSla', 'pipelineOwner', 'integrationStage'].includes(key)) {
             valA = (valA || '').toString().toLowerCase();
             valB = (valB || '').toString().toLowerCase();
             if (valA < valB) return -1 * dir;
@@ -243,29 +260,82 @@ function renderSourceTableBody(tbody) {
     const html = rows.map(row => {
         const records = row.records.toLocaleString();
         const share = row.share.toFixed(1) + '%';
-        const quality = (row.quality * 100).toFixed(1) + '%';
         const avgLength = row.avgLength ? Math.round(row.avgLength).toLocaleString() + ' chars' : '—';
         return `
             <tr>
                 <td style="font-weight:600">${row.name}</td>
                 <td>${records}</td>
                 <td>${share}</td>
-                <td>${quality}</td>
                 <td>${avgLength}</td>
+                <td>${row.acquisitionMethod}</td>
+                <td>${row.refreshSla}</td>
+                <td>${row.pipelineOwner}</td>
+                <td>${row.integrationStage}</td>
                 <td>${row.lastUpdatedLabel}</td>
-                <td>${row.role}</td>
             </tr>
         `;
     }).join('');
 
     tbody.innerHTML = html || `
         <tr>
-            <td colspan="7" style="text-align:center;padding:2rem;color:var(--gray-500);">
+            <td colspan="9" style="text-align:center;padding:2rem;color:var(--gray-500);">
                 No data available yet. Run the data ingestion pipeline to populate metrics.
             </td>
         </tr>
     `;
     updateSortIndicators();
+}
+
+function renderSourceChecklistFilters(items = []) {
+    const container = document.getElementById('sourceChecklistFilters');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const methods = Array.from(new Set(items.map(item => item.acquisitionMethod))).filter(Boolean);
+    const stages = Array.from(new Set(items.map(item => item.integrationStage))).filter(Boolean);
+
+    if (!methods.length && !stages.length) {
+        const span = document.createElement('span');
+        span.className = 'filter-chip filter-chip-label';
+        span.textContent = 'No additional filters';
+        container.appendChild(span);
+        return;
+    }
+
+    const createLabel = text => {
+        const span = document.createElement('span');
+        span.className = 'filter-chip filter-chip-label';
+        span.textContent = text;
+        span.setAttribute('role', 'presentation');
+        container.appendChild(span);
+    };
+
+    const createChip = (label, active, onClick) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'filter-chip';
+        button.textContent = label;
+        button.setAttribute('aria-pressed', active.toString());
+        button.addEventListener('click', onClick);
+        container.appendChild(button);
+    };
+
+    if (methods.length) {
+        createLabel('Acquisition');
+        methods.forEach(method => {
+            const isActive = FilterManager.isAcquisitionMethodActive(method);
+            createChip(method, isActive, () => FilterManager.toggleAcquisitionMethod(method));
+        });
+    }
+
+    if (stages.length) {
+        createLabel('Stage');
+        stages.forEach(stage => {
+            const isActive = FilterManager.isIntegrationStageActive(stage);
+            createChip(stage, isActive, () => FilterManager.toggleIntegrationStage(stage));
+        });
+    }
 }
 
 function handleSourceTableSort(sortKey) {
@@ -274,7 +344,9 @@ function handleSourceTableSort(sortKey) {
         sourceTableSort.direction = sourceTableSort.direction === 'asc' ? 'desc' : 'asc';
     } else {
         sourceTableSort.key = sortKey;
-        sourceTableSort.direction = sortKey === 'name' || sortKey === 'role' ? 'asc' : 'desc';
+        sourceTableSort.direction = ['name', 'role', 'acquisitionMethod', 'refreshSla', 'pipelineOwner', 'integrationStage'].includes(sortKey)
+            ? 'asc'
+            : 'desc';
     }
     const tbody = document.getElementById('sourceTableBody');
     renderSourceTableBody(tbody);
@@ -283,24 +355,33 @@ function handleSourceTableSort(sortKey) {
 /**
  * Populate the source comparison table
  */
-export function populateSourceTable() {
+export function populateSourceTable(analyticsOverride = null) {
     const tbody = document.getElementById('sourceTableBody');
     if (!tbody) return;
 
-    const analytics = buildSourceAnalytics();
+    const analytics = analyticsOverride || buildSourceAnalytics();
     if (!analytics) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 2rem; color: var(--gray-500);">
+                <td colspan="9" style="text-align: center; padding: 2rem; color: var(--gray-500);">
                     No data available yet. Run the data ingestion pipeline to populate metrics.
                 </td>
             </tr>
         `;
+        renderSourceChecklistFilters([]);
         return;
     }
 
     sourceTableRows = analytics.items;
     renderSourceTableBody(tbody);
+    renderSourceChecklistFilters(analytics.items);
+    FilterManager.setChipUpdateCallback(() => {
+        const metricsOverride = FilterManager.lastFilteredMetrics && FilterManager.lastFilteredMetrics.length
+            ? FilterManager.lastFilteredMetrics
+            : null;
+        const updatedAnalytics = buildSourceAnalytics(metricsOverride);
+        renderSourceChecklistFilters(updatedAnalytics ? updatedAnalytics.items : []);
+    });
 
     if (!sourceTableListenersAttached) {
         const headers = document.querySelectorAll('.comparison-table th[data-sort-key]');
@@ -311,58 +392,101 @@ export function populateSourceTable() {
     }
 }
 
-export function populateSourceMixSnapshot() {
+export function populateSourceMixSnapshot(analyticsOverride = null) {
     const narrativeEl = document.getElementById('source-mix-narrative');
-    const shareValueEl = document.getElementById('mix-share-leader-value');
-    const shareCaptionEl = document.getElementById('mix-share-leader-caption');
-    const qualityValueEl = document.getElementById('mix-quality-standout-value');
-    const qualityCaptionEl = document.getElementById('mix-quality-standout-caption');
-    const freshnessValueEl = document.getElementById('mix-freshness-value');
-    const freshnessCaptionEl = document.getElementById('mix-freshness-caption');
+    const etlNarrativeEl = document.getElementById('source-etl-narrative');
+    const activeValueEl = document.getElementById('roster-active-count');
+    const activeCaptionEl = document.getElementById('roster-active-caption');
+    const plannedValueEl = document.getElementById('roster-planned-count');
+    const plannedCaptionEl = document.getElementById('roster-planned-caption');
+    const pipelineValueEl = document.getElementById('roster-pipeline-count');
+    const pipelineCaptionEl = document.getElementById('roster-pipeline-caption');
+    const targetValueEl = document.getElementById('roster-target-progress-value');
+    const targetCaptionEl = document.getElementById('roster-target-progress-caption');
 
-    const analytics = buildSourceAnalytics();
+    const analytics = analyticsOverride || buildSourceAnalytics();
+    const roadmap = getPipelineStatus();
+    const targetsSnapshot = getSourceMixTargetsSnapshot();
 
     if (!analytics || !analytics.items.length) {
-        if (narrativeEl) narrativeEl.textContent = 'Run the ingestion pipelines to populate source mix insights.';
-        [shareValueEl, qualityValueEl, freshnessValueEl].forEach(el => { if (el) el.textContent = '—'; });
-        [shareCaptionEl, qualityCaptionEl, freshnessCaptionEl].forEach(el => { if (el) el.textContent = 'Awaiting data.'; });
+        if (narrativeEl) narrativeEl.textContent = 'Run the ingestion pipelines to populate source portfolio insights.';
+        if (etlNarrativeEl) etlNarrativeEl.textContent = 'ETL readiness story will unlock after the next successful ingestion.';
+        [activeValueEl, plannedValueEl, pipelineValueEl, targetValueEl].forEach(el => { if (el) el.textContent = '—'; });
+        [activeCaptionEl, plannedCaptionEl, pipelineCaptionEl, targetCaptionEl].forEach(el => { if (el) el.textContent = 'Awaiting data.'; });
         return;
     }
 
     const items = analytics.items;
     const totalRecords = analytics.totalRecords;
     const leader = items.reduce((prev, curr) => curr.share > prev.share ? curr : prev, items[0]);
-    const qualityChamp = items.reduce((prev, curr) => curr.quality > prev.quality ? curr : prev, items[0]);
     const freshest = items.reduce((prev, curr) => {
         if (!prev.lastUpdatedMs) return curr;
         if (!curr.lastUpdatedMs) return prev;
         return curr.lastUpdatedMs > prev.lastUpdatedMs ? curr : prev;
     }, items[0]);
+    const pipelineSet = Array.from(new Set(items.map(item => item.pipeline)));
+    const stageSet = Array.from(new Set(items.map(item => item.integrationStage)));
+    const plannedSources = roadmap?.plannedSources || [];
 
-    const leaderShareLabel = leader.share.toFixed(1) + '%';
-    const qualityPercentLabel = (qualityChamp.quality * 100).toFixed(1) + '%';
+    const targetVolumes = targetsSnapshot?.volumes || {};
+    const targetTotal = Object.values(targetVolumes).reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const targetShare = targetsSnapshot?.share || {};
+    const planProgress = targetTotal > 0 ? (totalRecords / targetTotal) * 100 : null;
+    const largestGap = items.reduce((acc, item) => {
+        const target = (targetShare[item.name] || 0) * 100;
+        const diff = item.share - target;
+        if (!acc || Math.abs(diff) > Math.abs(acc.diff)) {
+            return { name: item.name, diff };
+        }
+        return acc;
+    }, null);
 
     if (narrativeEl) {
-        narrativeEl.textContent = `Current corpus mix spans ${totalRecords.toLocaleString()} records across ${items.length} active sources. ` +
-            `${leader.name} carries ${leaderShareLabel} of delivered volume while ${qualityChamp.name} leads quality at ${qualityPercentLabel}. ` +
-            `Latest ingestion finished with ${freshest.name} on ${freshest.lastUpdatedLabel}.`;
+        narrativeEl.textContent =
+            `Current portfolio spans ${totalRecords.toLocaleString()} records across ${items.length} active sources. ` +
+            `${leader.name} leads delivered volume at ${leader.share.toFixed(1)}% while ${freshest.name} supplied the most recent load on ${freshest.lastUpdatedLabel}.`;
     }
 
-    if (shareValueEl) shareValueEl.textContent = leader.name;
-    if (shareCaptionEl) shareCaptionEl.textContent = `${leaderShareLabel} of volume`;
+    if (etlNarrativeEl) {
+        const stageSummary = stageSet.join(', ');
+        const cadenceText = plannedSources.length
+            ? `On-deck sources: ${plannedSources.slice(0, 2).map(src => `${src.name} (${src.status})`).join(', ')}`
+            : 'No additional sources queued at this time.';
+        etlNarrativeEl.textContent =
+            `ETL coverage now blends ${pipelineSet.join(', ')} pipelines with integration stages ${stageSummary}. ${cadenceText}.`;
+    }
 
-    if (qualityValueEl) qualityValueEl.textContent = `${qualityChamp.name}`;
-    if (qualityCaptionEl) qualityCaptionEl.textContent = `${qualityPercentLabel} pass rate`;
+    if (activeValueEl) activeValueEl.textContent = items.length.toString();
+    if (activeCaptionEl) activeCaptionEl.textContent = `${leader.name} holds ${leader.share.toFixed(1)}% of mix`;
 
-    if (freshnessValueEl) freshnessValueEl.textContent = freshest.lastUpdatedLabel;
-    if (freshnessCaptionEl) freshnessCaptionEl.textContent = `${freshest.name} · ${freshest.pipeline}`;
+    if (plannedValueEl) plannedValueEl.textContent = plannedSources.length > 0 ? plannedSources.length.toString() : '0';
+    if (plannedCaptionEl) {
+        plannedCaptionEl.textContent = plannedSources.length
+            ? `Next: ${plannedSources[0].name} (${plannedSources[0].status})`
+            : 'Roadmap clear for this quarter.';
+    }
+
+    if (pipelineValueEl) pipelineValueEl.textContent = pipelineSet.length.toString();
+    if (pipelineCaptionEl) pipelineCaptionEl.textContent = pipelineSet.join(' • ') || 'Pipeline mix pending';
+
+    if (targetValueEl) {
+        targetValueEl.textContent = planProgress !== null ? `${planProgress.toFixed(1)}%` : '—';
+    }
+    if (targetCaptionEl) {
+        if (largestGap) {
+            const direction = largestGap.diff >= 0 ? '+' : '−';
+            targetCaptionEl.textContent = `Largest variance: ${largestGap.name} ${direction}${Math.abs(largestGap.diff).toFixed(1)} pts`;
+        } else {
+            targetCaptionEl.textContent = 'Variance pending target plan.';
+        }
+    }
 }
 
-export function populateSourceBriefings() {
+export function populateSourceBriefings(analyticsOverride = null) {
     const container = document.getElementById('sourceBriefings');
     if (!container) return;
 
-    const analytics = buildSourceAnalytics();
+    const analytics = analyticsOverride || buildSourceAnalytics();
     if (!analytics || !analytics.items.length) {
         container.innerHTML = `
             <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--gray-500);">
@@ -380,39 +504,90 @@ export function populateSourceBriefings() {
     container.innerHTML = cards;
 }
 
+export function populateIntegrationRoadmap() {
+    const container = document.getElementById('integrationRoadmap');
+    if (!container) return;
+
+    const roadmap = getPipelineStatus();
+    if (!roadmap) {
+        container.innerHTML = `
+            <div class="roadmap-card planned">
+                <h4>Roadmap loading…</h4>
+                <p>Publish roadmap data to surface planned integrations.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const planned = roadmap.plannedSources || [];
+    const decommissioned = roadmap.decommissioned || [];
+
+    const plannedCards = planned.map(item => `
+        <article class="roadmap-card planned">
+            <h4>${item.name}</h4>
+            <span>${item.status} · ETA ${item.eta}</span>
+            <p>${item.notes}</p>
+        </article>
+    `).join('');
+
+    const sunsetCards = decommissioned.map(item => `
+        <article class="roadmap-card decommissioned">
+            <h4>${item.name}</h4>
+            <span>Sunset</span>
+            <p>${item.reason}</p>
+        </article>
+    `).join('');
+
+    if (!plannedCards && !sunsetCards) {
+        container.innerHTML = `
+            <div class="roadmap-card planned">
+                <h4>Roadmap clear</h4>
+                <p>No planned additions or retirements at this time.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = plannedCards + sunsetCards;
+}
+
 function renderSourceBriefingCard(item) {
     const shareLabel = item.share.toFixed(1);
-    const qualityPercent = (item.quality * 100).toFixed(1);
     const avgLength = item.avgLength ? Math.round(item.avgLength).toLocaleString() : '—';
-    const qualityClass = item.quality >= item.qualityBenchmark ? 'success' : 'warning';
-
-    let narrative = `${item.name} contributes ${shareLabel}% of recent records with a ${qualityPercent}% pass rate.`;
-    if (item.topFilter) {
-        narrative += ` Most filtering comes from the ${item.topFilter.label} (${item.topFilter.percentage.toFixed(1)}%).`;
-    }
-    if (item.quality < item.qualityBenchmark) {
-        narrative += ' Quality is below the expected baseline—monitor upcoming runs.';
-    }
-
     const iconMarkup = item.icon || '';
+    const stageChipClass = item.integrationStage && item.integrationStage !== 'Production' ? 'relationship-chip warning' : 'relationship-chip';
+    const dependencies = item.dependencies && item.dependencies.length
+        ? item.dependencies.map(dep => `<span>${dep}</span>`).join('')
+        : '<span>Standard filters</span>';
+    const filterNarrative = item.topFilter
+        ? ` Dominant filter: ${item.topFilter.label} (${item.topFilter.percentage.toFixed(1)}%).`
+        : '';
+    const descriptiveText = item.notes || item.description || '';
 
     return `
-        <article class="source-briefing-card">
-            <div class="source-briefing-header">
-                <div class="source-briefing-icon">${iconMarkup}</div>
-                <div>
-                    <div class="source-briefing-title">${item.name}</div>
-                    <div class="source-briefing-role">${item.role} · ${item.pipeline}</div>
+        <article class="relationship-card">
+            <div class="relationship-card-header">
+                <div class="relationship-icon">${iconMarkup}</div>
+                <div class="relationship-meta">
+                    <span class="relationship-name">${item.name}</span>
+                    <span class="relationship-role">${item.role} · ${item.pipelineOwner}</span>
                 </div>
             </div>
-            <div class="briefing-chip-row">
-                <span class="briefing-chip">${shareLabel}% Share</span>
-                <span class="briefing-chip ${qualityClass}">Quality ${qualityPercent}%</span>
-                <span class="briefing-chip neutral">Avg ${avgLength} chars</span>
-                <span class="briefing-chip neutral">${item.lastUpdatedLabel}</span>
+            <div class="relationship-chip-row">
+                <span class="relationship-chip neutral">${item.acquisitionMethod}</span>
+                <span class="relationship-chip">${item.refreshSla}</span>
+                <span class="${stageChipClass}">${item.integrationStage}</span>
+                <span class="relationship-chip neutral">${shareLabel}% share</span>
             </div>
-            ${item.description ? `<p class="source-briefing-text">${item.description}</p>` : ''}
-            <p class="source-briefing-text">${narrative}</p>
+            <div class="relationship-details">
+                ${item.name} has delivered ${item.records.toLocaleString()} records (avg ${avgLength} chars) via the ${item.pipeline} pipeline.${filterNarrative} ${descriptiveText}
+            </div>
+            <div class="relationship-dependencies" aria-label="Key dependencies">
+                ${dependencies}
+            </div>
+            <div class="relationship-details" style="font-size: var(--text-xs); color: var(--gray-500);">
+                Last run ${item.lastUpdatedLabel}
+            </div>
         </article>
     `;
 }
