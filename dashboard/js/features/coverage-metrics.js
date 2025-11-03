@@ -1495,7 +1495,7 @@ function createQualityBulletChart(metricsData) {
                 datasets: [{
                     label: 'Quality Pass Rate',
                     data: qualityPercentages,
-                    backgroundColor,
+                    backgroundColor: backgroundColors,
                     borderColor: labels.map(label => getSourceColor(label)),
                     borderWidth: 1.2,
                     borderRadius: 8,
