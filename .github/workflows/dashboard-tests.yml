@@ -171,7 +171,6 @@ jobs:
       - name: Run visual regression tests
         run: |
           npx playwright test tests/visual/ \
-            --config=tests/visual/playwright.config.js \
             --reporter=html,json
 
       - name: Upload visual regression report
