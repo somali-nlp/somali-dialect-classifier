@@ -4,20 +4,16 @@ Unit tests for HuggingFace datasets processor.
 Tests processor initialization, file creation, and integration with base pipeline contract.
 """
 
+import importlib.util
 from pathlib import Path
 
 import pytest
 
-try:
-    from datasets import Dataset
-
-    DATASETS_AVAILABLE = True
-except ImportError:
-    DATASETS_AVAILABLE = False
-
 from somali_dialect_classifier.preprocessing.huggingface_somali_processor import (
     create_mc4_processor,
 )
+
+DATASETS_AVAILABLE = importlib.util.find_spec("datasets") is not None
 
 pytestmark = pytest.mark.skipif(not DATASETS_AVAILABLE, reason="datasets library not installed")
 

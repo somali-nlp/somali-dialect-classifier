@@ -208,9 +208,9 @@ class TestDeduplication:
 
     def test_near_duplicate_detection(self):
         """Test near-duplicate detection with MinHash."""
-        try:
-            import datasketch
-        except ImportError:
+        import importlib.util
+
+        if importlib.util.find_spec("datasketch") is None:
             pytest.skip("datasketch not available")
 
         config = DedupConfig(hash_fields=["text"], enable_minhash=True, similarity_threshold=0.8)

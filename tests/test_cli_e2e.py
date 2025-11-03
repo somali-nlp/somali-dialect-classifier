@@ -44,10 +44,11 @@ class TestWikipediaCLI:
 
     def test_cli_imports_successfully(self):
         """Test that CLI module can be imported."""
-        try:
-            from somali_dialect_classifier.cli import download_wikisom
-        except ImportError as e:
-            pytest.fail(f"Failed to import CLI module: {e}")
+        import importlib.util
+
+        spec = importlib.util.find_spec("somali_dialect_classifier.cli.download_wikisom")
+        if spec is None:
+            pytest.fail("Failed to import CLI module: download_wikisom not found")
 
     def test_cli_main_function_exists(self):
         """Test that main() function exists in CLI module."""
@@ -79,10 +80,11 @@ class TestBBCCLI:
 
     def test_cli_imports_successfully(self):
         """Test that BBC CLI module can be imported."""
-        try:
-            from somali_dialect_classifier.cli import download_bbcsom
-        except ImportError as e:
-            pytest.fail(f"Failed to import BBC CLI module: {e}")
+        import importlib.util
+
+        spec = importlib.util.find_spec("somali_dialect_classifier.cli.download_bbcsom")
+        if spec is None:
+            pytest.fail("Failed to import BBC CLI module: download_bbcsom not found")
 
     def test_cli_main_function_exists(self):
         """Test that main() function exists in BBC CLI module."""

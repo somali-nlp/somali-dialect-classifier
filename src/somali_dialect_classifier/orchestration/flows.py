@@ -662,8 +662,8 @@ def main():
             tiktok_user_id = config.scraping.tiktok.apify_user_id
 
             # Determine video URLs source (CLI arg > default file location)
-            DEFAULT_TIKTOK_URLS_PATH = Path("data/tiktok_urls.txt")
-            urls_file_path = args.tiktok_video_urls or DEFAULT_TIKTOK_URLS_PATH
+            default_tiktok_urls_path = Path("data/tiktok_urls.txt")
+            urls_file_path = args.tiktok_video_urls or default_tiktok_urls_path
 
             # Load video URLs from file (default or custom path)
             if urls_file_path.exists():
@@ -687,10 +687,10 @@ def main():
                 else:
                     # Default file doesn't exist - this is expected/normal, just skip
                     logger.info(
-                        f"TikTok: Skipping (default URLs file not found: {DEFAULT_TIKTOK_URLS_PATH})"
+                        f"TikTok: Skipping (default URLs file not found: {default_tiktok_urls_path})"
                     )
                     logger.info(
-                        f"TikTok: To enable, create {DEFAULT_TIKTOK_URLS_PATH} or use --tiktok-video-urls"
+                        f"TikTok: To enable, create {default_tiktok_urls_path} or use --tiktok-video-urls"
                     )
                 run_tiktok_pipeline = False
 

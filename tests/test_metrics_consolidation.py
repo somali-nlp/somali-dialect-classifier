@@ -10,13 +10,11 @@ Tests cover:
 """
 
 import pytest
+from pydantic import ValidationError
 
 try:
     from somali_dialect_classifier.utils.metrics_schema import (
         ConsolidatedMetric,
-        ConsolidatedMetricsOutput,
-        DashboardSummary,
-        Phase3MetricsSchema,
         validate_consolidated_metrics,
         validate_dashboard_summary,
         validate_processing_json,
@@ -122,7 +120,7 @@ class TestPhase3SchemaValidation:
         invalid_data = SAMPLE_PROCESSING_JSON.copy()
         del invalid_data["_source"]
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             validate_processing_json(invalid_data)
 
     def test_invalid_schema_version(self):
@@ -130,7 +128,7 @@ class TestPhase3SchemaValidation:
         invalid_data = SAMPLE_PROCESSING_JSON.copy()
         invalid_data["_schema_version"] = "2.0"
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             validate_processing_json(invalid_data)
 
     def test_layered_metrics_validation(self):
@@ -263,7 +261,7 @@ class TestConsolidatedMetricValidation:
             "records_per_minute": 0.0,
         }
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             ConsolidatedMetric.model_validate(invalid_metric)
 
     def test_rate_bounds_validation(self):
@@ -288,7 +286,7 @@ class TestConsolidatedMetricValidation:
             "records_per_minute": 0.0,
         }
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             ConsolidatedMetric.model_validate(invalid_metric)
 
 

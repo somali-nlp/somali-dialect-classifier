@@ -264,7 +264,7 @@ class Phase3MetricsSchema(BaseModel):
         try:
             datetime.fromisoformat(v.replace("Z", "+00:00"))
         except ValueError:
-            raise ValueError(f"Invalid timestamp format: {v}")
+            raise ValueError(f"Invalid timestamp format: {v}") from None
         return v
 
 
@@ -290,9 +290,9 @@ class ConsolidatedMetric(BaseModel):
     bytes_downloaded: int = Field(ge=0)
     total_chars: int = Field(ge=0)
 
-    # Quality metrics
-    http_request_success_rate: float = Field(ge=0, le=1)
-    content_extraction_success_rate: float = Field(ge=0, le=1)
+    # Quality metrics (pipeline-specific, may be None for non-HTTP pipelines)
+    http_request_success_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    content_extraction_success_rate: Optional[float] = Field(default=None, ge=0, le=1)
     quality_pass_rate: float = Field(ge=0, le=1)
     deduplication_rate: float = Field(ge=0, le=1)
 
