@@ -109,6 +109,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pytest.ini_options]
+pythonpath = [".", "src", "scripts"]
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
