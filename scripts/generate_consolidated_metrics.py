@@ -256,8 +256,9 @@ def generate_summary(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
     total_urls = sum(m["urls_processed"] for m in metrics)
     total_bytes = sum(m["bytes_downloaded"] for m in metrics)
 
-    # Use http_request_success_rate as primary success metric
-    success_rates = [m["http_request_success_rate"] for m in metrics if m["http_request_success_rate"] > 0]
+    # Use http_request_success_rate as primary success metric (skip None values)
+    success_rates = [m["http_request_success_rate"] for m in metrics
+                     if m["http_request_success_rate"] is not None and m["http_request_success_rate"] > 0]
     avg_success_rate = sum(success_rates) / len(success_rates) if success_rates else 0
 
     sources = sorted(set(m["source"] for m in metrics if m["source"]))
@@ -266,10 +267,15 @@ def generate_summary(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
     source_stats = {}
     for source in sources:
         source_metrics = [m for m in metrics if m["source"] == source]
+        # Calculate avg_success_rate, handling None values
+        source_success_rates = [m["http_request_success_rate"] for m in source_metrics
+                                if m["http_request_success_rate"] is not None]
+        avg_success = sum(source_success_rates) / len(source_success_rates) if source_success_rates else 0.0
+
         source_stats[source] = {
             "records": sum(m["records_written"] for m in source_metrics),
             "runs": len(source_metrics),
-            "avg_success_rate": sum(m["http_request_success_rate"] for m in source_metrics) / len(source_metrics),
+            "avg_success_rate": avg_success,
             "avg_quality_pass_rate": sum(m["quality_pass_rate"] for m in source_metrics) / len(source_metrics),
             "total_chars": sum(m["total_chars"] for m in source_metrics),
             "last_run": max(m["timestamp"] for m in source_metrics)
