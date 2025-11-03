@@ -395,7 +395,8 @@ function aggregateRunSeries(metrics, limit = 8) {
                 throughputWeighted: 0,
                 throughputWeight: 0,
                 activeSources: new Set(),
-                timestamps: new Set()
+                timestamps: new Set(),
+                sourceStats: {}
             };
             runMap.set(runKey, entry);
         }
@@ -416,13 +417,39 @@ function aggregateRunSeries(metrics, limit = 8) {
             entry.sources[source] = 0;
         }
 
+        if (!entry.sourceStats[source]) {
+            entry.sourceStats[source] = {
+                records: 0,
+                durationSeconds: 0,
+                rpmWeighted: 0,
+                rpmWeight: 0
+            };
+        }
+        const stats = entry.sourceStats[source];
+        if (Number.isFinite(records) && records > 0) {
+            stats.records += records;
+        }
+        if (Number.isFinite(durationSeconds) && durationSeconds > 0) {
+            stats.durationSeconds += durationSeconds;
+        }
+
         entry.durationSeconds += durationSeconds;
 
-        const rpm = Number(metric.records_per_minute);
+        let rpm = Number(metric.records_per_minute);
+        if (!Number.isFinite(rpm) || rpm < 0) {
+            if (Number.isFinite(durationSeconds) && durationSeconds > 0 && Number.isFinite(records) && records > 0) {
+                rpm = (records * 60) / durationSeconds;
+            } else {
+                rpm = null;
+            }
+        }
+
         if (Number.isFinite(rpm) && rpm >= 0) {
             const weight = records > 0 ? records : 1;
             entry.throughputWeighted += rpm * weight;
             entry.throughputWeight += weight;
+            stats.rpmWeighted += rpm * weight;
+            stats.rpmWeight += weight;
         }
     });
 
@@ -432,6 +459,25 @@ function aggregateRunSeries(metrics, limit = 8) {
             const avgThroughput = durationMinutes && durationMinutes > 0
                 ? entry.total / durationMinutes
                 : null;
+
+            const sourceThroughput = {};
+            const sourceDurations = {};
+            Object.entries(entry.sourceStats || {}).forEach(([source, stats]) => {
+                if (stats.durationSeconds > 0) {
+                    sourceDurations[source] = stats.durationSeconds;
+                }
+
+                let sourceRpm = null;
+                if (stats.rpmWeight > 0) {
+                    sourceRpm = stats.rpmWeighted / stats.rpmWeight;
+                } else if (stats.durationSeconds > 0 && stats.records > 0) {
+                    sourceRpm = (stats.records * 60) / stats.durationSeconds;
+                }
+
+                if (Number.isFinite(sourceRpm) && sourceRpm >= 0) {
+                    sourceThroughput[source] = sourceRpm;
+                }
+            });
 
             return {
                 runId: entry.runId,
@@ -446,7 +492,9 @@ function aggregateRunSeries(metrics, limit = 8) {
                         ? entry.throughputWeighted / entry.throughputWeight
                         : null),
                 activeSources: entry.activeSources.size || Object.keys(entry.sources).length,
-                timestampCount: entry.timestamps.size
+                timestampCount: entry.timestamps.size,
+                sourceThroughput,
+                sourceDurations
             };
         })
         .sort((a, b) => {
@@ -1092,7 +1140,9 @@ function createIngestionVelocityChart(metricsData) {
                 run,
                 source: 'Unknown',
                 records: 0,
-                label: `${runLabel}\nUnknown`,
+                throughput: null,
+                durationSeconds: null,
+                label: [runLabel, 'Unknown'],
                 runLabel,
                 isFirstInRun: true,
                 isLastInRun: true
@@ -1102,11 +1152,18 @@ function createIngestionVelocityChart(metricsData) {
 
         orderedRunSources.forEach((source, idxInRun) => {
             const records = run.sources[source] || 0;
+            const throughput = run.sourceThroughput?.[source] ?? null;
+            const durationSeconds = run.sourceDurations?.[source] ?? null;
             timelineEntries.push({
                 run,
                 source,
                 records,
-                label: idxInRun === 0 ? `${runLabel}\n${source}` : `\n${source}`,
+                throughput,
+                durationSeconds,
+                label: [
+                    idxInRun === 0 ? runLabel : '',
+                    source
+                ],
                 runLabel,
                 isFirstInRun: idxInRun === 0,
                 isLastInRun: idxInRun === orderedRunSources.length - 1
@@ -1119,7 +1176,7 @@ function createIngestionVelocityChart(metricsData) {
     const datasets = orderedSources.map((source, datasetIndex) => ({
         label: source,
         data: timelineEntries.map(entry => entry.source === source ? entry.records : null),
-        backgroundColor: timelineEntries.map((entry, idx) => {
+        backgroundColor: timelineEntries.map(entry => {
             if (entry.source !== source) return 'rgba(0,0,0,0)';
             const isLatestRun = entry.run === runSeries[runSeries.length - 1];
             return getSourceColor(source, isLatestRun ? 0.95 : 0.6);
@@ -1135,8 +1192,8 @@ function createIngestionVelocityChart(metricsData) {
 
     datasets.push({
         type: 'line',
-        label: 'Avg throughput',
-        data: timelineEntries.map(entry => entry.isFirstInRun ? (entry.run.avgThroughput ?? null) : null),
+        label: 'Source throughput',
+        data: timelineEntries.map(entry => Number.isFinite(entry.throughput) ? entry.throughput : null),
         yAxisID: 'y1',
         borderColor: '#0ea5e9',
         backgroundColor: 'rgba(14, 165, 233, 0.2)',
@@ -1170,7 +1227,32 @@ function createIngestionVelocityChart(metricsData) {
                     position: 'bottom',
                     labels: {
                         usePointStyle: true,
-                        padding: 16
+                        padding: 16,
+                        generateLabels(chart) {
+                            const defaultGenerator = (typeof Chart !== 'undefined' && Chart?.defaults?.plugins?.legend?.labels?.generateLabels)
+                                ? Chart.defaults.plugins.legend.labels.generateLabels
+                                : null;
+                            const labels = defaultGenerator ? defaultGenerator(chart) : chart.data.datasets.map((dataset, idx) => ({
+                                text: dataset.label || `Dataset ${idx + 1}`,
+                                datasetIndex: idx,
+                                fillStyle: dataset.borderColor || '#6b7280',
+                                strokeStyle: dataset.borderColor || '#6b7280',
+                                hidden: chart.isDatasetVisible(idx) === false
+                            }));
+
+                            return labels.map(label => {
+                                const dataset = chart.data.datasets[label.datasetIndex];
+                                const palette = Array.isArray(dataset.backgroundColor)
+                                    ? dataset.backgroundColor
+                                    : [dataset.backgroundColor];
+                                const color = palette.find(color => color && color !== 'rgba(0,0,0,0)') || dataset.borderColor || '#6b7280';
+                                return {
+                                    ...label,
+                                    fillStyle: color,
+                                    strokeStyle: color
+                                };
+                            });
+                        }
                     }
                 },
                 tooltip: {
@@ -1179,18 +1261,18 @@ function createIngestionVelocityChart(metricsData) {
                             const idx = context[0].dataIndex;
                             const entry = timelineEntries[idx];
                             const run = entry.run;
-                            const throughput = Number.isFinite(run.avgThroughput)
-                                ? ` · ${Math.round(run.avgThroughput).toLocaleString()} rec/min`
+                            const runThroughput = Number.isFinite(run.avgThroughput)
+                                ? ` · Run avg ${Math.round(run.avgThroughput).toLocaleString()} rec/min`
                                 : '';
                             const sources = run.activeSources;
                             const sourceLabel = sources ? ` · ${sources} source${sources === 1 ? '' : 's'}` : '';
-                            return `${entry.runLabel} • ${run.total.toLocaleString()} records${throughput}${sourceLabel}`;
+                            return `${entry.runLabel || formatRunWindow(run.startTimestamp, run.endTimestamp)} • ${run.total.toLocaleString()} records${runThroughput}${sourceLabel}`;
                         },
                         label(context) {
                             if (context.dataset.type === 'line') {
                                 const value = context.parsed.y;
                                 if (!Number.isFinite(value)) return null;
-                                return `Avg throughput: ${Math.round(value).toLocaleString()} rec/min`;
+                                return `${timelineEntries[context.dataIndex].source}: ${Math.round(value).toLocaleString()} rec/min`;
                             }
                             const entry = timelineEntries[context.dataIndex];
                             if (!Number.isFinite(context.parsed.y) || context.parsed.y === null) {
@@ -1199,7 +1281,10 @@ function createIngestionVelocityChart(metricsData) {
                             const total = entry.run.total || 0;
                             const value = context.parsed.y ?? 0;
                             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                            return `${context.dataset.label}: ${value.toLocaleString()} records (${percentage}%)`;
+                            const throughput = Number.isFinite(entry.throughput)
+                                ? ` · ${Math.round(entry.throughput).toLocaleString()} rec/min`
+                                : '';
+                            return `${context.dataset.label}: ${value.toLocaleString()} records (${percentage}%)${throughput}`;
                         }
                     }
                 }
