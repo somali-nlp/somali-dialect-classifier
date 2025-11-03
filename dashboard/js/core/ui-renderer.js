@@ -61,7 +61,7 @@ const SOURCE_METADATA = {
     },
     'TikTok': {
         role: 'Social Media Comments',
-        pipeline: 'Apify Scraping',
+        pipeline: 'Stream Processing',
         description: 'Captures colloquial Somali from TikTok video comments with diverse dialects.',
         qualityBenchmark: 0.3,  // Lower due to informal language, code-switching, emoji usage in social media
         icon: `
