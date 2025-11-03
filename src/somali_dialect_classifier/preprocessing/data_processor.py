@@ -5,7 +5,7 @@ from pathlib import Path
 class DataProcessor(ABC):
     """
     Abstract base class for all data processors.
-    Defines the essential methods that every data processor (e.g., for downloading, 
+    Defines the essential methods that every data processor (e.g., for downloading,
     extracting, processing, and saving data) must implement.
 
     Subclasses must implement:
@@ -34,5 +34,3 @@ class DataProcessor(ABC):
     def save(self, processed_data: str) -> None:
         """Save the processed data."""
         pass
-
-

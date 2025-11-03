@@ -45,9 +45,9 @@ USAGE EXAMPLES:
     ...     print(f"Cannot aggregate: {reason}")
 """
 
-from typing import List, Dict, Optional, Tuple, Any
-from enum import Enum
 import json
+from enum import Enum
+from typing import Any, Optional
 
 
 class AggregationMethod(Enum):
@@ -61,6 +61,7 @@ class AggregationMethod(Enum):
     - MAX: Maximum value across sources
     - SUM: Sum across sources (for countable metrics like records_written)
     """
+
     VOLUME_WEIGHTED_MEAN = "volume_weighted_mean"
     HARMONIC_MEAN = "harmonic_mean"
     WEIGHTED_HARMONIC_MEAN = "weighted_harmonic_mean"
@@ -69,9 +70,7 @@ class AggregationMethod(Enum):
     SUM = "sum"
 
 
-def calculate_volume_weighted_quality(
-    sources: List[Dict[str, Any]]
-) -> Dict[str, Any]:
+def calculate_volume_weighted_quality(sources: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Calculate volume-weighted quality metrics across sources.
 
@@ -123,7 +122,7 @@ def calculate_volume_weighted_quality(
             "total_records": 0,
             "sources_count": 0,
             "source_breakdown": [],
-            "method": "volume_weighted_mean"
+            "method": "volume_weighted_mean",
         }
 
     total_weight = 0
@@ -144,12 +143,14 @@ def calculate_volume_weighted_quality(
 
         if volume > 0:
             contribution = volume / total_weight if total_weight > 0 else 0.0
-            breakdown.append({
-                "source": source_name,
-                "volume": volume,
-                "quality_rate": quality,
-                "contribution": contribution
-            })
+            breakdown.append(
+                {
+                    "source": source_name,
+                    "volume": volume,
+                    "quality_rate": quality,
+                    "contribution": contribution,
+                }
+            )
 
     overall = weighted_sum / total_weight if total_weight > 0 else 0.0
 
@@ -158,14 +159,14 @@ def calculate_volume_weighted_quality(
         "total_records": total_weight,
         "sources_count": len(breakdown),
         "source_breakdown": breakdown,
-        "method": "volume_weighted_mean"
+        "method": "volume_weighted_mean",
     }
 
 
 def calculate_weighted_harmonic_mean(
-    sources: List[Dict[str, Any]],
+    sources: list[dict[str, Any]],
     metric_path: str = "quality_pass_rate",
-    weight_path: str = "records_written"
+    weight_path: str = "records_written",
 ) -> float:
     """
     Calculate weighted harmonic mean.
@@ -206,9 +207,9 @@ def calculate_weighted_harmonic_mean(
 
 
 def aggregate_compatible_metrics(
-    sources: List[Dict[str, Any]],
+    sources: list[dict[str, Any]],
     metric_name: str,
-    method: AggregationMethod = AggregationMethod.VOLUME_WEIGHTED_MEAN
+    method: AggregationMethod = AggregationMethod.VOLUME_WEIGHTED_MEAN,
 ) -> Optional[float]:
     """
     Aggregate a specific metric across sources using specified method.
@@ -251,7 +252,7 @@ def aggregate_compatible_metrics(
 
         if not values:
             return None
-        return len(values) / sum(1/v for v in values)
+        return len(values) / sum(1 / v for v in values)
 
     elif method == AggregationMethod.WEIGHTED_HARMONIC_MEAN:
         return calculate_weighted_harmonic_mean(sources, metric_name)
@@ -283,9 +284,8 @@ def aggregate_compatible_metrics(
 
 
 def validate_metric_compatibility(
-    sources: List[Dict[str, Any]],
-    metric_name: str
-) -> Tuple[bool, Optional[str]]:
+    sources: list[dict[str, Any]], metric_name: str
+) -> tuple[bool, Optional[str]]:
     """
     Check if a metric is safe to aggregate across sources.
 
@@ -308,7 +308,7 @@ def validate_metric_compatibility(
         "deduplication_rate",
         "records_written",
         "bytes_downloaded",
-        "records_filtered"
+        "records_filtered",
     }
 
     if metric_name in compatible_metrics:
@@ -341,10 +341,8 @@ def validate_metric_compatibility(
 
 
 def _extract_metrics(
-    source: Dict[str, Any],
-    metric_name: str,
-    weight_name: str = "records_written"
-) -> Tuple[int, float, str]:
+    source: dict[str, Any], metric_name: str, weight_name: str = "records_written"
+) -> tuple[int, float, str]:
     """
     Extract weight, value, and source name from a source dict.
 
@@ -405,9 +403,7 @@ def _extract_metrics(
     return weight, value, source_name
 
 
-def calculate_aggregate_summary(
-    sources: List[Dict[str, Any]]
-) -> Dict[str, Any]:
+def calculate_aggregate_summary(sources: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Calculate comprehensive aggregate summary across sources.
 
@@ -434,25 +430,28 @@ def calculate_aggregate_summary(
             "sources_count": 0,
             "quality_metrics": {},
             "pipeline_types": [],
-            "source_contributions": []
+            "source_contributions": [],
         }
 
     # Aggregate summable metrics
-    total_records = aggregate_compatible_metrics(
-        sources, "records_written", AggregationMethod.SUM
-    ) or 0
+    total_records = (
+        aggregate_compatible_metrics(sources, "records_written", AggregationMethod.SUM) or 0
+    )
 
-    total_bytes = aggregate_compatible_metrics(
-        sources, "bytes_downloaded", AggregationMethod.SUM
-    ) or 0
+    total_bytes = (
+        aggregate_compatible_metrics(sources, "bytes_downloaded", AggregationMethod.SUM) or 0
+    )
 
     # Aggregate quality metrics (volume-weighted)
     quality_result = calculate_volume_weighted_quality(sources)
 
     # Calculate deduplication rate (volume-weighted)
-    dedup_rate = aggregate_compatible_metrics(
-        sources, "deduplication_rate", AggregationMethod.VOLUME_WEIGHTED_MEAN
-    ) or 0.0
+    dedup_rate = (
+        aggregate_compatible_metrics(
+            sources, "deduplication_rate", AggregationMethod.VOLUME_WEIGHTED_MEAN
+        )
+        or 0.0
+    )
 
     # Extract pipeline types
     pipeline_types = []
@@ -471,10 +470,10 @@ def calculate_aggregate_summary(
         "quality_metrics": {
             "overall_quality_rate": quality_result["overall_quality_rate"],
             "deduplication_rate": dedup_rate,
-            "source_breakdown": quality_result["source_breakdown"]
+            "source_breakdown": quality_result["source_breakdown"],
         },
         "pipeline_types": pipeline_types,
-        "source_contributions": quality_result["source_breakdown"]
+        "source_contributions": quality_result["source_breakdown"],
     }
 
 
@@ -482,7 +481,6 @@ def calculate_aggregate_summary(
 if __name__ == "__main__":
     # Example: Load real metrics and aggregate
     import json
-    from pathlib import Path
 
     # Simulate loading metrics from processing.json files
     example_sources = [
@@ -491,37 +489,28 @@ if __name__ == "__main__":
                 "source": "BBC-Somali",
                 "pipeline_type": "web_scraping",
                 "records_written": 20,
-                "bytes_downloaded": 99176
+                "bytes_downloaded": 99176,
             },
-            "statistics": {
-                "quality_pass_rate": 1.0,
-                "deduplication_rate": 0.0
-            }
+            "statistics": {"quality_pass_rate": 1.0, "deduplication_rate": 0.0},
         },
         {
             "snapshot": {
                 "source": "Wikipedia-Somali",
                 "pipeline_type": "file_processing",
                 "records_written": 9623,
-                "bytes_downloaded": 14280506
+                "bytes_downloaded": 14280506,
             },
-            "statistics": {
-                "quality_pass_rate": 0.7075735294117646,
-                "deduplication_rate": 0.0
-            }
+            "statistics": {"quality_pass_rate": 0.7075735294117646, "deduplication_rate": 0.0},
         },
         {
             "snapshot": {
                 "source": "HuggingFace-Somali_c4-so",
                 "pipeline_type": "stream_processing",
                 "records_written": 19,
-                "bytes_downloaded": 0
+                "bytes_downloaded": 0,
             },
-            "statistics": {
-                "quality_pass_rate": 0.95,
-                "deduplication_rate": 0.0
-            }
-        }
+            "statistics": {"quality_pass_rate": 0.95, "deduplication_rate": 0.0},
+        },
     ]
 
     print("=" * 80)
@@ -531,13 +520,17 @@ if __name__ == "__main__":
 
     # Calculate volume-weighted quality
     quality_result = calculate_volume_weighted_quality(example_sources)
-    print(f"Overall Quality Rate: {quality_result['overall_quality_rate']:.3f} ({quality_result['overall_quality_rate']*100:.1f}%)")
+    print(
+        f"Overall Quality Rate: {quality_result['overall_quality_rate']:.3f} ({quality_result['overall_quality_rate'] * 100:.1f}%)"
+    )
     print(f"Total Records: {quality_result['total_records']:,}")
     print(f"Sources: {quality_result['sources_count']}")
     print()
     print("Source Breakdown:")
     for item in quality_result["source_breakdown"]:
-        print(f"  {item['source']:30s} - {item['volume']:6,} records ({item['contribution']*100:5.1f}%) - Quality: {item['quality_rate']*100:5.1f}%")
+        print(
+            f"  {item['source']:30s} - {item['volume']:6,} records ({item['contribution'] * 100:5.1f}%) - Quality: {item['quality_rate'] * 100:5.1f}%"
+        )
     print()
 
     # Validate compatibility
@@ -548,7 +541,7 @@ if __name__ == "__main__":
         "quality_pass_rate",
         "deduplication_rate",
         "http_request_success_rate",
-        "file_extraction_success_rate"
+        "file_extraction_success_rate",
     ]
 
     for metric in test_metrics:

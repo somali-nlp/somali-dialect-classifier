@@ -8,30 +8,31 @@ Ethically scrapes BBC Somali for news articles following best practices:
 - Inherits shared orchestration from BasePipeline
 """
 
-from pathlib import Path
-import time
-import random
-from typing import List, Optional, Dict, Any, Iterator, Tuple
-from datetime import datetime, timezone
 import json
-
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-from urllib3.exceptions import ProtocolError
+import random
+import time
+from collections.abc import Iterator
+from datetime import datetime, timezone
 from http.client import RemoteDisconnected
-from bs4 import BeautifulSoup
-from tqdm import tqdm
-import feedparser
+from pathlib import Path
+from typing import Any, Optional
 
-from .base_pipeline import BasePipeline, RawRecord
-from .text_cleaners import create_html_cleaner, TextCleaningPipeline
-from .crawl_ledger import get_ledger, CrawlState
-from .dedup import DedupEngine, DedupConfig
-from ..utils.logging_utils import StructuredLogger, set_context, Timer, log_event, LogEvent
-from ..utils.metrics import MetricsCollector, QualityReporter, PipelineType
-from ..utils.rate_limiter import AdaptiveRateLimiter, RateLimitConfig, TimedRequest
+import feedparser
+import requests
+from bs4 import BeautifulSoup
+from requests.adapters import HTTPAdapter
+from tqdm import tqdm
+from urllib3.exceptions import ProtocolError
+from urllib3.util.retry import Retry
+
 from ..config import get_config
+from ..utils.logging_utils import set_context
+from ..utils.metrics import MetricsCollector, PipelineType, QualityReporter
+from ..utils.rate_limiter import AdaptiveRateLimiter, RateLimitConfig, TimedRequest
+from .base_pipeline import BasePipeline, RawRecord
+from .crawl_ledger import get_ledger
+from .dedup import DedupConfig, DedupEngine
+from .text_cleaners import TextCleaningPipeline, create_html_cleaner
 
 
 class BBCSomaliProcessor(BasePipeline):
@@ -42,7 +43,9 @@ class BBCSomaliProcessor(BasePipeline):
     BBC-specific scraping logic with ethical rate limiting.
     """
 
-    def __init__(self, max_articles: Optional[int] = None, delay_range: tuple = (1, 3), force: bool = False):
+    def __init__(
+        self, max_articles: Optional[int] = None, delay_range: tuple = (1, 3), force: bool = False
+    ):
         """
         Initialize BBC Somali processor.
 
@@ -57,9 +60,7 @@ class BBCSomaliProcessor(BasePipeline):
 
         # Initialize deduplication BEFORE BasePipeline (which generates run_id)
         dedup_config = DedupConfig(
-            hash_fields=["text", "url"],
-            enable_minhash=True,
-            similarity_threshold=0.85
+            hash_fields=["text", "url"], enable_minhash=True, similarity_threshold=0.85
         )
         self.dedup = DedupEngine(dedup_config)
         self.ledger = get_ledger()
@@ -74,9 +75,9 @@ class BBCSomaliProcessor(BasePipeline):
         # BBC-specific configuration
         self.base_url = "https://www.bbc.com/somali"
         self.headers = {
-            'User-Agent': 'SomaliNLPBot/1.0 (Educational Research; +https://github.com/somali-nlp/somali-dialect-classifier)',
-            'Accept': 'text/html,application/xhtml+xml',
-            'Accept-Language': 'so,en;q=0.9',
+            "User-Agent": "SomaliNLPBot/1.0 (Educational Research; +https://github.com/somali-nlp/somali-dialect-classifier)",
+            "Accept": "text/html,application/xhtml+xml",
+            "Accept-Language": "so,en;q=0.9",
         }
         self.max_articles = max_articles
         self.delay_range = delay_range
@@ -90,7 +91,7 @@ class BBCSomaliProcessor(BasePipeline):
             max_backoff=bbc_config.max_backoff,
             requests_per_hour=bbc_config.max_requests_per_hour,
             jitter=bbc_config.jitter,
-            adaptive=True
+            adaptive=True,
         )
         self.rate_limiter = AdaptiveRateLimiter(rate_config)
 
@@ -102,17 +103,16 @@ class BBCSomaliProcessor(BasePipeline):
 
     def _register_filters(self) -> None:
         """Register BBC-specific filters."""
-        from .filters import min_length_filter, langid_filter, dialect_heuristic_filter
+        from .filters import dialect_heuristic_filter, langid_filter, min_length_filter
 
         # Minimum length threshold for articles
         self.record_filters.append((min_length_filter, {"threshold": 50}))
 
         # Language filter (Somali only with relaxed confidence threshold)
         # Threshold lowered to 0.3 due to heuristic-based detection
-        self.record_filters.append((langid_filter, {
-            "allowed_langs": {"so"},
-            "confidence_threshold": 0.3
-        }))
+        self.record_filters.append(
+            (langid_filter, {"allowed_langs": {"so"}, "confidence_threshold": 0.3})
+        )
 
         # Dialect/topic heuristics for enrichment
         # These help with downstream dialect scoring without filtering
@@ -122,10 +122,15 @@ class BBCSomaliProcessor(BasePipeline):
             "economy": ["dhaqaale", "ganacsiga", "suuq", "lacagta", "ganacsi"],
         }
 
-        self.record_filters.append((dialect_heuristic_filter, {
-            "ruleset": topic_lexicons,
-            "enrich_only": True  # Don't filter, just enrich metadata
-        }))
+        self.record_filters.append(
+            (
+                dialect_heuristic_filter,
+                {
+                    "ruleset": topic_lexicons,
+                    "enrich_only": True,  # Don't filter, just enrich metadata
+                },
+            )
+        )
 
     def _create_cleaner(self) -> TextCleaningPipeline:
         """Create HTML text cleaner for BBC articles."""
@@ -143,7 +148,7 @@ class BBCSomaliProcessor(BasePipeline):
         """Return language code for silver records."""
         return "so"
 
-    def _get_source_metadata(self) -> Dict[str, Any]:
+    def _get_source_metadata(self) -> dict[str, Any]:
         """Return BBC-specific metadata for silver records."""
         return {
             "base_url": self.base_url,
@@ -166,7 +171,7 @@ class BBCSomaliProcessor(BasePipeline):
         """
         return "formal"
 
-    def _scrape_rss_feeds(self) -> List[str]:
+    def _scrape_rss_feeds(self) -> list[str]:
         """
         Scrape RSS feeds for article URLs.
 
@@ -196,21 +201,23 @@ class BBCSomaliProcessor(BasePipeline):
                 # Extract article URLs
                 items = feed.entries[:max_items] if max_items else feed.entries
                 for entry in items:
-                    url = entry.get('link')
-                    if url and '/somali/' in url and '/articles/' in url:
+                    url = entry.get("link")
+                    if url and "/somali/" in url and "/articles/" in url:
                         article_urls.append(url)
 
                 # Record fetch
                 self.ledger.record_rss_fetch(feed_url, len(items))
-                self.metrics.increment('rss_feeds_fetched')
-                self.metrics.increment('rss_items_found', len(items))
+                self.metrics.increment("rss_feeds_fetched")
+                self.metrics.increment("rss_items_found", len(items))
                 self.logger.info(f"  ✓ Found {len(items)} items in feed")
 
             except Exception as e:
                 self.logger.error(f"  ✗ Failed to parse RSS feed {feed_url}: {e}")
-                self.metrics.increment('rss_feeds_failed')
+                self.metrics.increment("rss_feeds_failed")
 
-        self.logger.info(f"RSS scraping complete: {len(article_urls)} articles from {len(feeds)} feeds")
+        self.logger.info(
+            f"RSS scraping complete: {len(article_urls)} articles from {len(feeds)} feeds"
+        )
         return article_urls
 
     def _compute_text_hash(self, text: str, url: str) -> str:
@@ -239,19 +246,23 @@ class BBCSomaliProcessor(BasePipeline):
         set_context(run_id=self.run_id, source="BBC-Somali", phase="discovery")
 
         # Initialize metrics collector with run_id from base_pipeline
-        self.metrics = MetricsCollector(self.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING)
+        self.metrics = MetricsCollector(
+            self.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
+        )
 
         # Check if cached links exist and are still valid
         if self.article_links_file.exists() and not self.force:
             # Load cached metadata to check if parameters match
-            with open(self.article_links_file, 'r', encoding='utf-8') as f:
+            with open(self.article_links_file, encoding="utf-8") as f:
                 cached_data = json.load(f)
 
-            cached_max_articles = cached_data.get('max_articles_limit')
+            cached_max_articles = cached_data.get("max_articles_limit")
 
             # If parameters match, reuse cache
             if cached_max_articles == self.max_articles:
-                self.logger.info(f"Article links already exist with matching parameters: {self.article_links_file}")
+                self.logger.info(
+                    f"Article links already exist with matching parameters: {self.article_links_file}"
+                )
                 return self.article_links_file
             else:
                 self.logger.info(
@@ -279,21 +290,26 @@ class BBCSomaliProcessor(BasePipeline):
         # Mark URLs as discovered in ledger
         for url in article_links:
             self.ledger.discover_url(url, "bbc", metadata={"discovered_at": self.date_accessed})
-            self.metrics.increment('urls_discovered')
+            self.metrics.increment("urls_discovered")
 
         # Apply max_articles limit if specified (for scraping phase)
-        links_to_scrape = article_links[:self.max_articles] if self.max_articles else article_links
+        links_to_scrape = article_links[: self.max_articles] if self.max_articles else article_links
 
         # Save all discovered links with metadata
-        with open(self.article_links_file, 'w', encoding='utf-8') as f:
-            json.dump({
-                'links': links_to_scrape,
-                'total_discovered': len(article_links),
-                'total_to_scrape': len(links_to_scrape),
-                'discovered_at': self.date_accessed,
-                'max_articles_limit': self.max_articles,
-                'run_id': self.run_id,
-            }, f, ensure_ascii=False, indent=2)
+        with open(self.article_links_file, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "links": links_to_scrape,
+                    "total_discovered": len(article_links),
+                    "total_to_scrape": len(links_to_scrape),
+                    "discovered_at": self.date_accessed,
+                    "max_articles_limit": self.max_articles,
+                    "run_id": self.run_id,
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
 
         if self.max_articles and len(article_links) > self.max_articles:
             self.logger.info(
@@ -331,16 +347,18 @@ class BBCSomaliProcessor(BasePipeline):
             self.staging_file.unlink()
 
         # Load links
-        with open(self.article_links_file, 'r', encoding='utf-8') as f:
+        with open(self.article_links_file, encoding="utf-8") as f:
             data = json.load(f)
-            links = data['links']
+            links = data["links"]
 
         # Set context for extraction phase using run_id from base_pipeline
         set_context(run_id=self.run_id, source="BBC-Somali", phase="fetch")
 
         # Resume metrics or create new with run_id from base_pipeline
         if self.metrics is None:
-            self.metrics = MetricsCollector(self.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING)
+            self.metrics = MetricsCollector(
+                self.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
+            )
 
         self.logger.info("")
         self.logger.info("=" * 60)
@@ -353,7 +371,7 @@ class BBCSomaliProcessor(BasePipeline):
         session = self._get_http_session()
 
         # Open staging file for streaming JSONL writes to avoid memory spike
-        with open(self.staging_file, 'w', encoding='utf-8') as staging_out:
+        with open(self.staging_file, "w", encoding="utf-8") as staging_out:
             # Use tqdm for progress tracking
             with tqdm(total=len(links), desc="Scraping articles", unit="article") as pbar:
                 for i, link in enumerate(links, 1):
@@ -364,7 +382,7 @@ class BBCSomaliProcessor(BasePipeline):
                     # Check if should fetch (skip if already processed/failed)
                     if not self.ledger.should_fetch_url(link, force=self.force):
                         pbar.update(1)
-                        self.metrics.increment('urls_skipped')
+                        self.metrics.increment("urls_skipped")
                         continue
 
                     # Use TimedRequest for adaptive rate limiting
@@ -373,11 +391,10 @@ class BBCSomaliProcessor(BasePipeline):
                             # Scrape article with conditional headers
                             article = self._scrape_article(session, link)
 
-                            if article and article.get('text'):
+                            if article and article.get("text"):
                                 # Process duplicates with combined exact and near-duplicate detection
-                                is_dup, dup_type, similar_url, text_hash, minhash_sig = self.dedup.process_document(
-                                    article['text'],
-                                    link
+                                is_dup, dup_type, similar_url, text_hash, minhash_sig = (
+                                    self.dedup.process_document(article["text"], link)
                                 )
 
                                 if is_dup:
@@ -388,45 +405,48 @@ class BBCSomaliProcessor(BasePipeline):
                                     self.ledger.mark_duplicate(link, similar_url)
                                     # Increment correct metric based on duplicate type
                                     if dup_type == "exact":
-                                        self.metrics.increment('urls_deduplicated')
+                                        self.metrics.increment("urls_deduplicated")
                                     elif dup_type == "near":
-                                        self.metrics.increment('near_duplicates')
+                                        self.metrics.increment("near_duplicates")
                                     pbar.update(1)
                                     continue
 
                                 # Store hash and signature in article
-                                article['text_hash'] = text_hash
-                                article['minhash_signature'] = minhash_sig
+                                article["text_hash"] = text_hash
+                                article["minhash_signature"] = minhash_sig
 
                                 # Mark as fetched in ledger
                                 self.ledger.mark_fetched(
                                     url=link,
                                     http_status=200,
-                                    content_length=len(article['text']),
-                                    source=self.source
+                                    content_length=len(article["text"]),
+                                    source=self.source,
                                 )
-                                self.metrics.increment('urls_fetched')
+                                self.metrics.increment("urls_fetched")
                                 self.metrics.record_http_status(200)
-                                self.metrics.record_text_length(len(article['text']))
+                                self.metrics.record_text_length(len(article["text"]))
 
                                 # Write to staging JSONL (streaming to avoid memory spike)
-                                staging_out.write(json.dumps(article, ensure_ascii=False) + '\n')
+                                staging_out.write(json.dumps(article, ensure_ascii=False) + "\n")
                                 articles_count += 1
 
                                 # Save incrementally (resilience against failures)
                                 # Pattern: {source_slug}_{run_id}_raw_article-{num}.json
-                                individual_file = self.raw_dir / f"bbc-somali_{self.run_id}_raw_article-{i:04d}.json"
-                                with open(individual_file, 'w', encoding='utf-8') as f:
+                                individual_file = (
+                                    self.raw_dir
+                                    / f"bbc-somali_{self.run_id}_raw_article-{i:04d}.json"
+                                )
+                                with open(individual_file, "w", encoding="utf-8") as f:
                                     json.dump(article, f, ensure_ascii=False, indent=2)
 
                                 # Log success for first article and every 10th
                                 if i == 1 or i % 10 == 0:
-                                    word_count = len(article['text'].split())
+                                    word_count = len(article["text"].split())
                                     self.logger.info(f"Article {i}: {word_count} words extracted")
                             else:
                                 # Mark as failed
                                 self.ledger.mark_failed(link, "Failed to scrape or empty text")
-                                self.metrics.increment('urls_failed')
+                                self.metrics.increment("urls_failed")
                                 self.metrics.record_error("scrape_failed")
                                 failed_count += 1
 
@@ -438,14 +458,16 @@ class BBCSomaliProcessor(BasePipeline):
                                 f"{error_type} - skipping and continuing"
                             )
                             self.ledger.mark_failed(link, f"Connection error: {error_type}")
-                            self.metrics.increment('urls_failed')
+                            self.metrics.increment("urls_failed")
                             self.metrics.record_error("connection_error")
                             failed_count += 1
                             connection_errors += 1
 
                             # Reset session on connection errors (clear stale connections)
                             if connection_errors % 3 == 0:
-                                self.logger.info("Resetting HTTP session due to repeated connection errors")
+                                self.logger.info(
+                                    "Resetting HTTP session due to repeated connection errors"
+                                )
                                 session = self._get_http_session()
 
                             pbar.update(1)
@@ -454,10 +476,10 @@ class BBCSomaliProcessor(BasePipeline):
                         except requests.HTTPError as e:
                             # Handle HTTP 429 (Too Many Requests)
                             if e.response.status_code == 429:
-                                retry_after = e.response.headers.get('Retry-After')
+                                retry_after = e.response.headers.get("Retry-After")
                                 self.rate_limiter.handle_429(retry_after)
                                 self.metrics.record_http_status(429)
-                                self.metrics.increment('rate_limit_errors')
+                                self.metrics.increment("rate_limit_errors")
                                 pbar.update(1)
                                 continue
                             else:
@@ -468,19 +490,19 @@ class BBCSomaliProcessor(BasePipeline):
                                 )
                                 self.ledger.mark_failed(link, f"HTTP {e.response.status_code}")
                                 self.metrics.record_http_status(e.response.status_code)
-                                self.metrics.increment('urls_failed')
+                                self.metrics.increment("urls_failed")
                                 failed_count += 1
                                 pbar.update(1)
                                 continue
 
-                        except requests.Timeout as e:
+                        except requests.Timeout:
                             # Timeout errors - skip and continue
                             self.logger.warning(
                                 f"Timeout on article {i}/{len(links)} ({link}) - "
                                 f"skipping and continuing"
                             )
                             self.ledger.mark_failed(link, "Timeout")
-                            self.metrics.increment('urls_failed')
+                            self.metrics.increment("urls_failed")
                             self.metrics.record_error("timeout")
                             failed_count += 1
                             pbar.update(1)
@@ -491,18 +513,22 @@ class BBCSomaliProcessor(BasePipeline):
 
                     # Update progress bar
                     pbar.update(1)
-                    pbar.set_postfix({
-                        "extracted": articles_count,
-                        "failed": failed_count,
-                        "success_rate": f"{(articles_count/(i))*100:.1f}%"
-                    })
+                    pbar.set_postfix(
+                        {
+                            "extracted": articles_count,
+                            "failed": failed_count,
+                            "success_rate": f"{(articles_count / (i)) * 100:.1f}%",
+                        }
+                    )
 
         # Calculate success rate
         success_rate = (articles_count / len(links) * 100) if len(links) > 0 else 0
 
         self.logger.info("=" * 60)
         self.logger.info(f"Extraction complete: {articles_count}/{len(links)} articles extracted")
-        self.logger.info(f"Failed: {failed_count} articles ({failed_count/len(links)*100:.1f}%)")
+        self.logger.info(
+            f"Failed: {failed_count} articles ({failed_count / len(links) * 100:.1f}%)"
+        )
         self.logger.info(f"Success rate: {success_rate:.1f}%")
         if connection_errors > 0:
             self.logger.info(f"Connection errors encountered: {connection_errors}")
@@ -531,21 +557,23 @@ class BBCSomaliProcessor(BasePipeline):
         BasePipeline.process() handles the rest (cleaning, writing, logging).
         """
         # Stream articles from JSONL staging file
-        with open(self.staging_file, 'r', encoding='utf-8') as f:
+        with open(self.staging_file, encoding="utf-8") as f:
             for line in f:
                 if not line.strip():
                     continue
 
                 article = json.loads(line)
                 yield RawRecord(
-                    title=article['title'],
-                    text=article['text'],
-                    url=article['url'],
+                    title=article["title"],
+                    text=article["text"],
+                    url=article["url"],
                     metadata={
-                        "date_published": article.get('date'),
-                        "category": article.get('category', 'news'),
-                        "scraped_at": article.get('scraped_at'),
-                        "minhash_signature": article.get('minhash_signature'),  # Pass through for ledger
+                        "date_published": article.get("date"),
+                        "category": article.get("category", "news"),
+                        "scraped_at": article.get("scraped_at"),
+                        "minhash_signature": article.get(
+                            "minhash_signature"
+                        ),  # Pass through for ledger
                     },
                 )
 
@@ -566,8 +594,8 @@ class BBCSomaliProcessor(BasePipeline):
             robot_parser.read()
 
             # Check if our user agent can fetch Somali pages
-            test_paths = ['/somali/', '/somali/topics/', '/somali/articles/']
-            user_agent = self.headers.get('User-Agent', '*')
+            test_paths = ["/somali/", "/somali/topics/", "/somali/articles/"]
+            user_agent = self.headers.get("User-Agent", "*")
 
             disallowed_paths = []
             for path in test_paths:
@@ -594,7 +622,7 @@ class BBCSomaliProcessor(BasePipeline):
                 "Proceeding with scraping but please ensure manual compliance."
             )
 
-    def _discover_topic_sections(self, soup: BeautifulSoup) -> List[tuple]:
+    def _discover_topic_sections(self, soup: BeautifulSoup) -> list[tuple]:
         """
         Dynamically discover unique topic section URLs from navigation menu.
 
@@ -608,11 +636,11 @@ class BBCSomaliProcessor(BasePipeline):
         sections = []
 
         # Find navigation links with /topics/ pattern
-        for link in soup.find_all('a', href=True):
-            href = link['href']
-            if '/somali/topics/' in href:
+        for link in soup.find_all("a", href=True):
+            href = link["href"]
+            if "/somali/topics/" in href:
                 # Build full URL
-                full_url = f"https://www.bbc.com{href}" if href.startswith('/') else href
+                full_url = f"https://www.bbc.com{href}" if href.startswith("/") else href
 
                 # Skip duplicates
                 if full_url in seen_urls:
@@ -637,15 +665,15 @@ class BBCSomaliProcessor(BasePipeline):
             Set of article URLs found in the page
         """
         links = set()
-        for link in soup.find_all('a', href=True):
-            href = link['href']
+        for link in soup.find_all("a", href=True):
+            href = link["href"]
             # BBC Somali articles have /somali/articles/ in URL
-            if '/somali/' in href and '/articles/' in href:
-                full_url = f"https://www.bbc.com{href}" if href.startswith('/') else href
+            if "/somali/" in href and "/articles/" in href:
+                full_url = f"https://www.bbc.com{href}" if href.startswith("/") else href
                 links.add(full_url)
         return links
 
-    def _scrape_homepage(self, session: requests.Session) -> Tuple[set, Optional[BeautifulSoup]]:
+    def _scrape_homepage(self, session: requests.Session) -> tuple[set, Optional[BeautifulSoup]]:
         """
         Scrape BBC Somali homepage for article links.
 
@@ -662,7 +690,7 @@ class BBCSomaliProcessor(BasePipeline):
             response = session.get(self.base_url, headers=self.headers, timeout=30)
             response.raise_for_status()
 
-            homepage_soup = BeautifulSoup(response.content, 'html.parser')
+            homepage_soup = BeautifulSoup(response.content, "html.parser")
             article_links = self._extract_article_links_from_soup(homepage_soup)
 
             self.logger.info(f"  ✓ Homepage: {len(article_links)} articles")
@@ -674,7 +702,9 @@ class BBCSomaliProcessor(BasePipeline):
             self.logger.error(f"  ✗ Homepage failed: {e}")
             return article_links, None
 
-    def _scrape_topic_sections(self, session: requests.Session, homepage_soup: BeautifulSoup) -> set:
+    def _scrape_topic_sections(
+        self, session: requests.Session, homepage_soup: BeautifulSoup
+    ) -> set:
         """
         Scrape topic sections discovered from homepage.
 
@@ -698,7 +728,7 @@ class BBCSomaliProcessor(BasePipeline):
                 response = session.get(section_url, headers=self.headers, timeout=30)
                 response.raise_for_status()
 
-                soup = BeautifulSoup(response.content, 'html.parser')
+                soup = BeautifulSoup(response.content, "html.parser")
                 before_count = len(article_links)
 
                 # Extract article links from this section
@@ -732,15 +762,15 @@ class BBCSomaliProcessor(BasePipeline):
             response = session.get(f"{self.base_url}/sitemap.xml", headers=self.headers, timeout=30)
             response.raise_for_status()
 
-            soup = BeautifulSoup(response.content, 'xml')
+            soup = BeautifulSoup(response.content, "xml")
 
             # Extract URLs from sitemap
-            for loc in soup.find_all('loc'):
+            for loc in soup.find_all("loc"):
                 url = loc.text.strip()
                 # Only include recent articles with /articles/ pattern
-                if '/somali/' in url and 'articles' in url and 'bbc.com' in url:
+                if "/somali/" in url and "articles" in url and "bbc.com" in url:
                     # Convert old bbc.co.uk URLs to bbc.com
-                    url = url.replace('bbc.co.uk', 'bbc.com')
+                    url = url.replace("bbc.co.uk", "bbc.com")
                     article_links.add(url)
 
             self.logger.info(f"  ✓ Sitemap: +{len(article_links)} articles")
@@ -750,7 +780,7 @@ class BBCSomaliProcessor(BasePipeline):
 
         return article_links
 
-    def _get_article_links(self) -> List[str]:
+    def _get_article_links(self) -> list[str]:
         """
         Discover article links from BBC Somali homepage, sections, and sitemap.
 
@@ -784,7 +814,7 @@ class BBCSomaliProcessor(BasePipeline):
         # Sort links for deterministic scraping order
         return sorted(all_links)
 
-    def _scrape_article(self, session: requests.Session, url: str) -> Optional[Dict]:
+    def _scrape_article(self, session: requests.Session, url: str) -> Optional[dict]:
         """
         Scrape a single BBC Somali article with conditional requests support.
 
@@ -812,61 +842,65 @@ class BBCSomaliProcessor(BasePipeline):
             # Handle 304 Not Modified
             if response.status_code == 304:
                 self.logger.info(f"Article not modified: {url}")
-                self.metrics.increment('urls_not_modified')
+                self.metrics.increment("urls_not_modified")
                 return None
 
             response.raise_for_status()
 
             # Extract ETag and Last-Modified for future requests
-            etag = response.headers.get('ETag')
-            last_modified = response.headers.get('Last-Modified')
+            etag = response.headers.get("ETag")
+            last_modified = response.headers.get("Last-Modified")
 
-            soup = BeautifulSoup(response.content, 'html.parser')
+            soup = BeautifulSoup(response.content, "html.parser")
 
             # Extract title
-            title_tag = soup.find('h1')
+            title_tag = soup.find("h1")
             title = title_tag.text.strip() if title_tag else "No title"
 
             # Extract article body using semantic selectors (more stable than transient CSS classes)
             # Strategy 1: Try semantic role="main" or <main> tag
-            main_content = soup.find('main') or soup.find(role='main')
+            main_content = soup.find("main") or soup.find(role="main")
 
             if main_content:
                 # Extract paragraphs from main content area
-                paragraphs = main_content.find_all('p')
-                text = '\n'.join([p.text.strip() for p in paragraphs if p.text.strip()])
+                paragraphs = main_content.find_all("p")
+                text = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
             else:
                 # Strategy 2: Try <article> tag (semantic HTML5)
-                article_tag = soup.find('article')
+                article_tag = soup.find("article")
                 if article_tag:
-                    paragraphs = article_tag.find_all('p')
-                    text = '\n'.join([p.text.strip() for p in paragraphs if p.text.strip()])
+                    paragraphs = article_tag.find_all("p")
+                    text = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
                 else:
                     # Strategy 3: Fall back to data-component or specific article selectors
-                    article_body = soup.find(attrs={'data-component': 'text-block'})
+                    article_body = soup.find(attrs={"data-component": "text-block"})
                     if article_body:
-                        paragraphs = article_body.find_all('p')
-                        text = '\n'.join([p.text.strip() for p in paragraphs if p.text.strip()])
+                        paragraphs = article_body.find_all("p")
+                        text = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
                     else:
                         # Strategy 4: Final fallback - all paragraphs (least reliable)
-                        paragraphs = soup.find_all('p')
-                        text = '\n'.join([p.text.strip() for p in paragraphs if p.text.strip()])
+                        paragraphs = soup.find_all("p")
+                        text = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
 
             # Warn if text is empty (possible scraper regression)
             if not text:
-                self.logger.warning(f"Empty text extracted from {url} - BBC may have changed their HTML structure")
+                self.logger.warning(
+                    f"Empty text extracted from {url} - BBC may have changed their HTML structure"
+                )
 
             # Extract metadata
-            date_tag = soup.find('time')
-            date_published = date_tag['datetime'] if date_tag and date_tag.has_attr('datetime') else None
+            date_tag = soup.find("time")
+            date_published = (
+                date_tag["datetime"] if date_tag and date_tag.has_attr("datetime") else None
+            )
 
             article_data = {
-                'url': url,
-                'title': title,
-                'text': text,
-                'date': date_published,
-                'scraped_at': datetime.now(timezone.utc).isoformat(),
-                'category': 'news',  # Could be extracted from URL or meta tags
+                "url": url,
+                "title": title,
+                "text": text,
+                "date": date_published,
+                "scraped_at": datetime.now(timezone.utc).isoformat(),
+                "category": "news",  # Could be extracted from URL or meta tags
             }
 
             # Update ledger with HTTP metadata for future conditional requests
@@ -877,7 +911,7 @@ class BBCSomaliProcessor(BasePipeline):
                     etag=etag,
                     last_modified=last_modified,
                     content_length=len(text),
-                    source=self.source
+                    source=self.source,
                 )
 
             return article_data

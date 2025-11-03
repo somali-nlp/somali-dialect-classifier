@@ -14,7 +14,7 @@ backward compatibility with existing schema.
 
 import logging
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional, Callable
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,8 @@ logger = logging.getLogger(__name__)
 # FILTER FUNCTIONS
 # ============================================================================
 
-def filter_by_source(
-    metrics: List[Dict[str, Any]],
-    sources: List[str]
-) -> List[Dict[str, Any]]:
+
+def filter_by_source(metrics: list[dict[str, Any]], sources: list[str]) -> list[dict[str, Any]]:
     """
     Filter metrics by data source.
 
@@ -45,17 +43,12 @@ def filter_by_source(
 
     sources_lower = [s.lower() for s in sources]
 
-    return [
-        m for m in metrics
-        if m.get("source", "").lower() in sources_lower
-    ]
+    return [m for m in metrics if m.get("source", "").lower() in sources_lower]
 
 
 def filter_by_quality(
-    metrics: List[Dict[str, Any]],
-    threshold: float = 0.8,
-    metric_name: str = "quality_pass_rate"
-) -> List[Dict[str, Any]]:
+    metrics: list[dict[str, Any]], threshold: float = 0.8, metric_name: str = "quality_pass_rate"
+) -> list[dict[str, Any]]:
     """
     Filter metrics by quality threshold.
 
@@ -74,17 +67,12 @@ def filter_by_quality(
         logger.warning(f"Invalid threshold: {threshold}. Must be between 0 and 1.")
         return metrics
 
-    return [
-        m for m in metrics
-        if m.get(metric_name, 0) >= threshold
-    ]
+    return [m for m in metrics if m.get(metric_name, 0) >= threshold]
 
 
 def filter_by_date_range(
-    metrics: List[Dict[str, Any]],
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    metrics: list[dict[str, Any]], start_date: Optional[str] = None, end_date: Optional[str] = None
+) -> list[dict[str, Any]]:
     """
     Filter metrics by date range.
 
@@ -114,6 +102,7 @@ def filter_by_date_range(
             start_dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
             if start_dt.tzinfo is None:
                 from datetime import timezone as tz
+
                 start_dt = start_dt.replace(tzinfo=tz.utc)
         else:
             start_dt = None
@@ -122,6 +111,7 @@ def filter_by_date_range(
             end_dt = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
             if end_dt.tzinfo is None:
                 from datetime import timezone as tz
+
                 end_dt = end_dt.replace(tzinfo=tz.utc)
         else:
             end_dt = None
@@ -136,6 +126,7 @@ def filter_by_date_range(
                 # Ensure timestamp is timezone-aware
                 if timestamp.tzinfo is None:
                     from datetime import timezone as tz
+
                     timestamp = timestamp.replace(tzinfo=tz.utc)
 
                 if start_dt and timestamp < start_dt:
@@ -157,9 +148,8 @@ def filter_by_date_range(
 
 
 def filter_by_status(
-    metrics: List[Dict[str, Any]],
-    status: str = "healthy"
-) -> List[Dict[str, Any]]:
+    metrics: list[dict[str, Any]], status: str = "healthy"
+) -> list[dict[str, Any]]:
     """
     Filter metrics by pipeline status.
 
@@ -178,11 +168,7 @@ def filter_by_status(
     Example:
         >>> filtered = filter_by_status(metrics, status="healthy")
     """
-    status_thresholds = {
-        "healthy": (0.9, 1.0),
-        "degraded": (0.7, 0.9),
-        "unhealthy": (0.0, 0.7)
-    }
+    status_thresholds = {"healthy": (0.9, 1.0), "degraded": (0.7, 0.9), "unhealthy": (0.0, 0.7)}
 
     if status not in status_thresholds:
         logger.warning(f"Unknown status: {status}. Use 'healthy', 'degraded', or 'unhealthy'.")
@@ -213,10 +199,8 @@ def filter_by_status(
 
 
 def filter_by_records_threshold(
-    metrics: List[Dict[str, Any]],
-    min_records: int = 0,
-    max_records: Optional[int] = None
-) -> List[Dict[str, Any]]:
+    metrics: list[dict[str, Any]], min_records: int = 0, max_records: Optional[int] = None
+) -> list[dict[str, Any]]:
     """
     Filter metrics by record count range.
 
@@ -247,9 +231,8 @@ def filter_by_records_threshold(
 
 
 def filter_by_pipeline_type(
-    metrics: List[Dict[str, Any]],
-    pipeline_types: List[str]
-) -> List[Dict[str, Any]]:
+    metrics: list[dict[str, Any]], pipeline_types: list[str]
+) -> list[dict[str, Any]]:
     """
     Filter metrics by pipeline type.
 
@@ -268,27 +251,25 @@ def filter_by_pipeline_type(
 
     pipeline_types_lower = [pt.lower() for pt in pipeline_types]
 
-    return [
-        m for m in metrics
-        if m.get("pipeline_type", "").lower() in pipeline_types_lower
-    ]
+    return [m for m in metrics if m.get("pipeline_type", "").lower() in pipeline_types_lower]
 
 
 # ============================================================================
 # COMBINED FILTER
 # ============================================================================
 
+
 def apply_filters(
-    metrics: List[Dict[str, Any]],
-    sources: Optional[List[str]] = None,
+    metrics: list[dict[str, Any]],
+    sources: Optional[list[str]] = None,
     quality_threshold: Optional[float] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     status: Optional[str] = None,
     min_records: Optional[int] = None,
     max_records: Optional[int] = None,
-    pipeline_types: Optional[List[str]] = None
-) -> List[Dict[str, Any]]:
+    pipeline_types: Optional[list[str]] = None,
+) -> list[dict[str, Any]]:
     """
     Apply multiple filters to metrics data.
 
@@ -351,11 +332,10 @@ def apply_filters(
 # EXPORT FILTERED DATA
 # ============================================================================
 
+
 def export_filtered_metrics(
-    metrics: List[Dict[str, Any]],
-    output_file: str,
-    **filter_kwargs
-) -> Dict[str, Any]:
+    metrics: list[dict[str, Any]], output_file: str, **filter_kwargs
+) -> dict[str, Any]:
     """
     Apply filters and export to JSON file.
 
@@ -383,13 +363,13 @@ def export_filtered_metrics(
     output = {
         "count": len(filtered),
         "filters_applied": {k: v for k, v in filter_kwargs.items() if v is not None},
-        "metrics": filtered
+        "metrics": filtered,
     }
 
     output_path = Path(output_file)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2)
 
     logger.info(f"✓ Exported {len(filtered)} filtered metrics to: {output_path}")
@@ -401,11 +381,10 @@ def export_filtered_metrics(
 # SEARCH AND QUERY FUNCTIONS
 # ============================================================================
 
+
 def search_metrics(
-    metrics: List[Dict[str, Any]],
-    query: str,
-    fields: Optional[List[str]] = None
-) -> List[Dict[str, Any]]:
+    metrics: list[dict[str, Any]], query: str, fields: Optional[list[str]] = None
+) -> list[dict[str, Any]]:
     """
     Search metrics by text query.
 
@@ -426,7 +405,7 @@ def search_metrics(
         return metrics
 
     if fields is None:
-        fields = ['source', 'run_id']
+        fields = ["source", "run_id"]
 
     query_lower = query.lower()
     results = []
@@ -442,10 +421,8 @@ def search_metrics(
 
 
 def get_top_performers(
-    metrics: List[Dict[str, Any]],
-    metric_name: str = "quality_pass_rate",
-    top_n: int = 10
-) -> List[Dict[str, Any]]:
+    metrics: list[dict[str, Any]], metric_name: str = "quality_pass_rate", top_n: int = 10
+) -> list[dict[str, Any]]:
     """
     Get top N performing metrics by specified metric.
 
@@ -460,19 +437,12 @@ def get_top_performers(
     Example:
         >>> top = get_top_performers(metrics, metric_name="quality_pass_rate", top_n=5)
     """
-    sorted_metrics = sorted(
-        metrics,
-        key=lambda m: m.get(metric_name, 0),
-        reverse=True
-    )
+    sorted_metrics = sorted(metrics, key=lambda m: m.get(metric_name, 0), reverse=True)
 
     return sorted_metrics[:top_n]
 
 
-def get_recent_metrics(
-    metrics: List[Dict[str, Any]],
-    num_days: int = 7
-) -> List[Dict[str, Any]]:
+def get_recent_metrics(metrics: list[dict[str, Any]], num_days: int = 7) -> list[dict[str, Any]]:
     """
     Get metrics from recent N days.
 

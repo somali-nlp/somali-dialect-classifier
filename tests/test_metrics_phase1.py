@@ -9,10 +9,10 @@ Shows before/after comparison for each pipeline type to validate:
 """
 
 import pytest
+
 from somali_dialect_classifier.utils.metrics import (
     MetricsCollector,
     PipelineType,
-    MetricSnapshot,
 )
 
 
@@ -28,9 +28,7 @@ class TestWebScrapingMetrics:
         """
         # Simulate BBC web scraping
         collector = MetricsCollector(
-            run_id="test_bbc",
-            source="BBC-Somali",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_bbc", source="BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         # Simulate: 20 URLs attempted, 18 succeeded, 2 failed
@@ -67,7 +65,9 @@ class TestWebScrapingMetrics:
         # METADATA: Semantic descriptions available
         assert "_metric_semantics" in stats
         assert "http_request_success_rate" in stats["_metric_semantics"]
-        assert "Network-level HTTP success" in stats["_metric_semantics"]["http_request_success_rate"]
+        assert (
+            "Network-level HTTP success" in stats["_metric_semantics"]["http_request_success_rate"]
+        )
 
         # DEPRECATION WARNINGS: Present for old metrics
         assert "_deprecation_warnings" in stats
@@ -82,9 +82,7 @@ class TestWebScrapingMetrics:
         FIX: Use urls_fetched + urls_failed (only attempted URLs)
         """
         collector = MetricsCollector(
-            run_id="test_bbc_limit",
-            source="BBC-Somali",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_bbc_limit", source="BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         # Simulate: 1000 URLs discovered, but only 20 attempted (test limit)
@@ -124,7 +122,7 @@ class TestFileProcessingMetrics:
         collector = MetricsCollector(
             run_id="test_wikipedia",
             source="Wikipedia-Somali",
-            pipeline_type=PipelineType.FILE_PROCESSING
+            pipeline_type=PipelineType.FILE_PROCESSING,
         )
 
         # Simulate: 1 dump file discovered, extracted 10000 records
@@ -171,7 +169,7 @@ class TestFileProcessingMetrics:
         collector = MetricsCollector(
             run_id="test_sprakbanken",
             source="Sprakbanken-Somali",
-            pipeline_type=PipelineType.FILE_PROCESSING
+            pipeline_type=PipelineType.FILE_PROCESSING,
         )
 
         # No file tracking, but records extracted
@@ -199,7 +197,7 @@ class TestStreamProcessingMetrics:
         collector = MetricsCollector(
             run_id="test_huggingface",
             source="HuggingFace-C4-SO",
-            pipeline_type=PipelineType.STREAM_PROCESSING
+            pipeline_type=PipelineType.STREAM_PROCESSING,
         )
 
         # Simulate: Stream connected, 20 records fetched, 0 passed quality
@@ -240,7 +238,7 @@ class TestStreamProcessingMetrics:
         collector = MetricsCollector(
             run_id="test_huggingface_fail",
             source="HuggingFace-C4-SO",
-            pipeline_type=PipelineType.STREAM_PROCESSING
+            pipeline_type=PipelineType.STREAM_PROCESSING,
         )
 
         # No records fetched (connection failed)
@@ -269,9 +267,7 @@ class TestMetricSemantics:
 
         for pipeline_type in pipeline_types:
             collector = MetricsCollector(
-                run_id=f"test_{pipeline_type.value}",
-                source="Test",
-                pipeline_type=pipeline_type
+                run_id=f"test_{pipeline_type.value}", source="Test", pipeline_type=pipeline_type
             )
 
             # Add minimal data
@@ -295,9 +291,7 @@ class TestMetricSemantics:
     def test_semantic_descriptions_are_helpful(self):
         """Test that semantic descriptions are human-readable."""
         collector = MetricsCollector(
-            run_id="test_semantics",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_semantics", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
         collector.increment("urls_fetched", 1)
 
@@ -307,12 +301,26 @@ class TestMetricSemantics:
         semantics = stats["_metric_semantics"]
 
         # Each description should be a helpful string
-        for metric_name, description in semantics.items():
+        for _metric_name, description in semantics.items():
             assert isinstance(description, str)
             assert len(description) > 10  # Not empty
             # Description should mention key terms from the metric name or be a deprecation notice
-            key_terms = ["http", "request", "content", "extract", "quality", "dedup", "duplicat", "deprecated", "record", "filter", "success"]
-            assert any(term in description.lower() for term in key_terms), f"No key terms found in: {description}"
+            key_terms = [
+                "http",
+                "request",
+                "content",
+                "extract",
+                "quality",
+                "dedup",
+                "duplicat",
+                "deprecated",
+                "record",
+                "filter",
+                "success",
+            ]
+            assert any(term in description.lower() for term in key_terms), (
+                f"No key terms found in: {description}"
+            )
 
 
 class TestBackwardCompatibility:
@@ -328,9 +336,7 @@ class TestBackwardCompatibility:
 
         for pipeline_type in pipeline_types:
             collector = MetricsCollector(
-                run_id=f"test_{pipeline_type.value}",
-                source="Test",
-                pipeline_type=pipeline_type
+                run_id=f"test_{pipeline_type.value}", source="Test", pipeline_type=pipeline_type
             )
 
             # Add minimal data
@@ -360,9 +366,7 @@ class TestBackwardCompatibility:
     def test_quality_pass_rate_unchanged(self):
         """Test that quality_pass_rate calculation uses new correct formula."""
         collector = MetricsCollector(
-            run_id="test_quality",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_quality", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 100)
@@ -396,9 +400,7 @@ def test_demonstration_output():
     print("-" * 80)
 
     bbc_collector = MetricsCollector(
-        run_id="demo_bbc",
-        source="BBC-Somali",
-        pipeline_type=PipelineType.WEB_SCRAPING
+        run_id="demo_bbc", source="BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
     )
 
     # Simulate realistic BBC scenario
@@ -419,9 +421,9 @@ def test_demonstration_output():
     print(f"  http_request_success_rate: {bbc_stats['http_request_success_rate']:.1%}")
     print(f"  content_extraction_success_rate: {bbc_stats['content_extraction_success_rate']:.1%}")
     print(f"  quality_pass_rate: {bbc_stats['quality_pass_rate']:.1%}")
-    print(f"\nOLD METRIC (deprecated, backward compatible):")
+    print("\nOLD METRIC (deprecated, backward compatible):")
     print(f"  fetch_success_rate: {bbc_stats['fetch_success_rate']:.1%}")
-    print(f"\nSEMANTICS:")
+    print("\nSEMANTICS:")
     print(f"  {bbc_stats['_metric_semantics']['http_request_success_rate']}")
 
     # ============================================================
@@ -434,7 +436,7 @@ def test_demonstration_output():
     wiki_collector = MetricsCollector(
         run_id="demo_wikipedia",
         source="Wikipedia-Somali",
-        pipeline_type=PipelineType.FILE_PROCESSING
+        pipeline_type=PipelineType.FILE_PROCESSING,
     )
 
     wiki_collector.increment("files_discovered", 1)
@@ -448,9 +450,9 @@ def test_demonstration_output():
     print(f"  file_extraction_success_rate: {wiki_stats['file_extraction_success_rate']:.1%}")
     print(f"  record_parsing_success_rate: {wiki_stats['record_parsing_success_rate']:.1%}")
     print(f"  quality_pass_rate: {wiki_stats['quality_pass_rate']:.1%}")
-    print(f"\nOLD METRIC (deprecated, backward compatible):")
+    print("\nOLD METRIC (deprecated, backward compatible):")
     print(f"  fetch_success_rate: {wiki_stats['fetch_success_rate']:.1%}")
-    print(f"\nSEMANTICS:")
+    print("\nSEMANTICS:")
     print(f"  {wiki_stats['_metric_semantics']['file_extraction_success_rate']}")
 
     # ============================================================
@@ -463,7 +465,7 @@ def test_demonstration_output():
     hf_collector = MetricsCollector(
         run_id="demo_huggingface",
         source="HuggingFace-C4-SO",
-        pipeline_type=PipelineType.STREAM_PROCESSING
+        pipeline_type=PipelineType.STREAM_PROCESSING,
     )
 
     hf_collector.increment("datasets_opened", 1)
@@ -477,9 +479,9 @@ def test_demonstration_output():
     print(f"  record_retrieval_success_rate: {hf_stats['record_retrieval_success_rate']:.1%}")
     print(f"  dataset_coverage_rate: {hf_stats['dataset_coverage_rate']} (unknown)")
     print(f"  quality_pass_rate: {hf_stats['quality_pass_rate']:.1%}")
-    print(f"\nOLD METRIC (deprecated, backward compatible):")
+    print("\nOLD METRIC (deprecated, backward compatible):")
     print(f"  fetch_success_rate: {hf_stats['fetch_success_rate']:.1%}")
-    print(f"\nSEMANTICS:")
+    print("\nSEMANTICS:")
     print(f"  {hf_stats['_metric_semantics']['stream_connection_success_rate']}")
 
     print("\n" + "=" * 80)

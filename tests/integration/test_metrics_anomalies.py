@@ -8,23 +8,24 @@ These tests serve as a quality gate in CI to detect metrics calculation bugs bef
 they reach production.
 """
 
-import pytest
 import json
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any
+
+import pytest
 from pydantic import ValidationError
 
 from somali_dialect_classifier.utils.metrics_schema import (
-    Phase3MetricsSchema,
-    validate_processing_json
+    validate_processing_json,
+)
+
+# Path to metrics directory
+METRICS_DIR = Path(
+    "/Users/ilyas/Desktop/Computer Programming/somali-nlp-projects/somali-dialect-classifier/data/metrics"
 )
 
 
-# Path to metrics directory
-METRICS_DIR = Path("/Users/ilyas/Desktop/Computer Programming/somali-nlp-projects/somali-dialect-classifier/data/metrics")
-
-
-def load_latest_processing_metrics(limit: int = 10) -> List[tuple[Path, Dict[str, Any]]]:
+def load_latest_processing_metrics(limit: int = 10) -> list[tuple[Path, dict[str, Any]]]:
     """
     Load the latest *_processing.json metrics files.
 
@@ -72,16 +73,10 @@ def test_all_processing_metrics_validate_against_schema():
             # Check for validation warnings
             if validated.validation_warnings:
                 for warning in validated.validation_warnings:
-                    validation_warnings.append({
-                        "source": source_name,
-                        "warning": warning
-                    })
+                    validation_warnings.append({"source": source_name, "warning": warning})
 
         except ValidationError as e:
-            validation_failures.append({
-                "source": source_name,
-                "error": str(e)
-            })
+            validation_failures.append({"source": source_name, "error": str(e)})
 
     # Report validation failures
     if validation_failures:
@@ -124,19 +119,22 @@ def test_no_metrics_anomalies_in_latest_runs():
             severity = "WARNING"
 
             # High severity indicators
-            if any(keyword in warning.lower() for keyword in [
-                "exceeds", "breakdown sum", "greater than", "impossible"
-            ]):
+            if any(
+                keyword in warning.lower()
+                for keyword in ["exceeds", "breakdown sum", "greater than", "impossible"]
+            ):
                 severity = "HIGH"
 
             anomaly_count += 1
-            anomalies.append({
-                "source": source_name,
-                "warning": warning,
-                "file": str(metrics_file),
-                "severity": severity,
-                "category": "validation_warning"
-            })
+            anomalies.append(
+                {
+                    "source": source_name,
+                    "warning": warning,
+                    "file": str(metrics_file),
+                    "severity": severity,
+                    "category": "validation_warning",
+                }
+            )
 
         # Also check layered_metrics.quality for calculation anomalies
         quality = metrics_data.get("layered_metrics", {}).get("quality", {})
@@ -145,13 +143,15 @@ def test_no_metrics_anomalies_in_latest_runs():
 
         if records_passed > records_received:
             anomaly_count += 1
-            anomalies.append({
-                "source": source_name,
-                "warning": f"records_passed_filters ({records_passed}) > records_received ({records_received})",
-                "file": str(metrics_file),
-                "severity": "CRITICAL",
-                "category": "calculation_error"
-            })
+            anomalies.append(
+                {
+                    "source": source_name,
+                    "warning": f"records_passed_filters ({records_passed}) > records_received ({records_received})",
+                    "file": str(metrics_file),
+                    "severity": "CRITICAL",
+                    "category": "calculation_error",
+                }
+            )
 
     # Export anomalies to JSON for CI consumption
     output_path = Path("test-results/anomalies.json")
@@ -163,14 +163,18 @@ def test_no_metrics_anomalies_in_latest_runs():
         "severity_breakdown": {
             "critical": len([a for a in anomalies if a.get("severity") == "CRITICAL"]),
             "high": len([a for a in anomalies if a.get("severity") == "HIGH"]),
-            "warning": len([a for a in anomalies if a.get("severity") == "WARNING"])
+            "warning": len([a for a in anomalies if a.get("severity") == "WARNING"]),
         },
         "category_breakdown": {
-            "validation_warning": len([a for a in anomalies if a.get("category") == "validation_warning"]),
-            "calculation_error": len([a for a in anomalies if a.get("category") == "calculation_error"])
+            "validation_warning": len(
+                [a for a in anomalies if a.get("category") == "validation_warning"]
+            ),
+            "calculation_error": len(
+                [a for a in anomalies if a.get("category") == "calculation_error"]
+            ),
         },
-        "sources_affected": list(set(a["source"] for a in anomalies)),
-        "generated_at": "2025-11-02T12:00:00Z"
+        "sources_affected": list({a["source"] for a in anomalies}),
+        "generated_at": "2025-11-02T12:00:00Z",
     }
 
     with output_path.open("w") as f:
@@ -178,19 +182,19 @@ def test_no_metrics_anomalies_in_latest_runs():
 
     # Print summary
     if anomalies:
-        print(f"\n{'='*70}")
-        print(f"METRICS ANOMALY REPORT")
-        print(f"{'='*70}")
+        print(f"\n{'=' * 70}")
+        print("METRICS ANOMALY REPORT")
+        print(f"{'=' * 70}")
         print(f"Total anomalies: {anomaly_count}")
         print(f"  Critical: {anomaly_summary['severity_breakdown']['critical']}")
         print(f"  High: {anomaly_summary['severity_breakdown']['high']}")
         print(f"  Warning: {anomaly_summary['severity_breakdown']['warning']}")
         print(f"\nSources affected: {', '.join(anomaly_summary['sources_affected'])}")
-        print(f"\nDetails:")
+        print("\nDetails:")
         for anomaly in anomalies:
             print(f"  [{anomaly['severity']}] {anomaly['source']}: {anomaly['warning']}")
         print(f"\nFull report: {output_path}")
-        print(f"{'='*70}\n")
+        print(f"{'=' * 70}\n")
 
     # Fail if HIGH or CRITICAL severity anomalies found
     high_severity = [a for a in anomalies if a.get("severity") in ["HIGH", "CRITICAL"]]
@@ -199,8 +203,8 @@ def test_no_metrics_anomalies_in_latest_runs():
         msg = f"Found {len(high_severity)} HIGH/CRITICAL severity metrics anomalies:\n"
         for anomaly in high_severity:
             msg += f"  [{anomaly['severity']}] {anomaly['source']}: {anomaly['warning']}\n"
-        msg += f"\nThis indicates a metrics calculation bug. Investigate immediately.\n"
-        msg += f"Full anomaly report: test-results/anomalies.json"
+        msg += "\nThis indicates a metrics calculation bug. Investigate immediately.\n"
+        msg += "Full anomaly report: test-results/anomalies.json"
         pytest.fail(msg)
 
 
@@ -227,11 +231,13 @@ def test_filter_breakdown_populated_when_filtering_occurred():
 
         # If filtering occurred, filter_breakdown should not be empty
         if records_filtered > 0 and not filter_breakdown:
-            missing_breakdown.append({
-                "source": source_name,
-                "records_filtered": records_filtered,
-                "filter_breakdown": filter_breakdown
-            })
+            missing_breakdown.append(
+                {
+                    "source": source_name,
+                    "records_filtered": records_filtered,
+                    "filter_breakdown": filter_breakdown,
+                }
+            )
 
     if missing_breakdown:
         msg = f"Found {len(missing_breakdown)} sources with filtering but empty filter_breakdown:\n"
@@ -275,19 +281,23 @@ def test_filter_breakdown_sum_consistency():
         difference = abs(breakdown_sum - records_filtered)
 
         if difference > tolerance:
-            inconsistencies.append({
-                "source": source_name,
-                "records_filtered": records_filtered,
-                "breakdown_sum": breakdown_sum,
-                "difference": difference,
-                "filter_breakdown": filter_breakdown
-            })
+            inconsistencies.append(
+                {
+                    "source": source_name,
+                    "records_filtered": records_filtered,
+                    "breakdown_sum": breakdown_sum,
+                    "difference": difference,
+                    "filter_breakdown": filter_breakdown,
+                }
+            )
 
     # Log inconsistencies as warnings, don't fail
     if inconsistencies:
         print(f"\n⚠️  Found {len(inconsistencies)} filter breakdown inconsistencies:")
         for item in inconsistencies:
-            print(f"  - {item['source']}: filtered={item['records_filtered']}, sum={item['breakdown_sum']}, diff={item['difference']}")
+            print(
+                f"  - {item['source']}: filtered={item['records_filtered']}, sum={item['breakdown_sum']}, diff={item['difference']}"
+            )
             print(f"    Breakdown: {item['filter_breakdown']}")
 
 
@@ -319,7 +329,9 @@ def test_no_negative_counts_in_metrics():
         if quality.get("records_received", 0) < 0:
             negative_counts.append(f"{source_name}: records_received={quality['records_received']}")
         if quality.get("records_passed_filters", 0) < 0:
-            negative_counts.append(f"{source_name}: records_passed_filters={quality['records_passed_filters']}")
+            negative_counts.append(
+                f"{source_name}: records_passed_filters={quality['records_passed_filters']}"
+            )
 
     if negative_counts:
         msg = f"Found {len(negative_counts)} negative count violations:\n"
@@ -348,10 +360,9 @@ def test_quality_pass_rate_in_valid_range():
 
         if quality_pass_rate is not None:
             if quality_pass_rate < 0.0 or quality_pass_rate > 1.0:
-                invalid_rates.append({
-                    "source": source_name,
-                    "quality_pass_rate": quality_pass_rate
-                })
+                invalid_rates.append(
+                    {"source": source_name, "quality_pass_rate": quality_pass_rate}
+                )
 
     if invalid_rates:
         msg = f"Found {len(invalid_rates)} invalid quality_pass_rate values:\n"
@@ -361,13 +372,16 @@ def test_quality_pass_rate_in_valid_range():
         pytest.fail(msg)
 
 
-@pytest.mark.parametrize("source_type", [
-    "tiktok-somali",
-    "wikipedia-somali",
-    "huggingface-somali_c4-so",
-    "sprakbanken-somali",
-    "bbc-somali"
-])
+@pytest.mark.parametrize(
+    "source_type",
+    [
+        "tiktok-somali",
+        "wikipedia-somali",
+        "huggingface-somali_c4-so",
+        "sprakbanken-somali",
+        "bbc-somali",
+    ],
+)
 def test_source_specific_filter_tracking(source_type):
     """
     Test that specific sources track their expected filters.
@@ -375,8 +389,7 @@ def test_source_specific_filter_tracking(source_type):
     This is a smoke test to ensure filter instrumentation is present.
     """
     metrics_files = [
-        (f, m) for f, m in load_latest_processing_metrics(limit=20)
-        if source_type in f.stem
+        (f, m) for f, m in load_latest_processing_metrics(limit=20) if source_type in f.stem
     ]
 
     if not metrics_files:

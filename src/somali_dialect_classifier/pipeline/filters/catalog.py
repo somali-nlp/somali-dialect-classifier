@@ -19,88 +19,83 @@ Usage:
 
 import logging
 import warnings
-from typing import Dict, Tuple, Optional
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
 
 # Filter catalog: filter_key -> (human_label, description, category)
-FILTER_CATALOG: Dict[str, Tuple[str, str, str]] = {
+FILTER_CATALOG: dict[str, tuple[str, str, str]] = {
     # Length-based filters
     "min_length_filter": (
         "Minimum length (50 chars)",
         "Text must be at least 50 characters after cleaning",
-        "length"
+        "length",
     ),
     "text_too_short_after_cleanup": (
         "Very short text (<3 chars)",
         "Text has fewer than 3 characters after removing symbols/emojis",
-        "length"
+        "length",
     ),
-
     # Content quality filters
     "emoji_only_comment": (
         "Emoji-only comment",
         "Comment contains only emojis, symbols, or punctuation with no linguistic content",
-        "content_quality"
+        "content_quality",
     ),
     "empty_after_cleaning": (
         "Empty after cleaning",
         "Text becomes empty after removing special characters and whitespace",
-        "content_quality"
+        "content_quality",
     ),
-
     # Language detection filters
     "langid_filter": (
         "Language ID (non-Somali)",
         "Text identified as non-Somali language by language detection",
-        "language"
+        "language",
     ),
-
     # Domain-specific filters
     "dialect_heuristic_filter": (
         "Dialect heuristics",
         "Text failed dialect-specific heuristic checks",
-        "dialect"
+        "dialect",
     ),
     "namespace_filter": (
         "Wikipedia namespace exclusion",
         "Wikipedia pages from excluded namespaces (e.g., Talk, User, Template)",
-        "namespace"
+        "namespace",
     ),
-
     # Placeholder filters for future enhancements
     "profanity_filter": (
         "Profanity detected",
         "Text contains profane or offensive language",
-        "content_quality"
+        "content_quality",
     ),
     "duplicate_content": (
         "Duplicate content",
         "Text is a duplicate or near-duplicate of existing content",
-        "deduplication"
+        "deduplication",
     ),
     "encoding_error": (
         "Encoding errors",
         "Text contains encoding errors or malformed characters",
-        "encoding"
+        "encoding",
     ),
     "bot_generated": (
         "Bot-generated content",
         "Text appears to be bot-generated or automated",
-        "content_quality"
+        "content_quality",
     ),
     "spam_detected": (
         "Spam detected",
         "Text identified as spam or promotional content",
-        "content_quality"
+        "content_quality",
     ),
     "invalid_characters": (
         "Invalid characters",
         "Text contains invalid or non-printable characters",
-        "encoding"
-    )
+        "encoding",
+    ),
 }
 
 
@@ -128,8 +123,7 @@ def get_filter_label(filter_key: str) -> str:
     # Fallback: log warning and return sanitized key
     logger.warning(f"Unknown filter key: '{filter_key}' not in FILTER_CATALOG")
     warnings.warn(
-        f"FILTER_CATALOG_MISS: filter_key='{filter_key}'",
-        category=UserWarning
+        f"FILTER_CATALOG_MISS: filter_key='{filter_key}'", stacklevel=2, category=UserWarning
     )
     return sanitize_filter_key(filter_key)
 
@@ -179,7 +173,7 @@ def get_filter_category(filter_key: str) -> str:
     return "unknown"
 
 
-def export_for_javascript() -> Dict[str, str]:
+def export_for_javascript() -> dict[str, str]:
     """
     Export filter labels for dashboard consumption.
 
@@ -222,11 +216,11 @@ def sanitize_filter_key(raw_reason: str) -> str:
         'Emoji Only Comment'
     """
     # Convert snake_case to Title Case
-    words = raw_reason.replace('_', ' ').split()
-    return ' '.join(word.capitalize() for word in words)
+    words = raw_reason.replace("_", " ").split()
+    return " ".join(word.capitalize() for word in words)
 
 
-def get_all_categories() -> Dict[str, list]:
+def get_all_categories() -> dict[str, list]:
     """
     Get all filters grouped by category.
 
@@ -238,7 +232,7 @@ def get_all_categories() -> Dict[str, list]:
         >>> categories["length"]
         ['min_length_filter', 'text_too_short_after_cleanup']
     """
-    categories: Dict[str, list] = {}
+    categories: dict[str, list] = {}
     for key, (_, _, category) in FILTER_CATALOG.items():
         if category not in categories:
             categories[category] = []
@@ -246,7 +240,7 @@ def get_all_categories() -> Dict[str, list]:
     return categories
 
 
-def validate_filter_breakdown(filter_breakdown: Dict[str, int]) -> Dict[str, int]:
+def validate_filter_breakdown(filter_breakdown: dict[str, int]) -> dict[str, int]:
     """
     Validate and sanitize filter breakdown from metrics.
 

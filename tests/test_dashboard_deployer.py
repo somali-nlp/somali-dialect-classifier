@@ -3,8 +3,6 @@ Tests for dashboard deployment automation.
 """
 
 import json
-import tempfile
-from pathlib import Path
 from datetime import datetime
 
 import pytest
@@ -12,8 +10,8 @@ import pytest
 from somali_dialect_classifier.deployment import (
     DashboardDeployer,
     DeploymentConfig,
-    MetricsValidator,
     GitOperations,
+    MetricsValidator,
 )
 
 

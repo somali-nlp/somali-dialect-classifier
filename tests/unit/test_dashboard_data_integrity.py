@@ -46,9 +46,7 @@ def test_text_distributions_are_non_empty():
         assert dist, f"Missing distribution for source {source}"
 
         counts = dist.get("counts", [])
-        assert any(count > 0 for count in counts), (
-            f"Expected non-zero length counts for {source}"
-        )
+        assert any(count > 0 for count in counts), f"Expected non-zero length counts for {source}"
 
 
 def test_dashboard_metadata_exposes_visualisation_flags():
@@ -58,8 +56,6 @@ def test_dashboard_metadata_exposes_visualisation_flags():
     assert visualisations, "Dashboard metadata should expose visualization availability"
 
     available_flags = [
-        key
-        for key, value in visualisations.items()
-        if key.endswith("_available") and value is True
+        key for key, value in visualisations.items() if key.endswith("_available") and value is True
     ]
     assert available_flags, "At least one dashboard visualisation must be marked available"

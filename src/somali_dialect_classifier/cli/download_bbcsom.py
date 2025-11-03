@@ -24,29 +24,27 @@ def _setup_logging() -> None:
     # Console logs
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        force=True  # Reset existing handlers
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        force=True,  # Reset existing handlers
     )
 
     # File logs (rotating) under logs/
-    logs_dir = Path('logs')
+    logs_dir = Path("logs")
     logs_dir.mkdir(exist_ok=True)
 
     # Create handler for BBC-specific log file
-    fh = RotatingFileHandler(
-        logs_dir / 'download_bbcsom.log',
-        maxBytes=5_000_000,
-        backupCount=3
-    )
+    fh = RotatingFileHandler(logs_dir / "download_bbcsom.log", maxBytes=5_000_000, backupCount=3)
     fh.setLevel(logging.INFO)
-    fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 
     # Add handler to capture all logs from processors
     # Use root logger but with module filter
     root_logger = logging.getLogger()
 
     # Remove any existing file handlers to prevent duplication
-    root_logger.handlers = [h for h in root_logger.handlers if not isinstance(h, RotatingFileHandler)]
+    root_logger.handlers = [
+        h for h in root_logger.handlers if not isinstance(h, RotatingFileHandler)
+    ]
 
     # Add our file handler
     root_logger.addHandler(fh)
@@ -61,31 +59,27 @@ def main() -> None:
     After completion, it prints the paths to the raw, staging, and processed files.
     """
     # Parse command-line arguments
-    parser = argparse.ArgumentParser(
-        description='Download and process BBC Somali news articles'
-    )
+    parser = argparse.ArgumentParser(description="Download and process BBC Somali news articles")
     parser.add_argument(
-        '--max-articles',
+        "--max-articles",
         type=int,
         default=None,
-        help='Maximum number of articles to scrape (default: unlimited - scrapes all discovered articles)'
+        help="Maximum number of articles to scrape (default: unlimited - scrapes all discovered articles)",
     )
     parser.add_argument(
-        '--min-delay',
+        "--min-delay",
         type=int,
         default=1,
-        help='Minimum delay between requests in seconds (default: 1)'
+        help="Minimum delay between requests in seconds (default: 1)",
     )
     parser.add_argument(
-        '--max-delay',
+        "--max-delay",
         type=int,
         default=3,
-        help='Maximum delay between requests in seconds (default: 3)'
+        help="Maximum delay between requests in seconds (default: 3)",
     )
     parser.add_argument(
-        '--force',
-        action='store_true',
-        help='Force reprocessing even if output files exist'
+        "--force", action="store_true", help="Force reprocessing even if output files exist"
     )
     args = parser.parse_args()
 
@@ -96,14 +90,14 @@ def main() -> None:
         processor = BBCSomaliProcessor(
             max_articles=args.max_articles,
             delay_range=(args.min_delay, args.max_delay),
-            force=args.force
+            force=args.force,
         )
 
         article_links_file = processor.download()
         staging_file = processor.extract()
         processed_file = processor.process()
 
-        print(f"\n✓ Pipeline completed successfully!")
+        print("\n✓ Pipeline completed successfully!")
         print(f"  Article links: {article_links_file}")
         print(f"  Scraped articles: {staging_file}")
         print(f"  Processed: {processed_file}")

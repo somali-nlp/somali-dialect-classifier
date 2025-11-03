@@ -19,11 +19,10 @@ Output:
 
 import json
 from pathlib import Path
-from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Any
 
 
-def create_good_fixture() -> Dict[str, Any]:
+def create_good_fixture() -> dict[str, Any]:
     """
     Create a GOOD metrics fixture with populated filter_breakdown.
 
@@ -43,7 +42,7 @@ def create_good_fixture() -> Dict[str, Any]:
                 "connection_attempted": True,
                 "connection_successful": True,
                 "connection_duration_ms": 100.0,
-                "connection_error": None
+                "connection_error": None,
             },
             "extraction": {
                 "stream_opened": True,
@@ -51,7 +50,7 @@ def create_good_fixture() -> Dict[str, Any]:
                 "batches_attempted": 5,
                 "batches_completed": 5,
                 "batches_failed": 0,
-                "records_fetched": 500
+                "records_fetched": 500,
             },
             "quality": {
                 "records_received": 500,
@@ -59,14 +58,10 @@ def create_good_fixture() -> Dict[str, Any]:
                 "filter_breakdown": {
                     "min_length_filter": 120,
                     "emoji_only_comment": 50,
-                    "text_too_short_after_cleanup": 30
-                }
+                    "text_too_short_after_cleanup": 30,
+                },
             },
-            "volume": {
-                "records_written": 300,
-                "bytes_downloaded": 50000,
-                "total_chars": 15000
-            }
+            "volume": {"records_written": 300, "bytes_downloaded": 50000, "total_chars": 15000},
         },
         "legacy_metrics": {
             "snapshot": {
@@ -95,7 +90,7 @@ def create_good_fixture() -> Dict[str, Any]:
                 "filter_reasons": {
                     "min_length_filter": 120,
                     "emoji_only_comment": 50,
-                    "text_too_short_after_cleanup": 30
+                    "text_too_short_after_cleanup": 30,
                 },
                 "error_types": {},
                 "fetch_durations_ms": [100.0, 105.0, 98.0, 102.0, 99.0],
@@ -103,7 +98,7 @@ def create_good_fixture() -> Dict[str, Any]:
                 "text_lengths": [75, 82, 90, 65, 78, 88, 95, 70, 85, 92],
                 "unique_hashes": 300,
                 "duplicate_hashes": 0,
-                "near_duplicates": 0
+                "near_duplicates": 0,
             },
             "statistics": {
                 "http_request_success_rate": 1.0,
@@ -117,26 +112,26 @@ def create_good_fixture() -> Dict[str, Any]:
                     "mean": 100.8,
                     "median": 100.0,
                     "p95": 104.0,
-                    "p99": 105.0
+                    "p99": 105.0,
                 },
                 "text_length_stats": {
                     "min": 65,
                     "max": 95,
                     "mean": 82.0,
                     "median": 82.0,
-                    "total_chars": 15000
+                    "total_chars": 15000,
                 },
                 "throughput": {
                     "urls_per_second": 0.83,
                     "bytes_per_second": 414.9,
-                    "records_per_minute": 149.5
-                }
-            }
-        }
+                    "records_per_minute": 149.5,
+                },
+            },
+        },
     }
 
 
-def create_bad_fixture() -> Dict[str, Any]:
+def create_bad_fixture() -> dict[str, Any]:
     """
     Create a BAD metrics fixture with EMPTY filter_breakdown (REGRESSION BUG).
 
@@ -156,7 +151,7 @@ def create_bad_fixture() -> Dict[str, Any]:
                 "connection_attempted": True,
                 "connection_successful": True,
                 "connection_duration_ms": 100.0,
-                "connection_error": None
+                "connection_error": None,
             },
             "extraction": {
                 "stream_opened": True,
@@ -164,18 +159,14 @@ def create_bad_fixture() -> Dict[str, Any]:
                 "batches_attempted": 4,
                 "batches_completed": 4,
                 "batches_failed": 0,
-                "records_fetched": 400
+                "records_fetched": 400,
             },
             "quality": {
                 "records_received": 400,
                 "records_passed_filters": 300,
-                "filter_breakdown": {}  # BUG: Empty despite filtering
+                "filter_breakdown": {},  # BUG: Empty despite filtering
             },
-            "volume": {
-                "records_written": 300,
-                "bytes_downloaded": 40000,
-                "total_chars": 12000
-            }
+            "volume": {"records_written": 300, "bytes_downloaded": 40000, "total_chars": 12000},
         },
         "legacy_metrics": {
             "snapshot": {
@@ -208,7 +199,7 @@ def create_bad_fixture() -> Dict[str, Any]:
                 "text_lengths": [70, 75, 80, 85, 90, 95, 100, 105],
                 "unique_hashes": 300,
                 "duplicate_hashes": 0,
-                "near_duplicates": 0
+                "near_duplicates": 0,
             },
             "statistics": {
                 "http_request_success_rate": 1.0,
@@ -222,22 +213,22 @@ def create_bad_fixture() -> Dict[str, Any]:
                     "mean": 97.5,
                     "median": 97.5,
                     "p95": 99.5,
-                    "p99": 100.0
+                    "p99": 100.0,
                 },
                 "text_length_stats": {
                     "min": 70,
                     "max": 105,
                     "mean": 87.5,
                     "median": 87.5,
-                    "total_chars": 12000
+                    "total_chars": 12000,
                 },
                 "throughput": {
                     "urls_per_second": 0.69,
                     "bytes_per_second": 346.9,
-                    "records_per_minute": 156.2
-                }
-            }
-        }
+                    "records_per_minute": 156.2,
+                },
+            },
+        },
     }
 
 
@@ -256,8 +247,12 @@ def main():
         json.dump(good_fixture, f, indent=2, ensure_ascii=False)
 
     print(f"✅ Created GOOD fixture: {good_path}")
-    print(f"   - Records filtered: {good_fixture['legacy_metrics']['snapshot']['records_filtered']}")
-    print(f"   - Filter breakdown entries: {len(good_fixture['layered_metrics']['quality']['filter_breakdown'])}")
+    print(
+        f"   - Records filtered: {good_fixture['legacy_metrics']['snapshot']['records_filtered']}"
+    )
+    print(
+        f"   - Filter breakdown entries: {len(good_fixture['layered_metrics']['quality']['filter_breakdown'])}"
+    )
 
     # Generate BAD fixture
     bad_fixture = create_bad_fixture()
@@ -267,20 +262,28 @@ def main():
 
     print(f"\n⚠️  Created BAD fixture (regression bug): {bad_path}")
     print(f"   - Records filtered: {bad_fixture['legacy_metrics']['snapshot']['records_filtered']}")
-    print(f"   - Filter breakdown entries: {len(bad_fixture['layered_metrics']['quality']['filter_breakdown'])} (EMPTY - BUG)")
+    print(
+        f"   - Filter breakdown entries: {len(bad_fixture['layered_metrics']['quality']['filter_breakdown'])} (EMPTY - BUG)"
+    )
 
     print("\n📋 Fixture Summary:")
-    print(f"   GOOD: {good_fixture['layered_metrics']['quality']['records_received']} received → "
-          f"{good_fixture['layered_metrics']['quality']['records_passed_filters']} passed "
-          f"({good_fixture['legacy_metrics']['snapshot']['records_filtered']} filtered)")
-    print(f"   BAD:  {bad_fixture['layered_metrics']['quality']['records_received']} received → "
-          f"{bad_fixture['layered_metrics']['quality']['records_passed_filters']} passed "
-          f"({bad_fixture['legacy_metrics']['snapshot']['records_filtered']} filtered BUT no breakdown)")
+    print(
+        f"   GOOD: {good_fixture['layered_metrics']['quality']['records_received']} received → "
+        f"{good_fixture['layered_metrics']['quality']['records_passed_filters']} passed "
+        f"({good_fixture['legacy_metrics']['snapshot']['records_filtered']} filtered)"
+    )
+    print(
+        f"   BAD:  {bad_fixture['layered_metrics']['quality']['records_received']} received → "
+        f"{bad_fixture['layered_metrics']['quality']['records_passed_filters']} passed "
+        f"({bad_fixture['legacy_metrics']['snapshot']['records_filtered']} filtered BUT no breakdown)"
+    )
 
     print("\n🔍 Next Steps:")
     print("   1. Run regression tests: pytest tests/regression/test_filter_telemetry.py -v")
     print("   2. BAD fixture should trigger test failure")
-    print("   3. Check error message: 'Test-Source-Bad: 100 records filtered but filter_breakdown is empty'")
+    print(
+        "   3. Check error message: 'Test-Source-Bad: 100 records filtered but filter_breakdown is empty'"
+    )
 
 
 if __name__ == "__main__":

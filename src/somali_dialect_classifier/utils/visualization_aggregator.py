@@ -13,12 +13,11 @@ compatible with static hosting (GitHub Pages).
 
 import json
 import logging
-from collections import defaultdict
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
-import math
 import statistics
+from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,8 @@ logger = logging.getLogger(__name__)
 # SANKEY DIAGRAM AGGREGATION
 # ============================================================================
 
-def calculate_pipeline_flow(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
+
+def calculate_pipeline_flow(metrics: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Calculate Sankey diagram data for pipeline flow visualization.
 
@@ -68,7 +68,7 @@ def calculate_pipeline_flow(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
         {"id": "extracted", "name": "Content Extracted"},
         {"id": "deduplicated", "name": "Deduplicated"},
         {"id": "quality_passed", "name": "Quality Passed"},
-        {"id": "written", "name": "Written to Silver"}
+        {"id": "written", "name": "Written to Silver"},
     ]
 
     # Aggregate flows across all metrics
@@ -94,8 +94,8 @@ def calculate_pipeline_flow(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         elif pipeline_type == "file_processing":
             # For file processing, map to equivalent stages
-            files_discovered = metric.get("files_discovered", 0)
-            files_processed = metric.get("files_processed", 0)
+            metric.get("files_discovered", 0)
+            metric.get("files_processed", 0)
             discovered = metric.get("records_extracted", 0)
             fetched = discovered
             extracted = discovered
@@ -136,47 +136,39 @@ def calculate_pipeline_flow(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
     links = []
 
     if total_discovered > 0 and total_fetched > 0:
-        links.append({
-            "source": "discovered",
-            "target": "fetched",
-            "value": total_fetched
-        })
+        links.append({"source": "discovered", "target": "fetched", "value": total_fetched})
 
     if total_fetched > 0 and total_extracted > 0:
-        links.append({
-            "source": "fetched",
-            "target": "extracted",
-            "value": total_extracted
-        })
+        links.append({"source": "fetched", "target": "extracted", "value": total_extracted})
 
     if total_extracted > 0 and total_after_dedup > 0:
-        links.append({
-            "source": "extracted",
-            "target": "deduplicated",
-            "value": total_after_dedup
-        })
+        links.append({"source": "extracted", "target": "deduplicated", "value": total_after_dedup})
 
     if total_after_dedup > 0 and total_quality_passed > 0:
-        links.append({
-            "source": "deduplicated",
-            "target": "quality_passed",
-            "value": total_quality_passed
-        })
+        links.append(
+            {"source": "deduplicated", "target": "quality_passed", "value": total_quality_passed}
+        )
 
     if total_quality_passed > 0 and total_written > 0:
-        links.append({
-            "source": "quality_passed",
-            "target": "written",
-            "value": total_written
-        })
+        links.append({"source": "quality_passed", "target": "written", "value": total_written})
 
     # Calculate drop-off at each stage
     drops = {
-        "fetch_failures": total_discovered - total_fetched if total_discovered > total_fetched else 0,
-        "extraction_failures": total_fetched - total_extracted if total_fetched > total_extracted else 0,
-        "deduplication": total_extracted - total_after_dedup if total_extracted > total_after_dedup else 0,
-        "quality_filters": total_after_dedup - total_quality_passed if total_after_dedup > total_quality_passed else 0,
-        "write_failures": total_quality_passed - total_written if total_quality_passed > total_written else 0
+        "fetch_failures": total_discovered - total_fetched
+        if total_discovered > total_fetched
+        else 0,
+        "extraction_failures": total_fetched - total_extracted
+        if total_fetched > total_extracted
+        else 0,
+        "deduplication": total_extracted - total_after_dedup
+        if total_extracted > total_after_dedup
+        else 0,
+        "quality_filters": total_after_dedup - total_quality_passed
+        if total_after_dedup > total_quality_passed
+        else 0,
+        "write_failures": total_quality_passed - total_written
+        if total_quality_passed > total_written
+        else 0,
     }
 
     return {
@@ -187,8 +179,8 @@ def calculate_pipeline_flow(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
         "summary": {
             "total_discovered": total_discovered,
             "total_written": total_written,
-            "overall_pass_rate": total_written / total_discovered if total_discovered > 0 else 0
-        }
+            "overall_pass_rate": total_written / total_discovered if total_discovered > 0 else 0,
+        },
     }
 
 
@@ -196,10 +188,10 @@ def calculate_pipeline_flow(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
 # RIDGE PLOT AGGREGATION
 # ============================================================================
 
+
 def calculate_text_length_distribution(
-    metrics: List[Dict[str, Any]],
-    num_bins: int = 10
-) -> Dict[str, Any]:
+    metrics: list[dict[str, Any]], num_bins: int = 10
+) -> dict[str, Any]:
     """
     Calculate text length distribution data for Ridge plot visualization.
 
@@ -231,16 +223,13 @@ def calculate_text_length_distribution(
     min_log = 1  # 10^1 = 10 characters
     max_log = 6  # 10^6 = 1,000,000 characters
 
-    bins = [10 ** (min_log + i * (max_log - min_log) / num_bins)
-            for i in range(num_bins + 1)]
+    bins = [10 ** (min_log + i * (max_log - min_log) / num_bins) for i in range(num_bins + 1)]
     bins = [int(b) for b in bins]
 
     # Organize by source
-    sources_data = defaultdict(lambda: {
-        "counts": [0] * num_bins,
-        "text_lengths": [],
-        "total_records": 0
-    })
+    sources_data = defaultdict(
+        lambda: {"counts": [0] * num_bins, "text_lengths": [], "total_records": 0}
+    )
 
     for metric in metrics:
         source = metric.get("source", "Unknown")
@@ -250,9 +239,9 @@ def calculate_text_length_distribution(
         if text_stats:
             mean = text_stats.get("mean", 0)
             median = text_stats.get("median", 0)
-            min_len = text_stats.get("min", 0)
-            max_len = text_stats.get("max", 0)
-            total_chars = text_stats.get("total_chars", 0)
+            text_stats.get("min", 0)
+            text_stats.get("max", 0)
+            text_stats.get("total_chars", 0)
 
             records_written = metric.get("records_written", 0)
 
@@ -289,18 +278,14 @@ def calculate_text_length_distribution(
                 "counts": data["counts"],
                 "mean": statistics.mean(data["text_lengths"]) if data["text_lengths"] else 0,
                 "median": statistics.median(data["text_lengths"]) if data["text_lengths"] else 0,
-                "total_records": total
+                "total_records": total,
             }
 
     return {
         "bins": bins,
-        "bin_labels": [f"{bins[i]}-{bins[i+1]}" for i in range(num_bins)],
+        "bin_labels": [f"{bins[i]}-{bins[i + 1]}" for i in range(num_bins)],
         "sources": result_sources,
-        "metadata": {
-            "num_bins": num_bins,
-            "bin_scale": "logarithmic",
-            "unit": "characters"
-        }
+        "metadata": {"num_bins": num_bins, "bin_scale": "logarithmic", "unit": "characters"},
     }
 
 
@@ -308,10 +293,8 @@ def calculate_text_length_distribution(
 # TIME-SERIES AGGREGATION
 # ============================================================================
 
-def calculate_time_series(
-    metrics: List[Dict[str, Any]],
-    interval: str = "daily"
-) -> Dict[str, Any]:
+
+def calculate_time_series(metrics: list[dict[str, Any]], interval: str = "daily") -> dict[str, Any]:
     """
     Calculate time-series data for trend visualization.
 
@@ -338,13 +321,15 @@ def calculate_time_series(
         }
     """
     # Group by time interval
-    time_groups = defaultdict(lambda: {
-        "records_written": 0,
-        "success_rates": [],
-        "quality_pass_rates": [],
-        "sources": set(),
-        "runs": 0
-    })
+    time_groups = defaultdict(
+        lambda: {
+            "records_written": 0,
+            "success_rates": [],
+            "quality_pass_rates": [],
+            "sources": set(),
+            "runs": 0,
+        }
+    )
 
     for metric in metrics:
         timestamp_str = metric.get("timestamp", "")
@@ -368,9 +353,12 @@ def calculate_time_series(
             group = time_groups[key]
             group["records_written"] += metric.get("records_written", 0)
 
-            success_rate = metric.get("http_request_success_rate",
-                                     metric.get("file_extraction_success_rate",
-                                               metric.get("stream_connection_success_rate", 0)))
+            success_rate = metric.get(
+                "http_request_success_rate",
+                metric.get(
+                    "file_extraction_success_rate", metric.get("stream_connection_success_rate", 0)
+                ),
+            )
             if success_rate > 0:
                 group["success_rates"].append(success_rate)
 
@@ -391,14 +379,20 @@ def calculate_time_series(
     for date_key in sorted(time_groups.keys()):
         group = time_groups[date_key]
 
-        series.append({
-            "date": date_key,
-            "records_written": group["records_written"],
-            "avg_success_rate": statistics.mean(group["success_rates"]) if group["success_rates"] else 0,
-            "avg_quality_pass_rate": statistics.mean(group["quality_pass_rates"]) if group["quality_pass_rates"] else 0,
-            "sources": sorted(list(group["sources"])),
-            "num_runs": group["runs"]
-        })
+        series.append(
+            {
+                "date": date_key,
+                "records_written": group["records_written"],
+                "avg_success_rate": statistics.mean(group["success_rates"])
+                if group["success_rates"]
+                else 0,
+                "avg_quality_pass_rate": statistics.mean(group["quality_pass_rates"])
+                if group["quality_pass_rates"]
+                else 0,
+                "sources": sorted(group["sources"]),
+                "num_runs": group["runs"],
+            }
+        )
 
     return {
         "interval": interval,
@@ -407,9 +401,9 @@ def calculate_time_series(
             "total_periods": len(series),
             "date_range": {
                 "start": series[0]["date"] if series else None,
-                "end": series[-1]["date"] if series else None
-            }
-        }
+                "end": series[-1]["date"] if series else None,
+            },
+        },
     }
 
 
@@ -417,10 +411,8 @@ def calculate_time_series(
 # EXPORT FUNCTIONS
 # ============================================================================
 
-def export_visualization_data(
-    metrics: List[Dict[str, Any]],
-    output_dir: Path
-) -> None:
+
+def export_visualization_data(metrics: list[dict[str, Any]], output_dir: Path) -> None:
     """
     Export all visualization aggregations to JSON files.
 
@@ -440,7 +432,7 @@ def export_visualization_data(
     logger.info("Generating Sankey flow data...")
     sankey_data = calculate_pipeline_flow(metrics)
     sankey_file = output_dir / "sankey_flow.json"
-    with open(sankey_file, 'w', encoding='utf-8') as f:
+    with open(sankey_file, "w", encoding="utf-8") as f:
         json.dump(sankey_data, f, indent=2)
     logger.info(f"✓ Wrote Sankey data to: {sankey_file}")
 
@@ -448,7 +440,7 @@ def export_visualization_data(
     logger.info("Generating text length distribution data...")
     ridge_data = calculate_text_length_distribution(metrics, num_bins=10)
     ridge_file = output_dir / "ridge_distribution.json"
-    with open(ridge_file, 'w', encoding='utf-8') as f:
+    with open(ridge_file, "w", encoding="utf-8") as f:
         json.dump(ridge_data, f, indent=2)
     logger.info(f"✓ Wrote Ridge plot data to: {ridge_file}")
 
@@ -456,7 +448,7 @@ def export_visualization_data(
     logger.info("Generating daily time-series data...")
     daily_series = calculate_time_series(metrics, interval="daily")
     daily_file = output_dir / "time_series_daily.json"
-    with open(daily_file, 'w', encoding='utf-8') as f:
+    with open(daily_file, "w", encoding="utf-8") as f:
         json.dump(daily_series, f, indent=2)
     logger.info(f"✓ Wrote daily time-series to: {daily_file}")
 
@@ -464,14 +456,14 @@ def export_visualization_data(
     logger.info("Generating weekly time-series data...")
     weekly_series = calculate_time_series(metrics, interval="weekly")
     weekly_file = output_dir / "time_series_weekly.json"
-    with open(weekly_file, 'w', encoding='utf-8') as f:
+    with open(weekly_file, "w", encoding="utf-8") as f:
         json.dump(weekly_series, f, indent=2)
     logger.info(f"✓ Wrote weekly time-series to: {weekly_file}")
 
     logger.info("✓ All visualization data exported successfully")
 
 
-def calculate_summary_stats(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
+def calculate_summary_stats(metrics: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Calculate summary statistics for export and reporting.
 
@@ -487,19 +479,20 @@ def calculate_summary_stats(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
             "total_sources": 0,
             "total_runs": 0,
             "avg_success_rate": 0,
-            "avg_quality_pass_rate": 0
+            "avg_quality_pass_rate": 0,
         }
 
     total_records = sum(m.get("records_written", 0) for m in metrics)
-    sources = set(m.get("source", "Unknown") for m in metrics)
+    sources = {m.get("source", "Unknown") for m in metrics}
 
     success_rates = []
     quality_rates = []
 
     for m in metrics:
-        sr = m.get("http_request_success_rate",
-                  m.get("file_extraction_success_rate",
-                       m.get("stream_connection_success_rate", 0)))
+        sr = m.get(
+            "http_request_success_rate",
+            m.get("file_extraction_success_rate", m.get("stream_connection_success_rate", 0)),
+        )
         if sr > 0:
             success_rates.append(sr)
 
@@ -513,5 +506,5 @@ def calculate_summary_stats(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
         "total_runs": len(metrics),
         "avg_success_rate": statistics.mean(success_rates) if success_rates else 0,
         "avg_quality_pass_rate": statistics.mean(quality_rates) if quality_rates else 0,
-        "sources": sorted(list(sources))
+        "sources": sorted(sources),
     }

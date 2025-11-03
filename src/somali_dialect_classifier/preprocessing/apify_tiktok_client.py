@@ -7,10 +7,12 @@ It handles authentication, actor execution, and data retrieval.
 Apify Actor: https://apify.com/clockworks/tiktok-comments-scraper
 """
 
-import time
 import logging
-from typing import Dict, Any, List, Optional, Iterator
+import time
+from collections.abc import Iterator
 from datetime import datetime, timezone
+from typing import Any, Optional
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -36,7 +38,7 @@ class ApifyTikTokClient:
         api_token: str,
         user_id: Optional[str] = None,
         timeout: int = 300,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
     ):
         """
         Initialize Apify TikTok client.
@@ -62,25 +64,22 @@ class ApifyTikTokClient:
             total=5,
             backoff_factor=1.0,
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "POST", "OPTIONS"]
+            allowed_methods=["HEAD", "GET", "POST", "OPTIONS"],
         )
         adapter = HTTPAdapter(max_retries=retries)
         session.mount("http://", adapter)
         session.mount("https://", adapter)
         return session
 
-    def _get_headers(self) -> Dict[str, str]:
+    def _get_headers(self) -> dict[str, str]:
         """Get API request headers with authentication."""
-        return {
-            "Authorization": f"Bearer {self.api_token}",
-            "Content-Type": "application/json"
-        }
+        return {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
 
     def start_actor_run(
         self,
-        video_urls: List[str],
+        video_urls: list[str],
         max_comments: Optional[int] = None,
-        proxy_config: Optional[Dict[str, Any]] = None
+        proxy_config: Optional[dict[str, Any]] = None,
     ) -> str:
         """
         Start an actor run to scrape TikTok comments.
@@ -100,11 +99,10 @@ class ApifyTikTokClient:
         # Note: Clockworks actor expects "postURLs" not "videoUrls"
         actor_input = {
             "postURLs": video_urls,
-            "commentsPerPost": max_comments if max_comments else 100000,  # Large number for "unlimited"
-            "proxy": proxy_config or {
-                "useApifyProxy": True,
-                "apifyProxyGroups": ["RESIDENTIAL"]
-            }
+            "commentsPerPost": max_comments
+            if max_comments
+            else 100000,  # Large number for "unlimited"
+            "proxy": proxy_config or {"useApifyProxy": True, "apifyProxyGroups": ["RESIDENTIAL"]},
         }
 
         self.logger.info(f"Starting actor run for {len(video_urls)} videos...")
@@ -113,10 +111,7 @@ class ApifyTikTokClient:
         # Start actor run
         url = f"{self.BASE_URL}/acts/{self.ACTOR_ID}/runs"
         response = self.session.post(
-            url,
-            headers=self._get_headers(),
-            json=actor_input,
-            timeout=self.timeout
+            url, headers=self._get_headers(), json=actor_input, timeout=self.timeout
         )
         response.raise_for_status()
 
@@ -129,11 +124,8 @@ class ApifyTikTokClient:
         return run_id
 
     def wait_for_run_completion(
-        self,
-        run_id: str,
-        poll_interval: int = 10,
-        max_wait_time: int = 3600
-    ) -> Dict[str, Any]:
+        self, run_id: str, poll_interval: int = 10, max_wait_time: int = 3600
+    ) -> dict[str, Any]:
         """
         Wait for actor run to complete.
 
@@ -155,11 +147,7 @@ class ApifyTikTokClient:
         while True:
             # Check run status
             url = f"{self.BASE_URL}/actor-runs/{run_id}"
-            response = self.session.get(
-                url,
-                headers=self._get_headers(),
-                timeout=self.timeout
-            )
+            response = self.session.get(url, headers=self._get_headers(), timeout=self.timeout)
             response.raise_for_status()
 
             run_data = response.json()["data"]
@@ -174,26 +162,23 @@ class ApifyTikTokClient:
                 return run_data
 
             elif status in ["FAILED", "ABORTED", "TIMED-OUT"]:
-                error_msg = f"Run {status.lower()}: {run_data.get('statusMessage', 'Unknown error')}"
+                error_msg = (
+                    f"Run {status.lower()}: {run_data.get('statusMessage', 'Unknown error')}"
+                )
                 self.logger.error(error_msg)
                 raise RuntimeError(error_msg)
 
             # Check timeout
             elapsed = time.time() - start_time
             if elapsed > max_wait_time:
-                raise TimeoutError(
-                    f"Run {run_id} did not complete within {max_wait_time}s"
-                )
+                raise TimeoutError(f"Run {run_id} did not complete within {max_wait_time}s")
 
             # Wait before next poll
             time.sleep(poll_interval)
 
     def get_dataset_items(
-        self,
-        dataset_id: str,
-        offset: int = 0,
-        limit: int = 1000
-    ) -> List[Dict[str, Any]]:
+        self, dataset_id: str, offset: int = 0, limit: int = 1000
+    ) -> list[dict[str, Any]]:
         """
         Get items from dataset.
 
@@ -206,27 +191,18 @@ class ApifyTikTokClient:
             List of dataset items
         """
         url = f"{self.BASE_URL}/datasets/{dataset_id}/items"
-        params = {
-            "offset": offset,
-            "limit": limit,
-            "format": "json"
-        }
+        params = {"offset": offset, "limit": limit, "format": "json"}
 
         response = self.session.get(
-            url,
-            headers=self._get_headers(),
-            params=params,
-            timeout=self.timeout
+            url, headers=self._get_headers(), params=params, timeout=self.timeout
         )
         response.raise_for_status()
 
         return response.json()
 
     def iter_dataset_items(
-        self,
-        dataset_id: str,
-        batch_size: int = 1000
-    ) -> Iterator[Dict[str, Any]]:
+        self, dataset_id: str, batch_size: int = 1000
+    ) -> Iterator[dict[str, Any]]:
         """
         Iterate over all items in dataset with automatic pagination.
 
@@ -264,11 +240,11 @@ class ApifyTikTokClient:
 
     def scrape_comments(
         self,
-        video_urls: List[str],
+        video_urls: list[str],
         max_comments_per_video: Optional[int] = None,
         wait_for_completion: bool = True,
-        poll_interval: int = 10
-    ) -> Dict[str, Any]:
+        poll_interval: int = 10,
+    ) -> dict[str, Any]:
         """
         High-level method to scrape TikTok comments.
 
@@ -287,27 +263,29 @@ class ApifyTikTokClient:
         result = {
             "run_id": run_id,
             "started_at": datetime.now(timezone.utc).isoformat(),
-            "status": "RUNNING"
+            "status": "RUNNING",
         }
 
         if wait_for_completion:
             # Wait for completion
             run_data = self.wait_for_run_completion(run_id, poll_interval=poll_interval)
 
-            result.update({
-                "status": run_data["status"],
-                "dataset_id": run_data["defaultDatasetId"],
-                "completed_at": datetime.now(timezone.utc).isoformat(),
-                "stats": {
-                    "items_count": run_data.get("stats", {}).get("itemsCount", 0),
-                    "requests_count": run_data.get("stats", {}).get("requestsCount", 0),
-                    "compute_units": run_data.get("stats", {}).get("computeUnits", 0)
+            result.update(
+                {
+                    "status": run_data["status"],
+                    "dataset_id": run_data["defaultDatasetId"],
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "stats": {
+                        "items_count": run_data.get("stats", {}).get("itemsCount", 0),
+                        "requests_count": run_data.get("stats", {}).get("requestsCount", 0),
+                        "compute_units": run_data.get("stats", {}).get("computeUnits", 0),
+                    },
                 }
-            })
+            )
 
         return result
 
-    def get_account_info(self) -> Dict[str, Any]:
+    def get_account_info(self) -> dict[str, Any]:
         """
         Get Apify account information.
 
@@ -315,20 +293,12 @@ class ApifyTikTokClient:
             Account info including credits and usage
         """
         url = f"{self.BASE_URL}/users/me"
-        response = self.session.get(
-            url,
-            headers=self._get_headers(),
-            timeout=self.timeout
-        )
+        response = self.session.get(url, headers=self._get_headers(), timeout=self.timeout)
         response.raise_for_status()
 
         return response.json()["data"]
 
-    def estimate_cost(
-        self,
-        num_videos: int,
-        avg_comments_per_video: int = 500
-    ) -> Dict[str, float]:
+    def estimate_cost(self, num_videos: int, avg_comments_per_video: int = 500) -> dict[str, float]:
         """
         Estimate cost for scraping operation.
 
@@ -352,8 +322,8 @@ class ApifyTikTokClient:
 
         total_comments = num_videos * avg_comments_per_video
         compute_units = (
-            num_videos * compute_units_per_video +
-            (total_comments / 1000) * compute_units_per_1000_comments
+            num_videos * compute_units_per_video
+            + (total_comments / 1000) * compute_units_per_1000_comments
         )
 
         # $1 = 1 compute unit (approximate)
@@ -363,5 +333,5 @@ class ApifyTikTokClient:
             "num_videos": num_videos,
             "estimated_comments": total_comments,
             "estimated_compute_units": round(compute_units, 4),
-            "estimated_cost_usd": round(estimated_cost_usd, 2)
+            "estimated_cost_usd": round(estimated_cost_usd, 2),
         }

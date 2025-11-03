@@ -12,15 +12,16 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Optional, List, Dict, Any
-from datetime import timedelta
+from typing import Any, Optional
 
 try:
     from prefect import flow, task
     from prefect.task_runners import ConcurrentTaskRunner
+
     PREFECT_AVAILABLE = True
 except ImportError:
     PREFECT_AVAILABLE = False
+
     # Provide fallback decorators
     def flow(fn=None, **kwargs):
         if fn is None:
@@ -46,29 +47,31 @@ def _setup_orchestrator_logging() -> None:
     # Console logs - maintain real-time monitoring
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        force=True  # Reset existing handlers
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        force=True,  # Reset existing handlers
     )
 
     # File logs (rotating) under logs/
-    logs_dir = Path('logs')
+    logs_dir = Path("logs")
     logs_dir.mkdir(exist_ok=True)
 
     # Create handler for orchestrator log file
     # Use larger maxBytes (10MB) for orchestrator since it logs multiple pipelines
     fh = RotatingFileHandler(
-        logs_dir / 'orchestrator.log',
+        logs_dir / "orchestrator.log",
         maxBytes=10_000_000,  # 10MB (larger for orchestrator)
-        backupCount=5  # Keep more history for orchestrator
+        backupCount=5,  # Keep more history for orchestrator
     )
     fh.setLevel(logging.INFO)
-    fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 
     # Add handler to root logger to capture all downstream logs
     root_logger = logging.getLogger()
 
     # Remove any existing file handlers to prevent duplication
-    root_logger.handlers = [h for h in root_logger.handlers if not isinstance(h, RotatingFileHandler)]
+    root_logger.handlers = [
+        h for h in root_logger.handlers if not isinstance(h, RotatingFileHandler)
+    ]
 
     # Add our file handler
     root_logger.addHandler(fh)
@@ -77,7 +80,7 @@ def _setup_orchestrator_logging() -> None:
 
 
 @task(retries=2, retry_delay_seconds=10)
-def run_wikipedia_task(force: bool = False) -> Dict[str, Any]:
+def run_wikipedia_task(force: bool = False) -> dict[str, Any]:
     """
     Task to run Wikipedia data collection pipeline.
 
@@ -114,7 +117,7 @@ def run_wikipedia_task(force: bool = False) -> Dict[str, Any]:
 
 
 @task(retries=2, retry_delay_seconds=10)
-def run_bbc_task(max_articles: Optional[int] = None, force: bool = False) -> Dict[str, Any]:
+def run_bbc_task(max_articles: Optional[int] = None, force: bool = False) -> dict[str, Any]:
     """
     Task to run BBC Somali data collection pipeline.
 
@@ -156,8 +159,8 @@ def run_huggingface_task(
     dataset_name: str = "allenai/c4",
     dataset_config: str = "so",
     max_records: Optional[int] = None,
-    force: bool = False
-) -> Dict[str, Any]:
+    force: bool = False,
+) -> dict[str, Any]:
     """
     Task to run HuggingFace datasets collection pipeline.
 
@@ -184,7 +187,7 @@ def run_huggingface_task(
         silver_path = processor.run()
 
         # Get statistics
-        dataset_slug = dataset_name.split('/')[-1]
+        dataset_slug = dataset_name.split("/")[-1]
         source = f"HuggingFace-Somali_{dataset_slug}"
 
         return {
@@ -204,7 +207,7 @@ def run_huggingface_task(
 
 
 @task(retries=2, retry_delay_seconds=10)
-def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> Dict[str, Any]:
+def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> dict[str, Any]:
     """
     Task to run Språkbanken corpora collection pipeline.
 
@@ -243,11 +246,11 @@ def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> Dict[st
 
 @task(retries=2, retry_delay_seconds=10)
 def run_tiktok_task(
-    video_urls: List[str],
+    video_urls: list[str],
     apify_api_token: str,
     apify_user_id: Optional[str] = None,
-    force: bool = False
-) -> Dict[str, Any]:
+    force: bool = False,
+) -> dict[str, Any]:
     """
     Task to run TikTok comments collection pipeline.
 
@@ -295,7 +298,7 @@ def run_tiktok_task(
     name="Wikipedia Data Collection",
     description="Collect and process Wikipedia Somali articles",
 )
-def run_wikipedia_pipeline(force: bool = False) -> Dict[str, Any]:
+def run_wikipedia_pipeline(force: bool = False) -> dict[str, Any]:
     """
     Flow to orchestrate Wikipedia data collection.
 
@@ -312,7 +315,7 @@ def run_wikipedia_pipeline(force: bool = False) -> Dict[str, Any]:
     name="BBC Somali Data Collection",
     description="Collect and process BBC Somali news articles",
 )
-def run_bbc_pipeline(max_articles: Optional[int] = None, force: bool = False) -> Dict[str, Any]:
+def run_bbc_pipeline(max_articles: Optional[int] = None, force: bool = False) -> dict[str, Any]:
     """
     Flow to orchestrate BBC Somali data collection.
 
@@ -334,8 +337,8 @@ def run_huggingface_pipeline(
     dataset_name: str = "allenai/c4",
     dataset_config: str = "so",
     max_records: Optional[int] = None,
-    force: bool = False
-) -> Dict[str, Any]:
+    force: bool = False,
+) -> dict[str, Any]:
     """
     Flow to orchestrate HuggingFace dataset collection.
 
@@ -360,7 +363,7 @@ def run_huggingface_pipeline(
     name="Språkbanken Corpora Collection",
     description="Collect and process Språkbanken Somali corpora",
 )
-def run_sprakbanken_pipeline(corpus_id: str = "all", force: bool = False) -> Dict[str, Any]:
+def run_sprakbanken_pipeline(corpus_id: str = "all", force: bool = False) -> dict[str, Any]:
     """
     Flow to orchestrate Språkbanken corpora collection.
 
@@ -379,11 +382,11 @@ def run_sprakbanken_pipeline(corpus_id: str = "all", force: bool = False) -> Dic
     description="Collect and process TikTok Somali comments via Apify",
 )
 def run_tiktok_pipeline(
-    video_urls: List[str],
+    video_urls: list[str],
     apify_api_token: str,
     apify_user_id: Optional[str] = None,
-    force: bool = False
-) -> Dict[str, Any]:
+    force: bool = False,
+) -> dict[str, Any]:
     """
     Flow to orchestrate TikTok comments collection.
 
@@ -419,11 +422,11 @@ def run_all_pipelines(
     run_huggingface: bool = True,
     run_sprakbanken: bool = True,
     run_tiktok: bool = True,
-    tiktok_video_urls: Optional[List[str]] = None,
+    tiktok_video_urls: Optional[list[str]] = None,
     tiktok_api_token: Optional[str] = None,
     tiktok_user_id: Optional[str] = None,
     auto_deploy: bool = False,
-) -> Dict[str, List[Dict[str, Any]]]:
+) -> dict[str, list[dict[str, Any]]]:
     """
     Flow to orchestrate all data collection pipelines in parallel.
 
@@ -464,23 +467,27 @@ def run_all_pipelines(
             results.append(run_bbc_task.submit(max_articles=max_bbc_articles, force=force))
 
         if run_huggingface:
-            results.append(run_huggingface_task.submit(
-                dataset_name="allenai/c4",
-                dataset_config="so",
-                max_records=max_hf_records,
-                force=force,
-            ))
+            results.append(
+                run_huggingface_task.submit(
+                    dataset_name="allenai/c4",
+                    dataset_config="so",
+                    max_records=max_hf_records,
+                    force=force,
+                )
+            )
 
         if run_sprakbanken:
             results.append(run_sprakbanken_task.submit(corpus_id=sprakbanken_corpus, force=force))
 
         if run_tiktok and tiktok_video_urls and tiktok_api_token:
-            results.append(run_tiktok_task.submit(
-                video_urls=tiktok_video_urls,
-                apify_api_token=tiktok_api_token,
-                apify_user_id=tiktok_user_id,
-                force=force,
-            ))
+            results.append(
+                run_tiktok_task.submit(
+                    video_urls=tiktok_video_urls,
+                    apify_api_token=tiktok_api_token,
+                    apify_user_id=tiktok_user_id,
+                    force=force,
+                )
+            )
         elif run_tiktok and tiktok_video_urls:
             logger.warning("TikTok pipeline skipped: API token not provided")
         elif run_tiktok:
@@ -499,23 +506,29 @@ def run_all_pipelines(
             completed_results.append(run_bbc_task(max_articles=max_bbc_articles, force=force))
 
         if run_huggingface:
-            completed_results.append(run_huggingface_task(
-                dataset_name="allenai/c4",
-                dataset_config="so",
-                max_records=max_hf_records,
-                force=force,
-            ))
+            completed_results.append(
+                run_huggingface_task(
+                    dataset_name="allenai/c4",
+                    dataset_config="so",
+                    max_records=max_hf_records,
+                    force=force,
+                )
+            )
 
         if run_sprakbanken:
-            completed_results.append(run_sprakbanken_task(corpus_id=sprakbanken_corpus, force=force))
+            completed_results.append(
+                run_sprakbanken_task(corpus_id=sprakbanken_corpus, force=force)
+            )
 
         if run_tiktok and tiktok_video_urls and tiktok_api_token:
-            completed_results.append(run_tiktok_task(
-                video_urls=tiktok_video_urls,
-                apify_api_token=tiktok_api_token,
-                apify_user_id=tiktok_user_id,
-                force=force,
-            ))
+            completed_results.append(
+                run_tiktok_task(
+                    video_urls=tiktok_video_urls,
+                    apify_api_token=tiktok_api_token,
+                    apify_user_id=tiktok_user_id,
+                    force=force,
+                )
+            )
         elif run_tiktok and tiktok_video_urls:
             logger.warning("TikTok pipeline skipped: API token not provided")
         elif run_tiktok:
@@ -559,8 +572,7 @@ def run_all_pipelines(
                 logger.warning("Dashboard deployment was skipped or failed")
         except ImportError:
             logger.error(
-                "Dashboard deployment module not available. "
-                "Ensure deployment package is installed."
+                "Dashboard deployment module not available. Ensure deployment package is installed."
             )
         except Exception as e:
             logger.error(f"Dashboard deployment failed: {e}")
@@ -642,6 +654,7 @@ def main():
         if run_tiktok_pipeline:
             # Load configuration for TikTok
             from ..config import get_config
+
             config = get_config()
 
             # Get API token (CLI arg > env var)
@@ -655,10 +668,13 @@ def main():
             # Load video URLs from file (default or custom path)
             if urls_file_path.exists():
                 from ..cli.download_tiktoksom import load_video_urls
+
                 try:
                     tiktok_video_urls = load_video_urls(urls_file_path)
                     source_info = "custom path" if args.tiktok_video_urls else "default location"
-                    logger.info(f"TikTok: Loaded {len(tiktok_video_urls)} video URLs from {source_info}: {urls_file_path}")
+                    logger.info(
+                        f"TikTok: Loaded {len(tiktok_video_urls)} video URLs from {source_info}: {urls_file_path}"
+                    )
                 except (FileNotFoundError, ValueError) as e:
                     logger.error(f"TikTok: Failed to load video URLs from {urls_file_path}: {e}")
                     logger.warning("TikTok pipeline will be skipped")
@@ -670,14 +686,20 @@ def main():
                     logger.warning("TikTok pipeline will be skipped")
                 else:
                     # Default file doesn't exist - this is expected/normal, just skip
-                    logger.info(f"TikTok: Skipping (default URLs file not found: {DEFAULT_TIKTOK_URLS_PATH})")
-                    logger.info(f"TikTok: To enable, create {DEFAULT_TIKTOK_URLS_PATH} or use --tiktok-video-urls")
+                    logger.info(
+                        f"TikTok: Skipping (default URLs file not found: {DEFAULT_TIKTOK_URLS_PATH})"
+                    )
+                    logger.info(
+                        f"TikTok: To enable, create {DEFAULT_TIKTOK_URLS_PATH} or use --tiktok-video-urls"
+                    )
                 run_tiktok_pipeline = False
 
             # Validate API token requirement
             if run_tiktok_pipeline and not tiktok_api_token:
                 logger.warning("TikTok: API token not provided, pipeline will be skipped")
-                logger.info("TikTok: Set SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN or use --tiktok-api-token")
+                logger.info(
+                    "TikTok: Set SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN or use --tiktok-api-token"
+                )
                 run_tiktok_pipeline = False
 
         result = run_all_pipelines(
@@ -702,12 +724,11 @@ def main():
     elif args.pipeline == "huggingface":
         result = run_huggingface_pipeline(max_records=args.max_hf_records, force=args.force)
     elif args.pipeline == "sprakbanken":
-        result = run_sprakbanken_pipeline(
-            corpus_id=args.sprakbanken_corpus, force=args.force
-        )
+        result = run_sprakbanken_pipeline(corpus_id=args.sprakbanken_corpus, force=args.force)
     elif args.pipeline == "tiktok":
         # Load configuration for TikTok
         from ..config import get_config
+
         config = get_config()
 
         # Get API token (CLI arg > env var)
@@ -726,6 +747,7 @@ def main():
 
         # Load video URLs from file
         from ..cli.download_tiktoksom import load_video_urls
+
         try:
             video_urls = load_video_urls(args.tiktok_video_urls)
         except (FileNotFoundError, ValueError) as e:
@@ -741,37 +763,37 @@ def main():
 
     # Print summary
     if isinstance(result, dict) and "successful" in result:
-        print(f"\n{'='*80}")
-        print(f"EXECUTION SUMMARY")
-        print(f"{'='*80}")
+        print(f"\n{'=' * 80}")
+        print("EXECUTION SUMMARY")
+        print(f"{'=' * 80}")
         print(f"Total pipelines: {result['total']}")
         print(f"Successful: {len(result['successful'])}")
         print(f"Failed: {len(result['failed'])}")
 
-        if result['successful']:
-            print(f"\n✅ Successful pipelines:")
-            for r in result['successful']:
+        if result["successful"]:
+            print("\n✅ Successful pipelines:")
+            for r in result["successful"]:
                 print(f"  - {r['source']}")
 
-        if result['failed']:
-            print(f"\n❌ Failed pipelines:")
-            for r in result['failed']:
+        if result["failed"]:
+            print("\n❌ Failed pipelines:")
+            for r in result["failed"]:
                 print(f"  - {r['source']}: {r.get('error', 'Unknown')}")
-            print(f"\n{'='*80}")
+            print(f"\n{'=' * 80}")
             print("PIPELINE EXECUTION FAILED")
-            print(f"{'='*80}")
+            print(f"{'=' * 80}")
             sys.exit(1)
     else:
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"Pipeline completed: {result.get('source', 'Unknown')}")
         print(f"Status: {result.get('status', 'Unknown')}")
-        if result.get('status') == 'success':
+        if result.get("status") == "success":
             print(f"Output: {result.get('silver_path', 'Unknown')}")
         else:
             print(f"Error: {result.get('error', 'Unknown')}")
-            print(f"\n{'='*80}")
+            print(f"\n{'=' * 80}")
             print("PIPELINE EXECUTION FAILED")
-            print(f"{'='*80}")
+            print(f"{'=' * 80}")
             sys.exit(1)
 
 

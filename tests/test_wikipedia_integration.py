@@ -8,13 +8,16 @@ Tests the full pipeline with offline fixture data to ensure:
 - Correct filtering of namespace pages
 """
 
-import pytest
 import bz2
 import shutil
 from pathlib import Path
-import pyarrow.parquet as pq
 
-from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import WikipediaSomaliProcessor
+import pyarrow.parquet as pq
+import pytest
+
+from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+    WikipediaSomaliProcessor,
+)
 
 
 @pytest.fixture
@@ -36,12 +39,12 @@ def wiki_fixture_path():
 def compressed_wiki_fixture(wiki_fixture_path, temp_data_dir):
     """Create a compressed bz2 version of the Wiki fixture."""
     # Read the XML fixture
-    with open(wiki_fixture_path, 'rb') as f_in:
+    with open(wiki_fixture_path, "rb") as f_in:
         xml_content = f_in.read()
 
     # Compress it
     compressed_path = temp_data_dir / "sowiki-test.xml.bz2"
-    with bz2.open(compressed_path, 'wb') as f_out:
+    with bz2.open(compressed_path, "wb") as f_out:
         f_out.write(xml_content)
 
     return compressed_path
@@ -67,7 +70,7 @@ class TestWikipediaIntegration:
         assert staging_file.exists()
 
         # Read and verify content
-        with open(staging_file, 'r', encoding='utf-8') as f:
+        with open(staging_file, encoding="utf-8") as f:
             content = f.read()
 
         # Should contain the 3 main articles (not Template: or User:)
@@ -83,7 +86,9 @@ class TestWikipediaIntegration:
         page_count = content.count(processor.page_marker_prefix)
         assert page_count == 3, f"Expected 3 pages, got {page_count}"
 
-    def test_process_creates_silver_dataset(self, compressed_wiki_fixture, temp_data_dir, monkeypatch):
+    def test_process_creates_silver_dataset(
+        self, compressed_wiki_fixture, temp_data_dir, monkeypatch
+    ):
         """Test that process phase creates valid silver dataset."""
         monkeypatch.chdir(temp_data_dir.parent)
 
@@ -111,9 +116,22 @@ class TestWikipediaIntegration:
 
         # Verify schema
         expected_columns = [
-            'id', 'text', 'title', 'source', 'source_type', 'url', 'source_id',
-            'date_published', 'date_accessed', 'language', 'license', 'topic',
-            'tokens', 'text_hash', 'pipeline_version', 'source_metadata'
+            "id",
+            "text",
+            "title",
+            "source",
+            "source_type",
+            "url",
+            "source_id",
+            "date_published",
+            "date_accessed",
+            "language",
+            "license",
+            "topic",
+            "tokens",
+            "text_hash",
+            "pipeline_version",
+            "source_metadata",
         ]
         actual_columns = table.column_names
         assert set(expected_columns) == set(actual_columns)
@@ -123,14 +141,14 @@ class TestWikipediaIntegration:
         assert len(df) == 3, f"Expected 3 records, got {len(df)}"
 
         # Verify content
-        titles = set(df['title'].tolist())
-        assert titles == {'Soomaaliya', 'Muqdisho', 'Afrika'}
+        titles = set(df["title"].tolist())
+        assert titles == {"Soomaaliya", "Muqdisho", "Afrika"}
 
         # Verify all records have Wikipedia source
-        assert all(df['source'] == 'Wikipedia-Somali')
-        assert all(df['source_type'] == 'wiki')
-        assert all(df['language'] == 'so')
-        assert all(df['license'] == 'CC-BY-SA-3.0')
+        assert all(df["source"] == "Wikipedia-Somali")
+        assert all(df["source_type"] == "wiki")
+        assert all(df["language"] == "so")
+        assert all(df["license"] == "CC-BY-SA-3.0")
 
     def test_text_cleaning_applied(self, compressed_wiki_fixture, temp_data_dir, monkeypatch):
         """Test that wiki markup is properly cleaned."""
@@ -149,7 +167,7 @@ class TestWikipediaIntegration:
         df = table.to_pandas()
 
         # Check that wiki markup is removed
-        soomaaliya_text = df[df['title'] == 'Soomaaliya']['text'].iloc[0]
+        soomaaliya_text = df[df["title"] == "Soomaaliya"]["text"].iloc[0]
 
         # Should not contain wiki markup
         assert "[[" not in soomaaliya_text, "Wiki links not cleaned"
@@ -180,7 +198,7 @@ class TestWikipediaIntegration:
         table = pq.read_table(parquet_files[0])
         df = table.to_pandas()
 
-        ids = df['id'].tolist()
+        ids = df["id"].tolist()
         assert len(ids) == len(set(ids)), "Record IDs are not unique"
 
     def test_full_pipeline_run_method(self, compressed_wiki_fixture, temp_data_dir, monkeypatch):
@@ -235,4 +253,4 @@ class TestWikipediaIntegration:
 
         # Results should be identical
         assert len(df1) == len(df2)
-        assert set(df1['id']) == set(df2['id'])
+        assert set(df1["id"]) == set(df2["id"])

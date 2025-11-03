@@ -5,13 +5,13 @@ Pure functions with no side effects - easily testable and reusable.
 """
 
 import re
-from typing import Optional, List, Protocol
+from typing import Optional, Protocol
 
 
 class Cleaner(Protocol):
     """Protocol for text cleaner objects."""
-    def clean(self, text: str) -> str:
-        ...
+
+    def clean(self, text: str) -> str: ...
 
 
 class WikiMarkupCleaner:
@@ -19,14 +19,14 @@ class WikiMarkupCleaner:
 
     def __init__(self):
         # Compile patterns once for performance
-        self.link_with_text_pattern = re.compile(r'\[\[([^|\]]+)\|([^\]]+)\]\]')
-        self.simple_link_pattern = re.compile(r'\[\[([^\]]+)\]\]')
-        self.external_link_pattern = re.compile(r'\[([^\]]+)\]')
-        self.template_pattern = re.compile(r'{{[^}]+}}')
-        self.ref_pattern = re.compile(r'<ref[^>]*>.*?</ref>', re.DOTALL)
-        self.html_pattern = re.compile(r'<[^>]+>')
-        self.heading_pattern = re.compile(r'={2,}.*?={2,}')
-        self.list_marker_pattern = re.compile(r'[#*:;]+')
+        self.link_with_text_pattern = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
+        self.simple_link_pattern = re.compile(r"\[\[([^\]]+)\]\]")
+        self.external_link_pattern = re.compile(r"\[([^\]]+)\]")
+        self.template_pattern = re.compile(r"{{[^}]+}}")
+        self.ref_pattern = re.compile(r"<ref[^>]*>.*?</ref>", re.DOTALL)
+        self.html_pattern = re.compile(r"<[^>]+>")
+        self.heading_pattern = re.compile(r"={2,}.*?={2,}")
+        self.list_marker_pattern = re.compile(r"[#*:;]+")
 
     def clean(self, text: str) -> str:
         """
@@ -44,21 +44,21 @@ class WikiMarkupCleaner:
             'display text'
         """
         # Links: [[link|text]] -> text
-        text = self.link_with_text_pattern.sub(r'\2', text)
+        text = self.link_with_text_pattern.sub(r"\2", text)
         # Links: [[link]] -> link
-        text = self.simple_link_pattern.sub(r'\1', text)
+        text = self.simple_link_pattern.sub(r"\1", text)
         # External: [link] -> link
-        text = self.external_link_pattern.sub(r'\1', text)
+        text = self.external_link_pattern.sub(r"\1", text)
         # Remove templates: {{template}}
-        text = self.template_pattern.sub('', text)
+        text = self.template_pattern.sub("", text)
         # Remove references: <ref>...</ref>
-        text = self.ref_pattern.sub('', text)
+        text = self.ref_pattern.sub("", text)
         # Remove HTML tags
-        text = self.html_pattern.sub('', text)
+        text = self.html_pattern.sub("", text)
         # Remove section headings: == Heading ==
-        text = self.heading_pattern.sub('', text)
+        text = self.heading_pattern.sub("", text)
         # Remove list markers: *, #, :, ;
-        text = self.list_marker_pattern.sub('', text)
+        text = self.list_marker_pattern.sub("", text)
 
         return text
 
@@ -67,8 +67,8 @@ class WhitespaceCleaner:
     """Normalizes whitespace in text."""
 
     def __init__(self):
-        self.newline_pattern = re.compile(r'\n+')
-        self.space_pattern = re.compile(r' +')
+        self.newline_pattern = re.compile(r"\n+")
+        self.space_pattern = re.compile(r" +")
 
     def clean(self, text: str) -> str:
         """
@@ -86,9 +86,9 @@ class WhitespaceCleaner:
             'hello\\nworld'
         """
         # Collapse multiple newlines
-        text = self.newline_pattern.sub('\n', text)
+        text = self.newline_pattern.sub("\n", text)
         # Collapse multiple spaces
-        text = self.space_pattern.sub(' ', text)
+        text = self.space_pattern.sub(" ", text)
         return text.strip()
 
 
@@ -105,7 +105,7 @@ class TextCleaningPipeline:
         'text with spaces'
     """
 
-    def __init__(self, cleaners: List['Cleaner']):
+    def __init__(self, cleaners: list["Cleaner"]):
         """
         Initialize pipeline with list of cleaners.
 
@@ -139,8 +139,8 @@ class HTMLCleaner:
     """Removes HTML tags and entities from text."""
 
     def __init__(self):
-        self.html_tag_pattern = re.compile(r'<[^>]+>')
-        self.html_entity_pattern = re.compile(r'&[a-zA-Z]+;|&#\d+;')
+        self.html_tag_pattern = re.compile(r"<[^>]+>")
+        self.html_entity_pattern = re.compile(r"&[a-zA-Z]+;|&#\d+;")
 
     def clean(self, text: str) -> str:
         """
@@ -158,16 +158,16 @@ class HTMLCleaner:
             'Hello & world'
         """
         # Remove HTML tags
-        text = self.html_tag_pattern.sub('', text)
+        text = self.html_tag_pattern.sub("", text)
         # Decode common HTML entities
-        text = text.replace('&amp;', '&')
-        text = text.replace('&lt;', '<')
-        text = text.replace('&gt;', '>')
-        text = text.replace('&quot;', '"')
-        text = text.replace('&#39;', "'")
-        text = text.replace('&nbsp;', ' ')
+        text = text.replace("&amp;", "&")
+        text = text.replace("&lt;", "<")
+        text = text.replace("&gt;", ">")
+        text = text.replace("&quot;", '"')
+        text = text.replace("&#39;", "'")
+        text = text.replace("&nbsp;", " ")
         # Remove any remaining entities
-        text = self.html_entity_pattern.sub('', text)
+        text = self.html_entity_pattern.sub("", text)
         return text
 
 
@@ -178,10 +178,12 @@ def create_wikipedia_cleaner() -> TextCleaningPipeline:
     Returns:
         TextCleaningPipeline configured for Wikipedia text
     """
-    return TextCleaningPipeline([
-        WikiMarkupCleaner(),
-        WhitespaceCleaner(),
-    ])
+    return TextCleaningPipeline(
+        [
+            WikiMarkupCleaner(),
+            WhitespaceCleaner(),
+        ]
+    )
 
 
 def create_html_cleaner() -> TextCleaningPipeline:
@@ -191,7 +193,9 @@ def create_html_cleaner() -> TextCleaningPipeline:
     Returns:
         TextCleaningPipeline configured for HTML content (BBC, VOA, etc.)
     """
-    return TextCleaningPipeline([
-        HTMLCleaner(),
-        WhitespaceCleaner(),
-    ])
+    return TextCleaningPipeline(
+        [
+            HTMLCleaner(),
+            WhitespaceCleaner(),
+        ]
+    )

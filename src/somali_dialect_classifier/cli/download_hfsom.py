@@ -17,7 +17,6 @@ Note: OSCAR and MADLAD-400 have been removed. See:
 import argparse
 import logging
 import sys
-import os
 from pathlib import Path
 
 from somali_dialect_classifier.preprocessing.huggingface_somali_processor import (
@@ -31,17 +30,17 @@ from somali_dialect_classifier.preprocessing.huggingface_somali_processor import
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler('logs/download_hfsom.log'),  # Updated filename
-        logging.StreamHandler(sys.stdout)
-    ]
+        logging.FileHandler("logs/download_hfsom.log"),  # Updated filename
+        logging.StreamHandler(sys.stdout),
+    ],
 )
 
 # Keep datasets logging at WARNING level (show important messages, not DEBUG spam)
-logging.getLogger('datasets').setLevel(logging.WARNING)
-logging.getLogger('filelock').setLevel(logging.WARNING)
-logging.getLogger('huggingface_hub').setLevel(logging.WARNING)
+logging.getLogger("datasets").setLevel(logging.WARNING)
+logging.getLogger("filelock").setLevel(logging.WARNING)
+logging.getLogger("huggingface_hub").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ logger = logging.getLogger(__name__)
 def create_parser() -> argparse.ArgumentParser:
     """Create argument parser."""
     parser = argparse.ArgumentParser(
-        description='Download and process HuggingFace datasets for Somali NLP',
+        description="Download and process HuggingFace datasets for Somali NLP",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -67,73 +66,57 @@ Examples:
 
 Note: Only MC4 is supported. OSCAR and MADLAD-400 have been removed.
 See docs/decisions/ for details.
-        """
+        """,
     )
 
     parser.add_argument(
-        'dataset',
-        nargs='?',  # Make optional - shows help if missing
+        "dataset",
+        nargs="?",  # Make optional - shows help if missing
     )
 
     parser.add_argument(
-        '--max-records',
+        "--max-records",
         type=int,
         default=None,
-        help='Maximum number of records to process (None = unlimited)'
+        help="Maximum number of records to process (None = unlimited)",
     )
 
     parser.add_argument(
-        '--force',
-        action='store_true',
-        help='Force reprocessing even if output exists'
+        "--force", action="store_true", help="Force reprocessing even if output exists"
     )
 
     # Note: --all flag removed since only MC4 is supported
     # Kept for backwards compatibility but now processes only MC4
 
     # Custom dataset options
-    custom_group = parser.add_argument_group('custom dataset options')
+    custom_group = parser.add_argument_group("custom dataset options")
     custom_group.add_argument(
-        '--dataset-name',
-        type=str,
-        help='HuggingFace dataset name (e.g., "mc4", "allenai/gdelt")'
+        "--dataset-name", type=str, help='HuggingFace dataset name (e.g., "mc4", "allenai/gdelt")'
     )
     custom_group.add_argument(
-        '--config',
+        "--config", type=str, default=None, help='Dataset configuration/subset (e.g., "so")'
+    )
+    custom_group.add_argument(
+        "--split", type=str, default="train", help="Dataset split (default: train)"
+    )
+    custom_group.add_argument(
+        "--text-field",
         type=str,
+        default="text",
+        help="Field containing text content (default: text)",
+    )
+    custom_group.add_argument(
+        "--title-field", type=str, default=None, help="Field containing title (optional)"
+    )
+    custom_group.add_argument(
+        "--url-field", type=str, default=None, help="Field containing URL (optional)"
+    )
+    custom_group.add_argument(
+        "--metadata-fields",
+        type=str,
+        nargs="+",
         default=None,
-        help='Dataset configuration/subset (e.g., "so")'
-    )
-    custom_group.add_argument(
-        '--split',
-        type=str,
-        default='train',
-        help='Dataset split (default: train)'
-    )
-    custom_group.add_argument(
-        '--text-field',
-        type=str,
-        default='text',
-        help='Field containing text content (default: text)'
-    )
-    custom_group.add_argument(
-        '--title-field',
-        type=str,
-        default=None,
-        help='Field containing title (optional)'
-    )
-    custom_group.add_argument(
-        '--url-field',
-        type=str,
-        default=None,
-        help='Field containing URL (optional)'
-    )
-    custom_group.add_argument(
-        '--metadata-fields',
-        type=str,
-        nargs='+',
-        default=None,
-        help='Additional metadata fields to include'
+        help="Additional metadata fields to include",
     )
 
     return parser
@@ -147,9 +130,9 @@ def main():
     # Show help if no dataset specified
     if not args.dataset:
         parser.print_help()
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("ERROR: Please specify a dataset to process")
-        print("="*70)
+        print("=" * 70)
         print("\nAvailable datasets:")
         print("  mc4       - Multilingual C4 (large web corpus)")
         print("  custom    - Custom HuggingFace dataset")
@@ -158,11 +141,11 @@ def main():
         print("\nExamples:")
         print("  hfsom-download mc4 --max-records 1000")
         print("  hfsom-download mc4 --force")
-        print("="*70)
+        print("=" * 70)
         sys.exit(1)
 
     # Create logs directory if not exists
-    Path('logs').mkdir(exist_ok=True)
+    Path("logs").mkdir(exist_ok=True)
 
     # ============================================================================
     # REMOVED: --all flag processing
@@ -183,12 +166,9 @@ def main():
 
     try:
         # Create processor based on dataset type
-        if args.dataset == 'mc4':
+        if args.dataset == "mc4":
             logger.info("Using MC4 (Multilingual C4) processor")
-            processor = create_mc4_processor(
-                max_records=args.max_records,
-                force=args.force
-            )
+            processor = create_mc4_processor(max_records=args.max_records, force=args.force)
 
         # ============================================================================
         # REMOVED: OSCAR and MADLAD-400 Processing
@@ -201,7 +181,7 @@ def main():
         # See: docs/decisions/003-madlad-400-exclusion.md
         # ============================================================================
 
-        elif args.dataset == 'custom':
+        elif args.dataset == "custom":
             if not args.dataset_name:
                 logger.error("--dataset-name required for custom datasets")
                 sys.exit(1)
@@ -248,5 +228,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

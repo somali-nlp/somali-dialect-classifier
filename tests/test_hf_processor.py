@@ -4,25 +4,22 @@ Unit tests for HuggingFace datasets processor.
 Tests processor initialization, file creation, and integration with base pipeline contract.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 try:
     from datasets import Dataset
+
     DATASETS_AVAILABLE = True
 except ImportError:
     DATASETS_AVAILABLE = False
 
 from somali_dialect_classifier.preprocessing.huggingface_somali_processor import (
-    HuggingFaceSomaliProcessor,
     create_mc4_processor,
 )
 
-
-pytestmark = pytest.mark.skipif(
-    not DATASETS_AVAILABLE,
-    reason="datasets library not installed"
-)
+pytestmark = pytest.mark.skipif(not DATASETS_AVAILABLE, reason="datasets library not installed")
 
 
 @pytest.fixture
@@ -41,22 +38,24 @@ class TestHFProcessorFiles:
         """Test that processed_file is set during initialization."""
         processor = create_mc4_processor(max_records=10)
 
-        assert hasattr(processor, 'processed_file')
+        assert hasattr(processor, "processed_file")
         assert processor.processed_file is not None
         assert processor.processed_file.name == "c4_processed.txt"
 
     def test_manifest_uses_dataset_slug(self, temp_work_dir, monkeypatch):
         """Test that manifest file uses dataset-specific naming."""
+
         def mock_load_dataset(*args, **kwargs):
             class MockDataset:
                 revision = "test-revision"
                 info = None
+
             return MockDataset()
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
                 "somali_dialect_classifier.preprocessing.huggingface_somali_processor.load_dataset",
-                mock_load_dataset
+                mock_load_dataset,
             )
 
         processor = create_mc4_processor(max_records=10)
@@ -69,20 +68,29 @@ class TestHFProcessorFiles:
         """Test that processed text file is written during process()."""
         # Create mock dataset with text long enough to pass min_length filter (100 chars)
         mock_data = [
-            {"text": "Muqdisho waa magaalada caasimadda ah ee Soomaaliya. Waxay ku taalla xeebta Badweynta Hindi ee koonfurta Soomaaliya.", "url": "http://ex.com/1", "timestamp": "2023-01-01"},
-            {"text": "Soomaaliya waa waddan ku yaal Geeska Afrika. Waxay ku taalla bariga Afrika oo waxay leedahay xeeb dheer.", "url": "http://ex.com/2", "timestamp": "2023-01-02"},
+            {
+                "text": "Muqdisho waa magaalada caasimadda ah ee Soomaaliya. Waxay ku taalla xeebta Badweynta Hindi ee koonfurta Soomaaliya.",
+                "url": "http://ex.com/1",
+                "timestamp": "2023-01-01",
+            },
+            {
+                "text": "Soomaaliya waa waddan ku yaal Geeska Afrika. Waxay ku taalla bariga Afrika oo waxay leedahay xeeb dheer.",
+                "url": "http://ex.com/2",
+                "timestamp": "2023-01-02",
+            },
         ]
 
         def mock_load_dataset(*args, **kwargs):
             class MockDataset:
                 revision = "test"
                 info = None
+
             return MockDataset()
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
                 "somali_dialect_classifier.preprocessing.huggingface_somali_processor.load_dataset",
-                mock_load_dataset
+                mock_load_dataset,
             )
 
         processor = create_mc4_processor(max_records=10)
@@ -96,9 +104,10 @@ class TestHFProcessorFiles:
         # Write mock JSONL batch
         batch_file = staging_dir / "batch_000000.jsonl"
         import json
-        with open(batch_file, 'w', encoding='utf-8') as f:
+
+        with open(batch_file, "w", encoding="utf-8") as f:
             for record in mock_data:
-                f.write(json.dumps(record) + '\n')
+                f.write(json.dumps(record) + "\n")
 
         # Mark extraction complete
         (staging_dir / ".extraction_complete").touch()
@@ -110,7 +119,7 @@ class TestHFProcessorFiles:
         assert processor.processed_file.exists(), f"Expected {processor.processed_file} to exist"
 
         # Verify content format
-        with open(processor.processed_file, 'r', encoding='utf-8') as f:
+        with open(processor.processed_file, encoding="utf-8") as f:
             content = f.read()
 
         # Should contain both texts
@@ -119,16 +128,18 @@ class TestHFProcessorFiles:
 
     def test_manifest_contains_audit_metadata(self, temp_work_dir, monkeypatch):
         """Test that manifest contains audit fields for Ops."""
+
         def mock_load_dataset(*args, **kwargs):
             class MockDataset:
                 revision = "test"
                 info = None
+
             return MockDataset()
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
                 "somali_dialect_classifier.preprocessing.huggingface_somali_processor.load_dataset",
-                mock_load_dataset
+                mock_load_dataset,
             )
 
         processor = create_mc4_processor(max_records=10)
@@ -136,7 +147,8 @@ class TestHFProcessorFiles:
 
         # Read manifest
         import json
-        with open(manifest_path, 'r') as f:
+
+        with open(manifest_path) as f:
             manifest = json.load(f)
 
         # Check audit fields exist
@@ -149,19 +161,24 @@ class TestHFProcessorFiles:
         """Test that process() always returns a Path or raises an exception (never returns None)."""
         # Create mock dataset with text long enough to pass min_length filter (100 chars)
         mock_data = [
-            {"text": "Muqdisho waa magaalada ugu weyn ee Soomaaliya. Waxay ku taalla xeebta Badweynta Hindi ee koonfurta Soomaaliya oo waxay leedahay taariikhda dheer.", "url": "http://ex.com/1", "timestamp": "2023-01-01"},
+            {
+                "text": "Muqdisho waa magaalada ugu weyn ee Soomaaliya. Waxay ku taalla xeebta Badweynta Hindi ee koonfurta Soomaaliya oo waxay leedahay taariikhda dheer.",
+                "url": "http://ex.com/1",
+                "timestamp": "2023-01-01",
+            },
         ]
 
         def mock_load_dataset(*args, **kwargs):
             class MockDataset:
                 revision = "test"
                 info = None
+
             return MockDataset()
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
                 "somali_dialect_classifier.preprocessing.huggingface_somali_processor.load_dataset",
-                mock_load_dataset
+                mock_load_dataset,
             )
 
         processor = create_mc4_processor(max_records=10)
@@ -175,9 +192,10 @@ class TestHFProcessorFiles:
         # Write mock JSONL batch
         batch_file = staging_dir / "batch_000000.jsonl"
         import json
-        with open(batch_file, 'w', encoding='utf-8') as f:
+
+        with open(batch_file, "w", encoding="utf-8") as f:
             for record in mock_data:
-                f.write(json.dumps(record) + '\n')
+                f.write(json.dumps(record) + "\n")
 
         # Mark extraction complete
         (staging_dir / ".extraction_complete").touch()
@@ -198,12 +216,13 @@ class TestHFProcessorFiles:
             class MockDataset:
                 revision = "test"
                 info = None
+
             return MockDataset()
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
                 "somali_dialect_classifier.preprocessing.huggingface_somali_processor.load_dataset",
-                mock_load_dataset
+                mock_load_dataset,
             )
 
         processor = create_mc4_processor(max_records=10)
@@ -217,9 +236,10 @@ class TestHFProcessorFiles:
         # Write mock JSONL batch
         batch_file = staging_dir / "batch_000000.jsonl"
         import json
-        with open(batch_file, 'w', encoding='utf-8') as f:
+
+        with open(batch_file, "w", encoding="utf-8") as f:
             for record in mock_data:
-                f.write(json.dumps(record) + '\n')
+                f.write(json.dumps(record) + "\n")
 
         # Mark extraction complete
         (staging_dir / ".extraction_complete").touch()

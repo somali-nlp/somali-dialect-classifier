@@ -8,10 +8,11 @@ Tests the full pipeline with offline fixture data to ensure:
 - Empty articles are filtered out
 """
 
-import pytest
 import shutil
 from pathlib import Path
+
 import pyarrow.parquet as pq
+import pytest
 
 from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
 
@@ -72,7 +73,7 @@ class TestBBCIntegration:
         df = table.to_pandas()
 
         # Convert all text content to a single string for assertion
-        content = ' '.join(df['text'].astype(str).tolist() + df['title'].astype(str).tolist())
+        content = " ".join(df["text"].astype(str).tolist() + df["title"].astype(str).tolist())
 
         # Should contain the 3 valid articles (4th is empty)
         assert "Soomaaliya: Xaalada Amniga" in content
@@ -105,10 +106,25 @@ class TestBBCIntegration:
 
         # Verify schema (updated to include enhanced schema fields)
         expected_columns = [
-            'id', 'text', 'title', 'source', 'source_type', 'url', 'source_id',
-            'date_published', 'date_accessed', 'language', 'license', 'topic',
-            'tokens', 'text_hash', 'pipeline_version', 'source_metadata',
-            'domain', 'register', 'embedding'  # Enhanced schema fields
+            "id",
+            "text",
+            "title",
+            "source",
+            "source_type",
+            "url",
+            "source_id",
+            "date_published",
+            "date_accessed",
+            "language",
+            "license",
+            "topic",
+            "tokens",
+            "text_hash",
+            "pipeline_version",
+            "source_metadata",
+            "domain",
+            "register",
+            "embedding",  # Enhanced schema fields
         ]
         actual_columns = table.column_names
         assert set(expected_columns) == set(actual_columns)
@@ -119,19 +135,19 @@ class TestBBCIntegration:
         assert len(df) == 3, f"Expected 3 records, got {len(df)}"
 
         # Verify content
-        titles = set(df['title'].tolist())
+        titles = set(df["title"].tolist())
         expected_titles = {
-            'Soomaaliya: Xaalada Amniga',
-            'Caafimaadka: Tallaalka Cusub',
-            'Ciyaaraha: Kooxda Qaranka'
+            "Soomaaliya: Xaalada Amniga",
+            "Caafimaadka: Tallaalka Cusub",
+            "Ciyaaraha: Kooxda Qaranka",
         }
         assert titles == expected_titles
 
         # Verify all records have BBC source
-        assert all(df['source'] == 'BBC-Somali')
-        assert all(df['source_type'] == 'news')
-        assert all(df['language'] == 'so')
-        assert all(df['license'] == 'BBC Terms of Use')
+        assert all(df["source"] == "BBC-Somali")
+        assert all(df["source_type"] == "news")
+        assert all(df["language"] == "so")
+        assert all(df["license"] == "BBC Terms of Use")
 
     def test_html_cleaning_applied(self, bbc_fixture_path, temp_data_dir, monkeypatch):
         """Test that HTML tags and entities are properly cleaned."""
@@ -151,7 +167,7 @@ class TestBBCIntegration:
 
         # Check that HTML is removed
         for _, row in df.iterrows():
-            text = row['text']
+            text = row["text"]
 
             # Should not contain HTML tags
             assert "<p>" not in text, f"HTML tags not cleaned in: {row['title']}"
@@ -164,9 +180,9 @@ class TestBBCIntegration:
             assert "&ldquo;" not in text, f"HTML entities not decoded in: {row['title']}"
 
         # Verify specific content
-        health_article = df[df['title'] == 'Caafimaadka: Tallaalka Cusub']['text'].iloc[0]
+        health_article = df[df["title"] == "Caafimaadka: Tallaalka Cusub"]["text"].iloc[0]
         # HTML entity &ldquo; should be decoded to "
-        assert '"Waa guul weyn,"' in health_article or 'Waa guul weyn' in health_article
+        assert '"Waa guul weyn,"' in health_article or "Waa guul weyn" in health_article
 
     def test_metadata_preservation(self, bbc_fixture_path, temp_data_dir, monkeypatch):
         """Test that article metadata is preserved in silver records."""
@@ -185,12 +201,12 @@ class TestBBCIntegration:
         df = table.to_pandas()
 
         # Check URLs are preserved
-        urls = set(df['url'].tolist())
-        assert 'https://www.bbc.com/somali/articles/c1234567890' in urls
-        assert 'https://www.bbc.com/somali/articles/c0987654321' in urls
+        urls = set(df["url"].tolist())
+        assert "https://www.bbc.com/somali/articles/c1234567890" in urls
+        assert "https://www.bbc.com/somali/articles/c0987654321" in urls
 
         # Check date_published is preserved
-        assert df['date_published'].notna().sum() == 3  # All 3 valid articles have dates
+        assert df["date_published"].notna().sum() == 3  # All 3 valid articles have dates
 
     def test_empty_article_filtering(self, bbc_fixture_path, temp_data_dir, monkeypatch):
         """Test that empty/whitespace-only articles are filtered out."""
@@ -213,8 +229,8 @@ class TestBBCIntegration:
         assert len(df) == 3
 
         # Verify empty article is not present
-        titles = df['title'].tolist()
-        assert 'Maqaal Banaan' not in titles
+        titles = df["title"].tolist()
+        assert "Maqaal Banaan" not in titles
 
     def test_ids_unique(self, bbc_fixture_path, temp_data_dir, monkeypatch):
         """Test that all record IDs are unique."""
@@ -232,7 +248,7 @@ class TestBBCIntegration:
         table = pq.ParquetFile(parquet_files[0]).read()
         df = table.to_pandas()
 
-        ids = df['id'].tolist()
+        ids = df["id"].tolist()
         assert len(ids) == len(set(ids)), "Record IDs are not unique"
 
     def test_token_counts_positive(self, bbc_fixture_path, temp_data_dir, monkeypatch):
@@ -252,7 +268,7 @@ class TestBBCIntegration:
         df = table.to_pandas()
 
         # All records should have positive token counts
-        assert all(df['tokens'] > 0), "Some records have zero or negative token counts"
+        assert all(df["tokens"] > 0), "Some records have zero or negative token counts"
 
     def test_schema_consistency_with_wikipedia(self, bbc_fixture_path, temp_data_dir, monkeypatch):
         """Test that BBC silver schema matches Wikipedia silver schema."""
@@ -271,6 +287,7 @@ class TestBBCIntegration:
 
         # Verify schema matches expected (same as Wikipedia)
         from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
+
         writer = SilverDatasetWriter()
 
         # Schema should match exactly
@@ -305,27 +322,30 @@ class TestBBCIntegration:
         processor = BBCSomaliProcessor(max_articles=1)
 
         # Mock requests to return empty-content HTML
-        with patch('requests.Session') as mock_session_class:
+        with patch("requests.Session") as mock_session_class:
             mock_session = Mock()
             mock_response = Mock()
             mock_response.status_code = 200
-            mock_response.content = mock_html.encode('utf-8')
+            mock_response.content = mock_html.encode("utf-8")
             # Add headers to avoid Mock objects being passed to SQLite
             mock_response.headers = {}  # Empty headers dict instead of Mock
             mock_session.get.return_value = mock_response
             mock_session_class.return_value = mock_session
 
             # Scrape the mock article
-            result = processor._scrape_article(mock_session, 'https://www.bbc.com/somali/articles/test')
+            result = processor._scrape_article(
+                mock_session, "https://www.bbc.com/somali/articles/test"
+            )
 
             # Should still return a result (not None)
             assert result is not None
 
             # But text should be empty
-            assert result['text'] == '', f"Expected empty text, got: {result['text']}"
+            assert result["text"] == "", f"Expected empty text, got: {result['text']}"
 
             # Check that warning was logged
             assert any(
-                "Empty text extracted" in record.message and "BBC may have changed" in record.message
+                "Empty text extracted" in record.message
+                and "BBC may have changed" in record.message
                 for record in caplog.records
             ), "Expected warning about empty text extraction, but none found"

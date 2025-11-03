@@ -9,16 +9,15 @@ while handling the unique aspects of TikTok comment data (social media, informal
 """
 
 import json
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Iterator
+from collections.abc import Iterator
 from datetime import datetime, timezone
-
-from .base_pipeline import BasePipeline, RawRecord
-from .text_cleaners import TextCleaningPipeline
-from ..config import get_config
+from pathlib import Path
+from typing import Any, Optional
 
 # Import our Apify client
 from .apify_tiktok_client import ApifyTikTokClient
+from .base_pipeline import BasePipeline, RawRecord
+from .text_cleaners import TextCleaningPipeline
 
 
 class TikTokSomaliProcessor(BasePipeline):
@@ -37,8 +36,8 @@ class TikTokSomaliProcessor(BasePipeline):
         self,
         apify_api_token: str,
         apify_user_id: Optional[str] = None,
-        video_urls: Optional[List[str]] = None,
-        force: bool = False
+        video_urls: Optional[list[str]] = None,
+        force: bool = False,
     ):
         """
         Initialize TikTok Somali processor.
@@ -62,15 +61,15 @@ class TikTokSomaliProcessor(BasePipeline):
         self.video_urls = video_urls or []
 
         # Initialize deduplication and ledger BEFORE BasePipeline
-        from somali_dialect_classifier.preprocessing.dedup import DedupEngine, DedupConfig
         from somali_dialect_classifier.preprocessing.crawl_ledger import get_ledger
+        from somali_dialect_classifier.preprocessing.dedup import DedupConfig, DedupEngine
 
         # IMPORTANT: Only remove EXACT duplicates, not similar comments
         # User pays for every comment Apify scrapes, so we keep ALL of them
         dedup_config = DedupConfig(
             hash_fields=["text", "url"],
             enable_minhash=False,  # Disabled: was removing similar (not identical) comments
-            similarity_threshold=1.0  # Only remove 100% identical duplicates
+            similarity_threshold=1.0,  # Only remove 100% identical duplicates
         )
         self.dedup = DedupEngine(dedup_config)
         self.ledger = get_ledger()
@@ -81,9 +80,13 @@ class TikTokSomaliProcessor(BasePipeline):
 
         # File paths (TikTok-specific naming)
         self.video_urls_file = self.raw_dir / f"tiktok-somali_{self.run_id}_raw_video-urls.json"
-        self.apify_metadata_file = self.raw_dir / f"tiktok-somali_{self.run_id}_raw_apify-metadata.json"
+        self.apify_metadata_file = (
+            self.raw_dir / f"tiktok-somali_{self.run_id}_raw_apify-metadata.json"
+        )
         self.staging_file = self.staging_dir / f"tiktok-somali_{self.run_id}_staging_comments.jsonl"
-        self.processed_file = self.processed_dir / f"tiktok-somali_{self.run_id}_processed_cleaned.txt"
+        self.processed_file = (
+            self.processed_dir / f"tiktok-somali_{self.run_id}_processed_cleaned.txt"
+        )
 
     def _register_filters(self) -> None:
         """
@@ -104,18 +107,20 @@ class TikTokSomaliProcessor(BasePipeline):
         """Create text cleaner for TikTok comments."""
         from somali_dialect_classifier.preprocessing.text_cleaners import (
             TextCleaningPipeline,
-            WhitespaceCleaner
+            WhitespaceCleaner,
         )
 
         # MINIMAL cleaning - preserve EVERYTHING including emojis!
         # User paid for these comments, so we keep them as-is.
         # Only normalize whitespace to prevent formatting issues.
-        return TextCleaningPipeline([
-            WhitespaceCleaner(),  # Just normalize whitespace
-            # NO emoji removal
-            # NO special character removal
-            # NO length filtering
-        ])
+        return TextCleaningPipeline(
+            [
+                WhitespaceCleaner(),  # Just normalize whitespace
+                # NO emoji removal
+                # NO special character removal
+                # NO length filtering
+            ]
+        )
 
     def _get_source_type(self) -> str:
         """Return source type for silver records."""
@@ -129,14 +134,14 @@ class TikTokSomaliProcessor(BasePipeline):
         """Return language code for silver records."""
         return "so"
 
-    def _get_source_metadata(self) -> Dict[str, Any]:
+    def _get_source_metadata(self) -> dict[str, Any]:
         """Return TikTok-specific metadata for silver records."""
         return {
             "platform": "tiktok",
             "scraper": "apify",
             "apify_user_id": self.apify_user_id,
             "num_videos": len(self.video_urls),
-            "note": "ALL comments preserved - no limits applied"
+            "note": "ALL comments preserved - no limits applied",
         }
 
     def _get_domain(self) -> str:
@@ -165,8 +170,8 @@ class TikTokSomaliProcessor(BasePipeline):
         Raises:
             ValueError: If no video URLs provided
         """
-        from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
         from somali_dialect_classifier.utils.logging_utils import set_context
+        from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
 
         self.raw_dir.mkdir(parents=True, exist_ok=True)
 
@@ -176,24 +181,20 @@ class TikTokSomaliProcessor(BasePipeline):
         # Initialize metrics collector
         # Using STREAM_PROCESSING as TikTok Apify acts like an API stream
         self.metrics = MetricsCollector(
-            self.run_id,
-            "TikTok-Somali",
-            pipeline_type=PipelineType.STREAM_PROCESSING
+            self.run_id, "TikTok-Somali", pipeline_type=PipelineType.STREAM_PROCESSING
         )
 
         # Initialize Apify client
         self.apify_client = ApifyTikTokClient(
-            api_token=self.apify_api_token,
-            user_id=self.apify_user_id,
-            logger=self.logger
+            api_token=self.apify_api_token, user_id=self.apify_user_id, logger=self.logger
         )
 
         # Check for existing video URLs file
         if self.video_urls_file.exists() and not self.force:
             self.logger.info(f"Video URLs file already exists: {self.video_urls_file}")
-            with open(self.video_urls_file, 'r', encoding='utf-8') as f:
+            with open(self.video_urls_file, encoding="utf-8") as f:
                 data = json.load(f)
-                self.video_urls = data['video_urls']
+                self.video_urls = data["video_urls"]
             return self.video_urls_file
 
         # Validate video URLs
@@ -208,20 +209,25 @@ class TikTokSomaliProcessor(BasePipeline):
         self.logger.info(f"Videos to scrape: {len(self.video_urls)}")
 
         # Save video URLs
-        with open(self.video_urls_file, 'w', encoding='utf-8') as f:
-            json.dump({
-                'video_urls': self.video_urls,
-                'discovered_at': self.date_accessed,
-                'run_id': self.run_id,
-                'note': 'ALL comments will be preserved - no limits'
-            }, f, ensure_ascii=False, indent=2)
+        with open(self.video_urls_file, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "video_urls": self.video_urls,
+                    "discovered_at": self.date_accessed,
+                    "run_id": self.run_id,
+                    "note": "ALL comments will be preserved - no limits",
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
 
         self.logger.info(f"Saved {len(self.video_urls)} video URLs -> {self.video_urls_file}")
 
         # Mark URLs as discovered in ledger
         for url in self.video_urls:
             self.ledger.discover_url(url, "tiktok", metadata={"discovered_at": self.date_accessed})
-            self.metrics.increment('urls_discovered')
+            self.metrics.increment("urls_discovered")
 
         # Export metrics
         metrics_path = Path("data/metrics") / f"{self.run_id}_discovery.json"
@@ -254,9 +260,9 @@ class TikTokSomaliProcessor(BasePipeline):
             self.staging_file.unlink()
 
         # Load video URLs
-        with open(self.video_urls_file, 'r', encoding='utf-8') as f:
+        with open(self.video_urls_file, encoding="utf-8") as f:
             data = json.load(f)
-            self.video_urls = data['video_urls']
+            self.video_urls = data["video_urls"]
 
         # Set context for extraction phase
         set_context(run_id=self.run_id, source="TikTok-Somali", phase="extraction")
@@ -270,15 +276,18 @@ class TikTokSomaliProcessor(BasePipeline):
         try:
             account_info = self.apify_client.get_account_info()
             self.logger.info(f"Apify account: {account_info.get('username', 'N/A')}")
-            self.logger.info(f"Available credits: ${account_info.get('plan', {}).get('availableCredits', 'N/A')}")
+            self.logger.info(
+                f"Available credits: ${account_info.get('plan', {}).get('availableCredits', 'N/A')}"
+            )
 
             # Estimate cost (assuming average 500 comments per video)
             cost_estimate = self.apify_client.estimate_cost(
-                num_videos=len(self.video_urls),
-                avg_comments_per_video=500
+                num_videos=len(self.video_urls), avg_comments_per_video=500
             )
-            self.logger.info(f"Estimated cost: ${cost_estimate['estimated_cost_usd']} "
-                           f"({cost_estimate['estimated_compute_units']} CU)")
+            self.logger.info(
+                f"Estimated cost: ${cost_estimate['estimated_cost_usd']} "
+                f"({cost_estimate['estimated_compute_units']} CU)"
+            )
         except Exception as e:
             self.logger.warning(f"Could not fetch account info: {e}")
 
@@ -289,11 +298,11 @@ class TikTokSomaliProcessor(BasePipeline):
             video_urls=self.video_urls,
             max_comments_per_video=None,  # No limit - scrape ALL comments
             wait_for_completion=True,
-            poll_interval=15
+            poll_interval=15,
         )
 
         # Save Apify metadata
-        with open(self.apify_metadata_file, 'w', encoding='utf-8') as f:
+        with open(self.apify_metadata_file, "w", encoding="utf-8") as f:
             json.dump(scrape_result, f, ensure_ascii=False, indent=2)
 
         self.logger.info(f"Apify run completed: {scrape_result['run_id']}")
@@ -302,7 +311,7 @@ class TikTokSomaliProcessor(BasePipeline):
         self.logger.info(f"Compute units used: {scrape_result['stats']['compute_units']}")
 
         # Fetch dataset items and write to staging
-        dataset_id = scrape_result['dataset_id']
+        dataset_id = scrape_result["dataset_id"]
 
         # STEP 1: Save raw Apify JSON to local disk
         raw_apify_file = self.raw_dir / f"tiktok-somali_{self.run_id}_raw_apify-dataset.jsonl"
@@ -310,9 +319,9 @@ class TikTokSomaliProcessor(BasePipeline):
 
         self.logger.info(f"Saving raw Apify data to: {raw_apify_file}")
 
-        with open(raw_apify_file, 'w', encoding='utf-8') as raw_out:
+        with open(raw_apify_file, "w", encoding="utf-8") as raw_out:
             for item in self.apify_client.iter_dataset_items(dataset_id, batch_size=1000):
-                raw_out.write(json.dumps(item, ensure_ascii=False) + '\n')
+                raw_out.write(json.dumps(item, ensure_ascii=False) + "\n")
                 apify_items_count += 1
 
         self.logger.info(f"Raw Apify data saved: {apify_items_count} items")
@@ -323,9 +332,10 @@ class TikTokSomaliProcessor(BasePipeline):
 
         self.logger.info(f"Transforming {apify_items_count} items to staging format...")
 
-        with open(raw_apify_file, 'r', encoding='utf-8') as raw_in, \
-             open(self.staging_file, 'w', encoding='utf-8') as staging_out:
-
+        with (
+            open(raw_apify_file, encoding="utf-8") as raw_in,
+            open(self.staging_file, "w", encoding="utf-8") as staging_out,
+        ):
             for line in raw_in:
                 item = json.loads(line)
 
@@ -335,28 +345,29 @@ class TikTokSomaliProcessor(BasePipeline):
                 if comment_data:
                     # Calculate hash for tracking (but DON'T skip duplicates)
                     import hashlib
-                    text_hash = hashlib.sha256(comment_data['text'].encode()).hexdigest()
-                    comment_data['text_hash'] = text_hash
-                    comment_data['minhash_signature'] = ""  # Not using fuzzy matching
+
+                    text_hash = hashlib.sha256(comment_data["text"].encode()).hexdigest()
+                    comment_data["text_hash"] = text_hash
+                    comment_data["minhash_signature"] = ""  # Not using fuzzy matching
 
                     # Write to staging (KEEP ALL COMMENTS)
-                    staging_out.write(json.dumps(comment_data, ensure_ascii=False) + '\n')
+                    staging_out.write(json.dumps(comment_data, ensure_ascii=False) + "\n")
                     comments_count += 1
 
                     # Mark as fetched in ledger
                     self.ledger.mark_fetched(
-                        url=comment_data['url'],
+                        url=comment_data["url"],
                         http_status=200,
-                        content_length=len(comment_data['text']),
-                        source=self.source
+                        content_length=len(comment_data["text"]),
+                        source=self.source,
                     )
-                    self.metrics.increment('urls_fetched')
-                    self.metrics.record_text_length(len(comment_data['text']))
+                    self.metrics.increment("urls_fetched")
+                    self.metrics.record_text_length(len(comment_data["text"]))
                 else:
                     skipped_empty += 1
 
         self.logger.info("=" * 60)
-        self.logger.info(f"Extraction complete:")
+        self.logger.info("Extraction complete:")
         self.logger.info(f"  Raw items from Apify: {apify_items_count}")
         self.logger.info(f"  Staging comments saved: {comments_count}")
         self.logger.info(f"  Skipped (empty text): {skipped_empty}")
@@ -379,7 +390,7 @@ class TikTokSomaliProcessor(BasePipeline):
 
         return self.staging_file
 
-    def _transform_apify_item(self, item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _transform_apify_item(self, item: dict[str, Any]) -> Optional[dict[str, Any]]:
         """
         Transform Apify dataset item to our staging format.
 
@@ -404,55 +415,56 @@ class TikTokSomaliProcessor(BasePipeline):
         # }
 
         try:
-            text = item.get('text', '').strip()
+            text = item.get("text", "").strip()
             if not text:
                 return None
 
             # Filter out emoji-only/non-linguistic comments EARLY
             # This prevents paying to store/process comments with no linguistic content
             import re
+
             # Remove emojis, symbols, punctuation, whitespace
-            text_without_symbols = re.sub(r'[^\w\s]', '', text, flags=re.UNICODE)
+            text_without_symbols = re.sub(r"[^\w\s]", "", text, flags=re.UNICODE)
             text_alphanumeric_only = text_without_symbols.strip()
 
             # If nothing left after removing symbols, it's emoji-only
             if not text_alphanumeric_only:
                 # Track emoji-only filter reason for metrics telemetry
-                if hasattr(self, 'metrics') and self.metrics:
+                if hasattr(self, "metrics") and self.metrics:
                     self.metrics.record_filter_reason("emoji_only_comment")
                 return None  # Skip emoji-only comments like "😂😂😂" or "🔥🔥"
 
             # Also skip if text is too short (less than 3 characters of actual text)
             if len(text_alphanumeric_only) < 3:
                 # Track short-text filter reason for metrics telemetry
-                if hasattr(self, 'metrics') and self.metrics:
+                if hasattr(self, "metrics") and self.metrics:
                     self.metrics.record_filter_reason("text_too_short_after_cleanup")
                 return None  # Skip very short comments like "!!" or "??"
 
             # Build unique URL for comment (video URL + comment ID)
             # FIXED: Apify returns 'videoWebUrl' not 'videoUrl'
-            video_url = item.get('videoWebUrl', '')
-            comment_id = item.get('cid', item.get('id', ''))
+            video_url = item.get("videoWebUrl", "")
+            comment_id = item.get("cid", item.get("id", ""))
             comment_url = f"{video_url}#comment-{comment_id}" if comment_id else video_url
 
             # Ensure all IDs are strings for schema compatibility
             # FIXED: Apify returns 'uid' at top level, not in 'user' object
-            author_id = item.get('uid', '')
-            author_id_str = str(author_id) if author_id else ''
-            comment_id_str = str(comment_id) if comment_id else ''
+            author_id = item.get("uid", "")
+            author_id_str = str(author_id) if author_id else ""
+            comment_id_str = str(comment_id) if comment_id else ""
 
             return {
-                'url': comment_url,
-                'video_url': video_url,
-                'text': text,
+                "url": comment_url,
+                "video_url": video_url,
+                "text": text,
                 # FIXED: Apify returns 'uniqueId' at top level, not in 'user' object
-                'author': item.get('uniqueId', 'unknown'),
-                'author_id': author_id_str,
-                'created_at': item.get('createTime', ''),
-                'likes': item.get('diggCount', 0),
-                'replies': item.get('replyCommentTotal', 0),
-                'comment_id': comment_id_str,
-                'scraped_at': datetime.now(timezone.utc).isoformat()
+                "author": item.get("uniqueId", "unknown"),
+                "author_id": author_id_str,
+                "created_at": item.get("createTime", ""),
+                "likes": item.get("diggCount", 0),
+                "replies": item.get("replyCommentTotal", 0),
+                "comment_id": comment_id_str,
+                "scraped_at": datetime.now(timezone.utc).isoformat(),
             }
 
         except (KeyError, TypeError, ValueError) as e:
@@ -466,7 +478,7 @@ class TikTokSomaliProcessor(BasePipeline):
         Yields RawRecord objects for each TikTok comment.
         BasePipeline.process() handles the rest.
         """
-        with open(self.staging_file, 'r', encoding='utf-8') as f:
+        with open(self.staging_file, encoding="utf-8") as f:
             for line in f:
                 if not line.strip():
                     continue
@@ -474,22 +486,24 @@ class TikTokSomaliProcessor(BasePipeline):
                 comment = json.loads(line)
 
                 # Use comment text as title (truncated)
-                title = comment['text'][:100] + "..." if len(comment['text']) > 100 else comment['text']
+                title = (
+                    comment["text"][:100] + "..." if len(comment["text"]) > 100 else comment["text"]
+                )
 
                 # Convert all metadata values to strings for schema compatibility
                 yield RawRecord(
                     title=title,
-                    text=comment['text'],
-                    url=comment['url'],
+                    text=comment["text"],
+                    url=comment["url"],
                     metadata={
-                        "video_url": str(comment.get('video_url', '')),
-                        "author": str(comment.get('author', '')),
-                        "author_id": str(comment.get('author_id', '')),
-                        "date_published": str(comment.get('created_at', '')),
-                        "likes": str(comment.get('likes', 0)),
-                        "replies": str(comment.get('replies', 0)),
-                        "comment_id": str(comment.get('comment_id', '')),
-                        "scraped_at": str(comment.get('scraped_at', '')),
-                        "minhash_signature": str(comment.get('minhash_signature', '')),
+                        "video_url": str(comment.get("video_url", "")),
+                        "author": str(comment.get("author", "")),
+                        "author_id": str(comment.get("author_id", "")),
+                        "date_published": str(comment.get("created_at", "")),
+                        "likes": str(comment.get("likes", 0)),
+                        "replies": str(comment.get("replies", 0)),
+                        "comment_id": str(comment.get("comment_id", "")),
+                        "scraped_at": str(comment.get("scraped_at", "")),
+                        "minhash_signature": str(comment.get("minhash_signature", "")),
                     },
                 )

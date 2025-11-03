@@ -6,19 +6,19 @@ Tests:
 - Phase 3: Type safety, validation, factory functions, Prometheus export
 """
 
-import pytest
 import json
-from pathlib import Path
+
+import pytest
+
 from somali_dialect_classifier.utils.metrics import (
+    ConnectivityMetrics,
+    FileProcessingExtractionMetrics,
     MetricsCollector,
     PipelineType,
-    ConnectivityMetrics,
-    ExtractionMetrics,
-    WebScrapingExtractionMetrics,
-    FileProcessingExtractionMetrics,
-    StreamProcessingExtractionMetrics,
     QualityMetrics,
+    StreamProcessingExtractionMetrics,
     VolumeMetrics,
+    WebScrapingExtractionMetrics,
     create_extraction_metrics,
     validate_layered_metrics,
 )
@@ -30,9 +30,7 @@ class TestLayeredMetricsArchitecture:
     def test_layered_metrics_structure(self):
         """Test that layered metrics have all four layers."""
         collector = MetricsCollector(
-            run_id="test_layered",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_layered", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         # Add some data
@@ -51,9 +49,7 @@ class TestLayeredMetricsArchitecture:
     def test_connectivity_layer(self):
         """Test Layer 1: Connectivity metrics."""
         collector = MetricsCollector(
-            run_id="test_conn",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_conn", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 5)
@@ -70,9 +66,7 @@ class TestLayeredMetricsArchitecture:
     def test_extraction_layer_web_scraping(self):
         """Test Layer 2: Web scraping extraction metrics."""
         collector = MetricsCollector(
-            run_id="test_extr_web",
-            source="BBC",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_extr_web", source="BBC", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 18)
@@ -96,9 +90,7 @@ class TestLayeredMetricsArchitecture:
     def test_extraction_layer_file_processing(self):
         """Test Layer 2: File processing extraction metrics."""
         collector = MetricsCollector(
-            run_id="test_extr_file",
-            source="Wikipedia",
-            pipeline_type=PipelineType.FILE_PROCESSING
+            run_id="test_extr_file", source="Wikipedia", pipeline_type=PipelineType.FILE_PROCESSING
         )
 
         collector.increment("files_discovered", 5)
@@ -118,7 +110,7 @@ class TestLayeredMetricsArchitecture:
         collector = MetricsCollector(
             run_id="test_extr_stream",
             source="HuggingFace",
-            pipeline_type=PipelineType.STREAM_PROCESSING
+            pipeline_type=PipelineType.STREAM_PROCESSING,
         )
 
         collector.increment("datasets_opened", 1)
@@ -135,9 +127,7 @@ class TestLayeredMetricsArchitecture:
     def test_quality_layer(self):
         """Test Layer 3: Quality metrics."""
         collector = MetricsCollector(
-            run_id="test_quality",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_quality", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 100)
@@ -160,15 +150,13 @@ class TestLayeredMetricsArchitecture:
     def test_volume_layer(self):
         """Test Layer 4: Volume metrics."""
         collector = MetricsCollector(
-            run_id="test_volume",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_volume", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("records_written", 100)
         collector.increment("bytes_downloaded", 50000)
 
-        for i in range(100):
+        for _i in range(100):
             collector.record_text_length(500)
 
         layered = collector.get_layered_metrics()
@@ -185,9 +173,7 @@ class TestMetricValidation:
     def test_connectivity_validation_success(self):
         """Test successful connectivity validation."""
         conn = ConnectivityMetrics(
-            connection_attempted=True,
-            connection_successful=True,
-            connection_duration_ms=150.0
+            connection_attempted=True, connection_successful=True, connection_duration_ms=150.0
         )
 
         is_valid, error = conn.validate()
@@ -197,9 +183,7 @@ class TestMetricValidation:
     def test_connectivity_validation_negative_duration(self):
         """Test connectivity validation catches negative duration."""
         conn = ConnectivityMetrics(
-            connection_attempted=True,
-            connection_successful=True,
-            connection_duration_ms=-100.0
+            connection_attempted=True, connection_successful=True, connection_duration_ms=-100.0
         )
 
         is_valid, error = conn.validate()
@@ -208,10 +192,7 @@ class TestMetricValidation:
 
     def test_connectivity_validation_success_without_attempt(self):
         """Test validation catches success without attempt."""
-        conn = ConnectivityMetrics(
-            connection_attempted=False,
-            connection_successful=True
-        )
+        conn = ConnectivityMetrics(connection_attempted=False, connection_successful=True)
 
         is_valid, error = conn.validate()
         assert is_valid is False
@@ -223,7 +204,7 @@ class TestMetricValidation:
             http_requests_attempted=100,
             http_requests_successful=95,
             pages_parsed=95,
-            content_extracted=90
+            content_extracted=90,
         )
 
         is_valid, error = extr.validate()
@@ -234,7 +215,7 @@ class TestMetricValidation:
         """Test validation catches successful > attempted."""
         extr = WebScrapingExtractionMetrics(
             http_requests_attempted=100,
-            http_requests_successful=105  # Invalid!
+            http_requests_successful=105,  # Invalid!
         )
 
         is_valid, error = extr.validate()
@@ -247,7 +228,7 @@ class TestMetricValidation:
             http_requests_attempted=100,
             http_requests_successful=100,
             pages_parsed=90,
-            content_extracted=95  # Invalid!
+            content_extracted=95,  # Invalid!
         )
 
         is_valid, error = extr.validate()
@@ -257,10 +238,7 @@ class TestMetricValidation:
     def test_file_processing_validation_success(self):
         """Test successful file processing validation."""
         extr = FileProcessingExtractionMetrics(
-            files_discovered=10,
-            files_processed=8,
-            files_failed=2,
-            records_extracted=1000
+            files_discovered=10, files_processed=8, files_failed=2, records_extracted=1000
         )
 
         is_valid, error = extr.validate()
@@ -270,7 +248,7 @@ class TestMetricValidation:
         """Test validation catches processed > discovered."""
         extr = FileProcessingExtractionMetrics(
             files_discovered=10,
-            files_processed=12  # Invalid!
+            files_processed=12,  # Invalid!
         )
 
         is_valid, error = extr.validate()
@@ -284,7 +262,7 @@ class TestMetricValidation:
             batches_attempted=10,
             batches_completed=9,
             batches_failed=1,
-            records_fetched=500
+            records_fetched=500,
         )
 
         is_valid, error = extr.validate()
@@ -294,7 +272,7 @@ class TestMetricValidation:
         """Test validation catches records fetched without stream opened."""
         extr = StreamProcessingExtractionMetrics(
             stream_opened=False,
-            records_fetched=100  # Invalid!
+            records_fetched=100,  # Invalid!
         )
 
         is_valid, error = extr.validate()
@@ -306,7 +284,7 @@ class TestMetricValidation:
         qual = QualityMetrics(
             records_received=100,
             records_passed_filters=80,
-            filter_breakdown={"too_short": 15, "invalid": 5}
+            filter_breakdown={"too_short": 15, "invalid": 5},
         )
 
         is_valid, error = qual.validate()
@@ -316,7 +294,7 @@ class TestMetricValidation:
         """Test validation catches passed > received."""
         qual = QualityMetrics(
             records_received=100,
-            records_passed_filters=105  # Invalid!
+            records_passed_filters=105,  # Invalid!
         )
 
         is_valid, error = qual.validate()
@@ -325,11 +303,7 @@ class TestMetricValidation:
 
     def test_volume_validation_success(self):
         """Test successful volume validation."""
-        vol = VolumeMetrics(
-            records_written=100,
-            bytes_downloaded=50000,
-            total_chars=50000
-        )
+        vol = VolumeMetrics(records_written=100, bytes_downloaded=50000, total_chars=50000)
 
         is_valid, error = vol.validate()
         assert is_valid is True
@@ -348,8 +322,7 @@ class TestMetricValidation:
         """Test cross-layer validation."""
         conn = ConnectivityMetrics(connection_attempted=True, connection_successful=True)
         extr = WebScrapingExtractionMetrics(
-            http_requests_attempted=100,
-            http_requests_successful=95
+            http_requests_attempted=100, http_requests_successful=95
         )
         qual = QualityMetrics(records_received=95, records_passed_filters=80)
         vol = VolumeMetrics(records_written=80)
@@ -376,9 +349,7 @@ class TestFactoryFunctions:
     def test_factory_creates_web_scraping_metrics(self):
         """Test factory creates correct type for web scraping."""
         metrics = create_extraction_metrics(
-            PipelineType.WEB_SCRAPING,
-            http_requests_attempted=100,
-            http_requests_successful=95
+            PipelineType.WEB_SCRAPING, http_requests_attempted=100, http_requests_successful=95
         )
 
         assert isinstance(metrics, WebScrapingExtractionMetrics)
@@ -387,9 +358,7 @@ class TestFactoryFunctions:
     def test_factory_creates_file_processing_metrics(self):
         """Test factory creates correct type for file processing."""
         metrics = create_extraction_metrics(
-            PipelineType.FILE_PROCESSING,
-            files_discovered=10,
-            files_processed=8
+            PipelineType.FILE_PROCESSING, files_discovered=10, files_processed=8
         )
 
         assert isinstance(metrics, FileProcessingExtractionMetrics)
@@ -398,9 +367,7 @@ class TestFactoryFunctions:
     def test_factory_creates_stream_processing_metrics(self):
         """Test factory creates correct type for stream processing."""
         metrics = create_extraction_metrics(
-            PipelineType.STREAM_PROCESSING,
-            stream_opened=True,
-            records_fetched=500
+            PipelineType.STREAM_PROCESSING, stream_opened=True, records_fetched=500
         )
 
         assert isinstance(metrics, StreamProcessingExtractionMetrics)
@@ -408,10 +375,7 @@ class TestFactoryFunctions:
 
     def test_factory_accepts_string_pipeline_type(self):
         """Test factory accepts string pipeline type."""
-        metrics = create_extraction_metrics(
-            "web_scraping",
-            http_requests_attempted=50
-        )
+        metrics = create_extraction_metrics("web_scraping", http_requests_attempted=50)
 
         assert isinstance(metrics, WebScrapingExtractionMetrics)
 
@@ -427,9 +391,7 @@ class TestSchemaVersioning:
     def test_json_export_includes_schema_version(self, tmp_path):
         """Test JSON export includes schema version."""
         collector = MetricsCollector(
-            run_id="test_schema",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_schema", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 10)
@@ -447,9 +409,7 @@ class TestSchemaVersioning:
     def test_json_export_includes_pipeline_type(self, tmp_path):
         """Test JSON export includes pipeline type metadata."""
         collector = MetricsCollector(
-            run_id="test_pipeline_type",
-            source="Test",
-            pipeline_type=PipelineType.FILE_PROCESSING
+            run_id="test_pipeline_type", source="Test", pipeline_type=PipelineType.FILE_PROCESSING
         )
 
         collector.increment("records_written", 10)
@@ -466,9 +426,7 @@ class TestSchemaVersioning:
     def test_json_export_includes_layered_metrics(self, tmp_path):
         """Test JSON export includes layered metrics by default."""
         collector = MetricsCollector(
-            run_id="test_layered_export",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_layered_export", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 10)
@@ -489,9 +447,7 @@ class TestSchemaVersioning:
     def test_json_export_includes_legacy_metrics(self, tmp_path):
         """Test JSON export includes legacy metrics for backward compatibility."""
         collector = MetricsCollector(
-            run_id="test_legacy",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_legacy", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 10)
@@ -510,9 +466,7 @@ class TestSchemaVersioning:
     def test_json_export_can_exclude_layered_metrics(self, tmp_path):
         """Test JSON export can exclude layered metrics if requested."""
         collector = MetricsCollector(
-            run_id="test_no_layered",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_no_layered", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 10)
@@ -529,9 +483,7 @@ class TestSchemaVersioning:
     def test_json_export_validation_warnings(self, tmp_path):
         """Test JSON export includes validation warnings for inconsistent data."""
         collector = MetricsCollector(
-            run_id="test_validation",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_validation", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         # Create inconsistent data (more records written than passed filters)
@@ -556,9 +508,7 @@ class TestPrometheusExport:
     def test_prometheus_export_creates_file(self, tmp_path):
         """Test Prometheus export creates output file."""
         collector = MetricsCollector(
-            run_id="test_prom",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_prom", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 10)
@@ -572,9 +522,7 @@ class TestPrometheusExport:
     def test_prometheus_export_includes_help_and_type(self, tmp_path):
         """Test Prometheus export includes HELP and TYPE metadata."""
         collector = MetricsCollector(
-            run_id="test_prom_meta",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_prom_meta", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 10)
@@ -590,9 +538,7 @@ class TestPrometheusExport:
     def test_prometheus_export_includes_labels(self, tmp_path):
         """Test Prometheus export includes proper labels."""
         collector = MetricsCollector(
-            run_id="test_prom_labels",
-            source="BBC-Somali",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_prom_labels", source="BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 10)
@@ -609,9 +555,7 @@ class TestPrometheusExport:
     def test_prometheus_export_connectivity_metrics(self, tmp_path):
         """Test Prometheus export includes connectivity metrics."""
         collector = MetricsCollector(
-            run_id="test_prom_conn",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_prom_conn", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 10)
@@ -628,9 +572,7 @@ class TestPrometheusExport:
     def test_prometheus_export_web_scraping_metrics(self, tmp_path):
         """Test Prometheus export includes web scraping metrics."""
         collector = MetricsCollector(
-            run_id="test_prom_web",
-            source="BBC",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_prom_web", source="BBC", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 18)
@@ -650,9 +592,7 @@ class TestPrometheusExport:
     def test_prometheus_export_file_processing_metrics(self, tmp_path):
         """Test Prometheus export includes file processing metrics."""
         collector = MetricsCollector(
-            run_id="test_prom_file",
-            source="Wikipedia",
-            pipeline_type=PipelineType.FILE_PROCESSING
+            run_id="test_prom_file", source="Wikipedia", pipeline_type=PipelineType.FILE_PROCESSING
         )
 
         collector.increment("files_discovered", 10)
@@ -674,7 +614,7 @@ class TestPrometheusExport:
         collector = MetricsCollector(
             run_id="test_prom_stream",
             source="HuggingFace",
-            pipeline_type=PipelineType.STREAM_PROCESSING
+            pipeline_type=PipelineType.STREAM_PROCESSING,
         )
 
         collector.increment("datasets_opened", 1)
@@ -693,9 +633,7 @@ class TestPrometheusExport:
     def test_prometheus_export_quality_metrics(self, tmp_path):
         """Test Prometheus export includes quality metrics."""
         collector = MetricsCollector(
-            run_id="test_prom_quality",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_prom_quality", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 100)
@@ -714,9 +652,7 @@ class TestPrometheusExport:
     def test_prometheus_export_volume_metrics(self, tmp_path):
         """Test Prometheus export includes volume metrics."""
         collector = MetricsCollector(
-            run_id="test_prom_volume",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_prom_volume", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("records_written", 100)
@@ -739,9 +675,7 @@ class TestBackwardCompatibility:
     def test_legacy_metrics_still_available(self, tmp_path):
         """Test that legacy flat metrics are still available."""
         collector = MetricsCollector(
-            run_id="test_compat",
-            source="Test",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_compat", source="Test", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         collector.increment("urls_fetched", 10)
@@ -764,9 +698,7 @@ class TestBackwardCompatibility:
         # This is a meta-test - if Phase 1 tests pass, this passes
         # We just verify the APIs are still available
         collector = MetricsCollector(
-            run_id="test_phase1",
-            source="BBC",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id="test_phase1", source="BBC", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         # Phase 1 APIs
@@ -792,9 +724,7 @@ def test_demonstration_output_phase2_phase3():
 
     # Create collector
     collector = MetricsCollector(
-        run_id="demo_phase2_3",
-        source="BBC-Somali",
-        pipeline_type=PipelineType.WEB_SCRAPING
+        run_id="demo_phase2_3", source="BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
     )
 
     # Simulate realistic scenario
@@ -826,7 +756,9 @@ def test_demonstration_output_phase2_phase3():
     extr = layered["extraction"]
     print(f"  HTTP Requests Attempted: {extr['http_requests_attempted']}")
     print(f"  HTTP Requests Successful: {extr['http_requests_successful']}")
-    print(f"  Success Rate: {extr['http_requests_successful']/max(extr['http_requests_attempted'], 1):.1%}")
+    print(
+        f"  Success Rate: {extr['http_requests_successful'] / max(extr['http_requests_attempted'], 1):.1%}"
+    )
     print(f"  Pages Parsed: {extr['pages_parsed']}")
     print(f"  Content Extracted: {extr['content_extracted']}")
 
@@ -834,7 +766,9 @@ def test_demonstration_output_phase2_phase3():
     qual = layered["quality"]
     print(f"  Records Received: {qual['records_received']}")
     print(f"  Records Passed Filters: {qual['records_passed_filters']}")
-    print(f"  Quality Pass Rate: {qual['records_passed_filters']/max(qual['records_received'], 1):.1%}")
+    print(
+        f"  Quality Pass Rate: {qual['records_passed_filters'] / max(qual['records_received'], 1):.1%}"
+    )
 
     print("\n📦 Layer 4: Volume")
     vol = layered["volume"]

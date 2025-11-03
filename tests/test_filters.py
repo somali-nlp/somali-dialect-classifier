@@ -4,16 +4,15 @@ Unit tests for record filters.
 Tests all filter functions to ensure correct behavior for quality control.
 """
 
-import pytest
 from somali_dialect_classifier.preprocessing.filters import (
-    min_length_filter,
-    langid_filter,
-    dialect_heuristic_filter,
-    namespace_filter,
-    custom_filter,
-    create_wikipedia_filters,
-    create_news_filters,
     create_hf_filters,
+    create_news_filters,
+    create_wikipedia_filters,
+    custom_filter,
+    dialect_heuristic_filter,
+    langid_filter,
+    min_length_filter,
+    namespace_filter,
 )
 
 
@@ -258,6 +257,7 @@ class TestCustomFilter:
 
     def test_simple_predicate(self):
         """Test with simple boolean predicate."""
+
         def has_digit(text):
             return any(c.isdigit() for c in text)
 
@@ -269,6 +269,7 @@ class TestCustomFilter:
 
     def test_predicate_with_value(self):
         """Test predicate that returns (bool, value)."""
+
         def count_digits(text):
             count = sum(c.isdigit() for c in text)
             return count > 5, count
@@ -280,6 +281,7 @@ class TestCustomFilter:
 
     def test_predicate_returning_none_value(self):
         """Test that None values don't create metadata."""
+
         def check_length(text):
             return len(text) > 10, None
 

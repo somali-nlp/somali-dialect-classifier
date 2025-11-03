@@ -12,11 +12,11 @@ All functions work with consolidated metrics format and support
 both single-run and time-series comparisons.
 """
 
-import logging
-from typing import Dict, List, Any, Optional, Tuple
-from datetime import datetime
 import json
+import logging
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +25,10 @@ logger = logging.getLogger(__name__)
 # COMPARISON FUNCTIONS
 # ============================================================================
 
+
 def calculate_delta(
-    current: Dict[str, Any],
-    baseline: Dict[str, Any],
-    numeric_fields: Optional[List[str]] = None
-) -> Dict[str, Any]:
+    current: dict[str, Any], baseline: dict[str, Any], numeric_fields: Optional[list[str]] = None
+) -> dict[str, Any]:
     """
     Calculate deltas between two metric runs.
 
@@ -74,7 +73,7 @@ def calculate_delta(
             "urls_per_second",
             "bytes_per_second",
             "records_per_minute",
-            "duration_seconds"
+            "duration_seconds",
         ]
 
     deltas = {}
@@ -109,7 +108,7 @@ def calculate_delta(
         else:
             # Baseline was 0
             if current_val > 0:
-                percent_changes[field] = float('inf')
+                percent_changes[field] = float("inf")
                 significant_changes.append(field)
             else:
                 percent_changes[field] = 0
@@ -122,14 +121,13 @@ def calculate_delta(
         "source": current.get("source", ""),
         "deltas": deltas,
         "percent_changes": percent_changes,
-        "significant_changes": significant_changes
+        "significant_changes": significant_changes,
     }
 
 
 def compare_multiple_runs(
-    metrics: List[Dict[str, Any]],
-    source: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    metrics: list[dict[str, Any]], source: Optional[str] = None
+) -> list[dict[str, Any]]:
     """
     Compare multiple runs for the same source.
 
@@ -154,10 +152,7 @@ def compare_multiple_runs(
         return []
 
     # Sort by timestamp
-    sorted_metrics = sorted(
-        metrics,
-        key=lambda m: m.get("timestamp", "")
-    )
+    sorted_metrics = sorted(metrics, key=lambda m: m.get("timestamp", ""))
 
     comparisons = []
 
@@ -173,9 +168,8 @@ def compare_multiple_runs(
 
 
 def identify_trends(
-    comparisons: List[Dict[str, Any]],
-    metric_name: str = "quality_pass_rate"
-) -> Dict[str, Any]:
+    comparisons: list[dict[str, Any]], metric_name: str = "quality_pass_rate"
+) -> dict[str, Any]:
     """
     Identify trends from comparison data.
 
@@ -203,7 +197,7 @@ def identify_trends(
             "average_change": 0,
             "num_increases": 0,
             "num_decreases": 0,
-            "num_stable": 0
+            "num_stable": 0,
         }
 
     changes = []
@@ -240,14 +234,13 @@ def identify_trends(
         "num_increases": increases,
         "num_decreases": decreases,
         "num_stable": stable,
-        "total_comparisons": len(comparisons)
+        "total_comparisons": len(comparisons),
     }
 
 
 def generate_comparison_summary(
-    current: Dict[str, Any],
-    baseline: Dict[str, Any]
-) -> Dict[str, Any]:
+    current: dict[str, Any], baseline: dict[str, Any]
+) -> dict[str, Any]:
     """
     Generate human-readable comparison summary.
 
@@ -266,14 +259,13 @@ def generate_comparison_summary(
             "baseline_run": baseline.get("run_id", ""),
             "source": current.get("source", ""),
             "time_between_runs": _calculate_time_diff(
-                current.get("timestamp", ""),
-                baseline.get("timestamp", "")
-            )
+                current.get("timestamp", ""), baseline.get("timestamp", "")
+            ),
         },
         "key_metrics": [],
         "improvements": [],
         "regressions": [],
-        "stable_metrics": []
+        "stable_metrics": [],
     }
 
     # Analyze key metrics
@@ -282,7 +274,7 @@ def generate_comparison_summary(
         ("quality_pass_rate", "Quality Pass Rate"),
         ("http_request_success_rate", "HTTP Success Rate"),
         ("file_extraction_success_rate", "File Extraction Rate"),
-        ("deduplication_rate", "Deduplication Rate")
+        ("deduplication_rate", "Deduplication Rate"),
     ]
 
     for field, label in key_metrics:
@@ -299,7 +291,7 @@ def generate_comparison_summary(
             "current": current_val,
             "baseline": baseline_val,
             "delta": delta,
-            "percent_change": pct_change
+            "percent_change": pct_change,
         }
 
         summary["key_metrics"].append(metric_info)
@@ -333,6 +325,7 @@ def generate_comparison_summary(
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
+
 
 def _calculate_time_diff(timestamp1: str, timestamp2: str) -> str:
     """
@@ -370,10 +363,8 @@ def _calculate_time_diff(timestamp1: str, timestamp2: str) -> str:
 
 
 def find_baseline(
-    metrics: List[Dict[str, Any]],
-    source: str,
-    current_run_id: str
-) -> Optional[Dict[str, Any]]:
+    metrics: list[dict[str, Any]], source: str, current_run_id: str
+) -> Optional[dict[str, Any]]:
     """
     Find the most recent baseline run for comparison.
 
@@ -387,20 +378,16 @@ def find_baseline(
     """
     # Filter by source and exclude current run
     candidates = [
-        m for m in metrics
-        if m.get("source", "").lower() == source.lower()
-        and m.get("run_id", "") != current_run_id
+        m
+        for m in metrics
+        if m.get("source", "").lower() == source.lower() and m.get("run_id", "") != current_run_id
     ]
 
     if not candidates:
         return None
 
     # Sort by timestamp (descending)
-    sorted_candidates = sorted(
-        candidates,
-        key=lambda m: m.get("timestamp", ""),
-        reverse=True
-    )
+    sorted_candidates = sorted(candidates, key=lambda m: m.get("timestamp", ""), reverse=True)
 
     return sorted_candidates[0]
 
@@ -409,11 +396,10 @@ def find_baseline(
 # EXPORT FUNCTIONS
 # ============================================================================
 
+
 def export_comparison_data(
-    current_metrics: List[Dict[str, Any]],
-    baseline_metrics: List[Dict[str, Any]],
-    output_file: Path
-) -> Dict[str, Any]:
+    current_metrics: list[dict[str, Any]], baseline_metrics: list[dict[str, Any]], output_file: Path
+) -> dict[str, Any]:
     """
     Generate and export comparison data between two metric sets.
 
@@ -428,7 +414,7 @@ def export_comparison_data(
     comparisons = []
 
     # Group by source
-    sources = set(m.get("source", "") for m in current_metrics)
+    sources = {m.get("source", "") for m in current_metrics}
 
     for source in sources:
         current_source = [m for m in current_metrics if m.get("source") == source]
@@ -444,21 +430,17 @@ def export_comparison_data(
         comparison = calculate_delta(current, baseline)
         summary = generate_comparison_summary(current, baseline)
 
-        comparisons.append({
-            "source": source,
-            "delta": comparison,
-            "summary": summary
-        })
+        comparisons.append({"source": source, "delta": comparison, "summary": summary})
 
     output_data = {
         "generated_at": datetime.now().isoformat(),
         "num_comparisons": len(comparisons),
-        "comparisons": comparisons
+        "comparisons": comparisons,
     }
 
     # Write to file
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(output_data, f, indent=2)
 
     logger.info(f"✓ Exported comparison data to: {output_file}")
@@ -467,10 +449,8 @@ def export_comparison_data(
 
 
 def export_trend_analysis(
-    metrics: List[Dict[str, Any]],
-    output_file: Path,
-    metric_names: Optional[List[str]] = None
-) -> Dict[str, Any]:
+    metrics: list[dict[str, Any]], output_file: Path, metric_names: Optional[list[str]] = None
+) -> dict[str, Any]:
     """
     Analyze and export trend data for multiple metrics.
 
@@ -487,11 +467,11 @@ def export_trend_analysis(
             "quality_pass_rate",
             "http_request_success_rate",
             "records_written",
-            "deduplication_rate"
+            "deduplication_rate",
         ]
 
     # Group by source
-    sources = set(m.get("source", "") for m in metrics)
+    sources = {m.get("source", "") for m in metrics}
 
     trend_data = {}
 
@@ -512,19 +492,19 @@ def export_trend_analysis(
         trend_data[source] = {
             "num_runs": len(source_metrics),
             "num_comparisons": len(comparisons),
-            "trends": source_trends
+            "trends": source_trends,
         }
 
     output = {
         "generated_at": datetime.now().isoformat(),
         "sources": list(sources),
         "metrics_analyzed": metric_names,
-        "trend_data": trend_data
+        "trend_data": trend_data,
     }
 
     # Write to file
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2)
 
     logger.info(f"✓ Exported trend analysis to: {output_file}")
@@ -532,10 +512,7 @@ def export_trend_analysis(
     return output
 
 
-def generate_comparison_report_markdown(
-    comparison_data: Dict[str, Any],
-    output_file: Path
-) -> None:
+def generate_comparison_report_markdown(comparison_data: dict[str, Any], output_file: Path) -> None:
     """
     Generate markdown report from comparison data.
 
@@ -550,25 +527,27 @@ def generate_comparison_report_markdown(
         f"**Comparisons:** {comparison_data['num_comparisons']}",
         "",
         "---",
-        ""
+        "",
     ]
 
     for comp in comparison_data["comparisons"]:
         source = comp["source"]
         summary = comp["summary"]
 
-        lines.extend([
-            f"## {source}",
-            "",
-            f"**Current Run:** {summary['overview']['current_run']}",
-            f"**Baseline Run:** {summary['overview']['baseline_run']}",
-            f"**Time Between Runs:** {summary['overview']['time_between_runs']}",
-            "",
-            "### Key Metrics",
-            "",
-            "| Metric | Current | Baseline | Delta | % Change |",
-            "|--------|---------|----------|-------|----------|"
-        ])
+        lines.extend(
+            [
+                f"## {source}",
+                "",
+                f"**Current Run:** {summary['overview']['current_run']}",
+                f"**Baseline Run:** {summary['overview']['baseline_run']}",
+                f"**Time Between Runs:** {summary['overview']['time_between_runs']}",
+                "",
+                "### Key Metrics",
+                "",
+                "| Metric | Current | Baseline | Delta | % Change |",
+                "|--------|---------|----------|-------|----------|",
+            ]
+        )
 
         for metric in summary["key_metrics"]:
             lines.append(
@@ -580,21 +559,25 @@ def generate_comparison_report_markdown(
         lines.extend(["", "### Improvements", ""])
         if summary["improvements"]:
             for metric in summary["improvements"]:
-                lines.append(f"- ✅ **{metric['name']}**: {metric['delta']:+.4f} ({metric['percent_change']:+.2f}%)")
+                lines.append(
+                    f"- ✅ **{metric['name']}**: {metric['delta']:+.4f} ({metric['percent_change']:+.2f}%)"
+                )
         else:
             lines.append("- No significant improvements")
 
         lines.extend(["", "### Regressions", ""])
         if summary["regressions"]:
             for metric in summary["regressions"]:
-                lines.append(f"- ⚠️ **{metric['name']}**: {metric['delta']:+.4f} ({metric['percent_change']:+.2f}%)")
+                lines.append(
+                    f"- ⚠️ **{metric['name']}**: {metric['delta']:+.4f} ({metric['percent_change']:+.2f}%)"
+                )
         else:
             lines.append("- No significant regressions")
 
         lines.extend(["", "---", ""])
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(lines))
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
 
     logger.info(f"✓ Generated comparison report: {output_file}")

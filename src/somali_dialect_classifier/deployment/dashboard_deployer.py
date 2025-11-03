@@ -9,11 +9,10 @@ error handling.
 import json
 import logging
 import subprocess
-import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +37,7 @@ class MetricsValidator:
     REQUIRED_SNAPSHOT_FIELDS = ["run_id", "source", "timestamp"]
 
     @staticmethod
-    def extract_metrics_data(data: dict) -> Tuple[dict, dict]:
+    def extract_metrics_data(data: dict) -> tuple[dict, dict]:
         """
         Extract snapshot and statistics from v3.0 metrics files.
 
@@ -64,7 +63,7 @@ class MetricsValidator:
         return snapshot, statistics
 
     @staticmethod
-    def validate_metrics_file(file_path: Path) -> Tuple[bool, Optional[str]]:
+    def validate_metrics_file(file_path: Path) -> tuple[bool, Optional[str]]:
         """
         Validate a single metrics JSON file.
 
@@ -110,7 +109,7 @@ class MetricsValidator:
             return False, f"Validation error: {e}"
 
     @staticmethod
-    def validate_all_metrics(metrics_dir: Path) -> Tuple[List[Path], List[Tuple[Path, str]]]:
+    def validate_all_metrics(metrics_dir: Path) -> tuple[list[Path], list[tuple[Path, str]]]:
         """
         Validate all metrics files in directory.
 
@@ -171,7 +170,7 @@ class GitOperations:
             return False
 
     @staticmethod
-    def get_repo_status(repo_path: Path) -> Dict[str, any]:
+    def get_repo_status(repo_path: Path) -> dict[str, any]:
         """
         Get current repository status.
 
@@ -212,7 +211,9 @@ class GitOperations:
                 "has_changes": bool(status_result.stdout.strip()),
                 "current_branch": branch_result.stdout.strip(),
                 "has_remote": remote_result.returncode == 0,
-                "remote_url": remote_result.stdout.strip() if remote_result.returncode == 0 else None,
+                "remote_url": remote_result.stdout.strip()
+                if remote_result.returncode == 0
+                else None,
             }
         except Exception as e:
             logger.error(f"Failed to get repo status: {e}")
@@ -224,7 +225,7 @@ class GitOperations:
             }
 
     @staticmethod
-    def stage_files(repo_path: Path, file_patterns: List[str]) -> bool:
+    def stage_files(repo_path: Path, file_patterns: list[str]) -> bool:
         """
         Stage files matching patterns.
 
@@ -290,7 +291,7 @@ class GitOperations:
             True if successful
         """
         try:
-            result = subprocess.run(
+            subprocess.run(
                 ["git", "push", remote, branch],
                 cwd=repo_path,
                 capture_output=True,
@@ -328,7 +329,7 @@ class DashboardDeployer:
             current = current.parent
         raise RuntimeError(f"Not in a git repository: {self.config.metrics_dir}")
 
-    def _get_metrics_summary(self, metrics_files: List[Path]) -> Dict[str, any]:
+    def _get_metrics_summary(self, metrics_files: list[Path]) -> dict[str, any]:
         """
         Generate summary of metrics being deployed.
 
@@ -355,14 +356,14 @@ class DashboardDeployer:
                 logger.warning(f"Failed to read {file_path.name}: {e}")
 
         return {
-            "sources": sorted(list(sources)),
+            "sources": sorted(sources),
             "source_count": len(sources),
             "total_records": total_records,
             "file_count": len(metrics_files),
             "latest_timestamp": max(timestamps) if timestamps else None,
         }
 
-    def _generate_commit_message(self, summary: Dict[str, any]) -> str:
+    def _generate_commit_message(self, summary: dict[str, any]) -> str:
         """
         Generate Conventional Commits compliant commit message.
 
@@ -400,14 +401,16 @@ class DashboardDeployer:
         for source in sources:
             body_lines.append(f"  - {source}")
 
-        body_lines.extend([
-            "",
-            "This update triggers automatic dashboard deployment via GitHub Actions.",
-        ])
+        body_lines.extend(
+            [
+                "",
+                "This update triggers automatic dashboard deployment via GitHub Actions.",
+            ]
+        )
 
         return "\n".join([title] + body_lines)
 
-    def validate_environment(self) -> Tuple[bool, List[str]]:
+    def validate_environment(self) -> tuple[bool, list[str]]:
         """
         Validate deployment environment prerequisites.
 
@@ -535,8 +538,7 @@ class DashboardDeployer:
             ):
                 logger.error("Failed to push changes")
                 logger.warning(
-                    "Changes committed locally but not pushed. "
-                    "You may need to push manually."
+                    "Changes committed locally but not pushed. You may need to push manually."
                 )
                 return False
         else:
@@ -550,7 +552,9 @@ class DashboardDeployer:
         logger.info(f"Total records: {summary['total_records']:,}")
         logger.info("")
         logger.info("GitHub Actions will now rebuild the dashboard automatically.")
-        logger.info("Monitor deployment at: https://github.com/somali-nlp/somali-dialect-classifier/actions")
+        logger.info(
+            "Monitor deployment at: https://github.com/somali-nlp/somali-dialect-classifier/actions"
+        )
 
         return True
 

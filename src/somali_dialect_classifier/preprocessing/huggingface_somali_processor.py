@@ -15,29 +15,30 @@ Example sources:
 - allenai/gdelt
 """
 
-from pathlib import Path
-from typing import Iterator, Dict, Any, Optional, List, Callable
-from datetime import datetime, timezone
 import json
 import logging
+from collections.abc import Iterator
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Optional
 
 try:
-    from datasets import load_dataset, IterableDataset, DownloadConfig
+    from datasets import DownloadConfig, IterableDataset, load_dataset
+
     DATASETS_AVAILABLE = True
 except ImportError:
     DATASETS_AVAILABLE = False
     IterableDataset = None
     DownloadConfig = None
 
-from .base_pipeline import BasePipeline, RawRecord
-from .text_cleaners import create_html_cleaner
-from .crawl_ledger import get_ledger
-from .dedup import DedupEngine, DedupConfig
-from .schema_mappers import get_schema_mapper
-from ..utils.logging_utils import StructuredLogger, set_context, Timer
-from ..utils.metrics import MetricsCollector, QualityReporter, PipelineType
 from ..config import get_config
-
+from ..utils.logging_utils import Timer, set_context
+from ..utils.metrics import MetricsCollector, PipelineType, QualityReporter
+from .base_pipeline import BasePipeline, RawRecord
+from .crawl_ledger import get_ledger
+from .dedup import DedupConfig, DedupEngine
+from .schema_mappers import get_schema_mapper
+from .text_cleaners import create_html_cleaner
 
 logger = logging.getLogger(__name__)
 
@@ -71,9 +72,9 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         text_field: str = "text",
         title_field: Optional[str] = None,
         url_field: Optional[str] = None,
-        metadata_fields: Optional[List[str]] = None,
-        pushdown_filters: Optional[Dict[str, Any]] = None,
-        data_files: Optional[Dict[str, str]] = None,
+        metadata_fields: Optional[list[str]] = None,
+        pushdown_filters: Optional[dict[str, Any]] = None,
+        data_files: Optional[dict[str, str]] = None,
         streaming_batch_size: int = 5000,
         max_records: Optional[int] = None,
         force: bool = False,
@@ -96,10 +97,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             force: Force reprocessing even if output exists
         """
         if not DATASETS_AVAILABLE:
-            raise ImportError(
-                "datasets library not available. "
-                "Install with: pip install datasets"
-            )
+            raise ImportError("datasets library not available. Install with: pip install datasets")
 
         # Set instance attributes BEFORE super().__init__()
         # because _register_filters() is called during initialization
@@ -124,7 +122,9 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         # Construct source name - use filesystem-friendly format (no spaces/parentheses)
         # Format: HuggingFace-Somali_dataset or HuggingFace-Somali_dataset-config
         # Examples: HuggingFace-Somali_c4, HuggingFace-Somali_madlad-400-som
-        dataset_slug = dataset_name.split('/')[-1]  # Extract last part (e.g., "c4" from "allenai/c4")
+        dataset_slug = dataset_name.split("/")[
+            -1
+        ]  # Extract last part (e.g., "c4" from "allenai/c4")
 
         if dataset_config and dataset_config != dataset_name:
             # Include config in slug: HuggingFace-Somali_mc4-so
@@ -141,16 +141,14 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
         # Initialize deduplication BEFORE BasePipeline (which generates run_id)
         dedup_config = DedupConfig(
-            hash_fields=["text", "url"],
-            enable_minhash=True,
-            similarity_threshold=0.85
+            hash_fields=["text", "url"], enable_minhash=True, similarity_threshold=0.85
         )
         self.dedup = DedupEngine(dedup_config)
         self.ledger = get_ledger()
         self.metrics = None  # Will be initialized in download()
 
         # Initialize schema mapper for field mapping
-        dataset_slug = dataset_name.split('/')[-1]
+        dataset_slug = dataset_name.split("/")[-1]
         self.schema_mapper = get_schema_mapper(dataset_slug)
 
         # Initialize BasePipeline with source name (this generates run_id and StructuredLogger)
@@ -166,8 +164,10 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
         # Set processed_file for human-readable text dump (aligns with other pipelines)
         # Pattern: {dataset_slug}_{run_id}_processed_cleaned.txt
-        dataset_slug = self.dataset_name.split('/')[-1]
-        self.processed_file = self.processed_dir / f"{dataset_slug}_{self.run_id}_processed_cleaned.txt"
+        dataset_slug = self.dataset_name.split("/")[-1]
+        self.processed_file = (
+            self.processed_dir / f"{dataset_slug}_{self.run_id}_processed_cleaned.txt"
+        )
 
     def _compute_text_hash(self, text: str, url: str) -> str:
         """
@@ -196,7 +196,9 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
         # Generate descriptive manifest filename with run_id
         # Pattern: {dataset_slug}_{run_id}_raw_manifest.json
-        dataset_slug = self.dataset_name.split('/')[-1]  # Get last part (e.g., "c4" from "allenai/c4")
+        dataset_slug = self.dataset_name.split("/")[
+            -1
+        ]  # Get last part (e.g., "c4" from "allenai/c4")
         manifest_path = raw_dir / f"{dataset_slug}_{self.run_id}_raw_manifest.json"
 
         # Create raw directory if it doesn't exist
@@ -206,7 +208,9 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         set_context(run_id=self.run_id, source=self.source, phase="discovery")
 
         # Initialize metrics with run_id from base_pipeline
-        self.metrics = MetricsCollector(self.run_id, self.source, pipeline_type=PipelineType.STREAM_PROCESSING)
+        self.metrics = MetricsCollector(
+            self.run_id, self.source, pipeline_type=PipelineType.STREAM_PROCESSING
+        )
 
         # Check if manifest exists and not forcing
         if manifest_path.exists() and not self.force:
@@ -237,22 +241,17 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
             if self.dataset_config:
                 dataset = load_dataset(
-                    self.dataset_name,
-                    self.dataset_config,
-                    split=self.split,
-                    **load_kwargs
+                    self.dataset_name, self.dataset_config, split=self.split, **load_kwargs
                 )
             else:
-                dataset = load_dataset(
-                    self.dataset_name,
-                    split=self.split,
-                    **load_kwargs
-                )
+                dataset = load_dataset(self.dataset_name, split=self.split, **load_kwargs)
 
             # Get revision if available (actual revision used, not just config)
-            revision = getattr(dataset, 'revision', None) or load_kwargs.get("revision", "latest")
-            commit_hash = getattr(dataset, 'commit_hash', None) if hasattr(dataset, 'commit_hash') else None
-            dataset_info = getattr(dataset, 'info', None)
+            revision = getattr(dataset, "revision", None) or load_kwargs.get("revision", "latest")
+            commit_hash = (
+                getattr(dataset, "commit_hash", None) if hasattr(dataset, "commit_hash") else None
+            )
+            dataset_info = getattr(dataset, "info", None)
 
         except Exception as e:
             self.logger.error(f"Failed to load dataset metadata: {e}")
@@ -261,7 +260,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             dataset_info = None
 
         # Track discovery (use datasets_opened for stream processing)
-        self.metrics.increment('datasets_opened')
+        self.metrics.increment("datasets_opened")
 
         # Create manifest
         manifest = {
@@ -291,13 +290,13 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         # Add dataset info if available
         if dataset_info:
             manifest["dataset_info"] = {
-                "description": getattr(dataset_info, 'description', None),
-                "license": getattr(dataset_info, 'license', None),
-                "features": str(getattr(dataset_info, 'features', None)),
+                "description": getattr(dataset_info, "description", None),
+                "license": getattr(dataset_info, "license", None),
+                "features": str(getattr(dataset_info, "features", None)),
             }
 
         # Write manifest
-        with open(manifest_path, 'w', encoding='utf-8') as f:
+        with open(manifest_path, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Manifest created: {manifest_path}")
@@ -323,7 +322,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         staging_dir.mkdir(parents=True, exist_ok=True)
 
         # Load manifest (search for file with run_id pattern)
-        dataset_slug = self.dataset_name.split('/')[-1]
+        dataset_slug = self.dataset_name.split("/")[-1]
         # Pattern: {dataset_slug}_{run_id}_raw_manifest.json or old {dataset_slug}_manifest.json
         manifest_files = list(self.raw_dir.glob(f"{dataset_slug}_*_raw_manifest.json"))
         if not manifest_files:
@@ -331,15 +330,13 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             manifest_files = list(self.raw_dir.glob(f"{dataset_slug}_manifest.json"))
 
         if not manifest_files:
-            raise FileNotFoundError(
-                f"Manifest not found in {self.raw_dir}. Run download() first."
-            )
+            raise FileNotFoundError(f"Manifest not found in {self.raw_dir}. Run download() first.")
 
         # Use the most recent manifest (sorted by modification time)
         manifest_path = sorted(manifest_files, key=lambda p: p.stat().st_mtime, reverse=True)[0]
         self.logger.info(f"Using manifest: {manifest_path.name}")
 
-        with open(manifest_path, 'r', encoding='utf-8') as f:
+        with open(manifest_path, encoding="utf-8") as f:
             manifest = json.load(f)
 
         # Set context using run_id from base_pipeline
@@ -347,7 +344,9 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
         # Resume or create metrics with run_id from base_pipeline
         if self.metrics is None:
-            self.metrics = MetricsCollector(self.run_id, self.source, pipeline_type=PipelineType.STREAM_PROCESSING)
+            self.metrics = MetricsCollector(
+                self.run_id, self.source, pipeline_type=PipelineType.STREAM_PROCESSING
+            )
 
         # Check if extraction already complete and not forcing
         extraction_complete_marker = staging_dir / ".extraction_complete"
@@ -412,7 +411,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 with Timer() as timer:
                     # Validate record using schema mapper
                     if not self.schema_mapper.validate_record(record):
-                        self.metrics.increment('records_invalid_schema')
+                        self.metrics.increment("records_invalid_schema")
                         continue
 
                     # Map record using schema mapper
@@ -427,7 +426,9 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                     # Check for duplicates via hash
                     if text and url:
                         # Process duplicates with combined exact and near-duplicate detection
-                        is_dup, dup_type, similar_url, text_hash, minhash_sig = self.dedup.process_document(text, url)
+                        is_dup, dup_type, similar_url, text_hash, minhash_sig = (
+                            self.dedup.process_document(text, url)
+                        )
 
                         if is_dup:
                             self.logger.debug(
@@ -437,20 +438,20 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                             self.ledger.mark_duplicate(url, similar_url)
                             # Increment correct metric based on duplicate type
                             if dup_type == "exact":
-                                self.metrics.increment('records_deduplicated')
+                                self.metrics.increment("records_deduplicated")
                             elif dup_type == "near":
-                                self.metrics.increment('near_duplicates')
+                                self.metrics.increment("near_duplicates")
                             continue
 
                         # Add hash and signature to record
-                        record['_text_hash'] = text_hash
-                        record['_minhash_signature'] = minhash_sig
+                        record["_text_hash"] = text_hash
+                        record["_minhash_signature"] = minhash_sig
 
                     batch.append(record)
 
                 # Record fetch duration
                 self.metrics.record_fetch_duration(timer.get_elapsed_ms())
-                self.metrics.increment('records_fetched')
+                self.metrics.increment("records_fetched")
 
                 current_offset = i + 1
                 total_processed += 1
@@ -458,7 +459,10 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 # Write batch when full
                 if len(batch) >= self.streaming_batch_size:
                     # Pattern: {dataset_slug}_{run_id}_staging_batch-{num}.jsonl
-                    batch_file = staging_dir / f"{dataset_slug}_{self.run_id}_staging_batch-{batch_num:06d}.jsonl"
+                    batch_file = (
+                        staging_dir
+                        / f"{dataset_slug}_{self.run_id}_staging_batch-{batch_num:06d}.jsonl"
+                    )
 
                     # Skip if batch already completed
                     if batch_file.name not in batches_completed:
@@ -466,7 +470,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                         batches_completed.add(batch_file.name)
 
                         # Track batch completion
-                        self.metrics.increment('batches_completed')
+                        self.metrics.increment("batches_completed")
 
                         # Update manifest with progress
                         manifest["last_offset"] = current_offset
@@ -487,7 +491,10 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             # Write final partial batch
             if batch:
                 # Pattern: {dataset_slug}_{run_id}_staging_batch-{num}.jsonl
-                batch_file = staging_dir / f"{dataset_slug}_{self.run_id}_staging_batch-{batch_num:06d}.jsonl"
+                batch_file = (
+                    staging_dir
+                    / f"{dataset_slug}_{self.run_id}_staging_batch-{batch_num:06d}.jsonl"
+                )
                 if batch_file.name not in batches_completed:
                     self._write_batch(batch, batch_file)
                     batches_completed.add(batch_file.name)
@@ -496,9 +503,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                     manifest["batches_completed"] = list(batches_completed)
                     self._update_manifest(manifest_path, manifest)
 
-                    self.logger.info(
-                        f"Final batch {batch_num} complete: {len(batch)} records"
-                    )
+                    self.logger.info(f"Final batch {batch_num} complete: {len(batch)} records")
 
             # Mark extraction as complete
             extraction_complete_marker.touch()
@@ -537,13 +542,13 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
         return staging_dir
 
-    def _write_batch(self, batch: List[Dict[str, Any]], batch_file: Path) -> None:
+    def _write_batch(self, batch: list[dict[str, Any]], batch_file: Path) -> None:
         """Write batch of records to JSONL file."""
-        with open(batch_file, 'w', encoding='utf-8') as f:
+        with open(batch_file, "w", encoding="utf-8") as f:
             for record in batch:
                 # Convert non-serializable types (datetime, etc.) to strings
                 serializable_record = self._make_json_serializable(record)
-                f.write(json.dumps(serializable_record, ensure_ascii=False) + '\n')
+                f.write(json.dumps(serializable_record, ensure_ascii=False) + "\n")
 
     def _make_json_serializable(self, obj: Any) -> Any:
         """
@@ -556,13 +561,13 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         - sets → lists
         - Other objects → str() representation
         """
-        from datetime import datetime, date
         import base64
+        from datetime import date, datetime
 
         if isinstance(obj, (datetime, date)):
             return obj.isoformat()
         elif isinstance(obj, bytes):
-            return base64.b64encode(obj).decode('utf-8')
+            return base64.b64encode(obj).decode("utf-8")
         elif isinstance(obj, set):
             return list(obj)
         elif isinstance(obj, dict):
@@ -575,9 +580,9 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             # For any other type, convert to string
             return str(obj)
 
-    def _update_manifest(self, manifest_path: Path, manifest: Dict[str, Any]) -> None:
+    def _update_manifest(self, manifest_path: Path, manifest: dict[str, Any]) -> None:
         """Update manifest file with progress."""
-        with open(manifest_path, 'w', encoding='utf-8') as f:
+        with open(manifest_path, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
 
     def process(self) -> Path:
@@ -591,6 +596,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             Path to silver dataset directory
         """
         from collections import Counter
+
         from .record_utils import build_silver_record
 
         # Check that extraction has been performed
@@ -603,9 +609,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         # Check for extraction complete marker
         extraction_marker = staging_dir / ".extraction_complete"
         if not extraction_marker.exists():
-            raise FileNotFoundError(
-                f"Extraction not complete. Run extract() first."
-            )
+            raise FileNotFoundError("Extraction not complete. Run extract() first.")
 
         self.processed_dir.mkdir(parents=True, exist_ok=True)
 
@@ -628,7 +632,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 filter_stats["empty_after_cleaning"] += 1
 
                 # Record filter reason in metrics if available
-                if hasattr(self, 'metrics') and self.metrics is not None:
+                if hasattr(self, "metrics") and self.metrics is not None:
                     self.metrics.record_filter_reason("empty_after_cleaning")
                 continue
 
@@ -647,16 +651,14 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                         passed_all_filters = False
 
                         # Record filter reason in metrics if available
-                        if hasattr(self, 'metrics') and self.metrics is not None:
+                        if hasattr(self, "metrics") and self.metrics is not None:
                             self.metrics.record_filter_reason(filter_name)
                         break
 
                     filter_metadata.update(metadata_updates)
 
                 except Exception as e:
-                    self.logger.warning(
-                        f"Filter {filter_func.__name__} raised error: {e}"
-                    )
+                    self.logger.warning(f"Filter {filter_func.__name__} raised error: {e}")
                     continue
 
             if not passed_all_filters:
@@ -678,8 +680,8 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 license_str=self._get_license(),
                 pipeline_version="2.1.0",  # Updated for schema v2.1
                 source_metadata=merged_metadata,
-                date_published=raw_record.metadata.get('date_published'),
-                topic=raw_record.metadata.get('topic'),
+                date_published=raw_record.metadata.get("date_published"),
+                topic=raw_record.metadata.get("topic"),
                 domain=self._get_domain(),
                 embedding=None,  # Placeholder for future embeddings
                 register=self._get_register(),  # v2.1: Linguistic register
@@ -691,8 +693,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             # Log progress
             if records_processed % self.log_frequency == 0:
                 self.logger.info(
-                    f"Processed {records_processed:,} records "
-                    f"(filtered: {records_filtered:,})"
+                    f"Processed {records_processed:,} records (filtered: {records_filtered:,})"
                 )
 
         # Write human-readable text dump (aligns with other pipelines)
@@ -714,14 +715,16 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             )
 
         # Write processed text file for human inspection
-        with open(self.processed_file, 'w', encoding='utf-8') as f:
+        with open(self.processed_file, "w", encoding="utf-8") as f:
             for record in silver_records:
                 # Format: <title>\n<text>\n\n (separator between records)
                 f.write(f"{record['title']}\n")
                 f.write(f"{record['text']}\n")
                 f.write("\n")  # Blank line separator
 
-        self.logger.info(f"✓ Processed text written: {self.processed_file} ({records_processed:,} records)")
+        self.logger.info(
+            f"✓ Processed text written: {self.processed_file} ({records_processed:,} records)"
+        )
 
         # Write to silver dataset (Parquet)
         silver_path = self.silver_writer.write(
@@ -733,9 +736,9 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         self.logger.info(f"✓ Silver dataset written: {silver_path}")
 
         # Export processing metrics and final quality report (aligns with base_pipeline.py)
-        if hasattr(self, 'metrics') and self.metrics is not None:
-            self.metrics.increment('records_processed', records_processed)
-            self.metrics.increment('records_written', records_processed)
+        if hasattr(self, "metrics") and self.metrics is not None:
+            self.metrics.increment("records_processed", records_processed)
+            self.metrics.increment("records_written", records_processed)
 
             metrics_path = Path("data/metrics") / f"{self.run_id}_processing.json"
             metrics_path.parent.mkdir(parents=True, exist_ok=True)
@@ -743,6 +746,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             self.logger.info(f"Processing metrics exported: {metrics_path}")
 
             from ..utils.metrics import QualityReporter
+
             report_path = Path("data/reports") / f"{self.run_id}_final_quality_report.md"
             report_path.parent.mkdir(parents=True, exist_ok=True)
             QualityReporter(self.metrics).generate_markdown_report(report_path)
@@ -789,12 +793,12 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         self.logger.info(f"Replaying {len(batch_files)} JSONL batches")
 
         for batch_file in batch_files:
-            with open(batch_file, 'r', encoding='utf-8') as f:
+            with open(batch_file, encoding="utf-8") as f:
                 for line in f:
                     record = json.loads(line)
                     yield self._map_to_raw_record(record)
 
-    def _map_to_raw_record(self, record: Dict[str, Any]) -> RawRecord:
+    def _map_to_raw_record(self, record: dict[str, Any]) -> RawRecord:
         """
         Map HF dataset record to RawRecord.
 
@@ -833,10 +837,10 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         metadata["hf_split"] = self.split
 
         # Preserve dedup metadata if present (for ledger tracking)
-        if '_minhash_signature' in record:
-            metadata['minhash_signature'] = record['_minhash_signature']
-        if '_text_hash' in record:
-            metadata['text_hash'] = record['_text_hash']
+        if "_minhash_signature" in record:
+            metadata["minhash_signature"] = record["_minhash_signature"]
+        if "_text_hash" in record:
+            metadata["text_hash"] = record["_text_hash"]
 
         return RawRecord(
             title=title,
@@ -851,17 +855,22 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
     def _register_filters(self) -> None:
         """Register quality filters for HF datasets."""
-        from .filters import min_length_filter, langid_filter
+        from .filters import langid_filter, min_length_filter
 
         # Load filter config
         min_length = self.hf_config.min_length_threshold
         confidence = self.hf_config.langid_confidence_threshold
 
         self.record_filters.append((min_length_filter, {"threshold": min_length}))
-        self.record_filters.append((langid_filter, {
-            "allowed_langs": {"so"},
-            "confidence_threshold": confidence,
-        }))
+        self.record_filters.append(
+            (
+                langid_filter,
+                {
+                    "allowed_langs": {"so"},
+                    "confidence_threshold": confidence,
+                },
+            )
+        )
 
     def _get_source_type(self) -> str:
         """Return source type."""
@@ -875,7 +884,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
     def _get_license(self) -> str:
         """Return license from manifest or default."""
-        dataset_slug = self.dataset_name.split('/')[-1]
+        dataset_slug = self.dataset_name.split("/")[-1]
         # Try to find manifest with run_id pattern
         manifest_files = list(self.raw_dir.glob(f"{dataset_slug}_*_raw_manifest.json"))
         if not manifest_files:
@@ -883,7 +892,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
         if manifest_files:
             manifest_path = manifest_files[0]
-            with open(manifest_path, 'r', encoding='utf-8') as f:
+            with open(manifest_path, encoding="utf-8") as f:
                 manifest = json.load(f)
                 dataset_info = manifest.get("dataset_info", {})
                 license = dataset_info.get("license")
@@ -904,7 +913,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         """Return ISO 639-1 language code."""
         return "so"  # Somali
 
-    def _get_source_metadata(self) -> Dict[str, Any]:
+    def _get_source_metadata(self) -> dict[str, Any]:
         """
         Return source-specific metadata.
 
@@ -964,9 +973,9 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
 # Factory functions for common datasets
 
+
 def create_mc4_processor(
-    max_records: Optional[int] = None,
-    force: bool = False
+    max_records: Optional[int] = None, force: bool = False
 ) -> HuggingFaceSomaliProcessor:
     """
     Create processor for allenai/c4 (Multilingual C4) Somali subset.

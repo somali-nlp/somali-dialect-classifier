@@ -5,12 +5,9 @@ Tests the schema validation and parsing logic for metrics JSON files,
 ensuring both v3.0 and v2.0 schemas are handled correctly.
 """
 
-import pytest
 import json
-from pathlib import Path
-from typing import Dict, Any
-import tempfile
-import shutil
+
+import pytest
 
 
 class TestSchemaValidation:
@@ -28,22 +25,16 @@ class TestSchemaValidation:
                 "connectivity": {
                     "connection_attempted": True,
                     "connection_successful": True,
-                    "connection_duration_ms": 1000
+                    "connection_duration_ms": 1000,
                 },
                 "extraction": {
                     "http_requests_attempted": 10,
                     "http_requests_successful": 9,
                     "pages_parsed": 9,
-                    "content_extracted": 9
+                    "content_extracted": 9,
                 },
-                "quality": {
-                    "records_received": 9,
-                    "records_passed_filters": 9
-                },
-                "volume": {
-                    "records_written": 9,
-                    "bytes_downloaded": 50000
-                }
+                "quality": {"records_received": 9, "records_passed_filters": 9},
+                "volume": {"records_written": 9, "bytes_downloaded": 50000},
             },
             "legacy_metrics": {
                 "snapshot": {
@@ -51,20 +42,20 @@ class TestSchemaValidation:
                     "source": "Test-Source",
                     "timestamp": "2025-10-26T16:23:45.383125+00:00",
                     "pipeline_type": "web_scraping",
-                    "records_written": 9
+                    "records_written": 9,
                 },
                 "statistics": {
                     "http_request_success_rate": 0.9,
                     "content_extraction_success_rate": 1.0,
                     "quality_pass_rate": 1.0,
-                    "deduplication_rate": 0.0
-                }
-            }
+                    "deduplication_rate": 0.0,
+                },
+            },
         }
 
         # Write to temp file
         metric_file = tmp_path / "test_metric.json"
-        with open(metric_file, 'w') as f:
+        with open(metric_file, "w") as f:
             json.dump(valid_metric, f)
 
         # Verify file exists and is valid JSON
@@ -83,40 +74,27 @@ class TestSchemaValidation:
             "_run_id": "test_file_run",
             "_source": "File-Source",
             "layered_metrics": {
-                "connectivity": {
-                    "connection_attempted": True,
-                    "connection_successful": True
-                },
-                "extraction": {
-                    "files_discovered": 5,
-                    "files_extracted": 5,
-                    "records_parsed": 100
-                },
-                "quality": {
-                    "records_received": 100,
-                    "records_passed_filters": 95
-                },
-                "volume": {
-                    "records_written": 95,
-                    "bytes_downloaded": 1000000
-                }
+                "connectivity": {"connection_attempted": True, "connection_successful": True},
+                "extraction": {"files_discovered": 5, "files_extracted": 5, "records_parsed": 100},
+                "quality": {"records_received": 100, "records_passed_filters": 95},
+                "volume": {"records_written": 95, "bytes_downloaded": 1000000},
             },
             "legacy_metrics": {
                 "snapshot": {
                     "run_id": "test_file_run",
                     "pipeline_type": "file_processing",
-                    "records_written": 95
+                    "records_written": 95,
                 },
                 "statistics": {
                     "file_extraction_success_rate": 1.0,
                     "record_parsing_success_rate": 1.0,
-                    "quality_pass_rate": 0.95
-                }
-            }
+                    "quality_pass_rate": 0.95,
+                },
+            },
         }
 
         metric_file = tmp_path / "test_file_metric.json"
-        with open(metric_file, 'w') as f:
+        with open(metric_file, "w") as f:
             json.dump(valid_metric, f)
 
         with open(metric_file) as f:
@@ -135,37 +113,29 @@ class TestSchemaValidation:
             "layered_metrics": {
                 "connectivity": {
                     "stream_connections_attempted": 1,
-                    "stream_connections_successful": 1
+                    "stream_connections_successful": 1,
                 },
-                "extraction": {
-                    "records_fetched": 1000,
-                    "records_retrieved": 1000
-                },
-                "quality": {
-                    "records_received": 1000,
-                    "records_passed_filters": 980
-                },
-                "volume": {
-                    "records_written": 980
-                }
+                "extraction": {"records_fetched": 1000, "records_retrieved": 1000},
+                "quality": {"records_received": 1000, "records_passed_filters": 980},
+                "volume": {"records_written": 980},
             },
             "legacy_metrics": {
                 "snapshot": {
                     "run_id": "test_stream_run",
                     "pipeline_type": "stream_processing",
-                    "records_written": 980
+                    "records_written": 980,
                 },
                 "statistics": {
                     "stream_connection_success_rate": 1.0,
                     "record_retrieval_success_rate": 1.0,
                     "quality_pass_rate": 0.98,
-                    "dataset_coverage_rate": 0.85
-                }
-            }
+                    "dataset_coverage_rate": 0.85,
+                },
+            },
         }
 
         metric_file = tmp_path / "test_stream_metric.json"
-        with open(metric_file, 'w') as f:
+        with open(metric_file, "w") as f:
             json.dump(valid_metric, f)
 
         with open(metric_file) as f:
@@ -180,17 +150,17 @@ class TestSchemaValidation:
                 "run_id": "old_run_456",
                 "source": "Old-Source",
                 "timestamp": "2025-10-25T12:00:00Z",
-                "records_written": 50
+                "records_written": 50,
             },
             "statistics": {
                 "fetch_success_rate": 0.95,
                 "quality_pass_rate": 0.90,
-                "deduplication_rate": 0.10
-            }
+                "deduplication_rate": 0.10,
+            },
         }
 
         metric_file = tmp_path / "old_metric.json"
-        with open(metric_file, 'w') as f:
+        with open(metric_file, "w") as f:
             json.dump(v2_metric, f)
 
         with open(metric_file) as f:
@@ -207,7 +177,7 @@ class TestSchemaValidation:
         }
 
         metric_file = tmp_path / "incomplete.json"
-        with open(metric_file, 'w') as f:
+        with open(metric_file, "w") as f:
             json.dump(incomplete_metric, f)
 
         # Should be able to read as valid JSON, even if incomplete
@@ -218,7 +188,7 @@ class TestSchemaValidation:
     def test_malformed_json_raises_error(self, tmp_path):
         """Malformed JSON should raise JSONDecodeError"""
         malformed_file = tmp_path / "malformed.json"
-        with open(malformed_file, 'w') as f:
+        with open(malformed_file, "w") as f:
             f.write("{ not valid json [}")
 
         with pytest.raises(json.JSONDecodeError):
@@ -232,18 +202,15 @@ class TestSchemaValidation:
             "_pipeline_type": "web_scraping",
             "_source": "Språkbanken-Sömälï-Tëst",
             "legacy_metrics": {
-                "snapshot": {
-                    "source": "Språkbanken-Sömälï-Tëst",
-                    "run_id": "unicode_test"
-                }
-            }
+                "snapshot": {"source": "Språkbanken-Sömälï-Tëst", "run_id": "unicode_test"}
+            },
         }
 
         metric_file = tmp_path / "unicode.json"
-        with open(metric_file, 'w', encoding='utf-8') as f:
+        with open(metric_file, "w", encoding="utf-8") as f:
             json.dump(unicode_metric, f, ensure_ascii=False)
 
-        with open(metric_file, encoding='utf-8') as f:
+        with open(metric_file, encoding="utf-8") as f:
             loaded = json.load(f)
             assert loaded["_source"] == "Språkbanken-Sömälï-Tëst"
 
@@ -255,10 +222,7 @@ class TestNullAndMissingValues:
         """Null quality metrics should default to 0"""
         metric = {
             "legacy_metrics": {
-                "statistics": {
-                    "quality_pass_rate": None,
-                    "deduplication_rate": None
-                }
+                "statistics": {"quality_pass_rate": None, "deduplication_rate": None}
             }
         }
 
@@ -286,12 +250,7 @@ class TestNullAndMissingValues:
         """Null performance values should default to 0"""
         metric = {
             "legacy_metrics": {
-                "statistics": {
-                    "throughput": {
-                        "urls_per_second": None,
-                        "records_per_minute": None
-                    }
-                }
+                "statistics": {"throughput": {"urls_per_second": None, "records_per_minute": None}}
             }
         }
 
@@ -304,11 +263,7 @@ class TestNullAndMissingValues:
 
     def test_missing_text_length_stats(self):
         """Missing text length stats should return empty dict"""
-        metric = {
-            "legacy_metrics": {
-                "statistics": {}
-            }
-        }
+        metric = {"legacy_metrics": {"statistics": {}}}
 
         text_stats = metric["legacy_metrics"]["statistics"].get("text_length_stats", {})
         mean_length = text_stats.get("mean", 0)
@@ -323,13 +278,8 @@ class TestEdgeCases:
         """Zero records written should be valid"""
         metric = {
             "legacy_metrics": {
-                "snapshot": {
-                    "records_written": 0,
-                    "urls_processed": 10
-                },
-                "statistics": {
-                    "quality_pass_rate": 0.0
-                }
+                "snapshot": {"records_written": 0, "urls_processed": 10},
+                "statistics": {"quality_pass_rate": 0.0},
             }
         }
 
@@ -341,7 +291,7 @@ class TestEdgeCases:
             "legacy_metrics": {
                 "snapshot": {
                     "records_written": 10**15,  # 1 quadrillion
-                    "bytes_downloaded": 10**18  # 1 exabyte
+                    "bytes_downloaded": 10**18,  # 1 exabyte
                 }
             }
         }
@@ -366,7 +316,7 @@ class TestEdgeCases:
         """Duplicate run IDs should be allowed"""
         metrics = [
             {"run_id": "duplicate_id", "records": 100},
-            {"run_id": "duplicate_id", "records": 200}
+            {"run_id": "duplicate_id", "records": 200},
         ]
 
         assert len(metrics) == 2
@@ -374,15 +324,7 @@ class TestEdgeCases:
 
     def test_empty_string_values(self):
         """Empty strings should be preserved"""
-        metric = {
-            "_source": "",
-            "legacy_metrics": {
-                "snapshot": {
-                    "source": "",
-                    "run_id": ""
-                }
-            }
-        }
+        metric = {"_source": "", "legacy_metrics": {"snapshot": {"source": "", "run_id": ""}}}
 
         assert metric["_source"] == ""
         assert metric["legacy_metrics"]["snapshot"]["source"] == ""
@@ -407,17 +349,12 @@ def sample_metrics_dir(tmp_path):
             "_pipeline_type": "web_scraping",
             "_source": source,
             "legacy_metrics": {
-                "snapshot": {
-                    "source": source,
-                    "records_written": records
-                },
-                "statistics": {
-                    "quality_pass_rate": 0.95
-                }
-            }
+                "snapshot": {"source": source, "records_written": records},
+                "statistics": {"quality_pass_rate": 0.95},
+            },
         }
 
-        with open(metrics_dir / filename, 'w') as f:
+        with open(metrics_dir / filename, "w") as f:
             json.dump(metric, f)
 
     return metrics_dir

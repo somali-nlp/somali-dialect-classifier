@@ -17,14 +17,10 @@ Filters can be chained in BasePipeline to enforce data quality standards
 across all sources (Wikipedia, BBC, HuggingFace, etc.).
 """
 
-from typing import Tuple, Dict, Any, Set, List, Callable
-import re
+from typing import Any, Callable
 
 
-def min_length_filter(
-    cleaned_text: str,
-    threshold: int = 50
-) -> Tuple[bool, Dict[str, Any]]:
+def min_length_filter(cleaned_text: str, threshold: int = 50) -> tuple[bool, dict[str, Any]]:
     """
     Filter records below minimum character length.
 
@@ -50,10 +46,8 @@ def min_length_filter(
 
 
 def langid_filter(
-    cleaned_text: str,
-    allowed_langs: Set[str] = {"so"},
-    confidence_threshold: float = 0.5
-) -> Tuple[bool, Dict[str, Any]]:
+    cleaned_text: str, allowed_langs: set[str] = None, confidence_threshold: float = 0.5
+) -> tuple[bool, dict[str, Any]]:
     """
     Filter records not in allowed languages using heuristic detection.
 
@@ -80,6 +74,8 @@ def langid_filter(
     """
     # Simple heuristic for Somali detection
     # Somali uses Latin script with specific diacritic patterns
+    if allowed_langs is None:
+        allowed_langs = {"so"}
     detected_lang = "unknown"
     confidence = 0.0
 
@@ -92,30 +88,163 @@ def langid_filter(
 
     # Somali common words (expanded vocabulary for better detection)
     somali_words = {
-        "waa", "iyo", "oo", "ah", "ka", "ku", "la", "si", "ee",
-        "uu", "ay", "aan", "soo", "buu", "way", "waxaa", "dheh",
-        "waxay", "waxey", "inay", "mida", "qabiilada", "hadlayo", "kuwaasi",
-        "dhaqan", "deegaano", "tirsan", "wadanka", "soomaaliya", "degaan",
-        "caasimada", "sida", "sanad", "dhaqaaqeen", "degmooyinka", "badweynta",
-        "dhaxeysa", "iyadoo", "xiriir", "leeyahay", "webiga", "hoose",
-        "sheegayaa", "laga", "ahayd", "ugu", "horaysa", "ciyaaraha",
-        "kubadda", "koobkii", "koob", "koox", "kooxo", "xilli", "wada",
-        "wadan", "reer", "mudane", "naxariistee", "carabka", "qiraayaan",
-        "marka", "markii", "markaas", "dhulka", "tusaale", "ahaan",
-        "todobaadood", "isbuuc", "aqoonyahan", "joogto", "jiray", "waqtiga",
-        "waqti", "gudaha", "taalaa", "qiyaasaa", "bari", "beri", "qof",
-        "dad", "suuq", "qayb", "qoran", "nool", "afka", "jir", "jira",
-        "tahay", "yahay", "yidhi", "idhi", "qiimaha", "geel", "geela",
-        "gob", "jasiirad", "jamhuuriyada", "yaalo", "yaalaa", "gaarka",
-        "dastuurka", "cusub", "hore", "aduun", "aduunka", "aqoonsado",
-        "xuquuq", "dhul", "dhashay", "magaalo", "magaalada", "mucaarad",
-        "burbur", "burburki", "kacaan", "kacaanka", "carbeed", "sidoo",
-        "aqoon", "rasmi", "weli", "dhaqaalaha", "dhaqaale", "xubin",
-        "sare", "sarre", "hees", "heeso", "suugaan", "guri", "guryo",
-        "cunto", "gaajo", "baahi", "yiraahdo", "xoolo", "beer", "beero",
-        "dhaqato", "roob", "abaar", "xeeb", "xeebta", "yaqaanaa",
-        "suuban", "fiican", "xil", "xilsaaray", "tiro", "qabtaan",
-        "dowlad", "dowladda", "dhexe", "arrin", "arrimaha", "luqadaha",
+        "waa",
+        "iyo",
+        "oo",
+        "ah",
+        "ka",
+        "ku",
+        "la",
+        "si",
+        "ee",
+        "uu",
+        "ay",
+        "aan",
+        "soo",
+        "buu",
+        "way",
+        "waxaa",
+        "dheh",
+        "waxay",
+        "waxey",
+        "inay",
+        "mida",
+        "qabiilada",
+        "hadlayo",
+        "kuwaasi",
+        "dhaqan",
+        "deegaano",
+        "tirsan",
+        "wadanka",
+        "soomaaliya",
+        "degaan",
+        "caasimada",
+        "sida",
+        "sanad",
+        "dhaqaaqeen",
+        "degmooyinka",
+        "badweynta",
+        "dhaxeysa",
+        "iyadoo",
+        "xiriir",
+        "leeyahay",
+        "webiga",
+        "hoose",
+        "sheegayaa",
+        "laga",
+        "ahayd",
+        "ugu",
+        "horaysa",
+        "ciyaaraha",
+        "kubadda",
+        "koobkii",
+        "koob",
+        "koox",
+        "kooxo",
+        "xilli",
+        "wada",
+        "wadan",
+        "reer",
+        "mudane",
+        "naxariistee",
+        "carabka",
+        "qiraayaan",
+        "marka",
+        "markii",
+        "markaas",
+        "dhulka",
+        "tusaale",
+        "ahaan",
+        "todobaadood",
+        "isbuuc",
+        "aqoonyahan",
+        "joogto",
+        "jiray",
+        "waqtiga",
+        "waqti",
+        "gudaha",
+        "taalaa",
+        "qiyaasaa",
+        "bari",
+        "beri",
+        "qof",
+        "dad",
+        "suuq",
+        "qayb",
+        "qoran",
+        "nool",
+        "afka",
+        "jir",
+        "jira",
+        "tahay",
+        "yahay",
+        "yidhi",
+        "idhi",
+        "qiimaha",
+        "geel",
+        "geela",
+        "gob",
+        "jasiirad",
+        "jamhuuriyada",
+        "yaalo",
+        "yaalaa",
+        "gaarka",
+        "dastuurka",
+        "cusub",
+        "hore",
+        "aduun",
+        "aduunka",
+        "aqoonsado",
+        "xuquuq",
+        "dhul",
+        "dhashay",
+        "magaalo",
+        "magaalada",
+        "mucaarad",
+        "burbur",
+        "burburki",
+        "kacaan",
+        "kacaanka",
+        "carbeed",
+        "sidoo",
+        "aqoon",
+        "rasmi",
+        "weli",
+        "dhaqaalaha",
+        "dhaqaale",
+        "xubin",
+        "sare",
+        "sarre",
+        "hees",
+        "heeso",
+        "suugaan",
+        "guri",
+        "guryo",
+        "cunto",
+        "gaajo",
+        "baahi",
+        "yiraahdo",
+        "xoolo",
+        "beer",
+        "beero",
+        "dhaqato",
+        "roob",
+        "abaar",
+        "xeeb",
+        "xeebta",
+        "yaqaanaa",
+        "suuban",
+        "fiican",
+        "xil",
+        "xilsaaray",
+        "tiro",
+        "qabtaan",
+        "dowlad",
+        "dowladda",
+        "dhexe",
+        "arrin",
+        "arrimaha",
+        "luqadaha",
         "tira",
     }
 
@@ -126,8 +255,23 @@ def langid_filter(
 
     # English detection (basic heuristic)
     english_words = {
-        "the", "is", "and", "or", "in", "on", "at", "to", "for",
-        "of", "with", "from", "by", "about", "as", "it", "was"
+        "the",
+        "is",
+        "and",
+        "or",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "of",
+        "with",
+        "from",
+        "by",
+        "about",
+        "as",
+        "it",
+        "was",
     }
 
     if len(words) > 0:
@@ -154,19 +298,14 @@ def langid_filter(
 
     passes = detected_lang in allowed_langs and confidence >= confidence_threshold
 
-    metadata_updates = {
-        "detected_lang": detected_lang,
-        "lang_confidence": round(confidence, 2)
-    }
+    metadata_updates = {"detected_lang": detected_lang, "lang_confidence": round(confidence, 2)}
 
     return passes, metadata_updates
 
 
 def dialect_heuristic_filter(
-    cleaned_text: str,
-    ruleset: Dict[str, List[str]],
-    enrich_only: bool = True
-) -> Tuple[bool, Dict[str, Any]]:
+    cleaned_text: str, ruleset: dict[str, list[str]], enrich_only: bool = True
+) -> tuple[bool, dict[str, Any]]:
     """
     Apply dialect heuristics and optionally enrich metadata.
 
@@ -198,7 +337,7 @@ def dialect_heuristic_filter(
         return True, {}
 
     # Count matches for each dialect
-    dialect_counts = {dialect: 0 for dialect in ruleset}
+    dialect_counts = dict.fromkeys(ruleset, 0)
     text_lower = cleaned_text.lower()
     words = set(text_lower.split())
 
@@ -219,7 +358,7 @@ def dialect_heuristic_filter(
     metadata_updates = {
         "dialect_markers": dialect_counts,
         "primary_dialect": primary_dialect,
-        "total_dialect_markers": total_markers
+        "total_dialect_markers": total_markers,
     }
 
     # Pass if markers found OR if enrich_only mode
@@ -229,10 +368,8 @@ def dialect_heuristic_filter(
 
 
 def namespace_filter(
-    title: str,
-    text: str,
-    skip_prefixes: List[str]
-) -> Tuple[bool, Dict[str, Any]]:
+    title: str, text: str, skip_prefixes: list[str]
+) -> tuple[bool, dict[str, Any]]:
     """
     Filter records based on title namespace (primarily for Wikipedia).
 
@@ -264,10 +401,8 @@ def namespace_filter(
 
 
 def custom_filter(
-    cleaned_text: str,
-    predicate_func: Callable,
-    metadata_key: str = "custom_filter_result"
-) -> Tuple[bool, Dict[str, Any]]:
+    cleaned_text: str, predicate_func: Callable, metadata_key: str = "custom_filter_result"
+) -> tuple[bool, dict[str, Any]]:
     """
     Generic filter wrapper for custom predicates.
 
@@ -308,10 +443,10 @@ def custom_filter(
 
 # Convenience constructors for common filter configurations
 
+
 def create_wikipedia_filters(
-    min_length: int = 50,
-    skip_prefixes: List[str] = None
-) -> List[Tuple[callable, Dict[str, Any]]]:
+    min_length: int = 50, skip_prefixes: list[str] = None
+) -> list[tuple[callable, dict[str, Any]]]:
     """
     Create standard filter chain for Wikipedia sources.
 
@@ -328,8 +463,16 @@ def create_wikipedia_filters(
     """
     if skip_prefixes is None:
         skip_prefixes = [
-            "Wikipedia:", "Talk:", "User:", "File:", "MediaWiki:",
-            "Template:", "Help:", "Category:", "Portal:", "Draft:"
+            "Wikipedia:",
+            "Talk:",
+            "User:",
+            "File:",
+            "MediaWiki:",
+            "Template:",
+            "Help:",
+            "Category:",
+            "Portal:",
+            "Draft:",
         ]
 
     return [
@@ -340,9 +483,8 @@ def create_wikipedia_filters(
 
 
 def create_news_filters(
-    min_length: int = 50,
-    dialect_ruleset: Dict[str, List[str]] = None
-) -> List[Tuple[callable, Dict[str, Any]]]:
+    min_length: int = 50, dialect_ruleset: dict[str, list[str]] = None
+) -> list[tuple[callable, dict[str, Any]]]:
     """
     Create standard filter chain for news sources (BBC, VOA, etc.).
 
@@ -364,19 +506,15 @@ def create_news_filters(
 
     if dialect_ruleset:
         filters.append(
-            (dialect_heuristic_filter, {
-                "ruleset": dialect_ruleset,
-                "enrich_only": True
-            })
+            (dialect_heuristic_filter, {"ruleset": dialect_ruleset, "enrich_only": True})
         )
 
     return filters
 
 
 def create_hf_filters(
-    min_length: int = 50,
-    allowed_langs: Set[str] = None
-) -> List[Tuple[callable, Dict[str, Any]]]:
+    min_length: int = 50, allowed_langs: set[str] = None
+) -> list[tuple[callable, dict[str, Any]]]:
     """
     Create standard filter chain for HuggingFace datasets.
 

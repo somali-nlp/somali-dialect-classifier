@@ -7,9 +7,9 @@ Used primarily in CI/CD environments and local testing.
 """
 
 import json
-from pathlib import Path
-from datetime import datetime, timedelta
 import random
+from datetime import datetime, timedelta
+from pathlib import Path
 
 
 def create_sample_metric(
@@ -18,7 +18,7 @@ def create_sample_metric(
     records_written: int,
     quality_rate: float,
     dedup_rate: float,
-    timestamp_offset_days: int = 0
+    timestamp_offset_days: int = 0,
 ) -> dict:
     """Create a sample v3.0 metrics file"""
 
@@ -42,30 +42,36 @@ def create_sample_metric(
             "connectivity": {
                 "connection_attempted": True,
                 "connection_successful": True,
-                "connection_duration_ms": random.uniform(1000, 5000)
+                "connection_duration_ms": random.uniform(1000, 5000),
             },
             "extraction": {
                 "http_requests_attempted": urls_attempted if pipeline_type == "web_scraping" else 0,
-                "http_requests_successful": urls_processed if pipeline_type == "web_scraping" else 0,
-                "http_status_distribution": {"200": urls_processed} if pipeline_type == "web_scraping" else {},
+                "http_requests_successful": urls_processed
+                if pipeline_type == "web_scraping"
+                else 0,
+                "http_status_distribution": {"200": urls_processed}
+                if pipeline_type == "web_scraping"
+                else {},
                 "pages_parsed": urls_processed if pipeline_type == "web_scraping" else 0,
                 "content_extracted": urls_processed if pipeline_type == "web_scraping" else 0,
                 "files_discovered": urls_processed if pipeline_type == "file_processing" else 0,
                 "files_extracted": urls_processed if pipeline_type == "file_processing" else 0,
                 "records_parsed": records_written if pipeline_type == "file_processing" else 0,
                 "records_fetched": records_written if pipeline_type == "stream_processing" else 0,
-                "records_retrieved": records_written if pipeline_type == "stream_processing" else 0
+                "records_retrieved": records_written if pipeline_type == "stream_processing" else 0,
             },
             "quality": {
-                "records_received": int(records_written / (1 - dedup_rate)) if dedup_rate < 1 else records_written,
+                "records_received": int(records_written / (1 - dedup_rate))
+                if dedup_rate < 1
+                else records_written,
                 "records_passed_filters": records_written,
-                "filter_breakdown": {}
+                "filter_breakdown": {},
             },
             "volume": {
                 "records_written": records_written,
                 "bytes_downloaded": records_written * random.randint(3000, 8000),
-                "total_chars": records_written * random.randint(3500, 7000)
-            }
+                "total_chars": records_written * random.randint(3500, 7000),
+            },
         },
         "legacy_metrics": {
             "snapshot": {
@@ -85,11 +91,21 @@ def create_sample_metric(
             },
             "statistics": {
                 "http_request_success_rate": http_success if pipeline_type == "web_scraping" else 0,
-                "content_extraction_success_rate": quality_rate if pipeline_type == "web_scraping" else 0,
-                "file_extraction_success_rate": quality_rate if pipeline_type == "file_processing" else 0,
-                "record_parsing_success_rate": quality_rate if pipeline_type == "file_processing" else 0,
-                "stream_connection_success_rate": quality_rate if pipeline_type == "stream_processing" else 0,
-                "record_retrieval_success_rate": quality_rate if pipeline_type == "stream_processing" else 0,
+                "content_extraction_success_rate": quality_rate
+                if pipeline_type == "web_scraping"
+                else 0,
+                "file_extraction_success_rate": quality_rate
+                if pipeline_type == "file_processing"
+                else 0,
+                "record_parsing_success_rate": quality_rate
+                if pipeline_type == "file_processing"
+                else 0,
+                "stream_connection_success_rate": quality_rate
+                if pipeline_type == "stream_processing"
+                else 0,
+                "record_retrieval_success_rate": quality_rate
+                if pipeline_type == "stream_processing"
+                else 0,
                 "quality_pass_rate": quality_rate,
                 "deduplication_rate": dedup_rate,
                 "fetch_success_rate": http_success,  # Deprecated
@@ -98,15 +114,15 @@ def create_sample_metric(
                     "max": random.randint(8000, 15000),
                     "mean": random.randint(3500, 7000),
                     "median": random.randint(3000, 6500),
-                    "total_chars": records_written * random.randint(3500, 7000)
+                    "total_chars": records_written * random.randint(3500, 7000),
                 },
                 "throughput": {
                     "urls_per_second": random.uniform(0.01, 0.05),
                     "bytes_per_second": random.uniform(1000, 5000),
-                    "records_per_minute": random.uniform(0.5, 2.0)
-                }
-            }
-        }
+                    "records_per_minute": random.uniform(0.5, 2.0),
+                },
+            },
+        },
     }
 
 
@@ -123,29 +139,29 @@ def main():
             "pipeline": "web_scraping",
             "records": 1250,
             "quality": 0.98,
-            "dedup": 0.05
+            "dedup": 0.05,
         },
         {
             "name": "BBC-Somali",
             "pipeline": "web_scraping",
             "records": 850,
             "quality": 0.96,
-            "dedup": 0.08
+            "dedup": 0.08,
         },
         {
             "name": "HuggingFace-Somali_c4-so",
             "pipeline": "stream_processing",
             "records": 2100,
             "quality": 0.92,
-            "dedup": 0.15
+            "dedup": 0.15,
         },
         {
             "name": "Sprakbanken-Somali",
             "pipeline": "file_processing",
             "records": 1600,
             "quality": 0.97,
-            "dedup": 0.03
-        }
+            "dedup": 0.03,
+        },
     ]
 
     print("Generating sample metrics...")
@@ -157,7 +173,7 @@ def main():
             records_written=source["records"],
             quality_rate=source["quality"],
             dedup_rate=source["dedup"],
-            timestamp_offset_days=random.randint(0, 7)
+            timestamp_offset_days=random.randint(0, 7),
         )
 
         # Generate filename
@@ -167,7 +183,7 @@ def main():
 
         filepath = output_dir / filename
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(metric, f, indent=2)
 
         print(f"  ✓ Created {filename}")

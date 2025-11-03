@@ -10,20 +10,18 @@ Tests cover:
 """
 
 import pytest
-import json
-from pathlib import Path
-from datetime import datetime
 
 try:
     from somali_dialect_classifier.utils.metrics_schema import (
-        validate_processing_json,
-        validate_consolidated_metrics,
-        validate_dashboard_summary,
-        Phase3MetricsSchema,
         ConsolidatedMetric,
         ConsolidatedMetricsOutput,
         DashboardSummary,
+        Phase3MetricsSchema,
+        validate_consolidated_metrics,
+        validate_dashboard_summary,
+        validate_processing_json,
     )
+
     SCHEMA_AVAILABLE = True
 except ImportError:
     SCHEMA_AVAILABLE = False
@@ -42,28 +40,21 @@ SAMPLE_PROCESSING_JSON = {
             "connection_attempted": True,
             "connection_successful": True,
             "connection_duration_ms": 4420.66,
-            "connection_error": None
+            "connection_error": None,
         },
         "extraction": {
             "http_requests_attempted": 29,
             "http_requests_successful": 28,
             "http_status_distribution": {"200": 28},
             "pages_parsed": 28,
-            "content_extracted": 28
+            "content_extracted": 28,
         },
         "quality": {
             "records_received": 28,
             "records_passed_filters": 28,
-            "filter_breakdown": {
-                "min_length_filter": 2,
-                "langid_filter": 1
-            }
+            "filter_breakdown": {"min_length_filter": 2, "langid_filter": 1},
         },
-        "volume": {
-            "records_written": 28,
-            "bytes_downloaded": 0,
-            "total_chars": 136510
-        }
+        "volume": {"records_written": 28, "bytes_downloaded": 0, "total_chars": 136510},
     },
     "legacy_metrics": {
         "snapshot": {
@@ -83,7 +74,7 @@ SAMPLE_PROCESSING_JSON = {
             "error_types": {"scrape_failed": 1},
             "fetch_durations_ms": [1000.0, 1200.0],
             "process_durations_ms": [],
-            "text_lengths": [3672, 6043]
+            "text_lengths": [3672, 6043],
         },
         "statistics": {
             "http_request_success_rate": 0.9655,
@@ -94,14 +85,14 @@ SAMPLE_PROCESSING_JSON = {
             "throughput": {
                 "urls_per_second": 0.0155,
                 "bytes_per_second": 0.0,
-                "records_per_minute": 0.932
+                "records_per_minute": 0.932,
             },
             "text_length_stats": {
                 "min": 337,
                 "max": 10598,
                 "mean": 4875.36,
                 "median": 4438.0,
-                "total_chars": 136510
+                "total_chars": 136510,
             },
             "fetch_duration_stats": {
                 "min": 598.59,
@@ -109,10 +100,10 @@ SAMPLE_PROCESSING_JSON = {
                 "mean": 1357.31,
                 "median": 1126.12,
                 "p95": 3305.28,
-                "p99": 4420.66
-            }
-        }
-    }
+                "p99": 4420.66,
+            },
+        },
+    },
 }
 
 
@@ -243,12 +234,7 @@ class TestConsolidatedMetricValidation:
 
         metric = extract_consolidated_metric(SAMPLE_PROCESSING_JSON, "test.json")
 
-        output = {
-            "count": 1,
-            "records": 28,
-            "sources": ["BBC-Somali"],
-            "metrics": [metric]
-        }
+        output = {"count": 1, "records": 28, "sources": ["BBC-Somali"], "metrics": [metric]}
 
         # Should not raise
         validated = validate_consolidated_metrics(output)
@@ -274,7 +260,7 @@ class TestConsolidatedMetricValidation:
             "deduplication_rate": 0.0,
             "urls_per_second": 0.0,
             "bytes_per_second": 0.0,
-            "records_per_minute": 0.0
+            "records_per_minute": 0.0,
         }
 
         with pytest.raises(Exception):
@@ -299,7 +285,7 @@ class TestConsolidatedMetricValidation:
             "deduplication_rate": 0.0,
             "urls_per_second": 0.0,
             "bytes_per_second": 0.0,
-            "records_per_minute": 0.0
+            "records_per_minute": 0.0,
         }
 
         with pytest.raises(Exception):
@@ -321,7 +307,10 @@ class TestDashboardSummaryGeneration:
 
     def test_summary_from_single_metric(self):
         """Test summary generation with single metric."""
-        from scripts.generate_consolidated_metrics import extract_consolidated_metric, generate_summary
+        from scripts.generate_consolidated_metrics import (
+            extract_consolidated_metric,
+            generate_summary,
+        )
 
         metric = extract_consolidated_metric(SAMPLE_PROCESSING_JSON, "test.json")
         summary = generate_summary([metric])
@@ -333,7 +322,10 @@ class TestDashboardSummaryGeneration:
 
     def test_summary_source_breakdown(self):
         """Test that source breakdown is calculated correctly."""
-        from scripts.generate_consolidated_metrics import extract_consolidated_metric, generate_summary
+        from scripts.generate_consolidated_metrics import (
+            extract_consolidated_metric,
+            generate_summary,
+        )
 
         metric = extract_consolidated_metric(SAMPLE_PROCESSING_JSON, "test.json")
         summary = generate_summary([metric])
@@ -349,7 +341,10 @@ class TestDashboardSummaryGeneration:
 
     def test_summary_validation(self):
         """Test that generated summary passes validation."""
-        from scripts.generate_consolidated_metrics import extract_consolidated_metric, generate_summary
+        from scripts.generate_consolidated_metrics import (
+            extract_consolidated_metric,
+            generate_summary,
+        )
 
         metric = extract_consolidated_metric(SAMPLE_PROCESSING_JSON, "test.json")
         summary = generate_summary([metric])
@@ -370,7 +365,7 @@ class TestEdgeCases:
         del invalid_data["layered_metrics"]
 
         # Should handle gracefully (fallback to legacy or return None)
-        metric = extract_consolidated_metric(invalid_data, "test.json")
+        extract_consolidated_metric(invalid_data, "test.json")
         # Implementation may return None or extract from legacy
 
     def test_empty_filter_breakdown(self):
@@ -398,7 +393,10 @@ class TestEdgeCases:
 
     def test_zero_division_in_summary(self):
         """Test that zero division is handled in summary."""
-        from scripts.generate_consolidated_metrics import extract_consolidated_metric, generate_summary
+        from scripts.generate_consolidated_metrics import (
+            extract_consolidated_metric,
+            generate_summary,
+        )
 
         data = SAMPLE_PROCESSING_JSON.copy()
         data["legacy_metrics"]["statistics"]["http_request_success_rate"] = 0
@@ -420,12 +418,23 @@ class TestSchemaContract:
         metric = extract_consolidated_metric(SAMPLE_PROCESSING_JSON, "test.json")
 
         required_fields = [
-            "run_id", "source", "timestamp", "duration_seconds",
-            "urls_discovered", "urls_fetched", "urls_processed",
-            "records_written", "bytes_downloaded", "total_chars",
-            "http_request_success_rate", "content_extraction_success_rate",
-            "quality_pass_rate", "deduplication_rate",
-            "urls_per_second", "bytes_per_second", "records_per_minute"
+            "run_id",
+            "source",
+            "timestamp",
+            "duration_seconds",
+            "urls_discovered",
+            "urls_fetched",
+            "urls_processed",
+            "records_written",
+            "bytes_downloaded",
+            "total_chars",
+            "http_request_success_rate",
+            "content_extraction_success_rate",
+            "quality_pass_rate",
+            "deduplication_rate",
+            "urls_per_second",
+            "bytes_per_second",
+            "records_per_minute",
         ]
 
         for field in required_fields:

@@ -13,22 +13,23 @@ Features:
 - Thread-safe operations
 """
 
+import json
 import logging
 import sqlite3
-from abc import ABC, abstractmethod
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
-from enum import Enum
-import json
 import threading
+from abc import ABC, abstractmethod
 from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
+from enum import Enum
+from pathlib import Path
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class CrawlState(Enum):
     """URL processing states."""
+
     DISCOVERED = "discovered"
     FETCHED = "fetched"
     PROCESSED = "processed"
@@ -63,32 +64,26 @@ class LedgerBackend(ABC):
         last_modified: Optional[str] = None,
         content_length: Optional[int] = None,
         error_message: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> None:
         """Insert or update URL record."""
         pass
 
     @abstractmethod
-    def get_url_state(self, url: str) -> Optional[Dict[str, Any]]:
+    def get_url_state(self, url: str) -> Optional[dict[str, Any]]:
         """Get current state for URL."""
         pass
 
     @abstractmethod
     def get_urls_by_state(
-        self,
-        source: str,
-        state: CrawlState,
-        limit: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        self, source: str, state: CrawlState, limit: Optional[int] = None
+    ) -> list[dict[str, Any]]:
         """Get URLs in specific state."""
         pass
 
     @abstractmethod
     def mark_url_state(
-        self,
-        url: str,
-        state: CrawlState,
-        error_message: Optional[str] = None
+        self, url: str, state: CrawlState, error_message: Optional[str] = None
     ) -> None:
         """Update URL state."""
         pass
@@ -100,10 +95,8 @@ class LedgerBackend(ABC):
 
     @abstractmethod
     def check_near_duplicate_by_minhash(
-        self,
-        minhash_signature: str,
-        threshold: float = 0.85
-    ) -> Optional[List[Tuple[str, float]]]:
+        self, minhash_signature: str, threshold: float = 0.85
+    ) -> Optional[list[tuple[str, float]]]:
         """Check for near-duplicates using MinHash."""
         pass
 
@@ -118,7 +111,7 @@ class LedgerBackend(ABC):
         pass
 
     @abstractmethod
-    def get_statistics(self, source: Optional[str] = None) -> Dict[str, Any]:
+    def get_statistics(self, source: Optional[str] = None) -> dict[str, Any]:
         """Get ledger statistics."""
         pass
 
@@ -164,12 +157,12 @@ class SQLiteLedger(LedgerBackend):
     @property
     def connection(self) -> sqlite3.Connection:
         """Get thread-local database connection."""
-        if not hasattr(self._local, 'conn'):
+        if not hasattr(self._local, "conn"):
             self._local.conn = sqlite3.connect(
                 str(self.db_path),
                 check_same_thread=self._check_same_thread,
                 timeout=60.0,  # 60 second timeout for lock acquisition
-                isolation_level=None  # Autocommit mode for better concurrency
+                isolation_level=None,  # Autocommit mode for better concurrency
             )
             # Configure for maximum concurrency
             self._local.conn.execute("PRAGMA foreign_keys = ON")
@@ -211,7 +204,7 @@ class SQLiteLedger(LedgerBackend):
 
             # Check current version
             result = conn.execute("SELECT MAX(version) as v FROM schema_version").fetchone()
-            current_version = result['v'] if result['v'] is not None else 0
+            current_version = result["v"] if result["v"] is not None else 0
 
             if current_version < 1:
                 self._apply_schema_v1(conn)
@@ -288,7 +281,7 @@ class SQLiteLedger(LedgerBackend):
         last_modified: Optional[str] = None,
         content_length: Optional[int] = None,
         error_message: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> None:
         """Insert or update URL record."""
         now = datetime.now(timezone.utc)
@@ -297,17 +290,17 @@ class SQLiteLedger(LedgerBackend):
         with self.transaction() as conn:
             # Check if URL exists
             existing = conn.execute(
-                "SELECT url, retry_count FROM crawl_ledger WHERE url = ?",
-                (url,)
+                "SELECT url, retry_count FROM crawl_ledger WHERE url = ?", (url,)
             ).fetchone()
 
             if existing:
                 # Update existing record
-                retry_count = existing['retry_count']
+                retry_count = existing["retry_count"]
                 if state == CrawlState.FAILED:
                     retry_count += 1
 
-                conn.execute("""
+                conn.execute(
+                    """
                     UPDATE crawl_ledger SET
                         state = ?,
                         text_hash = COALESCE(?, text_hash),
@@ -323,29 +316,56 @@ class SQLiteLedger(LedgerBackend):
                         last_fetched_at = CASE WHEN ? = 'fetched' THEN ? ELSE last_fetched_at END,
                         updated_at = ?
                     WHERE url = ?
-                """, (
-                    state.value, text_hash, minhash_signature, silver_id,
-                    http_status, etag, last_modified, content_length,
-                    error_message, retry_count, metadata_json,
-                    state.value, now, now, url
-                ))
+                """,
+                    (
+                        state.value,
+                        text_hash,
+                        minhash_signature,
+                        silver_id,
+                        http_status,
+                        etag,
+                        last_modified,
+                        content_length,
+                        error_message,
+                        retry_count,
+                        metadata_json,
+                        state.value,
+                        now,
+                        now,
+                        url,
+                    ),
+                )
             else:
                 # Insert new record
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO crawl_ledger (
                         url, source, state, discovered_at,
                         text_hash, minhash_signature, silver_id,
                         http_status, etag, last_modified, content_length,
                         error_message, metadata, created_at, updated_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    url, source, state.value, now,
-                    text_hash, minhash_signature, silver_id,
-                    http_status, etag, last_modified, content_length,
-                    error_message, metadata_json, now, now
-                ))
+                """,
+                    (
+                        url,
+                        source,
+                        state.value,
+                        now,
+                        text_hash,
+                        minhash_signature,
+                        silver_id,
+                        http_status,
+                        etag,
+                        last_modified,
+                        content_length,
+                        error_message,
+                        metadata_json,
+                        now,
+                        now,
+                    ),
+                )
 
-    def get_url_state(self, url: str) -> Optional[Dict[str, Any]]:
+    def get_url_state(self, url: str) -> Optional[dict[str, Any]]:
         """Get current state for URL."""
         result = self.connection.execute(
             "SELECT * FROM crawl_ledger WHERE url = ?", (url,)
@@ -356,11 +376,8 @@ class SQLiteLedger(LedgerBackend):
         return None
 
     def get_urls_by_state(
-        self,
-        source: str,
-        state: CrawlState,
-        limit: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        self, source: str, state: CrawlState, limit: Optional[int] = None
+    ) -> list[dict[str, Any]]:
         """Get URLs in specific state."""
         query = """
             SELECT * FROM crawl_ledger
@@ -375,46 +392,46 @@ class SQLiteLedger(LedgerBackend):
         return [dict(row) for row in results]
 
     def mark_url_state(
-        self,
-        url: str,
-        state: CrawlState,
-        error_message: Optional[str] = None
+        self, url: str, state: CrawlState, error_message: Optional[str] = None
     ) -> None:
         """Update URL state."""
         now = datetime.now(timezone.utc)
 
         with self.transaction() as conn:
             if state == CrawlState.FAILED:
-                conn.execute("""
+                conn.execute(
+                    """
                     UPDATE crawl_ledger SET
                         state = ?,
                         error_message = ?,
                         retry_count = retry_count + 1,
                         updated_at = ?
                     WHERE url = ?
-                """, (state.value, error_message, now, url))
+                """,
+                    (state.value, error_message, now, url),
+                )
             else:
-                conn.execute("""
+                conn.execute(
+                    """
                     UPDATE crawl_ledger SET
                         state = ?,
                         updated_at = ?
                     WHERE url = ?
-                """, (state.value, now, url))
+                """,
+                    (state.value, now, url),
+                )
 
     def check_duplicate_by_hash(self, text_hash: str) -> Optional[str]:
         """Check if text hash already exists, return URL if found."""
         result = self.connection.execute(
-            "SELECT url FROM crawl_ledger WHERE text_hash = ? LIMIT 1",
-            (text_hash,)
+            "SELECT url FROM crawl_ledger WHERE text_hash = ? LIMIT 1", (text_hash,)
         ).fetchone()
 
-        return result['url'] if result else None
+        return result["url"] if result else None
 
     def check_near_duplicate_by_minhash(
-        self,
-        minhash_signature: str,
-        threshold: float = 0.85
-    ) -> Optional[List[Tuple[str, float]]]:
+        self, minhash_signature: str, threshold: float = 0.85
+    ) -> Optional[list[tuple[str, float]]]:
         """
         Check for near-duplicates using MinHash.
 
@@ -432,21 +449,20 @@ class SQLiteLedger(LedgerBackend):
         for row in results:
             # Placeholder: real implementation would compute similarity
             # For now, just return exact matches
-            if row['minhash_signature'] == minhash_signature:
-                similar_urls.append((row['url'], 1.0))
+            if row["minhash_signature"] == minhash_signature:
+                similar_urls.append((row["url"], 1.0))
 
         return similar_urls if similar_urls else None
 
     def get_last_rss_fetch(self, feed_url: str) -> Optional[datetime]:
         """Get last RSS feed fetch time."""
         result = self.connection.execute(
-            "SELECT last_fetched_at FROM rss_feeds WHERE feed_url = ?",
-            (feed_url,)
+            "SELECT last_fetched_at FROM rss_feeds WHERE feed_url = ?", (feed_url,)
         ).fetchone()
 
-        if result and result['last_fetched_at']:
+        if result and result["last_fetched_at"]:
             # Parse ISO format timestamp
-            return datetime.fromisoformat(result['last_fetched_at'].replace('Z', '+00:00'))
+            return datetime.fromisoformat(result["last_fetched_at"].replace("Z", "+00:00"))
         return None
 
     def record_rss_fetch(self, feed_url: str, items_found: int) -> None:
@@ -455,14 +471,17 @@ class SQLiteLedger(LedgerBackend):
 
         with self.transaction() as conn:
             # Upsert RSS feed record
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO rss_feeds (feed_url, source, last_fetched_at, items_found, fetch_count)
                 VALUES (?, 'bbc', ?, ?, 1)
                 ON CONFLICT(feed_url) DO UPDATE SET
                     last_fetched_at = excluded.last_fetched_at,
                     items_found = excluded.items_found,
                     fetch_count = fetch_count + 1
-            """, (feed_url, now.isoformat(), items_found))
+            """,
+                (feed_url, now.isoformat(), items_found),
+            )
 
     def should_fetch_rss(self, feed_url: str, min_hours: int = 6) -> bool:
         """Check if enough time has passed since last RSS fetch."""
@@ -474,7 +493,7 @@ class SQLiteLedger(LedgerBackend):
         time_since = datetime.now(timezone.utc) - last_fetch
         return time_since > timedelta(hours=min_hours)
 
-    def get_statistics(self, source: Optional[str] = None) -> Dict[str, Any]:
+    def get_statistics(self, source: Optional[str] = None) -> dict[str, Any]:
         """Get ledger statistics."""
         stats = {}
 
@@ -485,7 +504,7 @@ class SQLiteLedger(LedgerBackend):
         result = self.connection.execute(
             f"SELECT COUNT(*) as count FROM crawl_ledger {source_filter}"
         ).fetchone()
-        stats['total_urls'] = result['count']
+        stats["total_urls"] = result["count"]
 
         # URLs by state
         state_query = f"""
@@ -496,8 +515,8 @@ class SQLiteLedger(LedgerBackend):
 
         state_counts = {}
         for row in self.connection.execute(state_query):
-            state_counts[row['state']] = row['count']
-        stats['by_state'] = state_counts
+            state_counts[row["state"]] = row["count"]
+        stats["by_state"] = state_counts
 
         # Duplicate statistics
         result = self.connection.execute(f"""
@@ -507,25 +526,25 @@ class SQLiteLedger(LedgerBackend):
             FROM crawl_ledger {source_filter}
         """).fetchone()
 
-        stats['unique_documents'] = result['unique_hashes'] or 0
-        stats['total_hashed'] = result['total_hashed'] or 0
+        stats["unique_documents"] = result["unique_hashes"] or 0
+        stats["total_hashed"] = result["total_hashed"] or 0
 
-        if stats['total_hashed'] > 0:
-            stats['dedup_rate'] = 1 - (stats['unique_documents'] / stats['total_hashed'])
+        if stats["total_hashed"] > 0:
+            stats["dedup_rate"] = 1 - (stats["unique_documents"] / stats["total_hashed"])
         else:
-            stats['dedup_rate'] = 0
+            stats["dedup_rate"] = 0
 
         # Error statistics
         result = self.connection.execute(f"""
             SELECT COUNT(*) as count
             FROM crawl_ledger
-            {source_filter + ' AND' if source_filter else 'WHERE'}
+            {source_filter + " AND" if source_filter else "WHERE"}
             state = 'failed' AND retry_count >= 3
         """).fetchone()
-        stats['permanent_failures'] = result['count']
+        stats["permanent_failures"] = result["count"]
 
         # RSS statistics (BBC only)
-        if not source or source == 'bbc':
+        if not source or source == "bbc":
             result = self.connection.execute("""
                 SELECT
                     COUNT(*) as feed_count,
@@ -534,10 +553,10 @@ class SQLiteLedger(LedgerBackend):
                 FROM rss_feeds
             """).fetchone()
 
-            stats['rss'] = {
-                'feed_count': result['feed_count'] or 0,
-                'total_fetches': result['total_fetches'] or 0,
-                'avg_items_per_fetch': result['avg_items_per_fetch'] or 0
+            stats["rss"] = {
+                "feed_count": result["feed_count"] or 0,
+                "total_fetches": result["total_fetches"] or 0,
+                "avg_items_per_fetch": result["avg_items_per_fetch"] or 0,
             }
 
         return stats
@@ -548,20 +567,23 @@ class SQLiteLedger(LedgerBackend):
 
         with self.transaction() as conn:
             # Only cleanup failed entries with high retry count
-            result = conn.execute("""
+            result = conn.execute(
+                """
                 DELETE FROM crawl_ledger
                 WHERE state = 'failed'
                 AND retry_count >= 3
                 AND updated_at < ?
-            """, (cutoff.isoformat(),))
+            """,
+                (cutoff.isoformat(),),
+            )
 
             return result.rowcount
 
     def close(self) -> None:
         """Close database connection."""
-        if hasattr(self._local, 'conn'):
+        if hasattr(self._local, "conn"):
             self._local.conn.close()
-            delattr(self._local, 'conn')
+            delattr(self._local, "conn")
 
 
 class PostgresLedger(LedgerBackend):
@@ -597,24 +619,18 @@ class PostgresLedger(LedgerBackend):
         # Use PostgreSQL UPSERT (INSERT ... ON CONFLICT)
         pass
 
-    def get_url_state(self, url: str) -> Optional[Dict[str, Any]]:
+    def get_url_state(self, url: str) -> Optional[dict[str, Any]]:
         """Get current state for URL."""
         pass
 
     def get_urls_by_state(
-        self,
-        source: str,
-        state: CrawlState,
-        limit: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        self, source: str, state: CrawlState, limit: Optional[int] = None
+    ) -> list[dict[str, Any]]:
         """Get URLs in specific state."""
         pass
 
     def mark_url_state(
-        self,
-        url: str,
-        state: CrawlState,
-        error_message: Optional[str] = None
+        self, url: str, state: CrawlState, error_message: Optional[str] = None
     ) -> None:
         """Update URL state."""
         pass
@@ -624,10 +640,8 @@ class PostgresLedger(LedgerBackend):
         pass
 
     def check_near_duplicate_by_minhash(
-        self,
-        minhash_signature: str,
-        threshold: float = 0.85
-    ) -> Optional[List[Tuple[str, float]]]:
+        self, minhash_signature: str, threshold: float = 0.85
+    ) -> Optional[list[tuple[str, float]]]:
         """Check for near-duplicates using MinHash."""
         # Could use PostgreSQL's pg_trgm extension for similarity
         pass
@@ -640,7 +654,7 @@ class PostgresLedger(LedgerBackend):
         """Record RSS feed fetch."""
         pass
 
-    def get_statistics(self, source: Optional[str] = None) -> Dict[str, Any]:
+    def get_statistics(self, source: Optional[str] = None) -> dict[str, Any]:
         """Get ledger statistics."""
         pass
 
@@ -660,11 +674,7 @@ class CrawlLedger:
     Wraps backend implementation and provides convenience methods.
     """
 
-    def __init__(
-        self,
-        backend: Optional[LedgerBackend] = None,
-        db_path: Optional[Path] = None
-    ):
+    def __init__(self, backend: Optional[LedgerBackend] = None, db_path: Optional[Path] = None):
         """
         Initialize crawl ledger.
 
@@ -678,6 +688,7 @@ class CrawlLedger:
             # Default to SQLite
             if db_path is None:
                 from ..config import get_config
+
                 config = get_config()
                 db_path = config.data.raw_dir.parent / "ledger" / "crawl_ledger.db"
 
@@ -685,7 +696,7 @@ class CrawlLedger:
 
         self.logger = logging.getLogger(__name__)
 
-    def discover_url(self, url: str, source: str, metadata: Optional[Dict] = None) -> bool:
+    def discover_url(self, url: str, source: str, metadata: Optional[dict] = None) -> bool:
         """
         Mark URL as discovered.
 
@@ -696,10 +707,7 @@ class CrawlLedger:
 
         if not existing:
             self.backend.upsert_url(
-                url=url,
-                source=source,
-                state=CrawlState.DISCOVERED,
-                metadata=metadata
+                url=url, source=source, state=CrawlState.DISCOVERED, metadata=metadata
             )
             return True
         return False
@@ -711,7 +719,7 @@ class CrawlLedger:
         etag: Optional[str] = None,
         last_modified: Optional[str] = None,
         content_length: Optional[int] = None,
-        source: Optional[str] = None
+        source: Optional[str] = None,
     ) -> None:
         """Mark URL as successfully fetched with HTTP metadata."""
         self.backend.upsert_url(
@@ -721,7 +729,7 @@ class CrawlLedger:
             http_status=http_status,
             etag=etag,
             last_modified=last_modified,
-            content_length=content_length
+            content_length=content_length,
         )
 
     def mark_processed(
@@ -730,7 +738,7 @@ class CrawlLedger:
         text_hash: str,
         silver_id: str,
         minhash_signature: Optional[str] = None,
-        source: Optional[str] = None
+        source: Optional[str] = None,
     ) -> None:
         """Mark URL as successfully processed."""
         self.backend.upsert_url(
@@ -739,7 +747,7 @@ class CrawlLedger:
             state=CrawlState.PROCESSED,
             text_hash=text_hash,
             silver_id=silver_id,
-            minhash_signature=minhash_signature
+            minhash_signature=minhash_signature,
         )
 
     def mark_duplicate(self, url: str, original_url: str, source: Optional[str] = None) -> None:
@@ -748,30 +756,22 @@ class CrawlLedger:
             url=url,
             source=source or "",  # Use provided source or empty
             state=CrawlState.DUPLICATE,
-            metadata={"original_url": original_url}
+            metadata={"original_url": original_url},
         )
 
     def mark_failed(self, url: str, error: str) -> None:
         """Mark URL as failed with error message."""
-        self.backend.mark_url_state(
-            url=url,
-            state=CrawlState.FAILED,
-            error_message=error
-        )
+        self.backend.mark_url_state(url=url, state=CrawlState.FAILED, error_message=error)
 
     def is_duplicate(self, text_hash: str) -> Optional[str]:
         """Check if text hash is duplicate, return original URL if found."""
         return self.backend.check_duplicate_by_hash(text_hash)
 
     def find_near_duplicates(
-        self,
-        minhash_signature: str,
-        threshold: float = 0.85
-    ) -> Optional[List[Tuple[str, float]]]:
+        self, minhash_signature: str, threshold: float = 0.85
+    ) -> Optional[list[tuple[str, float]]]:
         """Find near-duplicate URLs."""
-        return self.backend.check_near_duplicate_by_minhash(
-            minhash_signature, threshold
-        )
+        return self.backend.check_near_duplicate_by_minhash(minhash_signature, threshold)
 
     def should_fetch_url(self, url: str, force: bool = False) -> bool:
         """
@@ -791,31 +791,31 @@ class CrawlLedger:
             return True  # Not in ledger, should fetch
 
         # Skip if already processed or duplicate
-        if state['state'] in ['processed', 'duplicate']:
+        if state["state"] in ["processed", "duplicate"]:
             return False
 
         # Skip if failed too many times
-        if state['state'] == 'failed' and state.get('retry_count', 0) >= 3:
+        if state["state"] == "failed" and state.get("retry_count", 0) >= 3:
             return False
 
         return True
 
-    def get_conditional_headers(self, url: str) -> Dict[str, str]:
+    def get_conditional_headers(self, url: str) -> dict[str, str]:
         """Get conditional request headers for URL."""
         state = self.backend.get_url_state(url)
         headers = {}
 
         if state:
-            if state.get('etag'):
-                headers['If-None-Match'] = state['etag']
-            if state.get('last_modified'):
-                headers['If-Modified-Since'] = state['last_modified']
+            if state.get("etag"):
+                headers["If-None-Match"] = state["etag"]
+            if state.get("last_modified"):
+                headers["If-Modified-Since"] = state["last_modified"]
 
         return headers
 
     def should_fetch_rss(self, feed_url: str, min_hours: int = 6) -> bool:
         """Check if RSS feed should be fetched."""
-        if hasattr(self.backend, 'should_fetch_rss'):
+        if hasattr(self.backend, "should_fetch_rss"):
             return self.backend.should_fetch_rss(feed_url, min_hours)
         return True  # Default to allow if not implemented
 
@@ -823,19 +823,17 @@ class CrawlLedger:
         """Record RSS feed fetch."""
         self.backend.record_rss_fetch(feed_url, items_found)
 
-    def get_pending_urls(self, source: str, limit: int = 100) -> List[str]:
+    def get_pending_urls(self, source: str, limit: int = 100) -> list[str]:
         """Get URLs pending processing."""
-        discovered = self.backend.get_urls_by_state(
-            source, CrawlState.DISCOVERED, limit
-        )
+        discovered = self.backend.get_urls_by_state(source, CrawlState.DISCOVERED, limit)
         fetched = self.backend.get_urls_by_state(
             source, CrawlState.FETCHED, limit - len(discovered)
         )
 
-        urls = [r['url'] for r in discovered] + [r['url'] for r in fetched]
+        urls = [r["url"] for r in discovered] + [r["url"] for r in fetched]
         return urls
 
-    def get_statistics(self, source: Optional[str] = None) -> Dict[str, Any]:
+    def get_statistics(self, source: Optional[str] = None) -> dict[str, Any]:
         """Get ledger statistics."""
         return self.backend.get_statistics(source)
 
@@ -860,7 +858,9 @@ class CrawlLedger:
 _ledger_instance = None
 
 
-def get_ledger(backend: Optional[LedgerBackend] = None, db_path: Optional[Path] = None) -> CrawlLedger:
+def get_ledger(
+    backend: Optional[LedgerBackend] = None, db_path: Optional[Path] = None
+) -> CrawlLedger:
     """
     Get or create crawl ledger instance (singleton pattern).
 

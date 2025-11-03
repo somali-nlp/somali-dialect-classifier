@@ -15,13 +15,12 @@ import logging.handlers
 import socket
 import sys
 import threading
+import traceback
+import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
-import traceback
-from contextlib import contextmanager
-import uuid
-
+from typing import Any, Optional, Union
 
 # Thread-local storage for context
 _context = threading.local()
@@ -36,7 +35,7 @@ class StructuredFormatter(logging.Formatter):
         self,
         include_context: bool = True,
         include_hostname: bool = False,
-        include_traceback: bool = True
+        include_traceback: bool = True,
     ):
         """
         Initialize structured formatter.
@@ -73,7 +72,7 @@ class StructuredFormatter(logging.Formatter):
                 log_entry.update(context)
 
         # Add extra fields from record
-        if hasattr(record, 'extra_fields'):
+        if hasattr(record, "extra_fields"):
             log_entry.update(record.extra_fields)
 
         # Add exception info if present
@@ -81,7 +80,7 @@ class StructuredFormatter(logging.Formatter):
             log_entry["exception"] = {
                 "type": record.exc_info[0].__name__,
                 "message": str(record.exc_info[1]),
-                "traceback": traceback.format_exception(*record.exc_info)
+                "traceback": traceback.format_exception(*record.exc_info),
             }
 
         # Add source location for DEBUG level
@@ -89,7 +88,7 @@ class StructuredFormatter(logging.Formatter):
             log_entry["location"] = {
                 "file": record.pathname,
                 "line": record.lineno,
-                "function": record.funcName
+                "function": record.funcName,
             }
 
         return json.dumps(log_entry, ensure_ascii=False, default=str)
@@ -102,12 +101,12 @@ class ColoredFormatter(logging.Formatter):
 
     # ANSI color codes
     COLORS = {
-        'DEBUG': '\033[36m',     # Cyan
-        'INFO': '\033[32m',      # Green
-        'WARNING': '\033[33m',   # Yellow
-        'ERROR': '\033[31m',     # Red
-        'CRITICAL': '\033[35m',  # Magenta
-        'RESET': '\033[0m'       # Reset
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
+        "WARNING": "\033[33m",  # Yellow
+        "ERROR": "\033[31m",  # Red
+        "CRITICAL": "\033[35m",  # Magenta
+        "RESET": "\033[0m",  # Reset
     }
 
     def __init__(self, format_str: Optional[str] = None, use_colors: bool = True):
@@ -127,11 +126,7 @@ class ColoredFormatter(logging.Formatter):
         """Format log record with colors."""
         if self.use_colors:
             levelname = record.levelname
-            record.levelname = (
-                f"{self.COLORS.get(levelname, '')}"
-                f"{levelname}"
-                f"{self.COLORS['RESET']}"
-            )
+            record.levelname = f"{self.COLORS.get(levelname, '')}{levelname}{self.COLORS['RESET']}"
 
         # Add context to message
         context = get_context()
@@ -159,7 +154,7 @@ class StructuredLogger:
         log_file: Optional[Path] = None,
         console: bool = True,
         json_format: bool = True,
-        rotation_config: Optional[Dict[str, Any]] = None
+        rotation_config: Optional[dict[str, Any]] = None,
     ):
         """
         Initialize structured logger.
@@ -191,10 +186,7 @@ class StructuredLogger:
             self._add_console_handler(json_format)
 
     def _add_file_handler(
-        self,
-        log_file: Path,
-        json_format: bool,
-        rotation_config: Optional[Dict[str, Any]] = None
+        self, log_file: Path, json_format: bool, rotation_config: Optional[dict[str, Any]] = None
     ):
         """Add rotating file handler."""
         log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -204,7 +196,7 @@ class StructuredLogger:
             rotation_config = {
                 "max_bytes": 104857600,  # 100 MB
                 "backup_count": 10,
-                "encoding": "utf-8"
+                "encoding": "utf-8",
             }
 
         # Create rotating file handler
@@ -212,19 +204,16 @@ class StructuredLogger:
             filename=str(log_file),
             maxBytes=rotation_config.get("max_bytes", 104857600),
             backupCount=rotation_config.get("backup_count", 10),
-            encoding=rotation_config.get("encoding", "utf-8")
+            encoding=rotation_config.get("encoding", "utf-8"),
         )
 
         # Set formatter
         if json_format:
-            handler.setFormatter(StructuredFormatter(
-                include_context=True,
-                include_hostname=True
-            ))
+            handler.setFormatter(StructuredFormatter(include_context=True, include_hostname=True))
         else:
-            handler.setFormatter(logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            ))
+            handler.setFormatter(
+                logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            )
 
         self.logger.addHandler(handler)
 
@@ -233,10 +222,7 @@ class StructuredLogger:
         handler = logging.StreamHandler(sys.stderr)
 
         if json_format:
-            handler.setFormatter(StructuredFormatter(
-                include_context=True,
-                include_hostname=False
-            ))
+            handler.setFormatter(StructuredFormatter(include_context=True, include_hostname=False))
         else:
             handler.setFormatter(ColoredFormatter())
 
@@ -249,6 +235,7 @@ class StructuredLogger:
 
 # Context management functions
 
+
 def set_context(**kwargs):
     """
     Set thread-local context variables.
@@ -259,19 +246,19 @@ def set_context(**kwargs):
     Example:
         set_context(run_id="20250119_103045", source="BBC-Somali", phase="fetch")
     """
-    if not hasattr(_context, 'data'):
+    if not hasattr(_context, "data"):
         _context.data = {}
     _context.data.update(kwargs)
 
 
-def get_context() -> Dict[str, Any]:
+def get_context() -> dict[str, Any]:
     """Get current thread-local context."""
-    return getattr(_context, 'data', {})
+    return getattr(_context, "data", {})
 
 
 def clear_context():
     """Clear thread-local context."""
-    if hasattr(_context, 'data'):
+    if hasattr(_context, "data"):
         _context.data.clear()
 
 
@@ -296,6 +283,7 @@ def log_context(**kwargs):
 
 # Run ID generation
 
+
 def generate_run_id(source: Optional[str] = None) -> str:
     """
     Generate unique run ID.
@@ -318,6 +306,7 @@ def generate_run_id(source: Optional[str] = None) -> str:
 
 
 # Logging helpers for specific events
+
 
 class LogEvent:
     """Predefined log event types for consistency."""
@@ -351,12 +340,7 @@ class LogEvent:
     QUALITY_CHECK_FAILED = "quality_check_failed"
 
 
-def log_event(
-    logger: logging.Logger,
-    event: str,
-    level: int = logging.INFO,
-    **kwargs
-):
+def log_event(logger: logging.Logger, event: str, level: int = logging.INFO, **kwargs):
     """
     Log structured event.
 
@@ -385,10 +369,10 @@ def log_event(
         logger.name,
         level,
         "",  # pathname
-        0,   # lineno
+        0,  # lineno
         f"Event: {event}",  # msg
         (),  # args
-        None  # exc_info
+        None,  # exc_info
     )
     record.extra_fields = extra_fields
 
@@ -396,6 +380,7 @@ def log_event(
 
 
 # Performance timing utilities
+
 
 class Timer:
     """Simple timer for measuring durations."""
@@ -423,6 +408,7 @@ class Timer:
 
 # Configuration loader for logging
 
+
 def setup_logging(config_path: Optional[Path] = None, environment: str = "development"):
     """
     Setup logging from configuration file.
@@ -437,6 +423,7 @@ def setup_logging(config_path: Optional[Path] = None, environment: str = "develo
     # Load configuration
     if config_path and config_path.exists():
         import yaml
+
         with open(config_path) as f:
             config = yaml.safe_load(f)
     else:
@@ -445,14 +432,8 @@ def setup_logging(config_path: Optional[Path] = None, environment: str = "develo
             "logging": {
                 "level": "INFO",
                 "format": "json" if environment == "production" else "text",
-                "file": {
-                    "enabled": True,
-                    "path": f"logs/{environment}.log"
-                },
-                "console": {
-                    "enabled": True,
-                    "colored": environment != "production"
-                }
+                "file": {"enabled": True, "path": f"logs/{environment}.log"},
+                "console": {"enabled": True, "colored": environment != "production"},
             }
         }
 
@@ -462,9 +443,11 @@ def setup_logging(config_path: Optional[Path] = None, environment: str = "develo
     logger = StructuredLogger(
         name="somali_dialect_classifier",
         level=log_config.get("level", "INFO"),
-        log_file=Path(log_config["file"]["path"]) if log_config.get("file", {}).get("enabled") else None,
+        log_file=Path(log_config["file"]["path"])
+        if log_config.get("file", {}).get("enabled")
+        else None,
         console=log_config.get("console", {}).get("enabled", True),
-        json_format=log_config.get("format") == "json"
+        json_format=log_config.get("format") == "json",
     )
 
     return logger
@@ -474,10 +457,7 @@ def setup_logging(config_path: Optional[Path] = None, environment: str = "develo
 if __name__ == "__main__":
     # Setup logger
     logger = StructuredLogger(
-        name="test",
-        level="DEBUG",
-        log_file=Path("test.log"),
-        json_format=True
+        name="test", level="DEBUG", log_file=Path("test.log"), json_format=True
     ).get_logger()
 
     # Set context
@@ -491,6 +471,7 @@ if __name__ == "__main__":
     with Timer() as timer:
         # Simulate work
         import time
+
         time.sleep(0.1)
 
     log_event(
@@ -499,7 +480,7 @@ if __name__ == "__main__":
         url="https://www.bbc.com/somali/article",
         http_status=200,
         duration_ms=timer.get_elapsed_ms(),
-        bytes=5432
+        bytes=5432,
     )
 
     # Log with temporary context

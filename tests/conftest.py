@@ -5,29 +5,32 @@ This module provides session-level fixtures including warning aggregation
 for CI metrics anomaly detection.
 """
 
-import pytest
-import warnings
 import json
-from pathlib import Path
+import warnings
 from datetime import datetime, timezone
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import Any
+
+import pytest
 
 
 class WarningAggregator:
     """Aggregate warnings during test run for CI analysis."""
 
     def __init__(self):
-        self.warnings: List[Dict[str, Any]] = []
+        self.warnings: list[dict[str, Any]] = []
         self._original_showwarning = None
 
     def add_warning(self, warning_message: str, test_name: str = None, test_file: str = None):
         """Record a warning with context."""
-        self.warnings.append({
-            "message": str(warning_message),
-            "test_name": test_name or "unknown",
-            "test_file": test_file or "unknown",
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
+        self.warnings.append(
+            {
+                "message": str(warning_message),
+                "test_name": test_name or "unknown",
+                "test_file": test_file or "unknown",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
     def export_to_json(self, output_path: Path):
         """Export warnings to JSON for CI parsing."""
@@ -39,11 +42,8 @@ class WarningAggregator:
             "total_warnings": len(self.warnings),
             "metrics_anomalies": len(metrics_anomalies),
             "warnings": self.warnings,
-            "summary": {
-                "critical": len(metrics_anomalies),
-                "warning": len(other_warnings)
-            },
-            "generated_at": datetime.now(timezone.utc).isoformat()
+            "summary": {"critical": len(metrics_anomalies), "warning": len(other_warnings)},
+            "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -52,10 +52,7 @@ class WarningAggregator:
 
     def get_metrics_anomaly_count(self) -> int:
         """Count METRICS_ANOMALY warnings specifically."""
-        return sum(
-            1 for w in self.warnings
-            if "METRICS_ANOMALY" in w["message"]
-        )
+        return sum(1 for w in self.warnings if "METRICS_ANOMALY" in w["message"])
 
 
 @pytest.fixture(scope="session")
@@ -78,8 +75,8 @@ def pytest_configure(config):
         # Add to aggregator
         config._warning_aggregator.add_warning(
             warning_message=str(message),
-            test_name=getattr(config, '_current_test', None),
-            test_file=filename
+            test_name=getattr(config, "_current_test", None),
+            test_file=filename,
         )
         # Also call original handler to maintain normal behavior
         if config._original_showwarning:
@@ -92,11 +89,11 @@ def pytest_configure(config):
 def pytest_unconfigure(config):
     """Pytest unconfigure hook to restore warning handler and export results."""
     # Restore original warning handler
-    if hasattr(config, '_original_showwarning') and config._original_showwarning:
+    if hasattr(config, "_original_showwarning") and config._original_showwarning:
         warnings.showwarning = config._original_showwarning
 
     # Export warnings to JSON
-    if hasattr(config, '_warning_aggregator'):
+    if hasattr(config, "_warning_aggregator"):
         output_path = Path("test-results/warnings-summary.json")
         config._warning_aggregator.export_to_json(output_path)
 
@@ -105,9 +102,9 @@ def pytest_unconfigure(config):
         total_warnings = len(config._warning_aggregator.warnings)
 
         if total_warnings > 0:
-            print(f"\n{'='*70}")
-            print(f"WARNING SUMMARY")
-            print(f"{'='*70}")
+            print(f"\n{'=' * 70}")
+            print("WARNING SUMMARY")
+            print(f"{'=' * 70}")
             print(f"Total warnings: {total_warnings}")
             print(f"Metrics anomalies: {metrics_anomalies}")
 
@@ -115,7 +112,7 @@ def pytest_unconfigure(config):
                 print(f"\n⚠️  {metrics_anomalies} METRICS_ANOMALY warnings detected")
                 print(f"   See: {output_path}")
 
-            print(f"{'='*70}\n")
+            print(f"{'=' * 70}\n")
 
 
 def pytest_runtest_setup(item):

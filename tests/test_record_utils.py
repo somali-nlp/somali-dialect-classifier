@@ -7,10 +7,10 @@ Pure functions are trivial to test without mocks.
 import json
 
 from somali_dialect_classifier.preprocessing.record_utils import (
-    generate_text_hash,
-    generate_record_id,
-    count_tokens,
     build_silver_record,
+    count_tokens,
+    generate_record_id,
+    generate_text_hash,
 )
 
 

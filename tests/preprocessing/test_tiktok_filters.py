@@ -13,10 +13,7 @@ All tests use mocking to avoid requiring actual Apify API calls and are
 cross-platform compatible using pytest's tmp_path fixture.
 """
 
-import json
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, call
-from datetime import datetime, timezone
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -40,7 +37,9 @@ class TestTikTokFilterInstrumentation:
         Returns:
             TikTokSomaliProcessor instance ready for testing
         """
-        with patch('somali_dialect_classifier.preprocessing.tiktok_somali_processor.get_config') as mock_config:
+        with patch(
+            "somali_dialect_classifier.preprocessing.tiktok_somali_processor.get_config"
+        ) as mock_config:
             # Configure temporary directories
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
@@ -54,7 +53,7 @@ class TestTikTokFilterInstrumentation:
                 apify_api_token="test_token_12345",
                 apify_user_id="test_user_id",
                 video_urls=["https://tiktok.com/@user/video/123"],
-                force=True
+                force=True,
             )
 
             # Mock the metrics collector
@@ -159,13 +158,15 @@ class TestTikTokFilterInstrumentation:
                 "videoWebUrl": "https://www.tiktok.com/@user/video/123456",
                 "diggCount": 0,
                 "replyCommentTotal": 0,
-            }
+            },
         ]
 
         # Act & Assert: All should be filtered
         for item in apify_items:
             result = processor._transform_apify_item(item)
-            assert result is None, f"Comment '{item['text']}' with insufficient alphanumeric content should be filtered"
+            assert result is None, (
+                f"Comment '{item['text']}' with insufficient alphanumeric content should be filtered"
+            )
 
     def test_valid_comment_not_filtered(self, processor):
         """Verify that valid comments pass through filters without filtering.
@@ -199,9 +200,11 @@ class TestTikTokFilterInstrumentation:
         # Assert: Item should NOT be filtered
         assert result is not None, "Valid comment with sufficient text should NOT be filtered"
         assert isinstance(result, dict), "Valid comment should return transformed dict"
-        assert result['text'] == apify_item['text'], "Text should be preserved"
-        assert result['author'] == apify_item['uniqueId'], "Author should be mapped correctly"
-        assert result['author_id'] == str(apify_item['uid']), "Author ID should be converted to string"
+        assert result["text"] == apify_item["text"], "Text should be preserved"
+        assert result["author"] == apify_item["uniqueId"], "Author should be mapped correctly"
+        assert result["author_id"] == str(apify_item["uid"]), (
+            "Author ID should be converted to string"
+        )
 
     def test_valid_comment_three_char_minimum(self, processor):
         """Verify that comments with exactly 3 alphanumeric characters pass filters.
@@ -231,8 +234,10 @@ class TestTikTokFilterInstrumentation:
         result = processor._transform_apify_item(apify_item)
 
         # Assert: Item should NOT be filtered (exactly at threshold)
-        assert result is not None, "Comment with exactly 3 alphanumeric characters should pass filter"
-        assert result['text'] == "abc", "Text should be preserved"
+        assert result is not None, (
+            "Comment with exactly 3 alphanumeric characters should pass filter"
+        )
+        assert result["text"] == "abc", "Text should be preserved"
 
     def test_somali_text_valid_comments(self, processor):
         """Verify that genuine Somali text comments pass filters.
@@ -276,8 +281,10 @@ class TestTikTokFilterInstrumentation:
         # Act & Assert: All Somali comments should pass through
         for item in somali_comments:
             result = processor._transform_apify_item(item)
-            assert result is not None, f"Valid Somali comment '{item['text']}' should NOT be filtered"
-            assert result['text'] == item['text'], "Somali text should be preserved"
+            assert result is not None, (
+                f"Valid Somali comment '{item['text']}' should NOT be filtered"
+            )
+            assert result["text"] == item["text"], "Somali text should be preserved"
 
     def test_comment_metadata_preservation(self, processor):
         """Verify that valid comments preserve all metadata correctly.
@@ -308,16 +315,16 @@ class TestTikTokFilterInstrumentation:
 
         # Assert: Metadata is correctly mapped
         assert result is not None, "Valid comment should be transformed"
-        assert result['text'] == apify_item['text']
-        assert result['author'] == "comment_author"
-        assert result['author_id'] == "7489303120642049040"
-        assert result['comment_id'] == "7564909554666193679"
-        assert result['likes'] == 25
-        assert result['replies'] == 5
-        assert result['video_url'] == "https://www.tiktok.com/@creator/video/999888"
-        assert 'url' in result, "URL field should be present"
-        assert 'created_at' in result, "Created at timestamp should be present"
-        assert 'scraped_at' in result, "Scraped at timestamp should be present"
+        assert result["text"] == apify_item["text"]
+        assert result["author"] == "comment_author"
+        assert result["author_id"] == "7489303120642049040"
+        assert result["comment_id"] == "7564909554666193679"
+        assert result["likes"] == 25
+        assert result["replies"] == 5
+        assert result["video_url"] == "https://www.tiktok.com/@creator/video/999888"
+        assert "url" in result, "URL field should be present"
+        assert "created_at" in result, "Created at timestamp should be present"
+        assert "scraped_at" in result, "Scraped at timestamp should be present"
 
     def test_empty_text_handling(self, processor):
         """Verify that comments with empty or whitespace-only text are filtered.
@@ -352,7 +359,7 @@ class TestTikTokFilterInstrumentation:
                 "videoWebUrl": "https://www.tiktok.com/@user/video/123456",
                 "diggCount": 0,
                 "replyCommentTotal": 0,
-            }
+            },
         ]
 
         # Act & Assert: All empty items should be filtered
@@ -391,8 +398,8 @@ class TestTikTokFilterInstrumentation:
 
         # Assert: Item should pass (NOT filtered)
         assert result is not None, "Mixed emoji/text comment should NOT be filtered"
-        assert "👍" in result['text'], "Emoji should be preserved in output"
-        assert "Good comment" in result['text'], "Text should be preserved"
+        assert "👍" in result["text"], "Emoji should be preserved in output"
+        assert "Good comment" in result["text"], "Text should be preserved"
 
     def test_comment_url_construction(self, processor):
         """Verify that comment URLs are correctly constructed with comment IDs.
@@ -423,7 +430,7 @@ class TestTikTokFilterInstrumentation:
         # Assert: URL should be constructed correctly
         assert result is not None
         expected_url = "https://www.tiktok.com/@user/video/123456789#comment-9999888777666555444"
-        assert result['url'] == expected_url, "Comment URL should include video URL and comment ID"
+        assert result["url"] == expected_url, "Comment URL should include video URL and comment ID"
 
     def test_missing_optional_fields_handling(self, processor):
         """Verify graceful handling of missing optional Apify fields.
@@ -451,10 +458,10 @@ class TestTikTokFilterInstrumentation:
 
         # Assert: Should still transform successfully
         assert result is not None, "Item with minimal fields should transform"
-        assert result['text'] == "Comment with minimal fields"
-        assert result['author_id'] == '', "Missing uid should default to empty string"
-        assert result['likes'] == 0, "Missing diggCount should default to 0"
-        assert result['replies'] == 0, "Missing replyCommentTotal should default to 0"
+        assert result["text"] == "Comment with minimal fields"
+        assert result["author_id"] == "", "Missing uid should default to empty string"
+        assert result["likes"] == 0, "Missing diggCount should default to 0"
+        assert result["replies"] == 0, "Missing replyCommentTotal should default to 0"
 
     def test_comment_type_consistency(self, processor):
         """Verify that all returned comment fields have consistent, expected types.
@@ -486,14 +493,14 @@ class TestTikTokFilterInstrumentation:
 
         # Assert: Type consistency
         assert result is not None
-        assert isinstance(result['text'], str)
-        assert isinstance(result['url'], str)
-        assert isinstance(result['author'], str)
-        assert isinstance(result['author_id'], str)
-        assert isinstance(result['likes'], int)
-        assert isinstance(result['replies'], int)
-        assert isinstance(result['comment_id'], str)
-        assert isinstance(result['created_at'], int)  # unix timestamp
+        assert isinstance(result["text"], str)
+        assert isinstance(result["url"], str)
+        assert isinstance(result["author"], str)
+        assert isinstance(result["author_id"], str)
+        assert isinstance(result["likes"], int)
+        assert isinstance(result["replies"], int)
+        assert isinstance(result["comment_id"], str)
+        assert isinstance(result["created_at"], int)  # unix timestamp
 
     def test_unicode_and_extended_characters(self, processor):
         """Verify that Somali text with extended characters passes filters correctly.
@@ -526,7 +533,7 @@ class TestTikTokFilterInstrumentation:
 
         # Assert: Unicode content should pass and be preserved
         assert result is not None, "Comment with extended Unicode characters should NOT be filtered"
-        assert "çeçe" in result['text'], "Extended characters should be preserved"
+        assert "çeçe" in result["text"], "Extended characters should be preserved"
 
 
 class TestTikTokProcessorIntegration:
@@ -542,7 +549,9 @@ class TestTikTokProcessorIntegration:
         Returns:
             TikTokSomaliProcessor and Path to staging directory
         """
-        with patch('somali_dialect_classifier.preprocessing.tiktok_somali_processor.get_config') as mock_config:
+        with patch(
+            "somali_dialect_classifier.preprocessing.tiktok_somali_processor.get_config"
+        ) as mock_config:
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
             config.data.staging_dir = tmp_path / "staging"
@@ -554,7 +563,7 @@ class TestTikTokProcessorIntegration:
                 apify_api_token="test_token_12345",
                 apify_user_id="test_user_id",
                 video_urls=["https://tiktok.com/@user/video/123"],
-                force=True
+                force=True,
             )
 
             processor.metrics = Mock()
@@ -602,4 +611,6 @@ class TestTikTokProcessorIntegration:
             if expected_type is None:
                 assert result is None, f"Comment '{description}' should be filtered"
             else:
-                assert isinstance(result, expected_type), f"Comment '{description}' should pass filter"
+                assert isinstance(result, expected_type), (
+                    f"Comment '{description}' should pass filter"
+                )

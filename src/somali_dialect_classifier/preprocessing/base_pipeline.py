@@ -15,17 +15,17 @@ Subclasses only implement source-specific logic:
 """
 
 from abc import ABC, abstractmethod
-from typing import Iterator, Dict, Any, Optional, List, Tuple, Callable
-from pathlib import Path
-from datetime import datetime, timezone
-import logging
 from collections import Counter
+from collections.abc import Iterator
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Callable, Optional
 
+from ..config import get_config
 from .data_processor import DataProcessor
-from .text_cleaners import TextCleaningPipeline
 from .record_utils import build_silver_record
 from .silver_writer import SilverDatasetWriter
-from ..config import get_config
+from .text_cleaners import TextCleaningPipeline
 
 
 class RawRecord:
@@ -40,7 +40,7 @@ class RawRecord:
         title: str,
         text: str,
         url: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ):
         """
         Initialize a raw record.
@@ -103,16 +103,13 @@ class BasePipeline(DataProcessor, ABC):
         self.force = force
 
         # Generate unique run_id for this pipeline execution
-        from ..utils.logging_utils import generate_run_id, StructuredLogger
+        from ..utils.logging_utils import StructuredLogger, generate_run_id
+
         self.run_id = generate_run_id(source)
 
         # Initialize structured logger with file output
         log_file = Path("logs") / f"{self.run_id}.log"
-        structured_logger = StructuredLogger(
-            name=source,
-            log_file=log_file,
-            json_format=True
-        )
+        structured_logger = StructuredLogger(name=source, log_file=log_file, json_format=True)
         self.logger = structured_logger.get_logger()  # Get actual logger instance
 
         # Timestamp for partitioning
@@ -122,9 +119,15 @@ class BasePipeline(DataProcessor, ABC):
         config = get_config()
 
         # Consistent directory structure using config paths
-        self.raw_dir = config.data.raw_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
-        self.staging_dir = config.data.staging_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
-        self.processed_dir = config.data.processed_dir / f"source={source}" / f"date_processed={self.date_accessed}"
+        self.raw_dir = (
+            config.data.raw_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
+        )
+        self.staging_dir = (
+            config.data.staging_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
+        )
+        self.processed_dir = (
+            config.data.processed_dir / f"source={source}" / f"date_processed={self.date_accessed}"
+        )
 
         # Initialize shared utilities
         self.text_cleaner = self._create_cleaner()
@@ -133,7 +136,7 @@ class BasePipeline(DataProcessor, ABC):
         # Record filters for quality control
         # List of (filter_func, kwargs) tuples
         # Each filter_func signature: (cleaned_text: str, **kwargs) -> (bool, Dict[str, Any])
-        self.record_filters: List[Tuple[Callable, Dict[str, Any]]] = []
+        self.record_filters: list[tuple[Callable, dict[str, Any]]] = []
         self._register_filters()  # Subclasses override to add filters
 
         # Subclasses set these paths
@@ -236,7 +239,7 @@ class BasePipeline(DataProcessor, ABC):
         return "so"
 
     @abstractmethod
-    def _get_source_metadata(self) -> Dict[str, Any]:
+    def _get_source_metadata(self) -> dict[str, Any]:
         """
         Return source-specific metadata for silver records.
 
@@ -305,7 +308,7 @@ class BasePipeline(DataProcessor, ABC):
         filter_stats = Counter()  # Track filter drop counts
         records = []
 
-        with open(self.processed_file, 'w', encoding='utf-8') as fout:
+        with open(self.processed_file, "w", encoding="utf-8") as fout:
             for raw_record in self._extract_records():
                 # Shared text cleaning
                 cleaned = self.text_cleaner.clean(raw_record.text)
@@ -315,7 +318,7 @@ class BasePipeline(DataProcessor, ABC):
                     filter_stats["empty_after_cleaning"] += 1
 
                     # Record filter reason in metrics if available
-                    if hasattr(self, 'metrics') and self.metrics is not None:
+                    if hasattr(self, "metrics") and self.metrics is not None:
                         self.metrics.record_filter_reason("empty_after_cleaning")
                     continue
 
@@ -335,7 +338,7 @@ class BasePipeline(DataProcessor, ABC):
                             passed_all_filters = False
 
                             # Record filter reason in metrics if available
-                            if hasattr(self, 'metrics') and self.metrics is not None:
+                            if hasattr(self, "metrics") and self.metrics is not None:
                                 self.metrics.record_filter_reason(filter_name)
 
                             # Debug log for filter rejections
@@ -369,7 +372,9 @@ class BasePipeline(DataProcessor, ABC):
 
                 # Extract source_id from metadata if available
                 # This allows sources to populate source_id field (e.g., corpus_id for Språkbanken)
-                source_id = raw_record.metadata.get('corpus_id') or raw_record.metadata.get('source_id')
+                source_id = raw_record.metadata.get("corpus_id") or raw_record.metadata.get(
+                    "source_id"
+                )
 
                 # Build silver record using shared utility
                 record = build_silver_record(
@@ -383,8 +388,8 @@ class BasePipeline(DataProcessor, ABC):
                     license_str=self._get_license(),
                     pipeline_version="2.1.0",  # Updated for schema v2.1
                     source_metadata=merged_metadata,
-                    date_published=raw_record.metadata.get('date_published'),
-                    topic=raw_record.metadata.get('topic'),
+                    date_published=raw_record.metadata.get("date_published"),
+                    topic=raw_record.metadata.get("topic"),
                     domain=self._get_domain(),
                     embedding=None,  # Placeholder for future embeddings
                     register=self._get_register(),  # v2.1: Linguistic register
@@ -394,15 +399,15 @@ class BasePipeline(DataProcessor, ABC):
                 records_processed += 1
 
                 # Mark URL as processed in ledger (if ledger exists)
-                if hasattr(self, 'ledger') and self.ledger is not None:
+                if hasattr(self, "ledger") and self.ledger is not None:
                     # Get minhash_signature from metadata if available
-                    minhash_sig = raw_record.metadata.get('minhash_signature')
+                    minhash_sig = raw_record.metadata.get("minhash_signature")
                     self.ledger.mark_processed(
                         url=raw_record.url,
                         text_hash=record["text_hash"],
                         silver_id=record["id"],
                         minhash_signature=minhash_sig,
-                        source=self.source
+                        source=self.source,
                     )
 
                 # Consistent progress logging
@@ -441,14 +446,15 @@ class BasePipeline(DataProcessor, ABC):
 
         # Export processing metrics and generate final quality report
         # Only do this if metrics collector is available (passed from subclass)
-        if hasattr(self, 'metrics') and self.metrics is not None:
+        if hasattr(self, "metrics") and self.metrics is not None:
             # Update metrics with processing stats
-            self.metrics.increment('urls_processed', records_processed)
-            self.metrics.increment('records_written', records_processed)
-            self.metrics.increment('records_filtered', records_filtered)
+            self.metrics.increment("urls_processed", records_processed)
+            self.metrics.increment("records_written", records_processed)
+            self.metrics.increment("records_filtered", records_filtered)
 
             # Export final metrics after processing
             from pathlib import Path
+
             metrics_path = Path("data/metrics") / f"{self.run_id}_processing.json"
             metrics_path.parent.mkdir(parents=True, exist_ok=True)
             self.metrics.export_json(metrics_path)
@@ -456,6 +462,7 @@ class BasePipeline(DataProcessor, ABC):
 
             # Generate final quality report with complete stats
             from ..utils.metrics import QualityReporter
+
             report_path = Path("data/reports") / f"{self.run_id}_final_quality_report.md"
             report_path.parent.mkdir(parents=True, exist_ok=True)
             QualityReporter(self.metrics).generate_markdown_report(report_path)
@@ -511,7 +518,7 @@ class BasePipeline(DataProcessor, ABC):
         Keeps only the most recent N files (configurable via config).
         """
         config = get_config()
-        keep_n = getattr(config.preprocessing, 'raw_files_to_keep', 3)
+        keep_n = getattr(config.preprocessing, "raw_files_to_keep", 3)
 
         if not self.raw_dir.exists():
             return
@@ -520,7 +527,7 @@ class BasePipeline(DataProcessor, ABC):
         raw_files = sorted(
             [f for f in self.raw_dir.iterdir() if f.is_file()],
             key=lambda p: p.stat().st_mtime,
-            reverse=True
+            reverse=True,
         )
 
         # Remove files beyond keep_n threshold

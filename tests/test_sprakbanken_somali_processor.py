@@ -2,22 +2,20 @@
 Tests for Språkbanken Somali corpora processor.
 """
 
-import json
-import tempfile
-import xml.etree.ElementTree as ET
 import bz2
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+import json
+import xml.etree.ElementTree as ET
+from unittest.mock import Mock, patch
 
 import pytest
 
-from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import (
-    SprakbankenSomaliProcessor,
-    list_available_corpora,
-    get_corpus_info,
-    CORPUS_INFO,
-)
 from somali_dialect_classifier.preprocessing.base_pipeline import RawRecord
+from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import (
+    CORPUS_INFO,
+    SprakbankenSomaliProcessor,
+    get_corpus_info,
+    list_available_corpora,
+)
 
 
 class TestSprakbankenSomaliProcessor:
@@ -26,7 +24,7 @@ class TestSprakbankenSomaliProcessor:
     @pytest.fixture
     def processor(self, tmp_path):
         """Create processor instance with temp directory."""
-        with patch('somali_dialect_classifier.config.get_config') as mock_config:
+        with patch("somali_dialect_classifier.config.get_config") as mock_config:
             # Mock config
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
@@ -46,7 +44,7 @@ class TestSprakbankenSomaliProcessor:
 
     def test_processor_all_corpora(self, tmp_path):
         """Test processor with all corpora."""
-        with patch('somali_dialect_classifier.config.get_config') as mock_config:
+        with patch("somali_dialect_classifier.config.get_config") as mock_config:
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
             config.data.staging_dir = tmp_path / "staging"
@@ -57,11 +55,13 @@ class TestSprakbankenSomaliProcessor:
             processor = SprakbankenSomaliProcessor(corpus_id="all")
             assert processor.corpus_id == "all"
             assert len(processor.corpora_to_process) == len(CORPUS_INFO)
-            assert processor.source == "Sprakbanken-Somali"  # Consistent source name regardless of corpus_id
+            assert (
+                processor.source == "Sprakbanken-Somali"
+            )  # Consistent source name regardless of corpus_id
 
     def test_invalid_corpus_id(self, tmp_path):
         """Test that invalid corpus ID raises error."""
-        with patch('somali_dialect_classifier.config.get_config') as mock_config:
+        with patch("somali_dialect_classifier.config.get_config") as mock_config:
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
             config.data.staging_dir = tmp_path / "staging"
@@ -125,14 +125,14 @@ class TestSprakbankenSomaliProcessor:
         mock_response.iter_content = Mock(return_value=[b"test_data"])
         mock_session.get.return_value = mock_response
 
-        with patch.object(processor, '_get_http_session', return_value=mock_session):
+        with patch.object(processor, "_get_http_session", return_value=mock_session):
             manifest_path = processor.download()
 
             # Check manifest was created
             assert manifest_path.exists()
 
             # Load and verify manifest
-            with open(manifest_path, 'r') as f:
+            with open(manifest_path) as f:
                 manifest = json.load(f)
 
             assert manifest["corpora_ids"] == ["somali-cilmi"]
@@ -161,13 +161,13 @@ class TestSprakbankenSomaliProcessor:
 
         # Create compressed XML file
         corpus_file = tmp_path / "test.xml.bz2"
-        with bz2.open(corpus_file, 'wt', encoding='utf-8') as f:
+        with bz2.open(corpus_file, "wt", encoding="utf-8") as f:
             f.write(corpus_xml)
 
         # Create output file
         output_file = tmp_path / "output.jsonl"
 
-        with open(output_file, 'w') as out_f:
+        with open(output_file, "w") as out_f:
             corpus_info = {"id": "test", "domain": "science"}
             texts_count, sentences_count = processor._extract_corpus(
                 corpus_file, corpus_info, out_f
@@ -177,7 +177,7 @@ class TestSprakbankenSomaliProcessor:
         assert sentences_count == 1
 
         # Verify output
-        with open(output_file, 'r') as f:
+        with open(output_file) as f:
             record = json.loads(f.readline())
 
         assert record["corpus_id"] == "test-corpus"
@@ -204,9 +204,9 @@ class TestSprakbankenSomaliProcessor:
         ]
 
         processor.staging_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(processor.staging_file, 'w') as f:
+        with open(processor.staging_file, "w") as f:
             for record in staging_data:
-                f.write(json.dumps(record) + '\n')
+                f.write(json.dumps(record) + "\n")
 
         # Extract records
         records = list(processor._extract_records())
@@ -269,8 +269,13 @@ class TestCorpusMetadata:
         for corpus_id, info in CORPUS_INFO.items():
             assert "domain" in info, f"Corpus {corpus_id} missing domain"
             assert info["domain"] in [
-                "general", "news", "literature", "science", "health",
-                "immigrant", "education"
+                "general",
+                "news",
+                "literature",
+                "science",
+                "health",
+                "immigrant",
+                "education",
             ], f"Invalid domain {info['domain']} for corpus {corpus_id}"
 
     def test_corpus_metadata_consistency(self):
@@ -278,18 +283,34 @@ class TestCorpusMetadata:
         # Check turjuman corpora have translation info
         for corpus_id, info in CORPUS_INFO.items():
             if "turjuman" in corpus_id:
-                assert "topic" in info and "translat" in info["topic"].lower(), f"Expected translation topic for {corpus_id}"
+                assert "topic" in info and "translat" in info["topic"].lower(), (
+                    f"Expected translation topic for {corpus_id}"
+                )
 
         # Check specific news corpora (CB News and BBC are news domain)
-        news_corpora = ["somali-cb", "somali-bbc", "somali-wardheer", "somali-wakiillada",
-                       "somali-cb-1980-89", "somali-cb-2001-03-soomaaliya", "somali-cb-2010",
-                       "somali-cb-2011", "somali-cb-2016", "somali-cb-2018", "somali-cd-2012-itoobiya",
-                       "somali-radioden2014", "somali-radioswe2014", "somali-radiomuq"]
+        news_corpora = [
+            "somali-cb",
+            "somali-bbc",
+            "somali-wardheer",
+            "somali-wakiillada",
+            "somali-cb-1980-89",
+            "somali-cb-2001-03-soomaaliya",
+            "somali-cb-2010",
+            "somali-cb-2011",
+            "somali-cb-2016",
+            "somali-cb-2018",
+            "somali-cd-2012-itoobiya",
+            "somali-radioden2014",
+            "somali-radioswe2014",
+            "somali-radiomuq",
+        ]
         news_corpora.extend([f"somali-haatuf-news-{year}" for year in range(2002, 2010)])
 
         for corpus_id in news_corpora:
             if corpus_id in CORPUS_INFO:
-                assert CORPUS_INFO[corpus_id]["domain"] == "news", f"Expected news domain for {corpus_id}"
+                assert CORPUS_INFO[corpus_id]["domain"] == "news", (
+                    f"Expected news domain for {corpus_id}"
+                )
 
         # Check immigrant domain corpora
         assert CORPUS_INFO["somali-ah-1992-02-kanada"]["domain"] == "immigrant"

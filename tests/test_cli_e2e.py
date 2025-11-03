@@ -8,10 +8,11 @@ Tests the command-line interface with temporary directories to ensure:
 - Help text is accurate
 """
 
-import pytest
+import shutil
 import sys
 from pathlib import Path
-import shutil
+
+import pytest
 
 
 @pytest.fixture
@@ -52,7 +53,7 @@ class TestWikipediaCLI:
         """Test that main() function exists in CLI module."""
         from somali_dialect_classifier.cli import download_wikisom
 
-        assert hasattr(download_wikisom, 'main')
+        assert hasattr(download_wikisom, "main")
         assert callable(download_wikisom.main)
 
     def test_cli_help_output(self, capsys):
@@ -61,7 +62,7 @@ class TestWikipediaCLI:
 
         # Try to get help (usually raises SystemExit with --help)
         try:
-            sys.argv = ['download_wikisom', '--help']
+            sys.argv = ["download_wikisom", "--help"]
             download_wikisom.main()
         except SystemExit:
             pass
@@ -70,7 +71,7 @@ class TestWikipediaCLI:
 
         # Should mention Wikipedia and Somali
         output = captured.out + captured.err
-        assert 'Wikipedia' in output or 'wiki' in output.lower() or 'Somali' in output
+        assert "Wikipedia" in output or "wiki" in output.lower() or "Somali" in output
 
 
 class TestBBCCLI:
@@ -87,7 +88,7 @@ class TestBBCCLI:
         """Test that main() function exists in BBC CLI module."""
         from somali_dialect_classifier.cli import download_bbcsom
 
-        assert hasattr(download_bbcsom, 'main')
+        assert hasattr(download_bbcsom, "main")
         assert callable(download_bbcsom.main)
 
     def test_cli_help_output(self, capsys):
@@ -96,7 +97,7 @@ class TestBBCCLI:
 
         # Try to get help
         try:
-            sys.argv = ['download_bbcsom', '--help']
+            sys.argv = ["download_bbcsom", "--help"]
             download_bbcsom.main()
         except SystemExit:
             pass
@@ -105,7 +106,7 @@ class TestBBCCLI:
 
         # Should mention BBC
         output = captured.out + captured.err
-        assert 'BBC' in output or 'bbc' in output.lower()
+        assert "BBC" in output or "bbc" in output.lower()
 
 
 class TestCLILogging:
@@ -113,16 +114,18 @@ class TestCLILogging:
 
     def test_wikipedia_cli_creates_log_file(self, cli_env, capsys, monkeypatch):
         """Test that Wikipedia CLI creates log file."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import WikipediaSomaliProcessor
+        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+            WikipediaSomaliProcessor,
+        )
 
         # Create processor (this will set up logging)
         processor = WikipediaSomaliProcessor()
 
         # Log directory should exist or be created
-        log_dir = Path("logs")
+        Path("logs")
 
         # Processor should have a logger
-        assert hasattr(processor, 'logger')
+        assert hasattr(processor, "logger")
         assert processor.logger is not None
 
     def test_bbc_cli_creates_log_file(self, cli_env, capsys):
@@ -133,7 +136,7 @@ class TestCLILogging:
         processor = BBCSomaliProcessor()
 
         # Processor should have a logger
-        assert hasattr(processor, 'logger')
+        assert hasattr(processor, "logger")
         assert processor.logger is not None
 
 
@@ -142,7 +145,9 @@ class TestCLIDataDirectories:
 
     def test_wikipedia_creates_partitioned_directories(self, cli_env):
         """Test that Wikipedia processor creates partitioned directories."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import WikipediaSomaliProcessor
+        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+            WikipediaSomaliProcessor,
+        )
 
         processor = WikipediaSomaliProcessor()
 
@@ -166,7 +171,9 @@ class TestCLIErrorHandling:
 
     def test_wikipedia_handles_missing_dump_gracefully(self, cli_env, capsys):
         """Test that processor handles missing dump file gracefully."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import WikipediaSomaliProcessor
+        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+            WikipediaSomaliProcessor,
+        )
 
         processor = WikipediaSomaliProcessor()
 
@@ -196,15 +203,23 @@ class TestCLIOutput:
 
     def test_processors_have_consistent_logging_format(self, cli_env, capsys):
         """Test that both processors use consistent logging."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import WikipediaSomaliProcessor
         from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
+        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+            WikipediaSomaliProcessor,
+        )
 
         wiki_processor = WikipediaSomaliProcessor()
         bbc_processor = BBCSomaliProcessor()
 
         # Both should have loggers with module-style names
-        assert 'base_pipeline' in wiki_processor.logger.name or 'somali_dialect_classifier' in wiki_processor.logger.name
-        assert 'base_pipeline' in bbc_processor.logger.name or 'somali_dialect_classifier' in bbc_processor.logger.name
+        assert (
+            "base_pipeline" in wiki_processor.logger.name
+            or "somali_dialect_classifier" in wiki_processor.logger.name
+        )
+        assert (
+            "base_pipeline" in bbc_processor.logger.name
+            or "somali_dialect_classifier" in bbc_processor.logger.name
+        )
 
 
 class TestCLIIntegration:
@@ -212,8 +227,11 @@ class TestCLIIntegration:
 
     def test_wikipedia_cli_full_pipeline_with_fixture(self, cli_env, wiki_fixture):
         """Test full Wikipedia pipeline with fixture data."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import WikipediaSomaliProcessor
         import bz2
+
+        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+            WikipediaSomaliProcessor,
+        )
 
         processor = WikipediaSomaliProcessor()
 
@@ -221,10 +239,10 @@ class TestCLIIntegration:
         processor.raw_dir.mkdir(parents=True, exist_ok=True)
 
         # Compress and copy fixture
-        with open(wiki_fixture, 'rb') as f_in:
+        with open(wiki_fixture, "rb") as f_in:
             xml_content = f_in.read()
 
-        with bz2.open(processor.dump_file, 'wb') as f_out:
+        with bz2.open(processor.dump_file, "wb") as f_out:
             f_out.write(xml_content)
 
         # Run pipeline
@@ -298,11 +316,11 @@ class TestCLIDocumentation:
             pyproject = toml.load(f)
 
         # Check that scripts are registered
-        scripts = pyproject.get('project', {}).get('scripts', {})
+        scripts = pyproject.get("project", {}).get("scripts", {})
 
-        assert 'wikisom-download' in scripts, "Wikipedia CLI not registered"
-        assert 'bbcsom-download' in scripts, "BBC CLI not registered"
+        assert "wikisom-download" in scripts, "Wikipedia CLI not registered"
+        assert "bbcsom-download" in scripts, "BBC CLI not registered"
 
         # Check that they point to correct modules
-        assert 'download_wikisom' in scripts['wikisom-download']
-        assert 'download_bbcsom' in scripts['bbcsom-download']
+        assert "download_wikisom" in scripts["wikisom-download"]
+        assert "download_bbcsom" in scripts["bbcsom-download"]

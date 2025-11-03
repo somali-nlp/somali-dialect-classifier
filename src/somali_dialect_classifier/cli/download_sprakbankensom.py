@@ -32,10 +32,9 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import (
+    CORPUS_INFO,
     SprakbankenSomaliProcessor,
     list_available_corpora,
-    get_corpus_info,
-    CORPUS_INFO,
 )
 
 
@@ -44,17 +43,17 @@ def setup_logging(verbose: bool = False):
     level = logging.DEBUG if verbose else logging.INFO
 
     # Create logs directory if it doesn't exist
-    Path('logs').mkdir(exist_ok=True)
+    Path("logs").mkdir(exist_ok=True)
 
     # Configure logging to both file and console
     logging.basicConfig(
         level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[
-            logging.FileHandler('logs/download_sprakbankensom.log'),
-            logging.StreamHandler(sys.stdout)
-        ]
+            logging.FileHandler("logs/download_sprakbankensom.log"),
+            logging.StreamHandler(sys.stdout),
+        ],
     )
 
 
@@ -137,21 +136,18 @@ def show_corpus_info(corpus_id: str):
     if "type" in info:
         print(f"Type: {info['type']}")
 
-    print(f"\nLicense: CC BY 4.0")
-    print(f"Format: XML (bz2 compressed)")
-    print(f"Download URL:")
+    print("\nLicense: CC BY 4.0")
+    print("Format: XML (bz2 compressed)")
+    print("Download URL:")
     print(f"  https://spraakbanken.gu.se/lb/resurser/meningsmangder/{corpus_id}.xml.bz2")
-    print(f"Korp Interface:")
+    print("Korp Interface:")
     print(f"  https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}")
     print("=" * 60)
     print()
 
 
 def download_and_process(
-    corpus_id: str,
-    force: bool = False,
-    batch_size: Optional[int] = None,
-    verbose: bool = False
+    corpus_id: str, force: bool = False, batch_size: Optional[int] = None, verbose: bool = False
 ):
     """
     Download and process Språkbanken corpus/corpora.
@@ -209,6 +205,7 @@ def download_and_process(
         print(f"\n❌ Error: {e}")
         if verbose:
             import traceback
+
             traceback.print_exc()
         sys.exit(1)
 
@@ -237,45 +234,31 @@ Examples:
 
   # Process with custom batch size
   %(prog)s --corpus all --batch-size 10000
-        """
+        """,
     )
 
     # Action arguments (mutually exclusive)
     action_group = parser.add_mutually_exclusive_group()
     action_group.add_argument(
-        "--list",
-        action="store_true",
-        help="List all available corpora with details"
+        "--list", action="store_true", help="List all available corpora with details"
     )
     action_group.add_argument(
-        "--info",
-        metavar="CORPUS_ID",
-        help="Show detailed info about a specific corpus"
+        "--info", metavar="CORPUS_ID", help="Show detailed info about a specific corpus"
     )
     action_group.add_argument(
         "--corpus",
         metavar="CORPUS_ID",
-        help="Download and process corpus (use 'all' for all corpora)"
+        help="Download and process corpus (use 'all' for all corpora)",
     )
 
     # Processing options
     parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Force reprocessing even if files exist"
+        "--force", action="store_true", help="Force reprocessing even if files exist"
     )
     parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=5000,
-        help="Batch size for processing (default: 5000)"
+        "--batch-size", type=int, default=5000, help="Batch size for processing (default: 5000)"
     )
-    parser.add_argument(
-        "--verbose",
-        "-v",
-        action="store_true",
-        help="Enable verbose logging"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 

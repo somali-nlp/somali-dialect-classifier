@@ -12,7 +12,6 @@ import sys
 from pathlib import Path
 
 from ..deployment import DashboardDeployer, DeploymentConfig, create_default_config
-from ..utils.logging_utils import setup_logging
 
 
 def parse_args():
@@ -124,11 +123,11 @@ def main():
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
         level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             logging.StreamHandler(),
-            logging.FileHandler(args.log_file) if args.log_file else logging.NullHandler()
-        ]
+            logging.FileHandler(args.log_file) if args.log_file else logging.NullHandler(),
+        ],
     )
     logger = logging.getLogger(__name__)
 

@@ -24,10 +24,9 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import List, Optional
 
-from ..preprocessing.tiktok_somali_processor import TikTokSomaliProcessor
 from ..config import get_config
+from ..preprocessing.tiktok_somali_processor import TikTokSomaliProcessor
 
 
 def setup_logging(verbose: bool = False):
@@ -35,21 +34,21 @@ def setup_logging(verbose: bool = False):
     level = logging.DEBUG if verbose else logging.INFO
 
     # Create logs directory if it doesn't exist
-    Path('logs').mkdir(exist_ok=True)
+    Path("logs").mkdir(exist_ok=True)
 
     # Configure logging to both file and console
     logging.basicConfig(
         level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[
-            logging.FileHandler('logs/download_tiktoksom.log'),
-            logging.StreamHandler(sys.stdout)
-        ]
+            logging.FileHandler("logs/download_tiktoksom.log"),
+            logging.StreamHandler(sys.stdout),
+        ],
     )
 
 
-def load_video_urls(path: Path) -> List[str]:
+def load_video_urls(path: Path) -> list[str]:
     """
     Load video URLs from file (supports .txt and .json formats).
 
@@ -65,25 +64,25 @@ def load_video_urls(path: Path) -> List[str]:
     if not path.exists():
         raise FileNotFoundError(f"Video URLs file not found: {path}")
 
-    if path.suffix == '.json':
+    if path.suffix == ".json":
         # JSON format: {"video_urls": [...], "metadata": {...}}
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
-            urls = data.get('video_urls', [])
+            urls = data.get("video_urls", [])
             if not urls:
                 raise ValueError(f"No 'video_urls' key found in JSON file: {path}")
             return urls
     else:
         # Plain text format: one URL per line, # for comments
         urls = []
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 # Skip empty lines and comments
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
                 # Basic URL validation
-                if not line.startswith('https://'):
+                if not line.startswith("https://"):
                     logging.warning(f"Line {line_num}: Invalid URL (skipping): {line}")
                     continue
                 urls.append(line)
@@ -114,59 +113,55 @@ def estimate_cost(num_videos: int, avg_comments_per_video: int = 500) -> dict:
     cost_usd = total_comments / 1000 * 1.0
 
     return {
-        'num_videos': num_videos,
-        'estimated_comments': total_comments,
-        'estimated_compute_units': round(compute_units, 4),
-        'estimated_cost_usd': round(cost_usd, 2)
+        "num_videos": num_videos,
+        "estimated_comments": total_comments,
+        "estimated_compute_units": round(compute_units, 4),
+        "estimated_cost_usd": round(cost_usd, 2),
     }
 
 
 def main():
     """Main entry point for TikTok downloader CLI."""
     parser = argparse.ArgumentParser(
-        description='Download and process TikTok Somali comments via Apify',
+        description="Download and process TikTok Somali comments via Apify",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__
+        epilog=__doc__,
     )
 
     parser.add_argument(
-        '--video-urls',
+        "--video-urls",
         type=Path,
         required=True,
-        help='Path to file with TikTok video URLs (txt or json format)'
+        help="Path to file with TikTok video URLs (txt or json format)",
     )
 
     parser.add_argument(
-        '--max-comments',
+        "--max-comments",
         type=int,
         default=None,
-        help='Maximum total comments to scrape (default: from config or unlimited)'
+        help="Maximum total comments to scrape (default: from config or unlimited)",
     )
 
     parser.add_argument(
-        '--max-per-video',
+        "--max-per-video",
         type=int,
         default=None,
-        help='Maximum comments per video (default: from config or unlimited)'
+        help="Maximum comments per video (default: from config or unlimited)",
     )
 
     parser.add_argument(
-        '--api-token',
+        "--api-token",
         type=str,
         default=None,
-        help='Apify API token (overrides SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN env var)'
+        help="Apify API token (overrides SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN env var)",
     )
 
     parser.add_argument(
-        '--force',
-        action='store_true',
-        help='Force reprocessing even if output exists'
+        "--force", action="store_true", help="Force reprocessing even if output exists"
     )
 
     parser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        help='Enable verbose logging (DEBUG level)'
+        "-v", "--verbose", action="store_true", help="Enable verbose logging (DEBUG level)"
     )
 
     args = parser.parse_args()
@@ -206,10 +201,10 @@ def main():
     logger.info("=" * 60)
 
     # Confirm if cost is significant
-    if cost_est['estimated_cost_usd'] > 10:
+    if cost_est["estimated_cost_usd"] > 10:
         logger.warning(f"⚠️  Estimated cost is ${cost_est['estimated_cost_usd']}")
         response = input("Continue? (y/N): ")
-        if response.lower() != 'y':
+        if response.lower() != "y":
             logger.info("Aborted by user")
             sys.exit(0)
 
@@ -220,7 +215,7 @@ def main():
         apify_api_token=api_token,
         apify_user_id=config.scraping.tiktok.apify_user_id,
         video_urls=video_urls,
-        force=args.force
+        force=args.force,
     )
 
     # Run pipeline: download → extract → process → silver
@@ -278,5 +273,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

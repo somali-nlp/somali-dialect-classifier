@@ -10,14 +10,15 @@ This test suite validates:
 """
 
 import pytest
+
 from somali_dialect_classifier.utils.aggregation import (
+    AggregationMethod,
+    _extract_metrics,
+    aggregate_compatible_metrics,
+    calculate_aggregate_summary,
     calculate_volume_weighted_quality,
     calculate_weighted_harmonic_mean,
-    aggregate_compatible_metrics,
     validate_metric_compatibility,
-    calculate_aggregate_summary,
-    AggregationMethod,
-    _extract_metrics
 )
 
 
@@ -36,13 +37,13 @@ class TestVolumeWeightedAggregation:
             {
                 "name": "BBC",
                 "records_written": 150,
-                "layered_metrics": {"quality": {"quality_pass_rate": 0.847}}
+                "layered_metrics": {"quality": {"quality_pass_rate": 0.847}},
             },
             {
                 "name": "Wikipedia",
                 "records_written": 10000,
-                "layered_metrics": {"quality": {"quality_pass_rate": 1.0}}
-            }
+                "layered_metrics": {"quality": {"quality_pass_rate": 1.0}},
+            },
         ]
 
         result = calculate_volume_weighted_quality(sources)
@@ -56,7 +57,9 @@ class TestVolumeWeightedAggregation:
         assert weighted_avg == pytest.approx(0.998, abs=0.001)
 
         # They should be different!
-        assert abs(weighted_avg - simple_avg) > 0.05, "Volume-weighted should differ significantly from simple average"
+        assert abs(weighted_avg - simple_avg) > 0.05, (
+            "Volume-weighted should differ significantly from simple average"
+        )
 
         # Verify breakdown
         assert result["total_records"] == 10150
@@ -68,7 +71,9 @@ class TestVolumeWeightedAggregation:
         assert bbc_contribution["contribution"] == pytest.approx(0.0148, abs=0.001)
 
         # Wikipedia contributes ~98.5% of data
-        wiki_contribution = next(s for s in result["source_breakdown"] if s["source"] == "Wikipedia")
+        wiki_contribution = next(
+            s for s in result["source_breakdown"] if s["source"] == "Wikipedia"
+        )
         assert wiki_contribution["contribution"] == pytest.approx(0.9852, abs=0.001)
 
     def test_harmonic_mean_penalizes_outliers(self):
@@ -83,18 +88,18 @@ class TestVolumeWeightedAggregation:
             {
                 "name": "Poor Source",
                 "records_written": 100,
-                "layered_metrics": {"quality": {"quality_pass_rate": 0.1}}
+                "layered_metrics": {"quality": {"quality_pass_rate": 0.1}},
             },
             {
                 "name": "Good Source 1",
                 "records_written": 100,
-                "layered_metrics": {"quality": {"quality_pass_rate": 1.0}}
+                "layered_metrics": {"quality": {"quality_pass_rate": 1.0}},
             },
             {
                 "name": "Good Source 2",
                 "records_written": 100,
-                "layered_metrics": {"quality": {"quality_pass_rate": 1.0}}
-            }
+                "layered_metrics": {"quality": {"quality_pass_rate": 1.0}},
+            },
         ]
 
         # Arithmetic mean (simple average)
@@ -103,9 +108,7 @@ class TestVolumeWeightedAggregation:
 
         # Harmonic mean (unweighted)
         harmonic = aggregate_compatible_metrics(
-            sources,
-            "quality_pass_rate",
-            method=AggregationMethod.HARMONIC_MEAN
+            sources, "quality_pass_rate", method=AggregationMethod.HARMONIC_MEAN
         )
         assert harmonic == pytest.approx(0.25, abs=0.01)
 
@@ -122,13 +125,13 @@ class TestVolumeWeightedAggregation:
             {
                 "name": "Poor Small Source",
                 "records_written": 10,  # Only 10 records
-                "layered_metrics": {"quality": {"quality_pass_rate": 0.1}}
+                "layered_metrics": {"quality": {"quality_pass_rate": 0.1}},
             },
             {
                 "name": "Good Large Source",
                 "records_written": 10000,  # 10,000 records
-                "layered_metrics": {"quality": {"quality_pass_rate": 1.0}}
-            }
+                "layered_metrics": {"quality": {"quality_pass_rate": 1.0}},
+            },
         ]
 
         # Unweighted harmonic mean
@@ -145,7 +148,7 @@ class TestVolumeWeightedAggregation:
         """Test that compatible metrics pass validation."""
         sources = [
             {"snapshot": {"pipeline_type": "web_scraping"}, "statistics": {}},
-            {"snapshot": {"pipeline_type": "file_processing"}, "statistics": {}}
+            {"snapshot": {"pipeline_type": "file_processing"}, "statistics": {}},
         ]
 
         # These should all be compatible across different pipeline types
@@ -153,7 +156,7 @@ class TestVolumeWeightedAggregation:
             "quality_pass_rate",
             "deduplication_rate",
             "records_written",
-            "bytes_downloaded"
+            "bytes_downloaded",
         ]
 
         for metric in compatible_metrics:
@@ -165,12 +168,14 @@ class TestVolumeWeightedAggregation:
         """Test that incompatible metrics fail validation."""
         sources = [
             {"snapshot": {"pipeline_type": "web_scraping"}, "statistics": {}},
-            {"snapshot": {"pipeline_type": "file_processing"}, "statistics": {}}
+            {"snapshot": {"pipeline_type": "file_processing"}, "statistics": {}},
         ]
 
         # HTTP metrics only valid for web_scraping
         is_compat, reason = validate_metric_compatibility(sources, "http_request_success_rate")
-        assert not is_compat, "http_request_success_rate should NOT be compatible across different pipeline types"
+        assert not is_compat, (
+            "http_request_success_rate should NOT be compatible across different pipeline types"
+        )
         assert reason is not None
         assert "different pipeline types" in reason.lower()
 
@@ -178,12 +183,14 @@ class TestVolumeWeightedAggregation:
         """Test that pipeline-specific metrics work when all sources have same type."""
         sources = [
             {"snapshot": {"pipeline_type": "web_scraping"}, "statistics": {}},
-            {"snapshot": {"pipeline_type": "web_scraping"}, "statistics": {}}
+            {"snapshot": {"pipeline_type": "web_scraping"}, "statistics": {}},
         ]
 
         # HTTP metrics valid when all are web_scraping
         is_compat, reason = validate_metric_compatibility(sources, "http_request_success_rate")
-        assert is_compat, "http_request_success_rate should be compatible when all sources are web_scraping"
+        assert is_compat, (
+            "http_request_success_rate should be compatible when all sources are web_scraping"
+        )
         assert reason is None
 
     def test_handles_zero_records_gracefully(self):
@@ -197,7 +204,11 @@ class TestVolumeWeightedAggregation:
 
         # Sources with zero records
         sources = [
-            {"name": "Empty Source", "records_written": 0, "layered_metrics": {"quality": {"quality_pass_rate": 1.0}}}
+            {
+                "name": "Empty Source",
+                "records_written": 0,
+                "layered_metrics": {"quality": {"quality_pass_rate": 1.0}},
+            }
         ]
         result = calculate_volume_weighted_quality(sources)
         assert result["overall_quality_rate"] == 0.0
@@ -209,18 +220,18 @@ class TestVolumeWeightedAggregation:
             {
                 "name": "Source A",
                 "records_written": 1000,
-                "layered_metrics": {"quality": {"quality_pass_rate": 0.9}}
+                "layered_metrics": {"quality": {"quality_pass_rate": 0.9}},
             },
             {
                 "name": "Source B",
                 "records_written": 2000,
-                "layered_metrics": {"quality": {"quality_pass_rate": 0.8}}
+                "layered_metrics": {"quality": {"quality_pass_rate": 0.8}},
             },
             {
                 "name": "Source C",
                 "records_written": 1000,
-                "layered_metrics": {"quality": {"quality_pass_rate": 0.95}}
-            }
+                "layered_metrics": {"quality": {"quality_pass_rate": 0.95}},
+            },
         ]
 
         result = calculate_volume_weighted_quality(sources)
@@ -242,9 +253,21 @@ class TestVolumeWeightedAggregation:
     def test_aggregation_methods(self):
         """Test different aggregation methods."""
         sources = [
-            {"name": "A", "records_written": 100, "layered_metrics": {"quality": {"quality_pass_rate": 0.8}}},
-            {"name": "B", "records_written": 200, "layered_metrics": {"quality": {"quality_pass_rate": 0.9}}},
-            {"name": "C", "records_written": 300, "layered_metrics": {"quality": {"quality_pass_rate": 0.7}}}
+            {
+                "name": "A",
+                "records_written": 100,
+                "layered_metrics": {"quality": {"quality_pass_rate": 0.8}},
+            },
+            {
+                "name": "B",
+                "records_written": 200,
+                "layered_metrics": {"quality": {"quality_pass_rate": 0.9}},
+            },
+            {
+                "name": "C",
+                "records_written": 300,
+                "layered_metrics": {"quality": {"quality_pass_rate": 0.7}},
+            },
         ]
 
         # MIN
@@ -267,25 +290,19 @@ class TestVolumeWeightedAggregation:
                     "source": "BBC-Somali",
                     "pipeline_type": "web_scraping",
                     "records_written": 20,
-                    "bytes_downloaded": 99176
+                    "bytes_downloaded": 99176,
                 },
-                "statistics": {
-                    "quality_pass_rate": 1.0,
-                    "deduplication_rate": 0.0
-                }
+                "statistics": {"quality_pass_rate": 1.0, "deduplication_rate": 0.0},
             },
             {
                 "snapshot": {
                     "source": "Wikipedia-Somali",
                     "pipeline_type": "file_processing",
                     "records_written": 9623,
-                    "bytes_downloaded": 14280506
+                    "bytes_downloaded": 14280506,
                 },
-                "statistics": {
-                    "quality_pass_rate": 0.7075735294117646,
-                    "deduplication_rate": 0.0
-                }
-            }
+                "statistics": {"quality_pass_rate": 0.7075735294117646, "deduplication_rate": 0.0},
+            },
         ]
 
         result = calculate_volume_weighted_quality(sources)
@@ -307,9 +324,7 @@ class TestExtractMetrics:
         source = {
             "name": "Test Source",
             "records_written": 100,
-            "layered_metrics": {
-                "quality": {"quality_pass_rate": 0.85}
-            }
+            "layered_metrics": {"quality": {"quality_pass_rate": 0.85}},
         }
 
         weight, value, name = _extract_metrics(source, "quality_pass_rate")
@@ -320,13 +335,8 @@ class TestExtractMetrics:
     def test_extract_from_processing_json_format(self):
         """Test extraction from processing.json format."""
         source = {
-            "snapshot": {
-                "source": "BBC-Somali",
-                "records_written": 20
-            },
-            "statistics": {
-                "quality_pass_rate": 1.0
-            }
+            "snapshot": {"source": "BBC-Somali", "records_written": 20},
+            "statistics": {"quality_pass_rate": 1.0},
         }
 
         weight, value, name = _extract_metrics(source, "quality_pass_rate")
@@ -341,7 +351,7 @@ class TestExtractMetrics:
             "records_written": 100,
             "layered_metrics": {
                 "quality": {"quality_pass_rate": 85.0}  # 85% as number
-            }
+            },
         }
 
         weight, value, name = _extract_metrics(source, "quality_pass_rate")
@@ -359,37 +369,28 @@ class TestAggregrateSummary:
                     "source": "BBC-Somali",
                     "pipeline_type": "web_scraping",
                     "records_written": 20,
-                    "bytes_downloaded": 99176
+                    "bytes_downloaded": 99176,
                 },
-                "statistics": {
-                    "quality_pass_rate": 1.0,
-                    "deduplication_rate": 0.0
-                }
+                "statistics": {"quality_pass_rate": 1.0, "deduplication_rate": 0.0},
             },
             {
                 "snapshot": {
                     "source": "Wikipedia-Somali",
                     "pipeline_type": "file_processing",
                     "records_written": 9623,
-                    "bytes_downloaded": 14280506
+                    "bytes_downloaded": 14280506,
                 },
-                "statistics": {
-                    "quality_pass_rate": 0.7075735294117646,
-                    "deduplication_rate": 0.0
-                }
+                "statistics": {"quality_pass_rate": 0.7075735294117646, "deduplication_rate": 0.0},
             },
             {
                 "snapshot": {
                     "source": "HuggingFace-Somali_c4-so",
                     "pipeline_type": "stream_processing",
                     "records_written": 19,
-                    "bytes_downloaded": 0
+                    "bytes_downloaded": 0,
                 },
-                "statistics": {
-                    "quality_pass_rate": 0.95,
-                    "deduplication_rate": 0.0
-                }
-            }
+                "statistics": {"quality_pass_rate": 0.95, "deduplication_rate": 0.0},
+            },
         ]
 
         summary = calculate_aggregate_summary(sources)
@@ -432,40 +433,40 @@ class TestRealWorldScenarios:
                     "source": "BBC-Somali",
                     "pipeline_type": "web_scraping",
                     "records_written": 20,
-                    "bytes_downloaded": 99176
+                    "bytes_downloaded": 99176,
                 },
                 "statistics": {
                     "quality_pass_rate": 1.0,
                     "deduplication_rate": 0.0,
-                    "http_request_success_rate": 0.10695187165775401
-                }
+                    "http_request_success_rate": 0.10695187165775401,
+                },
             },
             {
                 "snapshot": {
                     "source": "Wikipedia-Somali",
                     "pipeline_type": "file_processing",
                     "records_written": 9623,
-                    "bytes_downloaded": 14280506
+                    "bytes_downloaded": 14280506,
                 },
                 "statistics": {
                     "quality_pass_rate": 0.7075735294117646,
                     "deduplication_rate": 0.0,
-                    "file_extraction_success_rate": 1.0
-                }
+                    "file_extraction_success_rate": 1.0,
+                },
             },
             {
                 "snapshot": {
                     "source": "HuggingFace-Somali_c4-so",
                     "pipeline_type": "stream_processing",
                     "records_written": 19,
-                    "bytes_downloaded": 0
+                    "bytes_downloaded": 0,
                 },
                 "statistics": {
                     "quality_pass_rate": 0.95,
                     "deduplication_rate": 0.0,
-                    "stream_connection_success_rate": 1.0
-                }
-            }
+                    "stream_connection_success_rate": 1.0,
+                },
+            },
         ]
 
         # Calculate overall quality (should be dominated by Wikipedia since it has 99.6% of records)
@@ -493,25 +494,25 @@ class TestRealWorldScenarios:
                     "source": "BBC-Somali",
                     "pipeline_type": "web_scraping",
                     "records_written": 20,
-                    "bytes_downloaded": 99176
+                    "bytes_downloaded": 99176,
                 },
                 "statistics": {
                     "quality_pass_rate": 1.0,
-                    "http_request_success_rate": 0.107  # 10.7% - misleading if averaged!
-                }
+                    "http_request_success_rate": 0.107,  # 10.7% - misleading if averaged!
+                },
             },
             {
                 "snapshot": {
                     "source": "Wikipedia-Somali",
                     "pipeline_type": "file_processing",
                     "records_written": 10000,
-                    "bytes_downloaded": 14280506
+                    "bytes_downloaded": 14280506,
                 },
                 "statistics": {
                     "quality_pass_rate": 1.0,
-                    "file_extraction_success_rate": 1.0  # 100% - can't average with HTTP!
-                }
-            }
+                    "file_extraction_success_rate": 1.0,  # 100% - can't average with HTTP!
+                },
+            },
         ]
 
         # Phase 0 would have done: (0.107 + 1.0) / 2 = 0.5535 (55.35%) ← WRONG!

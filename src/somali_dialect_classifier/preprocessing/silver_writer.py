@@ -5,16 +5,15 @@ Version 2.1: Adds register field for linguistic formality classification.
 Version 2.0: Added domain classification and embedding placeholder.
 """
 
+import json
 import logging
 from pathlib import Path
-from typing import List, Optional, Dict, Any
-import json
+from typing import Optional
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
 from ..config import get_config
-
 
 logger = logging.getLogger(__name__)
 
@@ -29,74 +28,78 @@ class SilverDatasetWriter:
     """
 
     # Enhanced schema with domain, embedding, and register fields
-    SCHEMA = pa.schema([
-        # Original fields
-        ("id", pa.string()),
-        ("text", pa.string()),
-        ("title", pa.string()),
-        ("source", pa.string()),
-        ("source_type", pa.string()),
-        ("url", pa.string()),
-        ("source_id", pa.string()),
-        ("date_published", pa.string()),
-        ("date_accessed", pa.string()),
-        ("language", pa.string()),
-        ("license", pa.string()),
-        ("topic", pa.string()),
-        ("tokens", pa.int64()),
-        ("text_hash", pa.string()),
-        ("pipeline_version", pa.string()),
-        ("source_metadata", pa.string()),  # JSON string
-
-        # Fields added in v2.0
-        ("domain", pa.string()),  # Content domain (news, literature, science, etc.)
-        ("embedding", pa.string()),  # Placeholder for future embeddings (JSON string)
-
-        # Fields added in v2.1
-        ("register", pa.string()),  # Linguistic register: "formal", "informal", "colloquial"
-    ])
+    SCHEMA = pa.schema(
+        [
+            # Original fields
+            ("id", pa.string()),
+            ("text", pa.string()),
+            ("title", pa.string()),
+            ("source", pa.string()),
+            ("source_type", pa.string()),
+            ("url", pa.string()),
+            ("source_id", pa.string()),
+            ("date_published", pa.string()),
+            ("date_accessed", pa.string()),
+            ("language", pa.string()),
+            ("license", pa.string()),
+            ("topic", pa.string()),
+            ("tokens", pa.int64()),
+            ("text_hash", pa.string()),
+            ("pipeline_version", pa.string()),
+            ("source_metadata", pa.string()),  # JSON string
+            # Fields added in v2.0
+            ("domain", pa.string()),  # Content domain (news, literature, science, etc.)
+            ("embedding", pa.string()),  # Placeholder for future embeddings (JSON string)
+            # Fields added in v2.1
+            ("register", pa.string()),  # Linguistic register: "formal", "informal", "colloquial"
+        ]
+    )
 
     # Schema for reading v2.0 files (without register field)
-    SCHEMA_V2_0 = pa.schema([
-        ("id", pa.string()),
-        ("text", pa.string()),
-        ("title", pa.string()),
-        ("source", pa.string()),
-        ("source_type", pa.string()),
-        ("url", pa.string()),
-        ("source_id", pa.string()),
-        ("date_published", pa.string()),
-        ("date_accessed", pa.string()),
-        ("language", pa.string()),
-        ("license", pa.string()),
-        ("topic", pa.string()),
-        ("tokens", pa.int64()),
-        ("text_hash", pa.string()),
-        ("pipeline_version", pa.string()),
-        ("source_metadata", pa.string()),
-        ("domain", pa.string()),
-        ("embedding", pa.string()),
-    ])
+    SCHEMA_V2_0 = pa.schema(
+        [
+            ("id", pa.string()),
+            ("text", pa.string()),
+            ("title", pa.string()),
+            ("source", pa.string()),
+            ("source_type", pa.string()),
+            ("url", pa.string()),
+            ("source_id", pa.string()),
+            ("date_published", pa.string()),
+            ("date_accessed", pa.string()),
+            ("language", pa.string()),
+            ("license", pa.string()),
+            ("topic", pa.string()),
+            ("tokens", pa.int64()),
+            ("text_hash", pa.string()),
+            ("pipeline_version", pa.string()),
+            ("source_metadata", pa.string()),
+            ("domain", pa.string()),
+            ("embedding", pa.string()),
+        ]
+    )
 
     # Schema for reading v1.0 files (original schema)
-    SCHEMA_V1_0 = pa.schema([
-        ("id", pa.string()),
-        ("text", pa.string()),
-        ("title", pa.string()),
-        ("source", pa.string()),
-        ("source_type", pa.string()),
-        ("url", pa.string()),
-        ("source_id", pa.string()),
-        ("date_published", pa.string()),
-        ("date_accessed", pa.string()),
-        ("language", pa.string()),
-        ("license", pa.string()),
-        ("topic", pa.string()),
-        ("tokens", pa.int64()),
-        ("text_hash", pa.string()),
-        ("pipeline_version", pa.string()),
-        ("source_metadata", pa.string()),
-    ])
+    SCHEMA_V1_0 = pa.schema(
+        [
+            ("id", pa.string()),
+            ("text", pa.string()),
+            ("title", pa.string()),
+            ("source", pa.string()),
+            ("source_type", pa.string()),
+            ("url", pa.string()),
+            ("source_id", pa.string()),
+            ("date_published", pa.string()),
+            ("date_accessed", pa.string()),
+            ("language", pa.string()),
+            ("license", pa.string()),
+            ("topic", pa.string()),
+            ("tokens", pa.int64()),
+            ("text_hash", pa.string()),
+            ("pipeline_version", pa.string()),
+            ("source_metadata", pa.string()),
+        ]
+    )
 
     # Valid register values
     VALID_REGISTERS = {"formal", "informal", "colloquial"}
@@ -160,14 +163,14 @@ class SilverDatasetWriter:
             # Extract number from "{source}_{run_id}_silver_part-0000.parquet" -> 0
             try:
                 # Split by '-' and get the last number before '.parquet'
-                num_str = part_file.stem.split('-')[-1]
+                num_str = part_file.stem.split("-")[-1]
                 partition_nums.append(int(num_str))
             except (IndexError, ValueError):
                 continue
 
         return max(partition_nums) + 1 if partition_nums else 0
 
-    def _ensure_schema_compatibility(self, records: List[dict]) -> List[dict]:
+    def _ensure_schema_compatibility(self, records: list[dict]) -> list[dict]:
         """
         Ensure records have all required fields for the current schema.
 
@@ -306,7 +309,7 @@ class SilverDatasetWriter:
         Returns:
             Inferred register string ("formal", "informal", or "colloquial")
         """
-        source = record.get("source", "").lower()
+        record.get("source", "").lower()
         source_type = record.get("source_type", "").lower()
 
         # Map source types to register
@@ -322,7 +325,7 @@ class SilverDatasetWriter:
 
     def write(
         self,
-        records: List[dict],
+        records: list[dict],
         source: str,
         date_accessed: str,
         run_id: str,
@@ -370,7 +373,9 @@ class SilverDatasetWriter:
 
         # Generate partition filename with run_id
         # Pattern: {source_slug}_{run_id}_silver_part-{num}.parquet
-        parquet_path = silver_dir / f"{source_slug}_{run_id}_silver_part-{partition_num:04d}.parquet"
+        parquet_path = (
+            silver_dir / f"{source_slug}_{run_id}_silver_part-{partition_num:04d}.parquet"
+        )
 
         # Convert to PyArrow table and enforce schema to prevent drift
         table = pa.Table.from_pylist(records, schema=self.SCHEMA)
@@ -409,7 +414,7 @@ class SilverDatasetWriter:
     def _format_size(self, path: Path) -> str:
         """Format file size for logging."""
         size_bytes = path.stat().st_size
-        for unit in ['B', 'KB', 'MB', 'GB']:
+        for unit in ["B", "KB", "MB", "GB"]:
             if size_bytes < 1024.0:
                 return f"{size_bytes:.1f}{unit}"
             size_bytes /= 1024.0
@@ -442,7 +447,7 @@ class SilverDatasetWriter:
         run_id: str,
         date_accessed: str,
         partition_num: int,
-        records: List[dict],
+        records: list[dict],
         parquet_path: Path,
     ) -> None:
         """
@@ -479,7 +484,7 @@ class SilverDatasetWriter:
 
         # Load existing metadata if present (for multi-batch writes)
         if metadata_path.exists():
-            with open(metadata_path, 'r', encoding='utf-8') as f:
+            with open(metadata_path, encoding="utf-8") as f:
                 metadata = json.load(f)
 
             # Update existing metadata
@@ -512,7 +517,7 @@ class SilverDatasetWriter:
             }
 
         # Write metadata
-        with open(metadata_path, 'w', encoding='utf-8') as f:
+        with open(metadata_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2, ensure_ascii=False)
 
         logger.debug(f"Metadata sidecar written: {metadata_path}")
@@ -549,7 +554,9 @@ class SilverDatasetWriter:
             missing_fields.append("register (v2.0 detected)")
 
         if missing_fields:
-            logger.info(f"Reading older silver dataset from {silver_dir}, adding: {', '.join(missing_fields)}")
+            logger.info(
+                f"Reading older silver dataset from {silver_dir}, adding: {', '.join(missing_fields)}"
+            )
 
             # Convert to pandas for easier manipulation
             df = table.to_pandas()
@@ -567,7 +574,7 @@ class SilverDatasetWriter:
 
         return table
 
-    def get_domain_statistics(self, source: Optional[str] = None) -> Dict[str, int]:
+    def get_domain_statistics(self, source: Optional[str] = None) -> dict[str, int]:
         """
         Get domain distribution statistics across silver datasets.
 

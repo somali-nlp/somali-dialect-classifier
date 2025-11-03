@@ -6,12 +6,12 @@ Validates schema mapping, field extraction, and filter integration.
 """
 
 import json
+
 import pytest
-from pathlib import Path
-from datetime import datetime
 
 try:
     from datasets import Dataset
+
     DATASETS_AVAILABLE = True
 except ImportError:
     DATASETS_AVAILABLE = False
@@ -21,12 +21,8 @@ from somali_dialect_classifier.preprocessing.huggingface_somali_processor import
     create_mc4_processor,
 )
 
-
 # Skip all tests if datasets not available
-pytestmark = pytest.mark.skipif(
-    not DATASETS_AVAILABLE,
-    reason="datasets library not installed"
-)
+pytestmark = pytest.mark.skipif(not DATASETS_AVAILABLE, reason="datasets library not installed")
 
 
 @pytest.fixture
@@ -62,7 +58,7 @@ def mock_hf_dataset():
             "2023-01-03",
             "2023-01-04",
             "2023-01-05",
-        ]
+        ],
     }
     return Dataset.from_dict(data)
 
@@ -87,21 +83,23 @@ class TestHuggingFaceSomaliProcessor:
 
     def test_manifest_creation(self, temp_work_dir, monkeypatch):
         """Test manifest file is created correctly."""
+
         # Mock load_dataset to avoid network call
         def mock_load_dataset(*args, **kwargs):
             class MockDataset:
                 revision = "test-revision"
-                info = type('obj', (object,), {
-                    'description': 'Test dataset',
-                    'license': 'MIT',
-                    'features': {}
-                })
+                info = type(
+                    "obj",
+                    (object,),
+                    {"description": "Test dataset", "license": "MIT", "features": {}},
+                )
+
             return MockDataset()
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
                 "somali_dialect_classifier.preprocessing.huggingface_somali_processor.load_dataset",
-                mock_load_dataset
+                mock_load_dataset,
             )
 
         processor = HuggingFaceSomaliProcessor(
@@ -119,7 +117,7 @@ class TestHuggingFaceSomaliProcessor:
         assert manifest_path.name == "dataset_manifest.json"  # Should match dataset slug
 
         # Verify manifest content
-        with open(manifest_path, 'r') as f:
+        with open(manifest_path) as f:
             manifest = json.load(f)
 
         assert manifest["dataset_name"] == "test/dataset"
@@ -147,7 +145,7 @@ class TestHuggingFaceSomaliProcessor:
             "text": "Muqdisho waa magaalada caasimadda ah.",
             "url": "https://example.com/article",
             "timestamp": "2023-01-01",
-            "extra_field": "ignored"
+            "extra_field": "ignored",
         }
 
         raw_record = processor._map_to_raw_record(hf_record)
@@ -208,7 +206,7 @@ class TestHuggingFaceSomaliProcessor:
         assert batch_file.exists()
 
         # Verify content
-        with open(batch_file, 'r', encoding='utf-8') as f:
+        with open(batch_file, encoding="utf-8") as f:
             lines = f.readlines()
 
         assert len(lines) == 3
@@ -234,38 +232,28 @@ class TestHuggingFaceSomaliProcessor:
 
     def test_source_type_inference(self):
         """Test source type is inferred from dataset name."""
-        news_processor = HuggingFaceSomaliProcessor(
-            dataset_name="allenai/gdelt",
-            text_field="text"
-        )
+        news_processor = HuggingFaceSomaliProcessor(dataset_name="allenai/gdelt", text_field="text")
         assert news_processor._get_source_type() == "news"
 
         social_processor = HuggingFaceSomaliProcessor(
-            dataset_name="twitter/somali-tweets",
-            text_field="text"
+            dataset_name="twitter/somali-tweets", text_field="text"
         )
         assert social_processor._get_source_type() == "social"
 
         web_processor = HuggingFaceSomaliProcessor(
-            dataset_name="mc4",
-            dataset_config="so",
-            text_field="text"
+            dataset_name="mc4", dataset_config="so", text_field="text"
         )
         assert web_processor._get_source_type() == "web"
 
     def test_license_inference(self):
         """Test license is inferred from dataset name."""
         mc4_processor = HuggingFaceSomaliProcessor(
-            dataset_name="mc4",
-            dataset_config="so",
-            text_field="text"
+            dataset_name="mc4", dataset_config="so", text_field="text"
         )
         assert mc4_processor._get_license() == "ODC-BY-1.0"
 
         oscar_processor = HuggingFaceSomaliProcessor(
-            dataset_name="oscar-corpus/OSCAR-2301",
-            dataset_config="so",
-            text_field="text"
+            dataset_name="oscar-corpus/OSCAR-2301", dataset_config="so", text_field="text"
         )
         assert oscar_processor._get_license() == "CC0-1.0"
 
@@ -359,27 +347,25 @@ class TestHFIntegration:
             "streaming_batch_size": 2,
         }
 
-        with open(manifest_file, 'w') as f:
+        with open(manifest_file, "w") as f:
             json.dump(manifest, f)
 
         # Mock load_dataset to return 5 records
         def mock_load_dataset(*args, **kwargs):
-            data = [
-                {"text": f"Record {i}"} for i in range(5)
-            ]
+            data = [{"text": f"Record {i}"} for i in range(5)]
             return iter(data)
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
                 "somali_dialect_classifier.preprocessing.huggingface_somali_processor.load_dataset",
-                mock_load_dataset
+                mock_load_dataset,
             )
 
             # Extract should start from offset 2 (skip first 2 records)
-            staging_dir = processor.extract()
+            processor.extract()
 
             # Verify manifest updated
-            with open(manifest_file, 'r') as f:
+            with open(manifest_file) as f:
                 updated_manifest = json.load(f)
 
             assert updated_manifest["last_offset"] >= 2
@@ -396,6 +382,7 @@ class TestHFConfiguration:
 
         # Force reload config with new env vars
         from somali_dialect_classifier.config import reset_config
+
         reset_config()
 
         processor = HuggingFaceSomaliProcessor(
@@ -411,6 +398,7 @@ class TestHFConfiguration:
         """Test filter uses threshold from config."""
         # Reset config to defaults
         from somali_dialect_classifier.config import reset_config
+
         reset_config()
 
         processor = HuggingFaceSomaliProcessor(
@@ -469,12 +457,13 @@ class TestHFErrorHandling:
             class MockDataset:
                 revision = "test"
                 info = None
+
             return MockDataset()
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
                 "somali_dialect_classifier.preprocessing.huggingface_somali_processor.load_dataset",
-                mock_load_dataset
+                mock_load_dataset,
             )
 
             processor.download()

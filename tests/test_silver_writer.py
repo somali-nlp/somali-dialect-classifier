@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
 from somali_dialect_classifier.preprocessing.record_utils import build_silver_record
+from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
 
 
 class TestSilverDatasetWriter:
@@ -47,10 +47,22 @@ class TestSilverDatasetWriter:
 
             # Check schema matches expected
             assert table.schema.names == [
-                "id", "text", "title", "source", "source_type",
-                "url", "source_id", "date_published", "date_accessed",
-                "language", "license", "topic", "tokens", "text_hash",
-                "pipeline_version", "source_metadata"
+                "id",
+                "text",
+                "title",
+                "source",
+                "source_type",
+                "url",
+                "source_id",
+                "date_published",
+                "date_accessed",
+                "language",
+                "license",
+                "topic",
+                "tokens",
+                "text_hash",
+                "pipeline_version",
+                "source_metadata",
             ]
 
             # Verify source_metadata is a string (JSON), not struct

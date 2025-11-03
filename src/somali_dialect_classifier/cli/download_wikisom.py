@@ -23,29 +23,27 @@ def _setup_logging() -> None:
     # Console logs
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        force=True  # Reset existing handlers
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        force=True,  # Reset existing handlers
     )
 
     # File logs (rotating) under logs/
-    logs_dir = Path('logs')
+    logs_dir = Path("logs")
     logs_dir.mkdir(exist_ok=True)
 
     # Create handler for Wikipedia-specific log file
-    fh = RotatingFileHandler(
-        logs_dir / 'download_wikisom.log',
-        maxBytes=5_000_000,
-        backupCount=3
-    )
+    fh = RotatingFileHandler(logs_dir / "download_wikisom.log", maxBytes=5_000_000, backupCount=3)
     fh.setLevel(logging.INFO)
-    fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 
     # Add handler to capture all logs from processors
     # Use root logger but with module filter
     root_logger = logging.getLogger()
 
     # Remove any existing file handlers to prevent duplication
-    root_logger.handlers = [h for h in root_logger.handlers if not isinstance(h, RotatingFileHandler)]
+    root_logger.handlers = [
+        h for h in root_logger.handlers if not isinstance(h, RotatingFileHandler)
+    ]
 
     # Add our file handler
     root_logger.addHandler(fh)
@@ -67,7 +65,7 @@ def main() -> None:
         staging_file = processor.extract()
         processed_file = processor.process()
 
-        print(f"\n✓ Pipeline completed successfully!")
+        print("\n✓ Pipeline completed successfully!")
         print(f"  Dump: {dump_file}")
         print(f"  Staging: {staging_file}")
         print(f"  Processed: {processed_file}")
@@ -79,5 +77,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

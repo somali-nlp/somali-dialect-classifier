@@ -23,7 +23,7 @@ def generate_text_hash(text: str) -> str:
         >>> generate_text_hash("hello world")
         '...' # 64-character hex string
     """
-    return hashlib.sha256(text.encode('utf-8')).hexdigest()
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def generate_record_id(*components: str) -> str:
@@ -40,8 +40,8 @@ def generate_record_id(*components: str) -> str:
         >>> generate_record_id("Wikipedia", "Somali", "article-title")
         '...' # 64-character hex string
     """
-    combined = ''.join(components)
-    return hashlib.sha256(combined.encode('utf-8')).hexdigest()
+    combined = "".join(components)
+    return hashlib.sha256(combined.encode("utf-8")).hexdigest()
 
 
 def count_tokens(text: str) -> int:

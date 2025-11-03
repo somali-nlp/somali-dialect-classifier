@@ -16,14 +16,14 @@ Run:
     pytest tests/regression/test_filter_telemetry.py -v
 """
 
-import pytest
 import json
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any
+
+import pytest
 
 # Import filter catalog for validation
 from somali_dialect_classifier.pipeline.filters.catalog import FILTER_CATALOG
-
 
 # Test data locations
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -48,7 +48,9 @@ def metrics_dir() -> Path:
         return FIXTURES_DIR
 
 
-def load_processing_metrics(metrics_dir: Path, pattern: str = "*_processing.json") -> List[Dict[str, Any]]:
+def load_processing_metrics(
+    metrics_dir: Path, pattern: str = "*_processing.json"
+) -> list[dict[str, Any]]:
     """
     Load all processing metrics matching pattern.
 
@@ -75,7 +77,7 @@ def load_processing_metrics(metrics_dir: Path, pattern: str = "*_processing.json
     return loaded
 
 
-def extract_filter_data(metrics: Dict[str, Any]) -> Dict[str, Any]:
+def extract_filter_data(metrics: dict[str, Any]) -> dict[str, Any]:
     """
     Extract filter-related data from metrics for testing.
 
@@ -95,7 +97,7 @@ def extract_filter_data(metrics: Dict[str, Any]) -> Dict[str, Any]:
         "records_filtered": snapshot.get("records_filtered", 0),
         "records_received": quality.get("records_received", 0),
         "records_passed_filters": quality.get("records_passed_filters", 0),
-        "file_path": metrics.get("_file_path", "unknown")
+        "file_path": metrics.get("_file_path", "unknown"),
     }
 
 
@@ -136,12 +138,14 @@ def test_filter_breakdown_present_when_filtering_occurred(metrics_dir):
         # Only check if filtering actually occurred
         if data["records_filtered"] > 0:
             if len(data["filter_breakdown"]) == 0:
-                failures.append({
-                    "source": data["source"],
-                    "run_id": data["run_id"],
-                    "records_filtered": data["records_filtered"],
-                    "file_path": data["file_path"]
-                })
+                failures.append(
+                    {
+                        "source": data["source"],
+                        "run_id": data["run_id"],
+                        "records_filtered": data["records_filtered"],
+                        "file_path": data["file_path"],
+                    }
+                )
 
     # Assert no failures
     if failures:
@@ -153,7 +157,9 @@ def test_filter_breakdown_present_when_filtering_occurred(metrics_dir):
             error_msg += f"   File: {failure['file_path']}\n\n"
 
         error_msg += "💡 Fix: Check filter implementation in preprocessing/*.py files\n"
-        error_msg += "   Ensure all filters call: self.metrics.record_filter_reason('filter_name')\n"
+        error_msg += (
+            "   Ensure all filters call: self.metrics.record_filter_reason('filter_name')\n"
+        )
 
         pytest.fail(error_msg)
 
@@ -205,14 +211,18 @@ def test_filter_breakdown_totals_match_records_filtered(metrics_dir):
         difference = abs(filter_sum - records_filtered)
 
         if difference > tolerance:
-            warnings.append({
-                "source": data["source"],
-                "filter_sum": filter_sum,
-                "records_filtered": records_filtered,
-                "difference": difference,
-                "tolerance": tolerance,
-                "percentage": (difference / records_filtered * 100) if records_filtered > 0 else 0
-            })
+            warnings.append(
+                {
+                    "source": data["source"],
+                    "filter_sum": filter_sum,
+                    "records_filtered": records_filtered,
+                    "difference": difference,
+                    "tolerance": tolerance,
+                    "percentage": (difference / records_filtered * 100)
+                    if records_filtered > 0
+                    else 0,
+                }
+            )
 
     # Report warnings (informational, not failure)
     if warnings:
@@ -291,7 +301,7 @@ def test_all_filter_keys_in_catalog(metrics_dir):
         error_msg += '       "Human-readable label",\n'
         error_msg += '       "Description of what this filter does",\n'
         error_msg += '       "category"  # length, content_quality, language, etc.\n'
-        error_msg += '   )\n'
+        error_msg += "   )\n"
 
         pytest.fail(error_msg)
 
@@ -326,12 +336,16 @@ def test_fixtures_available():
     # Verify GOOD fixture has filter breakdown
     good_filter_data = extract_filter_data(good_data)
     assert good_filter_data["records_filtered"] > 0, "GOOD fixture should have filtered records"
-    assert len(good_filter_data["filter_breakdown"]) > 0, "GOOD fixture should have filter breakdown"
+    assert len(good_filter_data["filter_breakdown"]) > 0, (
+        "GOOD fixture should have filter breakdown"
+    )
 
     # Verify BAD fixture has regression bug
     bad_filter_data = extract_filter_data(bad_data)
     assert bad_filter_data["records_filtered"] > 0, "BAD fixture should have filtered records"
-    assert len(bad_filter_data["filter_breakdown"]) == 0, "BAD fixture should have EMPTY filter breakdown (regression bug)"
+    assert len(bad_filter_data["filter_breakdown"]) == 0, (
+        "BAD fixture should have EMPTY filter breakdown (regression bug)"
+    )
 
 
 # BONUS TEST: Verify regression detection on BAD fixture
@@ -356,10 +370,7 @@ def test_bad_fixture_triggers_regression_detection():
     bad_data = extract_filter_data(bad_metrics)
 
     # This should be True (the regression condition)
-    has_regression = (
-        bad_data["records_filtered"] > 0 and
-        len(bad_data["filter_breakdown"]) == 0
-    )
+    has_regression = bad_data["records_filtered"] > 0 and len(bad_data["filter_breakdown"]) == 0
 
     assert has_regression, (
         f"BAD fixture should contain regression bug:\n"

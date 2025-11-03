@@ -5,23 +5,24 @@ Orchestrates downloading, extracting, and processing Somali Wikipedia dumps.
 Uses BasePipeline for shared orchestration and composable utilities.
 """
 
-from pathlib import Path
 import bz2
 import re
-from typing import Iterator, Dict, Any, Tuple
+from collections.abc import Iterator
+from pathlib import Path
+from typing import Any
 
 import requests
 from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 from tqdm import tqdm
+from urllib3.util.retry import Retry
 
-from .base_pipeline import BasePipeline, RawRecord
-from .text_cleaners import create_wikipedia_cleaner, TextCleaningPipeline
-from .crawl_ledger import get_ledger
-from .dedup import DedupEngine, DedupConfig
-from ..utils.logging_utils import StructuredLogger, set_context, Timer
-from ..utils.metrics import MetricsCollector, QualityReporter, PipelineType
 from ..config import get_config
+from ..utils.logging_utils import Timer, set_context
+from ..utils.metrics import MetricsCollector, PipelineType, QualityReporter
+from .base_pipeline import BasePipeline, RawRecord
+from .crawl_ledger import get_ledger
+from .dedup import DedupConfig, DedupEngine
+from .text_cleaners import TextCleaningPipeline, create_wikipedia_cleaner
 
 # Constants for buffer management
 BUFFER_CHUNK_SIZE_MB = 1  # Read 1MB chunks from compressed file
@@ -45,9 +46,7 @@ class WikipediaSomaliProcessor(BasePipeline):
 
         # Initialize deduplication BEFORE BasePipeline (which generates run_id)
         dedup_config = DedupConfig(
-            hash_fields=["text", "url"],
-            enable_minhash=True,
-            similarity_threshold=0.85
+            hash_fields=["text", "url"], enable_minhash=True, similarity_threshold=0.85
         )
         self.dedup = DedupEngine(dedup_config)
         self.ledger = get_ledger()
@@ -70,32 +69,43 @@ class WikipediaSomaliProcessor(BasePipeline):
 
         # Override staging and processed file paths for Wikipedia-specific naming
         # Pattern: {source_slug}_{run_id}_{layer}_{descriptive_name}.{ext}
-        self.staging_file = self.staging_dir / f"wikipedia-somali_{self.run_id}_staging_extracted.txt"
-        self.processed_file = self.processed_dir / f"wikipedia-somali_{self.run_id}_processed_cleaned.txt"
+        self.staging_file = (
+            self.staging_dir / f"wikipedia-somali_{self.run_id}_staging_extracted.txt"
+        )
+        self.processed_file = (
+            self.processed_dir / f"wikipedia-somali_{self.run_id}_processed_cleaned.txt"
+        )
 
         # XML parsing patterns
-        self.page_pattern = re.compile(r'<page>.*?</page>', re.DOTALL)
-        self.title_pattern = re.compile(r'<title>(.*?)</title>')
-        self.text_pattern = re.compile(r'<text[^>]*>(.*?)</text>', re.DOTALL)
+        self.page_pattern = re.compile(r"<page>.*?</page>", re.DOTALL)
+        self.title_pattern = re.compile(r"<title>(.*?)</title>")
+        self.text_pattern = re.compile(r"<text[^>]*>(.*?)</text>", re.DOTALL)
         self.skip_prefixes = (
-            'Special:', 'Template:', 'File:', 'Category:', 'Help:', 'User:', 'Talk:', 'Wikipedia:', 'MediaWiki:'
+            "Special:",
+            "Template:",
+            "File:",
+            "Category:",
+            "Help:",
+            "User:",
+            "Talk:",
+            "Wikipedia:",
+            "MediaWiki:",
         )
         # Use a unique marker that cannot collide with wiki text headings
-        self.page_marker_prefix = "\x1E PAGE:"
+        self.page_marker_prefix = "\x1e PAGE:"
 
     def _register_filters(self) -> None:
         """Register Wikipedia-specific filters."""
-        from .filters import min_length_filter, langid_filter
+        from .filters import langid_filter, min_length_filter
 
         # Minimum length threshold for articles
         self.record_filters.append((min_length_filter, {"threshold": 50}))
 
         # Language filter (Somali only with relaxed confidence threshold)
         # Threshold lowered to 0.3 due to heuristic-based detection
-        self.record_filters.append((langid_filter, {
-            "allowed_langs": {"so"},
-            "confidence_threshold": 0.3
-        }))
+        self.record_filters.append(
+            (langid_filter, {"allowed_langs": {"so"}, "confidence_threshold": 0.3})
+        )
 
     def _create_cleaner(self) -> TextCleaningPipeline:
         """Create Wikipedia-specific text cleaner."""
@@ -113,7 +123,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         """Return language code for silver records."""
         return "so"
 
-    def _get_source_metadata(self) -> Dict[str, Any]:
+    def _get_source_metadata(self) -> dict[str, Any]:
         """Return Wikipedia-specific metadata for silver records."""
         return {
             "wiki_code": self.current_code,
@@ -158,7 +168,9 @@ class WikipediaSomaliProcessor(BasePipeline):
         set_context(run_id=self.run_id, source="Wikipedia-Somali", phase="download")
 
         # Initialize metrics with run_id from base_pipeline
-        self.metrics = MetricsCollector(self.run_id, "Wikipedia-Somali", pipeline_type=PipelineType.FILE_PROCESSING)
+        self.metrics = MetricsCollector(
+            self.run_id, "Wikipedia-Somali", pipeline_type=PipelineType.FILE_PROCESSING
+        )
 
         if self.dump_file.exists():
             self.logger.info(f"Dump already exists: {self.dump_file}")
@@ -171,11 +183,13 @@ class WikipediaSomaliProcessor(BasePipeline):
         with Timer() as timer:
             response = session.get(self.dump_url, stream=True, timeout=30)
             if response.status_code == 404:
-                self.logger.warning("Default dump URL returned 404. Resolving correct filename from index...")
+                self.logger.warning(
+                    "Default dump URL returned 404. Resolving correct filename from index..."
+                )
                 self.current_code, self.dump_url = self._resolve_dump_url(session)
                 # Update base and output filename to match the resolved URL
                 self.dump_base = f"https://dumps.wikimedia.org/{self.current_code}/latest/"
-                resolved_name = self.dump_url.rstrip('/').split('/')[-1]
+                resolved_name = self.dump_url.rstrip("/").split("/")[-1]
                 self.dump_file = self.raw_dir / resolved_name
                 response = session.get(self.dump_url, stream=True, timeout=30)
             response.raise_for_status()
@@ -186,9 +200,9 @@ class WikipediaSomaliProcessor(BasePipeline):
             self.ledger.discover_url(
                 self.dump_url,
                 "wikipedia",
-                metadata={"wiki_code": self.current_code, "file_size": total_size}
+                metadata={"wiki_code": self.current_code, "file_size": total_size},
             )
-            self.metrics.increment('files_discovered')
+            self.metrics.increment("files_discovered")
 
             with open(self.dump_file, "wb") as f:
                 with tqdm(total=total_size, unit="B", unit_scale=True, desc="Downloading") as pbar:
@@ -196,19 +210,16 @@ class WikipediaSomaliProcessor(BasePipeline):
                         if chunk:
                             f.write(chunk)
                             pbar.update(len(chunk))
-                            self.metrics.increment('bytes_downloaded', len(chunk))
+                            self.metrics.increment("bytes_downloaded", len(chunk))
 
         # Record download metrics
         self.metrics.record_fetch_duration(timer.get_elapsed_ms())
-        self.metrics.increment('files_processed')
+        self.metrics.increment("files_processed")
         self.metrics.record_http_status(200)
 
         # Mark as fetched in ledger
         self.ledger.mark_fetched(
-            url=self.dump_url,
-            http_status=200,
-            content_length=total_size,
-            source=self.source
+            url=self.dump_url, http_status=200, content_length=total_size, source=self.source
         )
 
         self.logger.info(f"Download completed: {self.dump_file}")
@@ -231,7 +242,9 @@ class WikipediaSomaliProcessor(BasePipeline):
 
         # Resume or create metrics with run_id from base_pipeline
         if self.metrics is None:
-            self.metrics = MetricsCollector(self.run_id, "Wikipedia-Somali", pipeline_type=PipelineType.FILE_PROCESSING)
+            self.metrics = MetricsCollector(
+                self.run_id, "Wikipedia-Somali", pipeline_type=PipelineType.FILE_PROCESSING
+            )
 
         if self.staging_file.exists() and not self.force:
             self.logger.info(f"Staging file already exists: {self.staging_file}")
@@ -248,8 +261,10 @@ class WikipediaSomaliProcessor(BasePipeline):
 
         # Track extraction timing
         with Timer() as timer:
-            with bz2.open(self.dump_file, 'rt', encoding='utf-8') as fin, \
-                 open(self.staging_file, 'w', encoding='utf-8') as fout:
+            with (
+                bz2.open(self.dump_file, "rt", encoding="utf-8") as fin,
+                open(self.staging_file, "w", encoding="utf-8") as fout,
+            ):
                 while True:
                     chunk = fin.read(BUFFER_CHUNK_SIZE_MB * 1024 * 1024)
                     if not chunk:
@@ -262,7 +277,9 @@ class WikipediaSomaliProcessor(BasePipeline):
                                 if title_match and text_match:
                                     title = title_match.group(1)
                                     text = text_match.group(1)
-                                    if not any(title.startswith(prefix) for prefix in self.skip_prefixes):
+                                    if not any(
+                                        title.startswith(prefix) for prefix in self.skip_prefixes
+                                    ):
                                         fout.write(f"{self.page_marker_prefix} {title}\n{text}\n\n")
                                         page_count += 1
                         break
@@ -278,15 +295,15 @@ class WikipediaSomaliProcessor(BasePipeline):
                             if title_match and text_match:
                                 title = title_match.group(1)
                                 text = text_match.group(1)
-                                if not any(title.startswith(prefix) for prefix in self.skip_prefixes):
+                                if not any(
+                                    title.startswith(prefix) for prefix in self.skip_prefixes
+                                ):
                                     # Build URL for this page
                                     page_url = self._title_to_url(title)
 
                                     # Track URL discovery
                                     self.ledger.discover_url(
-                                        page_url,
-                                        "wikipedia",
-                                        metadata={"title": title}
+                                        page_url, "wikipedia", metadata={"title": title}
                                     )
 
                                     # Compute hash and check for duplicates
@@ -308,17 +325,18 @@ class WikipediaSomaliProcessor(BasePipeline):
                                         )
                                         self.ledger.mark_duplicate(
                                             page_url,
-                                            canonical_url or page_url  # Fallback to self if not found
+                                            canonical_url
+                                            or page_url,  # Fallback to self if not found
                                         )
-                                        self.metrics.increment('urls_deduplicated')
+                                        self.metrics.increment("urls_deduplicated")
 
                         # Remove processed pages from buffer
-                        buffer = self.page_pattern.sub('', buffer, count=len(pages))
+                        buffer = self.page_pattern.sub("", buffer, count=len(pages))
 
                         if page_count % LOG_FREQUENCY_PAGES == 0:
                             self.logger.info(f"Extracted {page_count} pages so far...")
                             # Track metrics during extraction
-                            self.metrics.increment('records_extracted', LOG_FREQUENCY_PAGES)
+                            self.metrics.increment("records_extracted", LOG_FREQUENCY_PAGES)
 
                     # Safety check: if buffer exceeds threshold, warn and truncate oldest data
                     if len(buffer) > buffer_size_threshold:
@@ -327,7 +345,7 @@ class WikipediaSomaliProcessor(BasePipeline):
                             f"Truncating to prevent memory issues. Some malformed pages may be skipped."
                         )
                         # Keep only the last chunk to maintain page boundary context
-                        buffer = buffer[-(BUFFER_TRUNCATE_SIZE_MB * 1024 * 1024):]
+                        buffer = buffer[-(BUFFER_TRUNCATE_SIZE_MB * 1024 * 1024) :]
 
         # Record extraction timing (use process_duration for extraction phase)
         self.metrics.record_process_duration(timer.get_elapsed_ms())
@@ -335,7 +353,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         # Track final page count if not already tracked
         remainder = page_count % LOG_FREQUENCY_PAGES
         if remainder > 0:
-            self.metrics.increment('records_extracted', remainder)
+            self.metrics.increment("records_extracted", remainder)
 
         self.logger.info(f"Extraction completed: {page_count} pages -> {self.staging_file}")
 
@@ -364,21 +382,21 @@ class WikipediaSomaliProcessor(BasePipeline):
         current_title = None
         current_lines = []
 
-        with open(self.staging_file, 'r', encoding='utf-8') as fin:
+        with open(self.staging_file, encoding="utf-8") as fin:
             for line in fin:
-                if line.startswith(self.page_marker_prefix + ' '):
+                if line.startswith(self.page_marker_prefix + " "):
                     # Yield previous page if exists
                     if current_title is not None:
                         yield RawRecord(
                             title=current_title,
-                            text=''.join(current_lines),
+                            text="".join(current_lines),
                             url=self._title_to_url(current_title),
                             metadata={},
                         )
 
                     # Start new page
-                    raw_line = line.rstrip('\n')
-                    title_part = raw_line[len(self.page_marker_prefix) + 1:]
+                    raw_line = line.rstrip("\n")
+                    title_part = raw_line[len(self.page_marker_prefix) + 1 :]
                     current_title = title_part.strip()
                     if not current_title:
                         current_title = None
@@ -392,7 +410,7 @@ class WikipediaSomaliProcessor(BasePipeline):
             if current_title is not None:
                 yield RawRecord(
                     title=current_title,
-                    text=''.join(current_lines),
+                    text="".join(current_lines),
                     url=self._title_to_url(current_title),
                     metadata={},
                 )
@@ -411,7 +429,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         session.mount("https://", adapter)
         return session
 
-    def _resolve_dump_url(self, session: requests.Session) -> Tuple[str, str]:
+    def _resolve_dump_url(self, session: requests.Session) -> tuple[str, str]:
         """
         Resolve the correct dump URL by scraping the 'latest' index page.
 
@@ -449,5 +467,9 @@ class WikipediaSomaliProcessor(BasePipeline):
 
     def _title_to_url(self, title: str) -> str:
         """Convert Wikipedia title to URL."""
-        base = "https://so.wikipedia.org/wiki/" if self.current_code.startswith("so") else f"https://{self.current_code.replace('wiki','')}.wikipedia.org/wiki/"
-        return base + title.replace(' ', '_')
+        base = (
+            "https://so.wikipedia.org/wiki/"
+            if self.current_code.startswith("so")
+            else f"https://{self.current_code.replace('wiki', '')}.wikipedia.org/wiki/"
+        )
+        return base + title.replace(" ", "_")

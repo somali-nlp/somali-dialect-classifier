@@ -10,11 +10,12 @@ Integrated with crawl ledger for state tracking.
 
 import hashlib
 import logging
-from typing import List, Optional, Tuple, Set
 from dataclasses import dataclass
+from typing import Optional
 
 try:
     from datasketch import MinHash, MinHashLSH
+
     DATASKETCH_AVAILABLE = True
 except ImportError:
     DATASKETCH_AVAILABLE = False
@@ -31,7 +32,7 @@ class DedupConfig:
 
     # Exact deduplication settings
     hash_algorithm: str = "sha256"
-    hash_fields: List[str] = None  # Default: ["text", "url"]
+    hash_fields: list[str] = None  # Default: ["text", "url"]
     field_separator: str = "|"
 
     # MinHash settings
@@ -54,12 +55,7 @@ class TextHasher:
     Aligned with silver_writer.SCHEMA.text_hash field.
     """
 
-    def __init__(
-        self,
-        algorithm: str = "sha256",
-        fields: List[str] = None,
-        separator: str = "|"
-    ):
+    def __init__(self, algorithm: str = "sha256", fields: list[str] = None, separator: str = "|"):
         """
         Initialize text hasher.
 
@@ -103,11 +99,11 @@ class TextHasher:
 
         # Compute hash
         hasher = hashlib.new(self.algorithm)
-        hasher.update(combined.encode('utf-8'))
+        hasher.update(combined.encode("utf-8"))
 
         return hasher.hexdigest()
 
-    def compute_batch(self, records: List[dict]) -> List[str]:
+    def compute_batch(self, records: list[dict]) -> list[str]:
         """
         Compute hashes for batch of records.
 
@@ -118,11 +114,7 @@ class TextHasher:
             List of hash values
         """
         return [
-            self.compute_hash(
-                text=record.get("text", ""),
-                url=record.get("url"),
-                **record
-            )
+            self.compute_hash(text=record.get("text", ""), url=record.get("url"), **record)
             for record in records
         ]
 
@@ -139,7 +131,7 @@ class MinHashDeduplicator:
         num_permutations: int = 128,
         shingle_size: int = 3,
         similarity_threshold: float = 0.85,
-        seed: int = 42
+        seed: int = 42,
     ):
         """
         Initialize MinHash deduplicator.
@@ -162,15 +154,12 @@ class MinHashDeduplicator:
         self.seed = seed
 
         # Initialize LSH index
-        self.lsh = MinHashLSH(
-            threshold=similarity_threshold,
-            num_perm=num_permutations
-        )
+        self.lsh = MinHashLSH(threshold=similarity_threshold, num_perm=num_permutations)
 
         # Track inserted documents
         self.document_hashes = {}  # url -> minhash_signature
 
-    def _create_shingles(self, text: str) -> Set[str]:
+    def _create_shingles(self, text: str) -> set[str]:
         """
         Create word shingles from text.
 
@@ -186,7 +175,7 @@ class MinHashDeduplicator:
         # Create n-grams
         shingles = set()
         for i in range(len(words) - self.shingle_size + 1):
-            shingle = " ".join(words[i:i + self.shingle_size])
+            shingle = " ".join(words[i : i + self.shingle_size])
             shingles.add(shingle)
 
         return shingles
@@ -209,7 +198,7 @@ class MinHashDeduplicator:
 
         # Add shingles to MinHash
         for shingle in shingles:
-            minhash.update(shingle.encode('utf-8'))
+            minhash.update(shingle.encode("utf-8"))
 
         return minhash
 
@@ -226,7 +215,7 @@ class MinHashDeduplicator:
         minhash = self.compute_minhash(text)
 
         # Convert to string (hex of hash values)
-        signature = ','.join(str(h) for h in minhash.hashvalues)
+        signature = ",".join(str(h) for h in minhash.hashvalues)
 
         return signature
 
@@ -241,7 +230,7 @@ class MinHashDeduplicator:
             MinHash object
         """
         # Parse hash values
-        hashvalues = [int(h) for h in signature_str.split(',')]
+        hashvalues = [int(h) for h in signature_str.split(",")]
 
         # Create MinHash with same parameters
         minhash = MinHash(num_perm=self.num_permutations, seed=self.seed)
@@ -267,12 +256,12 @@ class MinHashDeduplicator:
         self.lsh.insert(url, minhash)
 
         # Store signature
-        signature = ','.join(str(h) for h in minhash.hashvalues)
+        signature = ",".join(str(h) for h in minhash.hashvalues)
         self.document_hashes[url] = signature
 
         return signature
 
-    def find_similar(self, text: str, threshold: Optional[float] = None) -> List[Tuple[str, float]]:
+    def find_similar(self, text: str, threshold: Optional[float] = None) -> list[tuple[str, float]]:
         """
         Find similar documents in index.
 
@@ -310,7 +299,9 @@ class MinHashDeduplicator:
 
         return results
 
-    def is_duplicate(self, text: str, threshold: Optional[float] = None) -> Optional[Tuple[str, float]]:
+    def is_duplicate(
+        self, text: str, threshold: Optional[float] = None
+    ) -> Optional[tuple[str, float]]:
         """
         Check if text is a near-duplicate of existing document.
 
@@ -346,7 +337,7 @@ class DedupEngine:
         self.hasher = TextHasher(
             algorithm=self.config.hash_algorithm,
             fields=self.config.hash_fields,
-            separator=self.config.field_separator
+            separator=self.config.field_separator,
         )
 
         # Initialize MinHash deduplicator if enabled
@@ -356,7 +347,7 @@ class DedupEngine:
                 num_permutations=self.config.num_permutations,
                 shingle_size=self.config.shingle_size,
                 similarity_threshold=self.config.similarity_threshold,
-                seed=self.config.seed
+                seed=self.config.seed,
             )
         elif self.config.enable_minhash and not DATASKETCH_AVAILABLE:
             logger.warning(
@@ -370,11 +361,8 @@ class DedupEngine:
         self.hash_to_url = {}  # text_hash -> canonical_url
 
     def process_document(
-        self,
-        text: str,
-        url: str,
-        **kwargs
-    ) -> Tuple[bool, Optional[str], Optional[str], str, Optional[str]]:
+        self, text: str, url: str, **kwargs
+    ) -> tuple[bool, Optional[str], Optional[str], str, Optional[str]]:
         """
         Process document for deduplication.
 
@@ -394,8 +382,7 @@ class DedupEngine:
             # Get the canonical URL from hash→URL mapping
             canonical_url = self.hash_to_url.get(text_hash, url)
             logger.debug(
-                f"Exact duplicate found: {url} matches {canonical_url} "
-                f"(hash: {text_hash[:16]}...)"
+                f"Exact duplicate found: {url} matches {canonical_url} (hash: {text_hash[:16]}...)"
             )
             return (True, "exact", canonical_url, text_hash, None)
 
@@ -454,7 +441,7 @@ class DedupEngine:
         stats = {
             "total_hashes": len(self.seen_hashes),
             "exact_dedup_enabled": True,
-            "near_dedup_enabled": self.minhash is not None
+            "near_dedup_enabled": self.minhash is not None,
         }
 
         if self.minhash:
@@ -466,12 +453,10 @@ class DedupEngine:
 
 # Helper function for batch processing
 
+
 def deduplicate_batch(
-    records: List[dict],
-    dedup_engine: DedupEngine,
-    text_field: str = "text",
-    url_field: str = "url"
-) -> Tuple[List[dict], List[dict]]:
+    records: list[dict], dedup_engine: DedupEngine, text_field: str = "text", url_field: str = "url"
+) -> tuple[list[dict], list[dict]]:
     """
     Deduplicate batch of records.
 
@@ -491,7 +476,9 @@ def deduplicate_batch(
         text = record.get(text_field, "")
         url = record.get(url_field, "")
 
-        is_dup, dup_type, similar_url, text_hash, minhash_sig = dedup_engine.process_document(text, url)
+        is_dup, dup_type, similar_url, text_hash, minhash_sig = dedup_engine.process_document(
+            text, url
+        )
 
         # Add dedup fields to record
         record["text_hash"] = text_hash
@@ -515,7 +502,7 @@ if __name__ == "__main__":
     config = DedupConfig(
         hash_fields=["text"],  # Hash only text content
         enable_minhash=True,
-        similarity_threshold=0.85
+        similarity_threshold=0.85,
     )
 
     engine = DedupEngine(config)

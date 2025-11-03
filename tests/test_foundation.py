@@ -9,23 +9,21 @@ Tests:
 """
 
 import pytest
-import tempfile
-from pathlib import Path
-from datetime import datetime, timezone
 
 from somali_dialect_classifier.preprocessing.crawl_ledger import (
-    CrawlLedger, CrawlState, SQLiteLedger
+    CrawlLedger,
+    CrawlState,
 )
-from somali_dialect_classifier.preprocessing.dedup import (
-    DedupEngine, DedupConfig, TextHasher
-)
+from somali_dialect_classifier.preprocessing.dedup import DedupConfig, DedupEngine, TextHasher
 from somali_dialect_classifier.utils.logging_utils import (
-    StructuredLogger, generate_run_id, set_context, get_context,
-    clear_context, log_event, LogEvent, Timer
+    StructuredLogger,
+    Timer,
+    clear_context,
+    generate_run_id,
+    get_context,
+    set_context,
 )
-from somali_dialect_classifier.utils.metrics import (
-    MetricsCollector, QualityReporter
-)
+from somali_dialect_classifier.utils.metrics import MetricsCollector, QualityReporter
 
 
 class TestCrawlLedger:
@@ -45,17 +43,12 @@ class TestCrawlLedger:
 
         # Discover new URL
         is_new = ledger.discover_url(
-            url="https://example.com/article1",
-            source="bbc",
-            metadata={"category": "news"}
+            url="https://example.com/article1", source="bbc", metadata={"category": "news"}
         )
         assert is_new is True
 
         # Discover same URL again
-        is_new = ledger.discover_url(
-            url="https://example.com/article1",
-            source="bbc"
-        )
+        is_new = ledger.discover_url(url="https://example.com/article1", source="bbc")
         assert is_new is False
 
     def test_mark_fetched(self, tmp_path):
@@ -66,19 +59,15 @@ class TestCrawlLedger:
         ledger.discover_url(url, "bbc")
 
         ledger.mark_fetched(
-            url=url,
-            http_status=200,
-            etag="abc123",
-            content_length=5000,
-            source="bbc"
+            url=url, http_status=200, etag="abc123", content_length=5000, source="bbc"
         )
 
         state = ledger.backend.get_url_state(url)
         assert state is not None
-        assert state['state'] == CrawlState.FETCHED.value
-        assert state['http_status'] == 200
-        assert state['etag'] == "abc123"
-        assert state['source'] == "bbc"
+        assert state["state"] == CrawlState.FETCHED.value
+        assert state["http_status"] == 200
+        assert state["etag"] == "abc123"
+        assert state["source"] == "bbc"
 
     def test_mark_processed(self, tmp_path):
         """Test marking URL as processed."""
@@ -87,18 +76,13 @@ class TestCrawlLedger:
         url = "https://example.com/article1"
         ledger.discover_url(url, "bbc")
 
-        ledger.mark_processed(
-            url=url,
-            text_hash="abc123hash",
-            silver_id="silver_001",
-            source="bbc"
-        )
+        ledger.mark_processed(url=url, text_hash="abc123hash", silver_id="silver_001", source="bbc")
 
         state = ledger.backend.get_url_state(url)
-        assert state['state'] == CrawlState.PROCESSED.value
-        assert state['text_hash'] == "abc123hash"
-        assert state['silver_id'] == "silver_001"
-        assert state['source'] == "bbc"
+        assert state["state"] == CrawlState.PROCESSED.value
+        assert state["text_hash"] == "abc123hash"
+        assert state["silver_id"] == "silver_001"
+        assert state["source"] == "bbc"
 
     def test_duplicate_detection(self, tmp_path):
         """Test duplicate hash detection."""
@@ -148,14 +132,14 @@ class TestCrawlLedger:
                 f"https://example.com/article{i}",
                 text_hash=f"hash{i}",
                 silver_id=f"silver_{i}",
-                source="bbc"
+                source="bbc",
             )
 
         # Get statistics
         stats = ledger.get_statistics(source="bbc")
-        assert stats['total_urls'] == 10
-        assert stats['by_state'].get('discovered', 0) == 5
-        assert stats['by_state'].get('processed', 0) == 5
+        assert stats["total_urls"] == 10
+        assert stats["by_state"].get("discovered", 0) == 5
+        assert stats["by_state"].get("processed", 0) == 5
 
 
 class TestDeduplication:
@@ -192,14 +176,13 @@ class TestDeduplication:
         """Test exact duplicate detection."""
         config = DedupConfig(
             hash_fields=["text"],
-            enable_minhash=False  # Disable for this test
+            enable_minhash=False,  # Disable for this test
         )
         engine = DedupEngine(config)
 
         # Process first document
         is_dup1, dup_type1, similar_url1, hash1, _ = engine.process_document(
-            text="Hello world",
-            url="https://example.com/1"
+            text="Hello world", url="https://example.com/1"
         )
         assert is_dup1 is False
         assert dup_type1 is None
@@ -207,8 +190,7 @@ class TestDeduplication:
 
         # Process exact duplicate
         is_dup2, dup_type2, similar_url2, hash2, _ = engine.process_document(
-            text="Hello world",
-            url="https://example.com/2"
+            text="Hello world", url="https://example.com/2"
         )
         assert is_dup2 is True
         assert dup_type2 == "exact"
@@ -217,8 +199,7 @@ class TestDeduplication:
 
         # Process different document
         is_dup3, dup_type3, similar_url3, hash3, _ = engine.process_document(
-            text="Different text",
-            url="https://example.com/3"
+            text="Different text", url="https://example.com/3"
         )
         assert is_dup3 is False
         assert dup_type3 is None
@@ -232,11 +213,7 @@ class TestDeduplication:
         except ImportError:
             pytest.skip("datasketch not available")
 
-        config = DedupConfig(
-            hash_fields=["text"],
-            enable_minhash=True,
-            similarity_threshold=0.8
-        )
+        config = DedupConfig(hash_fields=["text"], enable_minhash=True, similarity_threshold=0.8)
 
         try:
             engine = DedupEngine(config)
@@ -245,8 +222,7 @@ class TestDeduplication:
 
         # Process first document
         is_dup1, dup_type1, similar_url1, _, _ = engine.process_document(
-            text="The quick brown fox jumps over the lazy dog",
-            url="https://example.com/1"
+            text="The quick brown fox jumps over the lazy dog", url="https://example.com/1"
         )
         assert is_dup1 is False
         assert dup_type1 is None
@@ -254,8 +230,7 @@ class TestDeduplication:
 
         # Process near-duplicate (similar but not exact)
         is_dup2, dup_type2, similar_url2, _, _ = engine.process_document(
-            text="The quick brown fox leaps over the lazy dog",
-            url="https://example.com/2"
+            text="The quick brown fox leaps over the lazy dog", url="https://example.com/2"
         )
         # Should be detected as near-duplicate
         assert is_dup2 is True
@@ -264,8 +239,7 @@ class TestDeduplication:
 
         # Process very different document
         is_dup3, dup_type3, similar_url3, _, _ = engine.process_document(
-            text="A completely different sentence about cats and mice",
-            url="https://example.com/3"
+            text="A completely different sentence about cats and mice", url="https://example.com/3"
         )
         assert is_dup3 is False
         assert dup_type3 is None
@@ -277,10 +251,7 @@ class TestMetrics:
 
     def test_metrics_collector(self):
         """Test metrics collection."""
-        collector = MetricsCollector(
-            run_id="test_run_123",
-            source="test_source"
-        )
+        collector = MetricsCollector(run_id="test_run_123", source="test_source")
 
         # Increment counters
         collector.increment("urls_discovered", 100)
@@ -391,24 +362,20 @@ class TestStructuredLogging:
 
         elapsed = timer.get_elapsed_ms()
         assert elapsed >= 100  # Should be at least 100ms
-        assert elapsed < 200   # But not too much more
+        assert elapsed < 200  # But not too much more
 
     def test_structured_logger(self, tmp_path):
         """Test structured logger initialization."""
         log_file = tmp_path / "test.log"
 
-        logger = StructuredLogger(
-            name="test",
-            level="INFO",
-            log_file=log_file,
-            json_format=True
-        )
+        logger = StructuredLogger(name="test", level="INFO", log_file=log_file, json_format=True)
 
         assert logger.logger is not None
         assert log_file.parent.exists()
 
 
 # Integration test combining components
+
 
 def test_full_pipeline_integration(tmp_path):
     """Test integration of all foundation components."""
@@ -436,7 +403,9 @@ def test_full_pipeline_integration(tmp_path):
             collector.increment("urls_discovered")
 
         # Deduplication
-        is_dup, dup_type, similar_url, text_hash, minhash_sig = dedup_engine.process_document(text, url)
+        is_dup, dup_type, similar_url, text_hash, minhash_sig = dedup_engine.process_document(
+            text, url
+        )
 
         if is_dup:
             collector.increment("urls_deduplicated")
@@ -450,7 +419,7 @@ def test_full_pipeline_integration(tmp_path):
                 url=url,
                 text_hash=text_hash,
                 silver_id=f"silver_{url.split('/')[-1]}",
-                source="test"
+                source="test",
             )
 
     # Get statistics
@@ -458,9 +427,9 @@ def test_full_pipeline_integration(tmp_path):
     metrics_snapshot = collector.get_snapshot()
 
     # Verify integration
-    assert ledger_stats['total_urls'] == 3
-    assert ledger_stats['by_state'].get('processed', 0) == 2  # 2 unique
-    assert ledger_stats['by_state'].get('duplicate', 0) == 1  # 1 duplicate
+    assert ledger_stats["total_urls"] == 3
+    assert ledger_stats["by_state"].get("processed", 0) == 2  # 2 unique
+    assert ledger_stats["by_state"].get("duplicate", 0) == 1  # 1 duplicate
 
     assert metrics_snapshot.urls_discovered == 3
     assert metrics_snapshot.urls_deduplicated == 1

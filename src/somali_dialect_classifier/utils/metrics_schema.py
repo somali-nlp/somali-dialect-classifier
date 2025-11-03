@@ -10,9 +10,10 @@ Schema Version: 3.0
 
 import logging
 import warnings
-from typing import Dict, Optional, List, Any
-from pydantic import BaseModel, Field, field_validator, ConfigDict
 from datetime import datetime
+from typing import Any, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ConnectivityMetrics(BaseModel):
@@ -39,7 +40,7 @@ class ExtractionMetrics(BaseModel):
     # Web scraping metrics (optional for stream/file processors)
     http_requests_attempted: Optional[int] = Field(default=None, ge=0)
     http_requests_successful: Optional[int] = Field(default=None, ge=0)
-    http_status_distribution: Dict[str, int] = Field(default_factory=dict)
+    http_status_distribution: dict[str, int] = Field(default_factory=dict)
     pages_parsed: Optional[int] = Field(default=None, ge=0)
     content_extracted: Optional[int] = Field(default=None, ge=0)
 
@@ -49,7 +50,7 @@ class ExtractionMetrics(BaseModel):
 
     # File processing metrics (optional for web/stream processors)
     files_discovered: Optional[int] = Field(default=None, ge=0)
-    extraction_errors: Dict[str, int] = Field(default_factory=dict)
+    extraction_errors: dict[str, int] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="allow")
 
@@ -69,7 +70,7 @@ class QualityMetrics(BaseModel):
 
     records_received: int = Field(ge=0)
     records_passed_filters: int = Field(ge=0)
-    filter_breakdown: Dict[str, int] = Field(default_factory=dict)
+    filter_breakdown: dict[str, int] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -86,7 +87,8 @@ class QualityMetrics(BaseModel):
             # Track with warnings.warn() for CI monitoring
             warnings.warn(
                 f"METRICS_ANOMALY: passed_filters={v} > received={info.data['records_received']}",
-                category=UserWarning
+                stacklevel=2,
+                category=UserWarning,
             )
             # Allow data through but log for telemetry
         return v
@@ -172,8 +174,8 @@ class Statistics(BaseModel):
     fetch_failure_rate: Optional[float] = Field(default=None, ge=0, le=1)
 
     # Metadata fields (optional, informational) - use aliases for underscore-prefixed
-    metric_semantics: Optional[Dict[str, str]] = Field(default=None, alias="_metric_semantics")
-    deprecation_warnings: Optional[List[str]] = Field(default=None, alias="_deprecation_warnings")
+    metric_semantics: Optional[dict[str, str]] = Field(default=None, alias="_metric_semantics")
+    deprecation_warnings: Optional[list[str]] = Field(default=None, alias="_deprecation_warnings")
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
@@ -210,14 +212,14 @@ class Snapshot(BaseModel):
     records_filtered: int = Field(ge=0, default=0)
 
     # Status codes and errors
-    http_status_codes: Dict[str, int] = Field(default_factory=dict)
-    filter_reasons: Dict[str, int] = Field(default_factory=dict)
-    error_types: Dict[str, int] = Field(default_factory=dict)
+    http_status_codes: dict[str, int] = Field(default_factory=dict)
+    filter_reasons: dict[str, int] = Field(default_factory=dict)
+    error_types: dict[str, int] = Field(default_factory=dict)
 
     # Raw timing data
-    fetch_durations_ms: List[float] = Field(default_factory=list)
-    process_durations_ms: List[float] = Field(default_factory=list)
-    text_lengths: List[int] = Field(default_factory=list)
+    fetch_durations_ms: list[float] = Field(default_factory=list)
+    process_durations_ms: list[float] = Field(default_factory=list)
+    text_lengths: list[int] = Field(default_factory=list)
 
     # Deduplication
     unique_hashes: int = Field(ge=0, default=0)
@@ -248,7 +250,7 @@ class Phase3MetricsSchema(BaseModel):
     timestamp: str = Field(alias="_timestamp")
     run_id: str = Field(alias="_run_id")
     source: str = Field(alias="_source")
-    validation_warnings: Optional[List[str]] = Field(default=None, alias="_validation_warnings")
+    validation_warnings: Optional[list[str]] = Field(default=None, alias="_validation_warnings")
 
     layered_metrics: LayeredMetrics
     legacy_metrics: LegacyMetrics
@@ -300,9 +302,9 @@ class ConsolidatedMetric(BaseModel):
     records_per_minute: float = Field(ge=0)
 
     # Statistical metrics (optional)
-    text_length_stats: Optional[Dict[str, Any]] = None
-    fetch_duration_stats: Optional[Dict[str, Any]] = None
-    filter_breakdown: Optional[Dict[str, int]] = None
+    text_length_stats: Optional[dict[str, Any]] = None
+    fetch_duration_stats: Optional[dict[str, Any]] = None
+    filter_breakdown: Optional[dict[str, int]] = None
 
     model_config = ConfigDict(extra="allow")
 
@@ -312,8 +314,8 @@ class ConsolidatedMetricsOutput(BaseModel):
 
     count: int = Field(ge=0)
     records: int = Field(ge=0)
-    sources: List[str]
-    metrics: List[ConsolidatedMetric]
+    sources: list[str]
+    metrics: list[ConsolidatedMetric]
 
     model_config = ConfigDict(extra="forbid")
 
@@ -325,10 +327,10 @@ class DashboardSummary(BaseModel):
     total_urls_processed: int = Field(ge=0)
     avg_success_rate: float = Field(ge=0, le=1)
     total_data_downloaded_bytes: int = Field(ge=0)
-    sources: List[str]
+    sources: list[str]
     last_update: str
     total_runs: int = Field(ge=0)
-    source_breakdown: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+    source_breakdown: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="allow")
 
@@ -371,7 +373,7 @@ class EnhancedDashboardMetadata(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-def validate_processing_json(data: Dict[str, Any]) -> Phase3MetricsSchema:
+def validate_processing_json(data: dict[str, Any]) -> Phase3MetricsSchema:
     """
     Validate a *_processing.json file against Phase 3 schema.
 
@@ -393,7 +395,7 @@ def validate_processing_json(data: Dict[str, Any]) -> Phase3MetricsSchema:
     return Phase3MetricsSchema.model_validate(data)
 
 
-def validate_consolidated_metrics(data: Dict[str, Any]) -> ConsolidatedMetricsOutput:
+def validate_consolidated_metrics(data: dict[str, Any]) -> ConsolidatedMetricsOutput:
     """
     Validate consolidated all_metrics.json against schema.
 
@@ -409,7 +411,7 @@ def validate_consolidated_metrics(data: Dict[str, Any]) -> ConsolidatedMetricsOu
     return ConsolidatedMetricsOutput.model_validate(data)
 
 
-def validate_dashboard_summary(data: Dict[str, Any]) -> DashboardSummary:
+def validate_dashboard_summary(data: dict[str, Any]) -> DashboardSummary:
     """
     Validate summary.json against schema.
 

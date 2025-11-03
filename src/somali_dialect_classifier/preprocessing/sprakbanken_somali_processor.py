@@ -21,23 +21,23 @@ import bz2
 import json
 import logging
 import xml.etree.ElementTree as ET
-from pathlib import Path
-from typing import Iterator, Dict, Any, List, Optional, Tuple
+from collections.abc import Iterator
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Optional
 
 import requests
 from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 from tqdm import tqdm
+from urllib3.util.retry import Retry
 
-from .base_pipeline import BasePipeline, RawRecord
-from .text_cleaners import create_html_cleaner, TextCleaningPipeline
-from .crawl_ledger import get_ledger
-from .dedup import DedupEngine, DedupConfig
-from ..utils.logging_utils import StructuredLogger, set_context, Timer
-from ..utils.metrics import MetricsCollector, QualityReporter, PipelineType
 from ..config import get_config
-
+from ..utils.logging_utils import Timer, set_context
+from ..utils.metrics import MetricsCollector, PipelineType, QualityReporter
+from .base_pipeline import BasePipeline, RawRecord
+from .crawl_ledger import get_ledger
+from .dedup import DedupConfig, DedupEngine
+from .text_cleaners import TextCleaningPipeline, create_html_cleaner
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +89,24 @@ CORPUS_INFO = {
     "somali-saynis-1994-96": {"domain": "science", "period": "1994-1996", "topic": "science"},
     "somali-saynis": {"domain": "science", "topic": "science"},
     "somali-saynis-2001": {"domain": "science", "period": "2001", "topic": "science"},
-    "somali-saynis-2011-soomaaliya": {"domain": "science", "period": "2011", "region": "Somalia", "topic": "science"},
-    "somali-saynis-2016": {"domain": "science", "period": "2016", "region": "Somalia", "topic": "science"},
-    "somali-saynis-2018": {"domain": "science", "period": "2018", "region": "Somalia", "topic": "science"},
+    "somali-saynis-2011-soomaaliya": {
+        "domain": "science",
+        "period": "2011",
+        "region": "Somalia",
+        "topic": "science",
+    },
+    "somali-saynis-2016": {
+        "domain": "science",
+        "period": "2016",
+        "region": "Somalia",
+        "topic": "science",
+    },
+    "somali-saynis-2018": {
+        "domain": "science",
+        "period": "2018",
+        "region": "Somalia",
+        "topic": "science",
+    },
     "somali-sheekooyin": {"domain": "literature", "topic": "folklore"},
     "somali-sheekooyin-carruureed": {"domain": "literature", "topic": "children's stories"},
     "somali-sheekooying": {"domain": "literature", "topic": "children's stories"},
@@ -105,11 +120,36 @@ CORPUS_INFO = {
     "somali-xeerar": {"domain": "general", "topic": "law"},
     "somali-xisaab-1971-79": {"domain": "education", "period": "1971-1979", "topic": "mathematics"},
     "somali-xisaab-1994-97": {"domain": "education", "period": "1994-1997", "topic": "mathematics"},
-    "somali-xisaab-2001-hargeysa": {"domain": "education", "period": "2001", "region": "Hargeysa", "topic": "mathematics"},
-    "somali-xisaab-2001-nayroobi": {"domain": "education", "period": "2001", "region": "Nairobi", "topic": "mathematics"},
-    "somali-xisaab-2011-itoobiya": {"domain": "education", "period": "2011", "region": "Ethiopia", "topic": "mathematics"},
-    "somali-xisaab-2016-somaliland": {"domain": "education", "period": "2016", "region": "Somaliland", "topic": "mathematics"},
-    "somali-xisaab-2018-soomaaliya": {"domain": "education", "period": "2018", "region": "Somalia", "topic": "mathematics"}
+    "somali-xisaab-2001-hargeysa": {
+        "domain": "education",
+        "period": "2001",
+        "region": "Hargeysa",
+        "topic": "mathematics",
+    },
+    "somali-xisaab-2001-nayroobi": {
+        "domain": "education",
+        "period": "2001",
+        "region": "Nairobi",
+        "topic": "mathematics",
+    },
+    "somali-xisaab-2011-itoobiya": {
+        "domain": "education",
+        "period": "2011",
+        "region": "Ethiopia",
+        "topic": "mathematics",
+    },
+    "somali-xisaab-2016-somaliland": {
+        "domain": "education",
+        "period": "2016",
+        "region": "Somaliland",
+        "topic": "mathematics",
+    },
+    "somali-xisaab-2018-soomaaliya": {
+        "domain": "education",
+        "period": "2018",
+        "region": "Somalia",
+        "topic": "mathematics",
+    },
 }
 
 
@@ -148,8 +188,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         for cid in self.corpora_to_process:
             if cid not in CORPUS_INFO:
                 raise ValueError(
-                    f"Unknown corpus_id: {cid}. "
-                    f"Available: {list(CORPUS_INFO.keys())} or 'all'"
+                    f"Unknown corpus_id: {cid}. Available: {list(CORPUS_INFO.keys())} or 'all'"
                 )
 
         # Load config FIRST
@@ -163,9 +202,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
         # Initialize deduplication BEFORE BasePipeline (which generates run_id)
         dedup_config = DedupConfig(
-            hash_fields=["text"],
-            enable_minhash=True,
-            similarity_threshold=0.85
+            hash_fields=["text"], enable_minhash=True, similarity_threshold=0.85
         )
         self.dedup = DedupEngine(dedup_config)
         self.ledger = get_ledger()
@@ -185,27 +222,38 @@ class SprakbankenSomaliProcessor(BasePipeline):
         # Override file paths with run_id
         # Pattern: sprakbanken-{corpus_id}_{run_id}_{layer}_{descriptive_name}.{ext}
         corpus_slug = corpus_id if corpus_id != "all" else "all"
-        self.manifest_file = self.raw_dir / f"sprakbanken-{corpus_slug}_{self.run_id}_raw_manifest.json"
-        self.staging_file = self.staging_dir / f"sprakbanken-{corpus_slug}_{self.run_id}_staging_extracted.jsonl"
-        self.processed_file = self.processed_dir / f"sprakbanken-{corpus_slug}_{self.run_id}_processed_cleaned.txt"
+        self.manifest_file = (
+            self.raw_dir / f"sprakbanken-{corpus_slug}_{self.run_id}_raw_manifest.json"
+        )
+        self.staging_file = (
+            self.staging_dir / f"sprakbanken-{corpus_slug}_{self.run_id}_staging_extracted.jsonl"
+        )
+        self.processed_file = (
+            self.processed_dir / f"sprakbanken-{corpus_slug}_{self.run_id}_processed_cleaned.txt"
+        )
 
         # Corpus state tracking
         self.current_corpus_metadata = {}
 
     def _register_filters(self) -> None:
         """Register Språkbanken-specific filters."""
-        from .filters import min_length_filter, langid_filter
+        from .filters import langid_filter, min_length_filter
 
         # Minimum length threshold (from config)
-        self.record_filters.append((min_length_filter, {
-            "threshold": self.sprakbanken_config.min_length_threshold
-        }))
+        self.record_filters.append(
+            (min_length_filter, {"threshold": self.sprakbanken_config.min_length_threshold})
+        )
 
         # Language filter with relaxed threshold (from config)
-        self.record_filters.append((langid_filter, {
-            "allowed_langs": {"so"},
-            "confidence_threshold": self.sprakbanken_config.langid_confidence_threshold
-        }))
+        self.record_filters.append(
+            (
+                langid_filter,
+                {
+                    "allowed_langs": {"so"},
+                    "confidence_threshold": self.sprakbanken_config.langid_confidence_threshold,
+                },
+            )
+        )
 
     def _create_cleaner(self) -> TextCleaningPipeline:
         """Create text cleaner for Språkbanken content."""
@@ -224,7 +272,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         """Return language code for silver records."""
         return "so"
 
-    def _get_source_metadata(self) -> Dict[str, Any]:
+    def _get_source_metadata(self) -> dict[str, Any]:
         """Return Språkbanken-specific metadata for silver records."""
         return {
             "repository": "Språkbanken",
@@ -279,11 +327,13 @@ class SprakbankenSomaliProcessor(BasePipeline):
         set_context(run_id=self.run_id, source=self.source, phase="discovery")
 
         # Initialize metrics with run_id from base_pipeline
-        self.metrics = MetricsCollector(self.run_id, self.source, pipeline_type=PipelineType.FILE_PROCESSING)
+        self.metrics = MetricsCollector(
+            self.run_id, self.source, pipeline_type=PipelineType.FILE_PROCESSING
+        )
 
         # Check if manifest exists
         if self.manifest_file.exists() and not self.force:
-            with open(self.manifest_file, 'r', encoding='utf-8') as f:
+            with open(self.manifest_file, encoding="utf-8") as f:
                 manifest = json.load(f)
 
             # Check if the requested corpora match
@@ -307,10 +357,12 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
         for corpus_id in tqdm(self.corpora_to_process, desc="Downloading corpora"):
             # Track discovery (use files_discovered for file processing)
-            self.metrics.increment('files_discovered')
+            self.metrics.increment("files_discovered")
 
             corpus_file = self.raw_dir / f"{corpus_id}.xml.bz2"
-            download_url = f"https://spraakbanken.gu.se/lb/resurser/meningsmangder/{corpus_id}.xml.bz2"
+            download_url = (
+                f"https://spraakbanken.gu.se/lb/resurser/meningsmangder/{corpus_id}.xml.bz2"
+            )
 
             # Download if not exists
             if not corpus_file.exists() or self.force:
@@ -319,32 +371,34 @@ class SprakbankenSomaliProcessor(BasePipeline):
                     response = session.get(download_url, stream=True, timeout=30)
                     response.raise_for_status()
 
-                    total_size = int(response.headers.get("Content-Length", 0))
+                    int(response.headers.get("Content-Length", 0))
                     with open(corpus_file, "wb") as f:
                         for chunk in response.iter_content(chunk_size=8192):
                             if chunk:
                                 f.write(chunk)
 
                     self.logger.info(f"  ✓ Downloaded: {corpus_file.name}")
-                    self.metrics.increment('files_processed')
+                    self.metrics.increment("files_processed")
 
                 except requests.RequestException as e:
                     self.logger.error(f"  ✗ Failed to download {corpus_id}: {e}")
-                    self.metrics.increment('corpora_failed')
+                    self.metrics.increment("corpora_failed")
                     continue
 
             # Add to manifest
             if corpus_file.exists():
-                manifest["corpora"].append({
-                    "id": corpus_id,
-                    "file": corpus_file.name,
-                    "url": download_url,
-                    "size": corpus_file.stat().st_size,
-                    **CORPUS_INFO.get(corpus_id, {}),
-                })
+                manifest["corpora"].append(
+                    {
+                        "id": corpus_id,
+                        "file": corpus_file.name,
+                        "url": download_url,
+                        "size": corpus_file.stat().st_size,
+                        **CORPUS_INFO.get(corpus_id, {}),
+                    }
+                )
 
         # Save manifest
-        with open(self.manifest_file, 'w', encoding='utf-8') as f:
+        with open(self.manifest_file, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
 
         self.logger.info("=" * 60)
@@ -367,12 +421,14 @@ class SprakbankenSomaliProcessor(BasePipeline):
             Path to staging file with extracted records
         """
         if not self.manifest_file.exists():
-            raise FileNotFoundError(f"Manifest not found: {self.manifest_file}. Run download() first.")
+            raise FileNotFoundError(
+                f"Manifest not found: {self.manifest_file}. Run download() first."
+            )
 
         self.staging_dir.mkdir(parents=True, exist_ok=True)
 
         # Load manifest
-        with open(self.manifest_file, 'r', encoding='utf-8') as f:
+        with open(self.manifest_file, encoding="utf-8") as f:
             manifest = json.load(f)
 
         # Set context using run_id from base_pipeline
@@ -380,7 +436,9 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
         # Resume or create metrics with run_id from base_pipeline
         if self.metrics is None:
-            self.metrics = MetricsCollector(self.run_id, self.source, pipeline_type=PipelineType.FILE_PROCESSING)
+            self.metrics = MetricsCollector(
+                self.run_id, self.source, pipeline_type=PipelineType.FILE_PROCESSING
+            )
 
         if self.staging_file.exists() and not self.force:
             self.logger.info(f"Staging file already exists: {self.staging_file}")
@@ -396,7 +454,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         # Track extraction timing
         with Timer() as timer:
             # Open staging file for writing
-            with open(self.staging_file, 'w', encoding='utf-8') as out_f:
+            with open(self.staging_file, "w", encoding="utf-8") as out_f:
                 for corpus_info in tqdm(manifest["corpora"], desc="Extracting corpora"):
                     corpus_id = corpus_info["id"]
                     corpus_file = self.raw_dir / corpus_info["file"]
@@ -415,8 +473,8 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
                     # Record metrics for this corpus
                     self.metrics.record_process_duration(corpus_timer.get_elapsed_ms())
-                    self.metrics.increment('records_extracted', texts_count)
-                    self.metrics.increment('sentences_extracted', sentences_count)
+                    self.metrics.increment("records_extracted", texts_count)
+                    self.metrics.increment("sentences_extracted", sentences_count)
 
                     total_texts += texts_count
                     total_sentences += sentences_count
@@ -449,11 +507,8 @@ class SprakbankenSomaliProcessor(BasePipeline):
         return self.staging_file
 
     def _extract_corpus(
-        self,
-        corpus_file: Path,
-        corpus_info: Dict[str, Any],
-        out_file
-    ) -> Tuple[int, int]:
+        self, corpus_file: Path, corpus_info: dict[str, Any], out_file
+    ) -> tuple[int, int]:
         """
         Extract text from a single corpus XML file.
 
@@ -471,22 +526,22 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
         try:
             # Open and parse compressed XML
-            with bz2.open(corpus_file, 'rt', encoding='utf-8') as f:
+            with bz2.open(corpus_file, "rt", encoding="utf-8") as f:
                 tree = ET.parse(f)
                 root = tree.getroot()
 
                 # Get corpus ID from root element
-                corpus_id = root.get('id', corpus_info['id'])
+                corpus_id = root.get("id", corpus_info["id"])
 
                 # Iterate through texts
-                for text_elem in root.findall('.//text'):
+                for text_elem in root.findall(".//text"):
                     text_index += 1  # Increment for every text element to ensure URL uniqueness
                     text_metadata = self._extract_text_metadata(text_elem)
 
                     # Collect sentences from all pages
                     sentences = []
-                    for page in text_elem.findall('.//page'):
-                        for sentence in page.findall('.//sentence'):
+                    for page in text_elem.findall(".//page"):
+                        for sentence in page.findall(".//sentence"):
                             sentence_text = self._extract_sentence_text(sentence)
                             if sentence_text:
                                 sentences.append(sentence_text)
@@ -500,13 +555,17 @@ class SprakbankenSomaliProcessor(BasePipeline):
                         text_content = " ".join(sentences)
 
                         # Process duplicates with combined exact and near-duplicate detection
-                        is_dup, dup_type, similar_url, text_hash, minhash_sig = self.dedup.process_document(text_content, url)
+                        is_dup, dup_type, similar_url, text_hash, minhash_sig = (
+                            self.dedup.process_document(text_content, url)
+                        )
 
                         if not is_dup:
                             # Create record for this text
                             record = {
                                 "corpus_id": corpus_id,
-                                "title": text_metadata.get("title", f"{corpus_id}_text_{texts_count}"),
+                                "title": text_metadata.get(
+                                    "title", f"{corpus_id}_text_{texts_count}"
+                                ),
                                 "text": text_content,
                                 "text_hash": text_hash,
                                 "minhash_signature": minhash_sig,
@@ -518,7 +577,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
                             }
 
                             # Write to JSONL
-                            out_file.write(json.dumps(record, ensure_ascii=False) + '\n')
+                            out_file.write(json.dumps(record, ensure_ascii=False) + "\n")
                             texts_count += 1
 
                             # Track text length metrics
@@ -530,16 +589,16 @@ class SprakbankenSomaliProcessor(BasePipeline):
                             )
                             # Increment correct metric based on duplicate type
                             if dup_type == "exact":
-                                self.metrics.increment('texts_deduplicated')
+                                self.metrics.increment("texts_deduplicated")
                             elif dup_type == "near":
-                                self.metrics.increment('near_duplicates')
+                                self.metrics.increment("near_duplicates")
 
         except Exception as e:
             self.logger.error(f"Error extracting {corpus_file}: {e}")
 
         return texts_count, sentences_count
 
-    def _extract_text_metadata(self, text_elem: ET.Element) -> Dict[str, Any]:
+    def _extract_text_metadata(self, text_elem: ET.Element) -> dict[str, Any]:
         """Extract metadata from text element."""
         metadata = {}
 
@@ -553,11 +612,11 @@ class SprakbankenSomaliProcessor(BasePipeline):
     def _extract_sentence_text(self, sentence_elem: ET.Element) -> str:
         """Extract text from sentence element."""
         tokens = []
-        for token in sentence_elem.findall('.//token'):
-            word = token.text or ''
+        for token in sentence_elem.findall(".//token"):
+            word = token.text or ""
             if word:
                 tokens.append(word)
-        return ' '.join(tokens)
+        return " ".join(tokens)
 
     def _extract_records(self) -> Iterator[RawRecord]:
         """
@@ -568,7 +627,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         if not self.staging_file.exists():
             raise FileNotFoundError(f"Staging file not found: {self.staging_file}")
 
-        with open(self.staging_file, 'r', encoding='utf-8') as f:
+        with open(self.staging_file, encoding="utf-8") as f:
             for line in f:
                 record = json.loads(line)
 
@@ -614,7 +673,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         return session
 
 
-def list_available_corpora() -> List[str]:
+def list_available_corpora() -> list[str]:
     """
     List all available Språkbanken corpus IDs.
 
@@ -624,7 +683,7 @@ def list_available_corpora() -> List[str]:
     return list(CORPUS_INFO.keys())
 
 
-def get_corpus_info(corpus_id: str) -> Dict[str, Any]:
+def get_corpus_info(corpus_id: str) -> dict[str, Any]:
     """
     Get metadata for a specific corpus.
 

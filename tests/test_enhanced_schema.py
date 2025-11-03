@@ -3,16 +3,13 @@ Tests for enhanced silver schema with domain and embedding fields.
 """
 
 import json
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch
 
-import pytest
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
-from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
 from somali_dialect_classifier.preprocessing.record_utils import build_silver_record
+from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
 
 
 class TestEnhancedSchema:

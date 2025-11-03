@@ -20,12 +20,12 @@ Usage:
     analyzer.export_stratified_dataset("data/reports/bbc_filtered_samples.jsonl")
 """
 
-from typing import Dict, Any, Optional, List, Tuple
-from pathlib import Path
-from collections import defaultdict, Counter
 import json
 import random
+from collections import Counter, defaultdict
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Optional
 
 
 class FilteredSample:
@@ -38,7 +38,7 @@ class FilteredSample:
         text_preview: str,
         filter_name: str,
         reason: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[dict[str, Any]] = None,
     ):
         """
         Initialize filtered sample.
@@ -59,7 +59,7 @@ class FilteredSample:
         self.metadata = metadata or {}
         self.timestamp = datetime.utcnow().isoformat()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "record_id": self.record_id,
@@ -68,7 +68,7 @@ class FilteredSample:
             "filter_name": self.filter_name,
             "reason": self.reason,
             "metadata": self.metadata,
-            "timestamp": self.timestamp
+            "timestamp": self.timestamp,
         }
 
 
@@ -80,12 +80,7 @@ class FilterAnalyzer:
     and generates detailed reports for debugging and optimization.
     """
 
-    def __init__(
-        self,
-        source: str,
-        sampling_rate: float = 0.0,
-        max_samples_per_filter: int = 100
-    ):
+    def __init__(self, source: str, sampling_rate: float = 0.0, max_samples_per_filter: int = 100):
         """
         Initialize filter analyzer.
 
@@ -105,15 +100,11 @@ class FilterAnalyzer:
         self.total_filtered = 0
 
         # Sampled records
-        self.filtered_samples: Dict[str, List[FilteredSample]] = defaultdict(list)
+        self.filtered_samples: dict[str, list[FilteredSample]] = defaultdict(list)
 
         # Per-filter detailed stats
-        self.filter_details: Dict[str, Dict[str, Any]] = defaultdict(
-            lambda: {
-                "count": 0,
-                "percentage": 0.0,
-                "reasons": Counter()
-            }
+        self.filter_details: dict[str, dict[str, Any]] = defaultdict(
+            lambda: {"count": 0, "percentage": 0.0, "reasons": Counter()}
         )
 
     def enable_sampling(self, rate: float = 0.01):
@@ -129,7 +120,7 @@ class FilterAnalyzer:
         """Record that a record was processed."""
         self.total_processed += 1
 
-    def record_passed(self, record_data: Optional[Dict[str, Any]] = None):
+    def record_passed(self, record_data: Optional[dict[str, Any]] = None):
         """
         Record that a record passed all filters.
 
@@ -145,7 +136,7 @@ class FilterAnalyzer:
         text: str,
         filter_name: str,
         reason: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[dict[str, Any]] = None,
     ):
         """
         Record that a record was filtered.
@@ -175,11 +166,11 @@ class FilterAnalyzer:
                     text_preview=text[:200] + "..." if len(text) > 200 else text,
                     filter_name=filter_name,
                     reason=reason,
-                    metadata=metadata
+                    metadata=metadata,
                 )
                 self.filtered_samples[filter_name].append(sample)
 
-    def get_filter_breakdown(self) -> Dict[str, int]:
+    def get_filter_breakdown(self) -> dict[str, int]:
         """
         Get filter breakdown for metrics reporting.
 
@@ -188,7 +179,7 @@ class FilterAnalyzer:
         """
         return dict(self.filter_counts)
 
-    def compute_filter_percentages(self) -> Dict[str, float]:
+    def compute_filter_percentages(self) -> dict[str, float]:
         """
         Compute percentage of records dropped by each filter.
 
@@ -203,7 +194,7 @@ class FilterAnalyzer:
             for filter_name, count in self.filter_counts.items()
         }
 
-    def generate_report(self) -> Dict[str, Any]:
+    def generate_report(self) -> dict[str, Any]:
         """
         Generate comprehensive filter analysis report.
 
@@ -219,14 +210,18 @@ class FilterAnalyzer:
                 "total_processed": self.total_processed,
                 "total_passed": self.total_passed,
                 "total_filtered": self.total_filtered,
-                "pass_rate": (self.total_passed / self.total_processed) if self.total_processed > 0 else 0.0,
-                "filter_rate": (self.total_filtered / self.total_processed) if self.total_processed > 0 else 0.0,
+                "pass_rate": (self.total_passed / self.total_processed)
+                if self.total_processed > 0
+                else 0.0,
+                "filter_rate": (self.total_filtered / self.total_processed)
+                if self.total_processed > 0
+                else 0.0,
             },
             "filter_breakdown": {
                 filter_name: {
                     "count": count,
                     "percentage": percentages.get(filter_name, 0.0),
-                    "top_reasons": dict(self.filter_details[filter_name]["reasons"].most_common(5))
+                    "top_reasons": dict(self.filter_details[filter_name]["reasons"].most_common(5)),
                 }
                 for filter_name, count in self.filter_counts.most_common()
             },
@@ -237,8 +232,8 @@ class FilterAnalyzer:
                 "samples_per_filter": {
                     filter_name: len(samples)
                     for filter_name, samples in self.filtered_samples.items()
-                }
-            }
+                },
+            },
         }
 
         return report
@@ -260,8 +255,8 @@ class FilterAnalyzer:
 
         total_exported = 0
 
-        with open(output_path, 'w', encoding='utf-8') as f:
-            for filter_name, samples in sorted(self.filtered_samples.items()):
+        with open(output_path, "w", encoding="utf-8") as f:
+            for _filter_name, samples in sorted(self.filtered_samples.items()):
                 for sample in samples:
                     f.write(json.dumps(sample.to_dict()) + "\n")
                     total_exported += 1
@@ -280,7 +275,7 @@ class FilterAnalyzer:
 
         report = self.generate_report()
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
 
     def print_summary(self):
@@ -314,9 +309,7 @@ class FilterAnalyzer:
 
 
 def create_filter_analyzer(
-    source: str,
-    enable_sampling: bool = False,
-    sampling_rate: float = 0.01
+    source: str, enable_sampling: bool = False, sampling_rate: float = 0.01
 ) -> FilterAnalyzer:
     """
     Factory function to create FilterAnalyzer with common settings.
@@ -330,16 +323,12 @@ def create_filter_analyzer(
         Configured FilterAnalyzer instance
     """
     analyzer = FilterAnalyzer(
-        source=source,
-        sampling_rate=sampling_rate if enable_sampling else 0.0
+        source=source, sampling_rate=sampling_rate if enable_sampling else 0.0
     )
     return analyzer
 
 
-def analyze_filter_impact(
-    filter_breakdown: Dict[str, int],
-    total_records: int
-) -> Dict[str, Any]:
+def analyze_filter_impact(filter_breakdown: dict[str, int], total_records: int) -> dict[str, Any]:
     """
     Analyze impact of filters on dataset quality.
 
@@ -351,22 +340,13 @@ def analyze_filter_impact(
         Analysis results with recommendations
     """
     if not filter_breakdown or total_records == 0:
-        return {
-            "total_filtered": 0,
-            "filter_rate": 0.0,
-            "top_filters": [],
-            "recommendations": []
-        }
+        return {"total_filtered": 0, "filter_rate": 0.0, "top_filters": [], "recommendations": []}
 
     total_filtered = sum(filter_breakdown.values())
     filter_rate = total_filtered / total_records
 
     # Sort filters by impact
-    sorted_filters = sorted(
-        filter_breakdown.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )
+    sorted_filters = sorted(filter_breakdown.items(), key=lambda x: x[1], reverse=True)
 
     # Generate recommendations
     recommendations = []
@@ -374,8 +354,7 @@ def analyze_filter_impact(
     # High filter rate warning
     if filter_rate > 0.5:
         recommendations.append(
-            "WARNING: Over 50% of records are being filtered. "
-            "Consider reviewing filter thresholds."
+            "WARNING: Over 50% of records are being filtered. Consider reviewing filter thresholds."
         )
 
     # Single filter dominating
@@ -389,13 +368,12 @@ def analyze_filter_impact(
     # Low filter rate
     if filter_rate < 0.05:
         recommendations.append(
-            "Very few records are being filtered (<5%). "
-            "Filters may be too permissive."
+            "Very few records are being filtered (<5%). Filters may be too permissive."
         )
 
     return {
         "total_filtered": total_filtered,
         "filter_rate": filter_rate,
         "top_filters": sorted_filters[:5],
-        "recommendations": recommendations
+        "recommendations": recommendations,
     }

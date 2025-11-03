@@ -4,14 +4,13 @@ Unit tests for text cleaning utilities.
 These tests demonstrate how separation of concerns improves testability.
 """
 
-
 from somali_dialect_classifier.preprocessing.text_cleaners import (
-    WikiMarkupCleaner,
-    WhitespaceCleaner,
     HTMLCleaner,
     TextCleaningPipeline,
-    create_wikipedia_cleaner,
+    WhitespaceCleaner,
+    WikiMarkupCleaner,
     create_html_cleaner,
+    create_wikipedia_cleaner,
 )
 
 
@@ -67,10 +66,12 @@ class TestTextCleaningPipeline:
     """Test composable pipeline."""
 
     def test_pipeline_composition(self):
-        pipeline = TextCleaningPipeline([
-            WikiMarkupCleaner(),
-            WhitespaceCleaner(),
-        ])
+        pipeline = TextCleaningPipeline(
+            [
+                WikiMarkupCleaner(),
+                WhitespaceCleaner(),
+            ]
+        )
         result = pipeline.clean("[[Link|text]]   with    spaces")
         assert result == "text with spaces"
 

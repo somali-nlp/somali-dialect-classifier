@@ -8,14 +8,14 @@ Provides:
 - Respect for HTTP 429 (Too Many Requests) and Retry-After headers
 """
 
-import time
-import random
 import logging
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Optional
-from collections import deque
+import random
 import threading
+import time
+from collections import deque
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -109,10 +109,7 @@ class AdaptiveRateLimiter:
         elapsed = now - self.last_refill
 
         # Add tokens based on elapsed time
-        self.tokens = min(
-            self.max_tokens,
-            self.tokens + (elapsed * self.refill_rate)
-        )
+        self.tokens = min(self.max_tokens, self.tokens + (elapsed * self.refill_rate))
 
         self.last_refill = now
 
@@ -151,7 +148,9 @@ class AdaptiveRateLimiter:
         # If server is slow, increase delay
         if avg_latency_ms > self.config.target_latency_ms:
             # Server is struggling, slow down
-            factor = 1.0 + (self.config.adaptation_rate * (avg_latency_ms / self.config.target_latency_ms - 1.0))
+            factor = 1.0 + (
+                self.config.adaptation_rate * (avg_latency_ms / self.config.target_latency_ms - 1.0)
+            )
             new_delay = min(self.current_delay * factor, self.config.max_delay)
         else:
             # Server is responsive, can speed up slightly
@@ -239,8 +238,8 @@ class AdaptiveRateLimiter:
 
         # Apply exponential backoff
         backoff = min(
-            self.config.min_delay * (self.config.backoff_multiplier ** self.consecutive_errors),
-            self.config.max_backoff
+            self.config.min_delay * (self.config.backoff_multiplier**self.consecutive_errors),
+            self.config.max_backoff,
         )
 
         # Respect Retry-After header if present
@@ -274,6 +273,7 @@ class AdaptiveRateLimiter:
                 # Try as HTTP date
                 try:
                     from email.utils import parsedate_to_datetime
+
                     retry_date = parsedate_to_datetime(retry_after)
                     retry_seconds = (retry_date - datetime.now()).total_seconds()
                 except Exception as e:
@@ -282,8 +282,9 @@ class AdaptiveRateLimiter:
         # Default to exponential backoff if no valid Retry-After
         if not retry_seconds:
             retry_seconds = min(
-                self.config.min_delay * (self.config.backoff_multiplier ** (self.consecutive_errors + 1)),
-                self.config.max_backoff
+                self.config.min_delay
+                * (self.config.backoff_multiplier ** (self.consecutive_errors + 1)),
+                self.config.max_backoff,
             )
 
         logger.warning(f"HTTP 429: Too Many Requests. Backing off for {retry_seconds}s")
@@ -305,7 +306,7 @@ class AdaptiveRateLimiter:
             "current_delay": self.current_delay,
             "consecutive_errors": self.consecutive_errors,
             "tokens_available": self.tokens if self.refill_rate else None,
-            "refill_rate": self.refill_rate
+            "refill_rate": self.refill_rate,
         }
 
         if self.recent_latencies:
@@ -317,6 +318,7 @@ class AdaptiveRateLimiter:
 
 
 # Context manager for timing requests
+
 
 class TimedRequest:
     """Context manager for timing requests and updating rate limiter."""
@@ -366,7 +368,7 @@ if __name__ == "__main__":
         max_backoff=300.0,
         jitter=True,
         adaptive=True,
-        requests_per_hour=60  # 60 requests per hour
+        requests_per_hour=60,  # 60 requests per hour
     )
 
     rate_limiter = AdaptiveRateLimiter(config)
@@ -381,5 +383,5 @@ if __name__ == "__main__":
             if random.random() < 0.1:
                 raise Exception("Simulated error")
 
-        print(f"Request {i+1}: {timer.get_elapsed_ms():.0f}ms")
+        print(f"Request {i + 1}: {timer.get_elapsed_ms():.0f}ms")
         print(f"Stats: {rate_limiter.get_statistics()}")

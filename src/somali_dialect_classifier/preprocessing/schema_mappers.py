@@ -12,9 +12,9 @@ Supported datasets:
 - mC4-like datasets
 """
 
-from typing import Dict, Any, Optional, Callable
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ class SchemaMapping:
         metadata_fields: Additional fields to include in metadata
         transform_fn: Optional transformation function for text
     """
+
     text_field: str
     url_field: Optional[str] = None
     timestamp_field: Optional[str] = None
@@ -51,34 +52,28 @@ class DatasetSchemaMapper:
     # Predefined schema mappings
     SCHEMAS = {
         "mc4": SchemaMapping(
-            text_field="text",
-            url_field="url",
-            timestamp_field="timestamp",
-            metadata_fields=[]
+            text_field="text", url_field="url", timestamp_field="timestamp", metadata_fields=[]
         ),
         "oscar": SchemaMapping(
             text_field="text",
             url_field=None,  # OSCAR doesn't include URLs
             timestamp_field=None,
-            metadata_fields=["meta"]  # OSCAR has 'meta' field with additional info
+            metadata_fields=["meta"],  # OSCAR has 'meta' field with additional info
         ),
         "culturax": SchemaMapping(
             text_field="text",
             url_field="url",
             timestamp_field="timestamp",
-            metadata_fields=["source", "language_score"]
+            metadata_fields=["source", "language_score"],
         ),
         "madlad": SchemaMapping(
-            text_field="text",
-            url_field="url",
-            timestamp_field=None,
-            metadata_fields=["score"]
+            text_field="text", url_field="url", timestamp_field=None, metadata_fields=["score"]
         ),
         "cc100": SchemaMapping(
             text_field="text",
             url_field=None,  # CC100 doesn't include URLs
             timestamp_field=None,
-            metadata_fields=[]
+            metadata_fields=[],
         ),
     }
 
@@ -104,7 +99,7 @@ class DatasetSchemaMapper:
             )
             self.mapping = SchemaMapping(text_field="text")
 
-    def extract_text(self, record: Dict[str, Any]) -> Optional[str]:
+    def extract_text(self, record: dict[str, Any]) -> Optional[str]:
         """
         Extract text content from record.
 
@@ -129,7 +124,7 @@ class DatasetSchemaMapper:
 
         return text
 
-    def extract_url(self, record: Dict[str, Any]) -> Optional[str]:
+    def extract_url(self, record: dict[str, Any]) -> Optional[str]:
         """
         Extract URL from record.
 
@@ -144,7 +139,7 @@ class DatasetSchemaMapper:
 
         return record.get(self.mapping.url_field)
 
-    def extract_timestamp(self, record: Dict[str, Any]) -> Optional[str]:
+    def extract_timestamp(self, record: dict[str, Any]) -> Optional[str]:
         """
         Extract timestamp from record.
 
@@ -159,7 +154,7 @@ class DatasetSchemaMapper:
 
         return record.get(self.mapping.timestamp_field)
 
-    def extract_metadata(self, record: Dict[str, Any]) -> Dict[str, Any]:
+    def extract_metadata(self, record: dict[str, Any]) -> dict[str, Any]:
         """
         Extract additional metadata fields from record.
 
@@ -177,7 +172,7 @@ class DatasetSchemaMapper:
 
         return metadata
 
-    def map_record(self, record: Dict[str, Any], index: Optional[int] = None) -> Dict[str, Any]:
+    def map_record(self, record: dict[str, Any], index: Optional[int] = None) -> dict[str, Any]:
         """
         Map dataset record to standardized format.
 
@@ -209,14 +204,9 @@ class DatasetSchemaMapper:
         if timestamp:
             metadata["timestamp"] = timestamp
 
-        return {
-            "text": text,
-            "url": url,
-            "timestamp": timestamp,
-            "metadata": metadata
-        }
+        return {"text": text, "url": url, "timestamp": timestamp, "metadata": metadata}
 
-    def validate_record(self, record: Dict[str, Any]) -> bool:
+    def validate_record(self, record: dict[str, Any]) -> bool:
         """
         Validate that record contains required fields.
 
@@ -241,6 +231,7 @@ class DatasetSchemaMapper:
 
 
 # Convenience factory function
+
 
 def get_schema_mapper(dataset_name: str) -> DatasetSchemaMapper:
     """
@@ -269,7 +260,7 @@ if __name__ == "__main__":
     mc4_record = {
         "text": "Waa maxay barnaamijkan?",
         "url": "https://example.so/article",
-        "timestamp": "2023-01-15T10:30:00"
+        "timestamp": "2023-01-15T10:30:00",
     }
 
     mapped = mc4_mapper.map_record(mc4_record, index=0)
@@ -277,19 +268,14 @@ if __name__ == "__main__":
 
     # Test OSCAR mapping (no URL field)
     oscar_mapper = get_schema_mapper("oscar")
-    oscar_record = {
-        "text": "Magaalada Muqdisho",
-        "meta": {"source": "web", "quality": 0.95}
-    }
+    oscar_record = {"text": "Magaalada Muqdisho", "meta": {"source": "web", "quality": 0.95}}
 
     mapped = oscar_mapper.map_record(oscar_record, index=123)
     print("OSCAR Mapping:", mapped)
 
     # Test custom mapping
     custom_mapping = SchemaMapping(
-        text_field="content",
-        url_field="link",
-        metadata_fields=["author", "category"]
+        text_field="content", url_field="link", metadata_fields=["author", "category"]
     )
 
     custom_mapper = DatasetSchemaMapper("custom", custom_mapping)
@@ -297,7 +283,7 @@ if __name__ == "__main__":
         "content": "Custom text",
         "link": "https://custom.com",
         "author": "John Doe",
-        "category": "news"
+        "category": "news",
     }
 
     mapped = custom_mapper.map_record(custom_record)
