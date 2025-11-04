@@ -251,12 +251,20 @@ export function computeQualityAnalytics(metrics = []) {
         return {
             totalRecords: 0,
             totalRejected: 0,
+            candidateRecords: 0,
             avgQualityRate: 0,
             avgDedupRate: 0,
+            rejectionRate: 0,
+            languageRejected: 0,
+            languageShare: 0,
             perSource: [],
             trend: [],
             filterTotals: {},
-            topFilter: null
+            filterTrends: {},
+            topFilter: null,
+            familyTotals: {},
+            latest: null,
+            previous: null
         };
     }
 
@@ -268,8 +276,48 @@ export function computeQualityAnalytics(metrics = []) {
     let dedupWeight = 0;
 
     const filterTotals = new Map();
+    const familyTotals = new Map();
     const sourceMap = new Map();
     const trendMap = new Map();
+    const filterTrendMap = new Map();
+
+    const languageReasons = new Set([
+        'langid_filter',
+        'language_filter',
+        'non_somali_filter'
+    ]);
+    const lengthReasons = new Set([
+        'min_length_filter',
+        'text_too_short_after_cleanup',
+        'empty_after_cleaning'
+    ]);
+    const toxicityReasons = new Set([
+        'toxic_filter',
+        'toxicity_filter',
+        'profanity_filter'
+    ]);
+    const dedupeReasons = new Set([
+        'duplicate_filter',
+        'near_duplicate_filter'
+    ]);
+    const manualReasons = new Set([
+        'manual_review',
+        'manual_override'
+    ]);
+
+    function getFamily(reason = '') {
+        if (languageReasons.has(reason)) return 'Language';
+        if (lengthReasons.has(reason)) return 'Length';
+        if (toxicityReasons.has(reason)) return 'Toxicity';
+        if (dedupeReasons.has(reason)) return 'Deduplication';
+        if (manualReasons.has(reason)) return 'Manual';
+        if (/lang/.test(reason)) return 'Language';
+        if (/length|short|empty/.test(reason)) return 'Length';
+        if (/tox|prof/.test(reason)) return 'Toxicity';
+        if (/dup/.test(reason)) return 'Deduplication';
+        if (/manual|override/.test(reason)) return 'Manual';
+        return 'Other';
+    }
 
     metrics.forEach(metric => {
         if (!metric) return;
@@ -302,6 +350,16 @@ export function computeQualityAnalytics(metrics = []) {
             const numeric = Number(count) || 0;
             if (numeric <= 0) return;
             filterTotals.set(reason, (filterTotals.get(reason) || 0) + numeric);
+            const family = getFamily(reason);
+            familyTotals.set(family, (familyTotals.get(family) || 0) + numeric);
+
+            if (dateKey) {
+                if (!filterTrendMap.has(reason)) {
+                    filterTrendMap.set(reason, new Map());
+                }
+                const trendForReason = filterTrendMap.get(reason);
+                trendForReason.set(dateKey, (trendForReason.get(dateKey) || 0) + numeric);
+            }
         });
 
         const sourceName = normalizeSourceName(metric.source || 'Unknown');
@@ -313,6 +371,7 @@ export function computeQualityAnalytics(metrics = []) {
                 weight: 0,
                 dedupWeighted: 0,
                 filters: {},
+                families: new Map(),
                 lastUpdated: null,
                 lastUpdatedMs: null
             });
@@ -327,6 +386,8 @@ export function computeQualityAnalytics(metrics = []) {
             const numeric = Number(count) || 0;
             if (numeric <= 0) return;
             sourceEntry.filters[reason] = (sourceEntry.filters[reason] || 0) + numeric;
+            const family = getFamily(reason);
+            sourceEntry.families.set(family, (sourceEntry.families.get(family) || 0) + numeric);
         });
 
         if (timestamp) {
@@ -377,6 +438,7 @@ export function computeQualityAnalytics(metrics = []) {
             rejected: entry.rejected,
             rejectionRate,
             filters: entry.filters,
+            familyBreakdown: Object.fromEntries(entry.families.entries()),
             topFilter,
             lastUpdated: entry.lastUpdated,
             lastUpdatedMs: entry.lastUpdatedMs
@@ -406,15 +468,41 @@ export function computeQualityAnalytics(metrics = []) {
     const combinedTotal = totalRecords + totalRejected;
     const avgQualityRate = combinedTotal > 0 ? totalRecords / combinedTotal : 0;
     const avgDedupRate = dedupWeight > 0 ? dedupWeighted / dedupWeight : 0;
+    const rejectionRate = combinedTotal > 0 ? totalRejected / combinedTotal : 0;
+
+    const languageRejected = Array.from(filterTotals.entries())
+        .filter(([reason]) => getFamily(reason) === 'Language')
+        .reduce((sum, [, count]) => sum + count, 0);
+    const languageShare = totalRejected > 0 ? languageRejected / totalRejected : 0;
+
+    const filterTrends = Object.fromEntries(
+        Array.from(filterTrendMap.entries()).map(([reason, map]) => [
+            reason,
+            Array.from(map.entries())
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .map(([date, value]) => ({ date, value }))
+        ])
+    );
+
+    const latest = sortedTrend.length ? sortedTrend[sortedTrend.length - 1] : null;
+    const previous = sortedTrend.length > 1 ? sortedTrend[sortedTrend.length - 2] : null;
 
     return {
         totalRecords,
         totalRejected,
+        candidateRecords: combinedTotal,
         avgQualityRate,
         avgDedupRate,
+        rejectionRate,
+        languageRejected,
+        languageShare,
         perSource,
         trend: sortedTrend,
         filterTotals: filterTotalsObj,
-        topFilter
+        filterTrends,
+        topFilter,
+        familyTotals: Object.fromEntries(familyTotals.entries()),
+        latest,
+        previous
     };
 }

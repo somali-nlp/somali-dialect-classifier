@@ -4,9 +4,17 @@
  */
 
 import { getMetrics } from './data-service.js';
-import { normalizeSourceName } from '../utils/formatters.js';
+import { normalizeSourceName, formatDate } from '../utils/formatters.js';
 import { Logger } from '../utils/logger.js';
 import { computeQualityAnalytics, FILTER_REASON_LABELS } from './aggregates.js';
+
+function prepareCanvas(id) {
+    const canvas = document.getElementById(id);
+    if (!canvas) return null;
+    const existing = Chart.getChart(canvas);
+    if (existing) existing.destroy();
+    return canvas;
+}
 
 /**
  * Initialize all dashboard charts
@@ -28,10 +36,18 @@ export function initCharts() {
     // Initialize all chart types
     createSourceTradeoffChart(metricsData);
     createQualityTrendChart(metricsData);
-    createQualityFilterChart(metricsData);
+    createFilterParetoChart(metricsData);
+    createQualityStabilityChart(metricsData);
     createPerformanceBulletChart(metricsData);
     createQualityVsSpeedChart(metricsData);
     createCumulativeTimelineChart(metricsData);
+}
+
+export function refreshQualityCharts(filteredMetrics = []) {
+    const dataset = { metrics: filteredMetrics };
+    createQualityTrendChart(dataset);
+    createFilterParetoChart(dataset);
+    createQualityStabilityChart(dataset);
 }
 
 
@@ -40,10 +56,9 @@ export function initCharts() {
  * Plots records delivered vs quality rate with bubble size indicating avg length
  */
 function createSourceTradeoffChart(metricsData) {
-    const tradeoffCtx = document.getElementById('sourceTradeoffChart');
+    const tradeoffCtx = prepareCanvas('sourceTradeoffChart');
 
     if (!tradeoffCtx) {
-        Logger.warn('Chart container not found: sourceTradeoffChart');
         return;
     }
 
@@ -162,9 +177,8 @@ function createSourceTradeoffChart(metricsData) {
 }
 
 function createQualityTrendChart(metricsData) {
-    const trendCtx = document.getElementById('qualityTrendChart');
+    const trendCtx = prepareCanvas('qualityTrendChart');
     if (!trendCtx) {
-        Logger.warn('Chart container not found: qualityTrendChart');
         return;
     }
 
@@ -184,8 +198,6 @@ function createQualityTrendChart(metricsData) {
         y: (entry.quality || 0) * 100,
         records: entry.records || 0
     }));
-
-    const latestQuality = trendDataset.length ? trendDataset[trendDataset.length - 1].y : 0;
 
     new Chart(context, {
         type: 'line',
@@ -264,110 +276,207 @@ function createQualityTrendChart(metricsData) {
     });
 }
 
-function createQualityFilterChart(metricsData) {
-    const filterCtx = document.getElementById('qualityFilterChart');
-    if (!filterCtx) {
-        Logger.warn('Chart container not found: qualityFilterChart');
+function createFilterParetoChart(metricsData) {
+    const canvas = document.getElementById('filterParetoChart');
+    if (!canvas) {
         return;
     }
 
     const analytics = computeQualityAnalytics(metricsData?.metrics || []);
-    const sources = analytics?.perSource || [];
-    if (!sources.length) {
-        const wrapper = filterCtx.parentElement;
-        if (wrapper) {
-            wrapper.innerHTML = '<p class="chart-empty-state">Filter diagnostics will appear after the first successful run.</p>';
-        }
-        return;
-    }
+    const filterTotals = analytics?.filterTotals || {};
+    const totalRejected = analytics?.totalRejected || 0;
 
-    const reasonEntries = Object.entries(analytics.filterTotals || {})
+    const sortedFilters = Object.entries(filterTotals)
         .filter(([, count]) => Number(count) > 0)
         .sort((a, b) => b[1] - a[1]);
 
-    if (!reasonEntries.length) {
-        const wrapper = filterCtx.parentElement;
+    if (!sortedFilters.length) {
+        const wrapper = canvas.parentElement;
         if (wrapper) {
-            wrapper.innerHTML = '<p class="chart-empty-state">No quality rejections recorded for the latest run.</p>';
+            wrapper.innerHTML = '<p class="chart-empty-state">Filter drilldown will appear after the next ingestion run.</p>';
         }
         return;
     }
 
-    const reasons = reasonEntries.map(([reason]) => reason);
-    const labels = sources.map(source => source.name);
-    const palette = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#14b8a6', '#f97316', '#8b5cf6'];
+    const labels = sortedFilters.map(([reason]) => FILTER_REASON_LABELS[reason] || reason.replace(/_/g, ' '));
+    const counts = sortedFilters.map(([, count]) => count);
+    const cumulative = counts.reduce((acc, value, index) => {
+        const prev = index === 0 ? 0 : acc[index - 1];
+        acc.push(prev + value);
+        return acc;
+    }, []);
+    const cumulativePercent = cumulative.map(value => totalRejected > 0 ? (value / totalRejected) * 100 : 0);
 
-    const datasets = reasons.map((reason, index) => {
-        const data = sources.map(source => source.filters?.[reason] || 0);
-        const total = data.reduce((sum, value) => sum + value, 0);
-        if (total === 0) return null;
-        return {
-            label: FILTER_REASON_LABELS[reason] || reason.replace(/_/g, ' '),
-            data,
-            backgroundColor: palette[index % palette.length],
-            borderWidth: 0,
-            stack: 'filters'
-        };
-    }).filter(Boolean);
+    const filterSummary = sortedFilters.map(([reason, count], index) => ({
+        reason,
+        label: labels[index],
+        count,
+        share: totalRejected > 0 ? (count / totalRejected) * 100 : 0,
+        cumulative: cumulativePercent[index]
+    }));
 
-    if (!datasets.length) {
-        const wrapper = filterCtx.parentElement;
-        if (wrapper) {
-            wrapper.innerHTML = '<p class="chart-empty-state">Filter diagnostics unavailable for the latest run.</p>';
-        }
-        return;
-    }
-
-    const context = filterCtx.getContext('2d');
-
-    new Chart(context, {
-        type: 'bar',
+    const chart = new Chart(canvas.getContext('2d'), {
         data: {
             labels,
-            datasets
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Rejections',
+                    data: counts,
+                    backgroundColor: '#2563eb',
+                    borderRadius: 6,
+                    order: 1
+                },
+                {
+                    type: 'line',
+                    label: 'Cumulative',
+                    data: cumulativePercent,
+                    borderColor: '#f59e0b',
+                    backgroundColor: '#f59e0b',
+                    yAxisID: 'y1',
+                    tension: 0.3,
+                    order: 0,
+                    pointRadius: 4
+                }
+            ]
         },
         options: {
-            indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
                 legend: {
                     position: 'bottom',
                     labels: {
-                        usePointStyle: true,
-                        padding: 12
+                        usePointStyle: true
                     }
                 },
                 tooltip: {
                     callbacks: {
                         label(context) {
-                            const value = context.parsed.x || 0;
-                            const totalForSource = sources[context.dataIndex].rejected || 0;
-                            const share = totalForSource > 0 ? (value / totalForSource) * 100 : 0;
-                            return `${context.dataset.label}: ${value.toLocaleString()} (${share.toFixed(1)}%)`;
+                            if (context.dataset.type === 'line') {
+                                return `Cumulative: ${context.parsed.y.toFixed(1)}%`;
+                            }
+                            const count = context.parsed.y || 0;
+                            const share = totalRejected > 0 ? (count / totalRejected) * 100 : 0;
+                            return `${count.toLocaleString()} records (${share.toFixed(1)}%)`;
                         }
                     }
                 }
             },
             scales: {
                 x: {
-                    stacked: true,
-                    grid: {
-                        color: '#f3f4f6'
-                    },
-                    ticks: {
-                        callback: value => value >= 1000 ? (value / 1000).toFixed(0) + 'K' : value
-                    },
-                    title: {
-                        display: true,
-                        text: 'Records filtered'
-                    }
+                    grid: { color: '#f3f4f6' },
+                    ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 }
                 },
                 y: {
-                    stacked: true,
-                    grid: {
-                        display: false
+                    beginAtZero: true,
+                    grid: { color: '#f9fafb' },
+                    ticks: {
+                        callback: value => value >= 1000 ? (value / 1000).toFixed(0) + 'K' : value
                     }
+                },
+                y1: {
+                    beginAtZero: true,
+                    suggestedMax: 100,
+                    position: 'right',
+                    grid: { drawOnChartArea: false },
+                    ticks: {
+                        callback: value => value + '%'
+                    }
+                }
+            }
+        }
+    });
+
+    canvas.onclick = event => {
+        const points = chart.getElementsAtEventForMode(event, 'nearest', { intersect: true }, true);
+        if (!points.length) return;
+        const index = points[0].index;
+        const detail = filterSummary[index];
+        if (detail) {
+            window.dispatchEvent(new CustomEvent('qualityFilterSelected', { detail }));
+        }
+    };
+
+    window.dispatchEvent(new CustomEvent('qualityFilterSummary', {
+        detail: {
+            summary: filterSummary
+        }
+    }));
+}
+
+function createQualityStabilityChart(metricsData) {
+    const canvas = document.getElementById('qualityStabilityChart');
+    if (!canvas) {
+        return;
+    }
+
+    if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
+        canvas.parentElement.innerHTML = '<p class="chart-empty-state">Stability plot will appear after the next ingestion run.</p>';
+        return;
+    }
+
+    const palette = ['#2563eb', '#ef4444', '#10b981', '#f59e0b', '#ec4899', '#6366f1'];
+    const datasetMap = new Map();
+
+    metricsData.metrics.forEach(metric => {
+        if (!metric) return;
+        const source = normalizeSourceName(metric.source || 'Unknown');
+        const success = Number(metric.http_request_success_rate) * 100 || 0;
+        const quality = Number(metric.quality_pass_rate) * 100 || 0;
+        const timestamp = metric.timestamp ? formatDate(metric.timestamp) : 'N/A';
+        if (!datasetMap.has(source)) datasetMap.set(source, []);
+        datasetMap.get(source).push({ x: success, y: quality, runId: metric.run_id || '—', timestamp });
+    });
+
+    const datasets = Array.from(datasetMap.entries()).map(([label, data], index) => ({
+        label,
+        data,
+        backgroundColor: palette[index % palette.length] + 'CC',
+        borderColor: palette[index % palette.length],
+        pointRadius: 5
+    }));
+
+    if (!datasets.length) {
+        canvas.parentElement.innerHTML = '<p class="chart-empty-state">No stability data available.</p>';
+        return;
+    }
+
+    new Chart(canvas.getContext('2d'), {
+        type: 'scatter',
+        data: { datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true } },
+                tooltip: {
+                    callbacks: {
+                        label(context) {
+                            const point = context.raw || {};
+                            return [
+                                `${context.dataset.label}`,
+                                `Success: ${context.parsed.x.toFixed(1)}%`,
+                                `Quality: ${context.parsed.y.toFixed(1)}%`,
+                                `Run: ${point.runId || 'N/A'}`,
+                                `Timestamp: ${point.timestamp || 'N/A'}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    max: 105,
+                    title: { display: true, text: 'Success Rate (%)' },
+                    grid: { color: '#f3f4f6' }
+                },
+                y: {
+                    beginAtZero: true,
+                    max: 105,
+                    title: { display: true, text: 'Quality Rate (%)' },
+                    grid: { color: '#f3f4f6' }
                 }
             }
         }

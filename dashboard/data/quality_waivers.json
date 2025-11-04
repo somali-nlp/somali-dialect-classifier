@@ -1,0 +1,21 @@
+{
+  "version": "2025-11-quality-waivers",
+  "waivers": [
+    {
+      "name": "TikTok Toxicity Flag",
+      "status": "Active",
+      "granted_on": "2025-10-30",
+      "expires_on": "2025-12-15",
+      "owner": "Social Media Squad",
+      "notes": "Allow 5% tolerance for toxic_filter while new classifier is calibrated."
+    },
+    {
+      "name": "Språkbanken Manual Review Queue",
+      "status": "Monitoring",
+      "granted_on": "2025-10-15",
+      "expires_on": "2026-01-15",
+      "owner": "Linguistics",
+      "notes": "Academic corpora flagged for encoding issues require manual QA before silver."
+    }
+  ]
+}

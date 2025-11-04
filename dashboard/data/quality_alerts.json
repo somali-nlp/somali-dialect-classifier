@@ -1,0 +1,24 @@
+{
+  "version": "2025-11-quality-alerts",
+  "thresholds": {
+    "quality_floor": 0.7,
+    "language_share_ceiling": 0.25,
+    "dedup_drop_ceiling": 0.1
+  },
+  "alerts": [
+    {
+      "id": "tiktok-quality-low",
+      "severity": "high",
+      "message": "TikTok retention at 26.9% remains below the 30% pilot floor.",
+      "recommendation": "Review TikTok filter tuning and social media heuristics.",
+      "source": "TikTok"
+    },
+    {
+      "id": "language-guard-spike",
+      "severity": "medium",
+      "message": "Language guard blocked 45% of Språkbanken submissions this run.",
+      "recommendation": "Inspect Språkbanken source metadata and update language whitelist.",
+      "source": "Språkbanken"
+    }
+  ]
+}

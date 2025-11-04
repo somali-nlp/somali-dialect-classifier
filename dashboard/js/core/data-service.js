@@ -15,7 +15,9 @@ let dashboardData = {
     sankey: null,
     textDistributions: null,
     sourceCatalog: null,
-    pipelineStatus: null
+    pipelineStatus: null,
+    qualityAlerts: null,
+    qualityWaivers: null
 };
 
 /**
@@ -33,14 +35,18 @@ export async function loadMetrics() {
             sankey,
             textDistributions,
             sourceCatalog,
-            pipelineStatus
+            pipelineStatus,
+            qualityAlerts,
+            qualityWaivers
         ] = await Promise.all([
             fetchWithFallback(Config.DATA_PATHS),
             fetchWithOptionalFallback(Config.METADATA_PATHS),
             fetchWithOptionalFallback(Config.SANKEY_PATHS),
             fetchWithOptionalFallback(Config.TEXT_DISTRIBUTION_PATHS),
             fetchWithOptionalFallback(Config.SOURCE_CATALOG_PATHS),
-            fetchWithOptionalFallback(Config.PIPELINE_STATUS_PATHS)
+            fetchWithOptionalFallback(Config.PIPELINE_STATUS_PATHS),
+            fetchWithOptionalFallback(Config.QUALITY_ALERTS_PATHS),
+            fetchWithOptionalFallback(Config.QUALITY_WAIVERS_PATHS)
         ]);
 
         if (!rawMetrics) {
@@ -51,7 +57,9 @@ export async function loadMetrics() {
                 sankey: normalizeSankeyData(sankey),
                 textDistributions: normalizeTextDistributions(textDistributions),
                 sourceCatalog: normalizeSourceCatalog(sourceCatalog),
-                pipelineStatus: normalizePipelineStatus(pipelineStatus)
+                pipelineStatus: normalizePipelineStatus(pipelineStatus),
+                qualityAlerts: normalizeQualityAlerts(qualityAlerts),
+                qualityWaivers: normalizeQualityWaivers(qualityWaivers)
             };
             return dashboardData;
         }
@@ -64,7 +72,9 @@ export async function loadMetrics() {
             sankey: normalizeSankeyData(sankey || rawMetrics.sankey_flow),
             textDistributions: normalizeTextDistributions(textDistributions || rawMetrics.text_distributions),
             sourceCatalog: normalizeSourceCatalog(sourceCatalog),
-            pipelineStatus: normalizePipelineStatus(pipelineStatus)
+            pipelineStatus: normalizePipelineStatus(pipelineStatus),
+            qualityAlerts: normalizeQualityAlerts(qualityAlerts),
+            qualityWaivers: normalizeQualityWaivers(qualityWaivers)
         };
 
         Logger.info(`Dashboard data loaded: metrics=${dashboardData.metrics.length}, sankey=${dashboardData.sankey ? 'yes' : 'no'}, distributions=${dashboardData.textDistributions ? 'yes' : 'no'}`);
@@ -78,7 +88,9 @@ export async function loadMetrics() {
             sankey: null,
             textDistributions: null,
             sourceCatalog: null,
-            pipelineStatus: null
+            pipelineStatus: null,
+            qualityAlerts: null,
+            qualityWaivers: null
         };
         return dashboardData;
     }
@@ -450,6 +462,14 @@ export function getPipelineStatus() {
     return dashboardData.pipelineStatus;
 }
 
+export function getQualityAlerts() {
+    return dashboardData.qualityAlerts;
+}
+
+export function getQualityWaivers() {
+    return dashboardData.qualityWaivers;
+}
+
 /**
  * Validate metrics data structure
  * @param {Object} data - Data to validate
@@ -536,5 +556,48 @@ function normalizePipelineStatus(data) {
         version: data.version || null,
         plannedSources: planned,
         decommissioned: sunset
+    };
+}
+
+function normalizeQualityAlerts(data) {
+    if (!data || typeof data !== 'object') {
+        return null;
+    }
+
+    const alerts = Array.isArray(data.alerts) ? data.alerts.map(alert => ({
+        id: alert.id || `${alert.source || 'general'}-${alert.severity || 'info'}`,
+        severity: (alert.severity || 'info').toLowerCase(),
+        message: alert.message || 'Quality alert',
+        recommendation: alert.recommendation || '',
+        source: alert.source || 'Portfolio',
+        metric: alert.metric || null,
+        value: alert.value ?? null,
+        threshold: alert.threshold ?? null
+    })) : [];
+
+    return {
+        version: data.version || null,
+        thresholds: data.thresholds || {},
+        alerts
+    };
+}
+
+function normalizeQualityWaivers(data) {
+    if (!data || typeof data !== 'object') {
+        return null;
+    }
+
+    const waivers = Array.isArray(data.waivers) ? data.waivers.map(waiver => ({
+        name: waiver.name || 'Unnamed waiver',
+        status: waiver.status || 'Active',
+        owner: waiver.owner || 'Unassigned',
+        grantedOn: waiver.granted_on || waiver.grantedOn || null,
+        expiresOn: waiver.expires_on || waiver.expiresOn || null,
+        notes: waiver.notes || ''
+    })) : [];
+
+    return {
+        version: data.version || null,
+        waivers
     };
 }

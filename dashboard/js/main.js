@@ -46,7 +46,7 @@ python -m http.server 8000</pre>
 import { loadMetrics, getMetrics, getSankeyFlow, getTextDistributions } from './core/data-service.js';
 import { updateStats } from './core/stats.js';
 import { initTabs } from './core/tabs.js';
-import { initCharts } from './core/charts.js';
+import { initCharts, refreshQualityCharts } from './core/charts.js';
 import {
     buildSourceAnalytics,
     populateSourceTable,
@@ -58,7 +58,7 @@ import {
     populatePerformanceMetrics,
     populateOverviewCards,
 } from './core/ui-renderer.js';
-import { initializeFilterLabels } from './core/aggregates.js';
+import { initializeFilterLabels, computeQualityAnalytics } from './core/aggregates.js';
 
 // Import feature modules
 import { initAudienceMode } from './features/audience-mode.js';
@@ -310,6 +310,10 @@ function initAdvancedFeatures() {
             populateSourceTable(analytics);
             populateSourceBriefings(analytics);
             refreshDataSourceCharts(filteredMetrics);
+
+            const qualityAnalytics = computeQualityAnalytics(filteredMetrics || []);
+            populateQualityOverview(qualityAnalytics);
+            refreshQualityCharts(filteredMetrics || []);
         });
 
         // Create advanced charts

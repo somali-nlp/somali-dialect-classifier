@@ -3,7 +3,7 @@
  * Populates DOM elements with metrics data
  */
 
-import { getMetrics, getSourceCatalog, getPipelineStatus } from './data-service.js';
+import { getMetrics, getSourceCatalog, getPipelineStatus, getSankeyFlow, getQualityAlerts, getQualityWaivers } from './data-service.js';
 import { normalizeSourceName, formatDate } from '../utils/formatters.js';
 import { computeQualityAnalytics, FILTER_REASON_LABELS } from './aggregates.js';
 import { getSourceMixTargetsSnapshot } from '../features/coverage-metrics.js';
@@ -73,6 +73,15 @@ const SOURCE_METADATA = {
             </svg>`
     }
 };
+
+const QUALITY_CHARTER_ITEMS = [
+    'Minimum length ≥ 50 characters',
+    'Language ID threshold ≥ 0.85',
+    'Toxicity classifier gate enabled',
+    'Manual QA handoff for flagged batches'
+];
+
+let lastQualityAnalytics = null;
 
 let sourceTableRows = [];
 let sourceTableSort = { key: 'records', direction: 'desc' };
@@ -764,232 +773,388 @@ function renderSourceBriefingCard(item) {
         </article>
     `;
 }
-export function populateQualityOverview() {
+export function populateQualityOverview(analyticsOverride = null) {
     const metricsData = getMetrics();
+    const analytics = analyticsOverride || computeQualityAnalytics(metricsData?.metrics || []);
     const narrativeEl = document.getElementById('quality-overview-narrative');
-    const qualityValueEl = document.getElementById('quality-kpi-quality');
-    const qualityCaptionEl = document.getElementById('quality-kpi-quality-caption');
-    const rejectionValueEl = document.getElementById('quality-kpi-rejections');
-    const rejectionCaptionEl = document.getElementById('quality-kpi-rejections-caption');
-    const languageValueEl = document.getElementById('quality-kpi-language');
-    const languageCaptionEl = document.getElementById('quality-kpi-language-caption');
-    const dedupValueEl = document.getElementById('quality-kpi-dedup');
-    const dedupCaptionEl = document.getElementById('quality-kpi-dedup-caption');
-
-    const analytics = computeQualityAnalytics(metricsData?.metrics || []);
+    const charterEl = document.getElementById('quality-charter');
 
     if (!analytics || analytics.perSource.length === 0) {
-        if (narrativeEl) narrativeEl.textContent = 'Run the ingestion pipelines to populate quality insights.';
-        [qualityValueEl, rejectionValueEl, languageValueEl, dedupValueEl].forEach(el => { if (el) el.textContent = '—'; });
-        [qualityCaptionEl, rejectionCaptionEl, languageCaptionEl, dedupCaptionEl].forEach(el => { if (el) el.textContent = 'Awaiting data.'; });
+        if (narrativeEl) {
+            narrativeEl.textContent = 'Run the ingestion pipelines to populate quality insights.';
+        }
+        renderCharter(charterEl, QUALITY_CHARTER_ITEMS);
+        renderQualityOutcomes(null);
+        renderGuardrailMatrix(null);
+        renderQualityFunnel(null, null);
+        renderExceptionFeed(null);
+        renderQualityWaivers(null);
         return;
     }
+
+    lastQualityAnalytics = analytics;
+
+    renderCharter(charterEl, QUALITY_CHARTER_ITEMS);
+    renderQualityNarrative(narrativeEl, analytics);
+    renderQualityOutcomes(analytics);
+    renderGuardrailMatrix(analytics);
+    const sankey = getSankeyFlow();
+    renderQualityFunnel(sankey, analytics);
+    renderExceptionFeed(analytics);
+    renderQualityWaivers(getQualityWaivers());
+}
+
+export function populateQualityBriefings() {
+    // No-op placeholder for backward compatibility.
+}
+
+function renderCharter(container, items = []) {
+    if (!container) return;
+    const list = items && items.length ? items : QUALITY_CHARTER_ITEMS;
+    container.innerHTML = list.map(item => `<span>${item}</span>`).join('');
+}
+
+function renderQualityNarrative(element, analytics) {
+    if (!element) return;
 
     const {
         totalRecords,
         totalRejected,
+        candidateRecords,
         avgQualityRate,
-        avgDedupRate,
-        filterTotals,
+        rejectionRate,
+        languageRejected,
+        languageShare,
         perSource,
-        trend
+        topFilter,
+        latest,
+        previous
     } = analytics;
 
-    const candidateRecords = totalRecords + totalRejected;
-    const passPercent = candidateRecords > 0 ? (totalRecords / candidateRecords) * 100 : 0;
-    const rejectPercent = candidateRecords > 0 ? (totalRejected / candidateRecords) * 100 : 0;
-    const languageRejected = filterTotals.langid_filter || 0;
-    const languageShare = totalRejected > 0 ? (languageRejected / totalRejected) * 100 : 0;
-    const filterEntries = Object.entries(filterTotals)
-        .filter(([, count]) => Number(count) > 0)
-        .sort((a, b) => b[1] - a[1]);
+    const qualityDelta = latest && previous ? (latest.quality - previous.quality) * 100 : null;
+    const keptPercent = (avgQualityRate * 100).toFixed(1);
+    const rejectedPercent = (rejectionRate * 100).toFixed(1);
+    const languageSentence = languageRejected > 0
+        ? `Language guard removed ${languageRejected.toLocaleString()} records (${(languageShare * 100).toFixed(1)}% of rejections).`
+        : 'Language guard did not trigger this run.';
 
-    if (qualityValueEl) qualityValueEl.textContent = passPercent.toFixed(1) + '%';
-    if (qualityCaptionEl) {
-        const latestTrend = trend.length ? trend[trend.length - 1] : null;
-        const previousTrend = trend.length > 1 ? trend[trend.length - 2] : null;
-        const trendDelta = latestTrend && previousTrend ? (latestTrend.quality - previousTrend.quality) * 100 : null;
-        const deltaText = trendDelta !== null
-            ? `${trendDelta >= 0 ? '+' : ''}${trendDelta.toFixed(1)} pts vs prior run`
-            : 'Latest weighted pass rate';
-        qualityCaptionEl.textContent = deltaText;
-    }
+    const underperforming = perSource.filter(source => {
+        const benchmark = SOURCE_METADATA[getMetadataKey(source.name)]?.qualityBenchmark ?? 0.7;
+        return source.quality < benchmark;
+    });
 
-    if (rejectionValueEl) rejectionValueEl.textContent = totalRejected.toLocaleString();
-    if (rejectionCaptionEl) rejectionCaptionEl.textContent = `${rejectPercent.toFixed(1)}% of submissions filtered`;
+    const watchList = underperforming
+        .map(source => `${source.name} ${ (source.quality * 100).toFixed(1)}% (goal ${(SOURCE_METADATA[getMetadataKey(source.name)]?.qualityBenchmark || 0) * 100}%)`)
+        .join('; ');
 
-    if (languageValueEl) languageValueEl.textContent = languageRejected.toLocaleString();
-    if (languageCaptionEl) languageCaptionEl.textContent = `${languageShare.toFixed(1)}% of rejections flagged as non-Somali`;
+    const watchSentence = watchList
+        ? `Watch list: ${watchList}.`
+        : 'All sources tracked within benchmark expectations.';
 
-    if (dedupValueEl) dedupValueEl.textContent = (avgDedupRate * 100).toFixed(1) + '%';
-    if (dedupCaptionEl) {
-        dedupCaptionEl.textContent = avgDedupRate < 0.0001
-            ? 'Fresh batch: negligible deduplication'
-            : 'Record-weighted deduplication rate';
-    }
+    const filterSentence = topFilter
+        ? `Dominant guardrail: ${formatFilterName(topFilter.reason)} (${topFilter.count.toLocaleString()} records).`
+        : 'Guardrails distributed evenly across filters.';
 
-    if (narrativeEl) {
-        const sortedSources = perSource.slice().sort((a, b) => b.share - a.share);
-        const dominantSource = sortedSources[0];
-        const secondarySource = sortedSources[1];
-        const highQualitySources = sortedSources.filter(source => source.quality >= 0.99);
+    const deltaSentence = qualityDelta !== null
+        ? `Retention ${qualityDelta >= 0 ? 'improved' : 'declined'} ${qualityDelta >= 0 ? '+' : ''}${qualityDelta.toFixed(1)} pts since the prior run.`
+        : 'Retention trend awaiting prior baseline comparison.';
 
-        const formatFilter = ([reason, count]) => {
-            const label = formatFilterName(reason);
-            const pct = totalRejected > 0 ? (count / totalRejected) * 100 : 0;
-            return `${label.toLowerCase()} — ${count.toLocaleString()} (${pct.toFixed(1)}%)`;
-        };
-
-        let filterSentence = '';
-        if (filterEntries.length) {
-            const [primary, ...rest] = filterEntries;
-            filterSentence = `The ${formatFilter(primary)} remains the dominant stop`;
-            if (rest.length === 1) {
-                filterSentence += `, followed by ${formatFilter(rest[0])}.`;
-            } else if (rest.length >= 2) {
-                filterSentence += `, followed by ${formatFilter(rest[0])} and ${formatFilter(rest[1])}.`;
-            } else {
-                filterSentence += '.';
-            }
-        }
-
-        let sourceSentence = '';
-        if (dominantSource) {
-            const dominantFilterName = dominantSource.topFilter
-                ? formatFilterName(dominantSource.topFilter.reason)
-                : null;
-            const dominantFilterSummary = dominantSource.topFilter
-                ? `${dominantFilterName.toLowerCase()} (${dominantSource.topFilter.count.toLocaleString()} / ${dominantSource.topFilter.percentage.toFixed(1)}%)`
-                : null;
-            const dominantShare = (dominantSource.share * 100).toFixed(1);
-            const dominantQuality = (dominantSource.quality * 100).toFixed(1);
-            if (dominantFilterSummary) {
-                sourceSentence += `${dominantSource.name} now supplies ${dominantShare}% of silver, yet only ${dominantQuality}% of its submissions clear because the ${dominantFilterSummary} trims low-signal pages before analysts see them.`;
-            } else {
-                sourceSentence += `${dominantSource.name} now supplies ${dominantShare}% of silver with a ${dominantQuality}% pass rate.`;
-            }
-        }
-
-        if (secondarySource) {
-            const secondaryQuality = (secondarySource.quality * 100).toFixed(1);
-            const secondaryRecords = secondarySource.records.toLocaleString();
-            const secondaryFilter = secondarySource.topFilter
-                ? formatFilterName(secondarySource.topFilter.reason)
-                : null;
-            const clause = secondaryFilter
-                ? ` after ${secondaryFilter.toLowerCase()} sweeps`
-                : '';
-            sourceSentence += ` ${secondarySource.name} lands ${secondaryRecords} records at ${secondaryQuality}% pass${clause}.`;
-        }
-
-        if (highQualitySources.length) {
-            const names = formatNameList(highQualitySources.map(source => source.name));
-            const minQuality = Math.min(...highQualitySources.map(source => source.quality * 100));
-            sourceSentence += ` ${names} arrive nearly pre-filtered, so their smaller batches show ≥${minQuality.toFixed(1)}% pass this run.`;
-        }
-
-        let dedupSentence = '';
-        if (avgDedupRate < 0.0001) {
-            dedupSentence = ' Deduplication remains negligible because this batch contained fresh content.';
-        } else {
-            dedupSentence = ` Deduplication removed ${(avgDedupRate * 100).toFixed(1)}% of records before quality scoring.`;
-        }
-
-        const languageSentence = languageRejected > 0
-            ? ` Language guard blocked ${languageRejected.toLocaleString()} non-Somali pages (${languageShare.toFixed(1)}% of rejections).`
-            : ' Language guard did not flag any content in this run.';
-
-        const intro = `Quality filters processed ${candidateRecords.toLocaleString()} candidate records this cycle. We kept ${totalRecords.toLocaleString()} (${passPercent.toFixed(1)}%) and filtered ${totalRejected.toLocaleString()} (${rejectPercent.toFixed(1)}%). `;
-
-        narrativeEl.textContent = `${intro}${filterSentence} ${sourceSentence}${languageSentence}${dedupSentence}`.replace(/\s+/g, ' ').trim();
-    }
+    element.textContent = `Quality filters processed ${candidateRecords.toLocaleString()} candidate records this cycle, keeping ${totalRecords.toLocaleString()} (${keptPercent}%) and filtering ${totalRejected.toLocaleString()} (${rejectedPercent}%). ${deltaSentence} ${filterSentence} ${languageSentence} ${watchSentence}`.replace(/\s+/g, ' ').trim();
 }
 
-export function populateQualityBriefings() {
-    const container = document.getElementById('qualityBriefings');
-    if (!container) return;
+function renderQualityOutcomes(analytics) {
+    const elements = {
+        yield: {
+            value: document.getElementById('quality-yield-value'),
+            delta: document.getElementById('quality-yield-delta'),
+            caption: document.getElementById('quality-yield-caption')
+        },
+        rejections: {
+            value: document.getElementById('quality-rejected-value'),
+            delta: document.getElementById('quality-rejected-delta'),
+            caption: document.getElementById('quality-rejected-caption')
+        },
+        language: {
+            value: document.getElementById('quality-language-value'),
+            delta: document.getElementById('quality-language-delta'),
+            caption: document.getElementById('quality-language-caption')
+        },
+        dedupe: {
+            value: document.getElementById('quality-dedupe-value'),
+            delta: document.getElementById('quality-dedupe-delta'),
+            caption: document.getElementById('quality-dedupe-caption')
+        }
+    };
 
-    const metricsData = getMetrics();
-    const analytics = computeQualityAnalytics(metricsData?.metrics || []);
+    Object.values(elements).forEach(tile => {
+        if (tile?.delta) {
+            tile.delta.classList.remove('positive', 'negative');
+        }
+    });
 
-    if (!analytics || analytics.perSource.length === 0) {
-        container.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--gray-500);">
-                No quality data available yet.
-            </div>
-        `;
+    const resetTile = tile => {
+        if (!tile) return;
+        if (tile.value) tile.value.textContent = '—';
+        if (tile.delta) {
+            tile.delta.textContent = '—';
+            tile.delta.classList.remove('positive', 'negative');
+        }
+        if (tile.caption) tile.caption.textContent = 'Awaiting data.';
+    };
+
+    if (!analytics) {
+        Object.values(elements).forEach(resetTile);
         return;
     }
 
-    const cards = analytics.perSource
-        .slice()
-        .sort((a, b) => b.records - a.records)
-        .map(item => renderQualityBriefingCard(item))
-        .join('');
+    const { avgQualityRate, totalRecords, totalRejected, candidateRecords, rejectionRate, languageRejected, languageShare, avgDedupRate, latest, previous } = analytics;
+    const qualityDelta = latest && previous ? (latest.quality - previous.quality) * 100 : null;
 
-    container.innerHTML = cards;
+    const yieldTile = elements.yield;
+    if (yieldTile.value) yieldTile.value.textContent = (avgQualityRate * 100).toFixed(1) + '%';
+    updateDelta(yieldTile.delta, qualityDelta);
+    if (yieldTile.caption) {
+        yieldTile.caption.textContent = `${totalRecords.toLocaleString()} kept of ${candidateRecords.toLocaleString()} submissions.`;
+    }
+
+    const rejectedTile = elements.rejections;
+    if (rejectedTile.value) rejectedTile.value.textContent = totalRejected.toLocaleString();
+    if (rejectedTile.delta) rejectedTile.delta.textContent = `${(rejectionRate * 100).toFixed(1)}%`; // Display current percentage
+    if (rejectedTile.caption) {
+        rejectedTile.caption.textContent = `${(rejectionRate * 100).toFixed(1)}% filtered this run.`;
+    }
+
+    const languageTile = elements.language;
+    if (languageTile.value) languageTile.value.textContent = languageRejected.toLocaleString();
+    if (languageTile.delta) languageTile.delta.textContent = `${(languageShare * 100).toFixed(1)}%`; // share
+    if (languageTile.caption) languageTile.caption.textContent = 'Non-Somali traffic held at guardrail.';
+
+    const dedupeTile = elements.dedupe;
+    if (dedupeTile.value) dedupeTile.value.textContent = (avgDedupRate * 100).toFixed(1) + '%';
+    if (dedupeTile.delta) {
+        dedupeTile.delta.textContent = avgDedupRate < 0.0001 ? 'Fresh' : 'Active';
+        dedupeTile.delta.classList.remove('positive', 'negative');
+    }
+    if (dedupeTile.caption) dedupeTile.caption.textContent = avgDedupRate < 0.0001 ? 'No duplicates detected.' : 'Deduplication trimmed residual overlap.';
 }
 
-function renderQualityBriefingCard(item) {
-    const metadataKey = getMetadataKey(item.name);
-    const meta = SOURCE_METADATA[metadataKey] || {
-        role: 'Active Source',
-        pipeline: 'Pipeline',
-        description: '',
-        qualityBenchmark: 0.7,
-        icon: ''
+function updateDelta(element, value) {
+    if (!element) return;
+    element.classList.remove('positive', 'negative');
+    if (value === null || Number.isNaN(value)) {
+        element.textContent = '—';
+        return;
+    }
+    const rounded = value.toFixed(1);
+    element.textContent = `${value >= 0 ? '+' : ''}${rounded} pts`;
+    element.classList.add(value >= 0 ? 'positive' : 'negative');
+}
+
+function renderGuardrailMatrix(analytics) {
+    const container = document.getElementById('guardrailMatrix');
+    if (!container) return;
+
+    if (!analytics || !analytics.perSource.length) {
+        container.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--gray-500);">Guardrail coverage will appear after the next ingestion run.</div>';
+        return;
+    }
+
+    const sources = analytics.perSource.map(source => source.name);
+    const families = new Set();
+    analytics.perSource.forEach(source => {
+        Object.keys(source.familyBreakdown || {}).forEach(family => families.add(family));
+    });
+    Object.keys(analytics.familyTotals || {}).forEach(family => families.add(family));
+
+    const orderedFamilies = ['Language', 'Length', 'Toxicity', 'Deduplication', 'Manual', 'Other']
+        .filter(family => families.has(family))
+        .concat(Array.from(families).filter(f => !['Language', 'Length', 'Toxicity', 'Deduplication', 'Manual', 'Other'].includes(f)));
+
+    const headerRow = [`<div class="guardrail-row guardrail-header">`,
+        `<div class="guardrail-header">Guardrail</div>`,
+        ...sources.map(source => `<div class="guardrail-header">${source}</div>`),
+        `</div>`
+    ].join('');
+
+    const rows = orderedFamilies.map(family => {
+        const cells = sources.map(sourceName => {
+            const source = analytics.perSource.find(entry => entry.name === sourceName);
+            const totalRejected = source ? source.rejected : 0;
+            const familyCount = source?.familyBreakdown?.[family] || 0;
+            const share = totalRejected > 0 ? (familyCount / totalRejected) * 100 : 0;
+            const pillClass = `guardrail-pill ${family.toLowerCase()}`;
+            const valueLabel = familyCount > 0 ? `${familyCount.toLocaleString()} (${share.toFixed(1)}%)` : '—';
+            return `<div class="guardrail-cell"><span class="${pillClass}">${valueLabel}</span></div>`;
+        });
+        return `<div class="guardrail-row"><div class="guardrail-cell">${family}</div>${cells.join('')}</div>`;
+    }).join('');
+
+    container.innerHTML = `<div class="matrix-grid">${headerRow}${rows}</div>`;
+}
+
+function renderQualityFunnel(sankey, analytics) {
+    const container = document.getElementById('qualityFunnel');
+    const footnote = document.getElementById('quality-funnel-footnote');
+    if (!container) return;
+
+    if (!sankey || !sankey.stage_counts) {
+        container.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--gray-500);">Retention funnel will appear after the next orchestration run.</div>';
+        if (footnote) footnote.textContent = 'Retention funnel updates after each run.';
+        return;
+    }
+
+    const stages = [
+        { key: 'discovered', label: 'Discovered' },
+        { key: 'fetched', label: 'Fetched' },
+        { key: 'extracted', label: 'Extracted' },
+        { key: 'quality_received', label: 'Quality Check' },
+        { key: 'written', label: 'Silver Dataset' }
+    ];
+
+    const totalDiscovered = sankey.stage_counts.discovered || stages.reduce((max, stage) => Math.max(max, sankey.stage_counts[stage.key] || 0), 0);
+    container.innerHTML = stages.map(stage => {
+        const value = sankey.stage_counts[stage.key] || 0;
+        const ratio = totalDiscovered > 0 ? (value / totalDiscovered) : 0;
+        const retained = stage.key === 'written' && analytics ? analytics.avgQualityRate * 100 : ratio * 100;
+        const widthPercent = Math.max(ratio * 100, 4);
+        return `
+            <div class="quality-funnel-stage">
+                <label>${stage.label}</label>
+                <div class="quality-funnel-bar-fill"><span style="width:${widthPercent}%"></span></div>
+                <div class="quality-funnel-value">${value.toLocaleString()} (${retained.toFixed(1)}%)</div>
+            </div>
+        `;
+    }).join('');
+
+    if (footnote && analytics?.topFilter) {
+        footnote.textContent = `Largest loss driver: ${formatFilterName(analytics.topFilter.reason)} (${analytics.topFilter.count.toLocaleString()} records).`;
+    }
+}
+
+function renderExceptionFeed(analytics) {
+    const table = document.getElementById('qualityExceptionTable');
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    const alertsConfig = getQualityAlerts();
+    const activeAlerts = alertsConfig?.alerts ? [...alertsConfig.alerts] : [];
+
+    if (analytics) {
+        analytics.perSource.forEach(source => {
+            const benchmark = SOURCE_METADATA[getMetadataKey(source.name)]?.qualityBenchmark ?? 0.7;
+            if (source.quality < benchmark) {
+                activeAlerts.push({
+                    id: `${source.name.toLowerCase()}-quality`,
+                    severity: 'medium',
+                    source: source.name,
+                    message: `${source.name} retention ${ (source.quality * 100).toFixed(1)}% below ${ (benchmark * 100).toFixed(0)}% benchmark`,
+                    recommendation: 'Inspect recent filter hits and adjust guardrails if needed.'
+                });
+            }
+        });
+    }
+
+    if (!activeAlerts.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No active quality alerts.</td></tr>`;
+        return;
+    }
+
+    const severityColor = severity => {
+        switch ((severity || '').toLowerCase()) {
+            case 'high':
+                return '#b91c1c';
+            case 'medium':
+                return '#d97706';
+            case 'low':
+                return '#0f766e';
+            default:
+                return '#374151';
+        }
     };
 
-    const sharePct = (item.share * 100).toFixed(1);
-    const qualityPct = (item.quality * 100).toFixed(1);
-    const benchmarkPct = (meta.qualityBenchmark * 100).toFixed(0);
-    const qualityClass = item.quality >= meta.qualityBenchmark ? 'success' : 'warning';
-    const rejectedCount = item.rejected || 0;
-    const rejectionPct = (item.rejectionRate * 100).toFixed(1);
-    const topFilterName = item.topFilter ? formatFilterName(item.topFilter.reason) : null;
-    const topFilterPct = item.topFilter ? item.topFilter.percentage.toFixed(1) : null;
-    const topFilterCategory = item.topFilter ? getFilterCategory(item.topFilter.reason) : 'neutral';
-    const lastUpdated = item.lastUpdated ? formatDate(item.lastUpdated) : 'Not yet run';
-    const totalSubmissions = item.records + rejectedCount;
-    const trimmedChip = rejectedCount > 0
-        ? `Trimmed ${rejectedCount.toLocaleString()} • ${rejectionPct}%`
-        : 'No filters triggered';
-    const filterChip = topFilterName
-        ? `${topFilterName} ${topFilterPct}%`
-        : (rejectedCount > 0 ? 'Mixed filter load' : 'Clean batch');
+    tbody.innerHTML = activeAlerts.map(alert => `
+        <tr>
+            <td style="color:${severityColor(alert.severity)};font-weight:600;">${(alert.severity || 'Info').toUpperCase()}</td>
+            <td>${alert.source || 'Portfolio'}</td>
+            <td>${alert.message || ''}</td>
+            <td>${alert.recommendation || ''}</td>
+        </tr>
+    `).join('');
+}
 
-    let narrative = `${item.name} sent ${item.records.toLocaleString()} of ${totalSubmissions.toLocaleString()} candidate records into silver (${qualityPct}% kept; goal ${benchmarkPct}%).`;
-    if (item.topFilter) {
-        const explanation = describeFilterReason(item.topFilter.reason);
-        narrative += ` ${topFilterName} removed ${item.topFilter.count.toLocaleString()} (${topFilterPct}%) ${explanation}.`;
-    } else if (rejectedCount > 0) {
-        narrative += ' Filters distributed evenly across reasons to trim residual noise.';
-    } else {
-        narrative += ' No filters tripped this run.';
+function renderQualityWaivers(waivers) {
+    const container = document.getElementById('qualityPolicyAccordion');
+    if (!container) return;
+
+    if (!waivers || !waivers.waivers || waivers.waivers.length === 0) {
+        container.innerHTML = '<div style="padding:1.5rem;border:1px dashed var(--gray-200);border-radius:var(--radius-card);color:var(--gray-500);">No active waivers registered.</div>';
+        return;
     }
-    if (meta.description) narrative += ` ${meta.description}`;
 
-    return `
-        <article class="source-briefing-card">
-            <div class="source-briefing-header">
-                <div class="source-briefing-icon">${meta.icon || ''}</div>
-                <div>
-                    <div class="source-briefing-title">${item.name}</div>
-                    <div class="source-briefing-role">${meta.role} · ${meta.pipeline}</div>
-                    <span class="source-briefing-samples">${totalSubmissions.toLocaleString()} submissions</span>
+    container.innerHTML = waivers.waivers.map(item => {
+        const status = item.status || 'Active';
+        const meta = [
+            item.owner ? `Owner: ${item.owner}` : null,
+            item.grantedOn ? `Granted: ${formatDate(item.grantedOn)}` : null,
+            item.expiresOn ? `Expires: ${formatDate(item.expiresOn)}` : null
+        ].filter(Boolean).join(' • ');
+        return `
+            <article class="waiver-item">
+                <header class="waiver-header" role="button">
+                    <h4>${item.name}</h4>
+                    <span>${status}</span>
+                </header>
+                <div class="waiver-content">
+                    <p>${item.notes || 'No additional notes.'}</p>
+                    <div class="waiver-meta">${meta}</div>
                 </div>
-            </div>
-            <div class="briefing-chip-row">
-                <span class="briefing-chip acquisition-method">${sharePct}% Share</span>
-                <span class="briefing-chip ${qualityClass}">${qualityPct}% Kept</span>
-                <span class="briefing-chip neutral">${trimmedChip}</span>
-                <span class="briefing-chip ${topFilterCategory}">${filterChip}</span>
-                <span class="briefing-chip neutral">${lastUpdated}</span>
-            </div>
-            <p class="source-briefing-text">${narrative}</p>
-        </article>
+            </article>
+        `;
+    }).join('');
+}
+
+function renderFilterDetail(detail) {
+    const panel = document.getElementById('filterDetailPanel');
+    if (!panel) return;
+
+    if (!detail || !lastQualityAnalytics) {
+        panel.innerHTML = '<h4>Filter Detail</h4><p>Select a filter to review policy rationale and recent trend.</p>';
+        return;
+    }
+
+    const sourceBreakdown = lastQualityAnalytics.perSource || [];
+    const rows = sourceBreakdown
+        .map(source => {
+            const count = source.filters?.[detail.reason] || 0;
+            if (!count) return null;
+            const share = source.rejected > 0 ? (count / source.rejected) * 100 : 0;
+            return `<dt>${source.name}</dt><dd>${count.toLocaleString()} records · ${share.toFixed(1)}%</dd>`;
+        })
+        .filter(Boolean)
+        .join('');
+
+    const narrative = describeFilterReason(detail.reason);
+
+    panel.innerHTML = `
+        <h4>${FILTER_REASON_LABELS[detail.reason] || detail.label}</h4>
+        <p>${detail.count.toLocaleString()} records removed (${detail.share.toFixed(1)}% of rejections). ${narrative}.</p>
+        <dl>${rows || '<dt>Sources</dt><dd>No sources triggered this filter in the latest run.</dd>'}</dl>
+        <p style="font-size:var(--text-xs);color:var(--gray-500);margin-top:var(--space-3);">Cumulative share: ${detail.cumulative.toFixed(1)}%</p>
     `;
 }
+
+window.addEventListener('qualityFilterSelected', event => {
+    renderFilterDetail(event.detail);
+});
+
+window.addEventListener('qualityFilterSummary', event => {
+    const summary = event.detail?.summary || [];
+    if (summary.length) {
+        renderFilterDetail(summary[0]);
+    }
+});
 
 /**
  * Populate performance metrics cards in the Pipeline tab

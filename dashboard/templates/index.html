@@ -793,40 +793,109 @@
         <!-- Tab 3: Quality Insights -->
         <div class="tab-content" id="quality-panel" role="tabpanel" aria-labelledby="quality-tab" data-show-in="analyst">
             <div class="tab-panel tab-panel-wide">
-                <h2 class="section-title">Quality Insights</h2>
-                <p class="overview-narrative" id="quality-overview-narrative" aria-live="polite">
-                    Loading quality story…
-                </p>
+                <h2 class="section-title">Quality Guardrails &amp; Retention</h2>
+                <div class="quality-intro">
+                    <p class="quality-intro-narrative" id="quality-overview-narrative" aria-live="polite">
+                        Compiling retention story…
+                    </p>
+                </div>
+                <div class="quality-charter" id="quality-charter" aria-label="Quality charter">
+                    <!-- Populated by JavaScript -->
+                </div>
 
-                <section class="quality-kpi-grid" aria-label="Quality health snapshot">
-                    <article class="quality-kpi-card">
-                        <h3 class="quality-kpi-label">Weighted Quality</h3>
-                        <p class="quality-kpi-value" id="quality-kpi-quality">—</p>
-                        <p class="quality-kpi-caption" id="quality-kpi-quality-caption">Awaiting data.</p>
+                <section class="quality-outcomes-grid" aria-label="Quality outcomes dashboard">
+                    <article class="quality-outcome-tile" data-metric="yield">
+                        <header>Silver Yield</header>
+                        <div class="quality-outcome-main">
+                            <span id="quality-yield-value">—</span>
+                            <span class="quality-outcome-delta" id="quality-yield-delta">—</span>
+                        </div>
+                        <p id="quality-yield-caption">Awaiting data.</p>
                     </article>
-                    <article class="quality-kpi-card">
-                        <h3 class="quality-kpi-label">Records Filtered</h3>
-                        <p class="quality-kpi-value" id="quality-kpi-rejections">—</p>
-                        <p class="quality-kpi-caption" id="quality-kpi-rejections-caption">Awaiting data.</p>
+                    <article class="quality-outcome-tile" data-metric="rejections">
+                        <header>Records Rejected</header>
+                        <div class="quality-outcome-main">
+                            <span id="quality-rejected-value">—</span>
+                            <span class="quality-outcome-delta" id="quality-rejected-delta">—</span>
+                        </div>
+                        <p id="quality-rejected-caption">Awaiting data.</p>
                     </article>
-                    <article class="quality-kpi-card">
-                        <h3 class="quality-kpi-label">Language Guard</h3>
-                        <p class="quality-kpi-value" id="quality-kpi-language">—</p>
-                        <p class="quality-kpi-caption" id="quality-kpi-language-caption">Awaiting data.</p>
+                    <article class="quality-outcome-tile" data-metric="language">
+                        <header>Non-Somali Blocks</header>
+                        <div class="quality-outcome-main">
+                            <span id="quality-language-value">—</span>
+                            <span class="quality-outcome-delta" id="quality-language-delta">—</span>
+                        </div>
+                        <p id="quality-language-caption">Awaiting data.</p>
                     </article>
-                    <article class="quality-kpi-card">
-                        <h3 class="quality-kpi-label">Dedup Rate</h3>
-                        <p class="quality-kpi-value" id="quality-kpi-dedup">—</p>
-                        <p class="quality-kpi-caption" id="quality-kpi-dedup-caption">Awaiting data.</p>
+                    <article class="quality-outcome-tile" data-metric="dedupe">
+                        <header>Dedup Yield</header>
+                        <div class="quality-outcome-main">
+                            <span id="quality-dedupe-value">—</span>
+                            <span class="quality-outcome-delta" id="quality-dedupe-delta">—</span>
+                        </div>
+                        <p id="quality-dedupe-caption">Awaiting data.</p>
                     </article>
                 </section>
 
-                <section class="charts-section quality-diagnostics">
-                    <div class="charts-grid quality-diagnostics-grid">
+                <section class="guardrail-matrix" aria-label="Guardrail matrix">
+                    <div class="section-header">
+                        <h3>Guardrail Coverage</h3>
+                        <p class="section-subtitle">Filter families by source with share of rejections</p>
+                    </div>
+                    <div class="guardrail-matrix-table" id="guardrailMatrix">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+
+                <section class="quality-funnel" aria-label="Retention funnel">
+                    <div class="section-header">
+                        <h3>Retention Funnel</h3>
+                        <p class="section-subtitle">Discovery to Silver with guardrail annotations</p>
+                    </div>
+                    <div class="quality-funnel-bar" id="qualityFunnel">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                    <p class="quality-funnel-footnote" id="quality-funnel-footnote">Retention funnel updates after each run.</p>
+                </section>
+
+                <section class="filter-drilldown" aria-label="Filter drilldown explorer">
+                    <div class="section-header">
+                        <h3>Filter Drilldown</h3>
+                        <p class="section-subtitle">Ranked rejections with policy context</p>
+                    </div>
+                    <div class="filter-drilldown-grid">
                         <div class="chart-card">
                             <div class="chart-header">
                                 <div>
-                                    <h3 class="chart-title">Quality Trend</h3>
+                                    <h4 class="chart-title">Top Filters</h4>
+                                    <p class="chart-subtitle">Rejections by filter reason</p>
+                                </div>
+                                <div class="chart-actions">
+                                    <button class="chart-action" onclick="downloadChart('filterParetoChart')">Export PNG</button>
+                                </div>
+                            </div>
+                            <div class="chart-canvas">
+                                <canvas id="filterParetoChart" aria-label="Pareto chart of filter rejections"></canvas>
+                            </div>
+                        </div>
+                        <aside class="filter-detail" id="filterDetailPanel" aria-live="polite">
+                            <h4>Filter Detail</h4>
+                            <p>Select a filter to review policy rationale and recent trend.</p>
+                        </aside>
+                    </div>
+                </section>
+
+                <section class="quality-trends" aria-label="Quality trend benchmarks">
+                    <div class="section-header">
+                        <h3>Trend Benchmarks</h3>
+                        <p class="section-subtitle">Track retention stability by run</p>
+                    </div>
+                    <div class="quality-trend-grid">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <h4 class="chart-title">Quality Trend</h4>
                                     <p class="chart-subtitle">Record-weighted pass rate over recent runs</p>
                                 </div>
                                 <div class="chart-actions">
@@ -837,68 +906,51 @@
                                 <canvas id="qualityTrendChart" aria-label="Line chart showing quality pass rate over time"></canvas>
                             </div>
                         </div>
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <div>
-                                <h3 class="chart-title">Filter Load by Source</h3>
-                                <p class="chart-subtitle">Rejections grouped by filter reason</p>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <h4 class="chart-title">Success vs Quality</h4>
+                                    <p class="chart-subtitle">Per-source stability across runs</p>
+                                </div>
                             </div>
-                            <div class="chart-actions">
-                                <button class="chart-action" onclick="downloadChart('qualityFilterChart')">Export PNG</button>
+                            <div class="chart-canvas">
+                                <canvas id="qualityStabilityChart" aria-label="Scatter chart showing success vs quality"></canvas>
                             </div>
-                        </div>
-                        <div class="chart-canvas">
-                            <canvas id="qualityFilterChart" aria-label="Stacked bar chart showing filter rejections by source"></canvas>
-                        </div>
-                    </div>
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <div>
-                                <h3 class="chart-title">Quality &amp; Reliability</h3>
-                                <p class="chart-subtitle">Weighted quality pass rate with success backdrop</p>
-                            </div>
-                            <div class="chart-callout compact" id="quality-callout" aria-live="polite">
-                                <span class="chart-callout-label">Avg quality</span>
-                                <span class="chart-callout-value" id="quality-average-label">0%</span>
-                            </div>
-                        </div>
-                        <div class="chart-canvas chart-canvas-compact">
-                            <canvas id="qualityBulletChart" aria-label="Bullet chart showing quality performance by source"></canvas>
-                        </div>
-                        <div class="chart-footnote" id="quality-freshness-note">Quality targets set at 85% minimum pass rate.</div>
-                    </div>
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <div>
-                                <h3 class="chart-title">Volume vs Quality Tradeoff</h3>
-                                <p class="chart-subtitle">Bubble size shows average character length</p>
-                            </div>
-                            <div class="chart-actions">
-                                <button class="chart-action" onclick="downloadChart('sourceTradeoffChart')">Export PNG</button>
-                            </div>
-                        </div>
-                        <div class="chart-canvas chart-canvas-tall">
-                            <canvas id="sourceTradeoffChart" aria-label="Bubble chart showing records delivered versus quality pass rate by source"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                    <div class="chart-card chart-card-wide">
-                        <div class="chart-header">
-                            <div>
-                                <h3 class="chart-title">Text Length Density</h3>
-                                <p class="chart-subtitle">Ridge plot contrasting accepted text length profiles</p>
-                            </div>
-                        </div>
-                        <div class="chart-canvas chart-canvas-ridge">
-                            <div id="ridgePlotContainer" style="min-height: 520px;"></div>
                         </div>
                     </div>
                 </section>
 
-                <section class="source-briefings quality-briefings" id="qualityBriefings" aria-label="Source quality briefings">
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--gray-500);">
-                        Loading quality briefings…
+                <section class="quality-exceptions" aria-label="Quality exception feed">
+                    <div class="section-header">
+                        <h3>Exception Feed</h3>
+                        <p class="section-subtitle">Active alerts and recommended actions</p>
+                    </div>
+                    <div class="exception-table-wrapper">
+                        <table class="exception-table" id="qualityExceptionTable">
+                            <thead>
+                                <tr>
+                                    <th>Severity</th>
+                                    <th>Source</th>
+                                    <th>Alert</th>
+                                    <th>Recommendation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" class="empty-state">Loading alerts…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="quality-waivers" aria-label="Policy and waiver log">
+                    <div class="section-header">
+                        <h3>Policy &amp; Waiver Log</h3>
+                        <p class="section-subtitle">Active waivers and manual review queues</p>
+                    </div>
+                    <div class="quality-waiver-accordion" id="qualityPolicyAccordion">
+                        <!-- Populated by JavaScript -->
                     </div>
                 </section>
             </div>

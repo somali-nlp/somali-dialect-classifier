@@ -63,6 +63,16 @@ else
     echo "⚠ Warning: source_pipeline_status.json not found"
 fi
 
+if [ -f "dashboard/data/quality_alerts.json" ]; then
+    cp dashboard/data/quality_alerts.json _site/data/
+    echo "✓ Copied quality_alerts.json"
+fi
+
+if [ -f "dashboard/data/quality_waivers.json" ]; then
+    cp dashboard/data/quality_waivers.json _site/data/
+    echo "✓ Copied quality_waivers.json"
+fi
+
 # Copy favicon
 if [ -f "dashboard/favicon.svg" ]; then
     cp dashboard/favicon.svg _site/favicon.svg

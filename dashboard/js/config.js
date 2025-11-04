@@ -49,6 +49,18 @@ export const Config = {
         '../data/source_pipeline_status.json',
         '/data/source_pipeline_status.json'
     ],
+    QUALITY_ALERTS_PATHS: [
+        'data/quality_alerts.json',
+        './data/quality_alerts.json',
+        '../data/quality_alerts.json',
+        '/data/quality_alerts.json'
+    ],
+    QUALITY_WAIVERS_PATHS: [
+        'data/quality_waivers.json',
+        './data/quality_waivers.json',
+        '../data/quality_waivers.json',
+        '/data/quality_waivers.json'
+    ],
 
     /**
      * Network settings
