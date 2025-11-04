@@ -126,7 +126,7 @@ export const FilterManager = {
                 <div class="filter-section">
                     <h4>Quality Threshold</h4>
                     <div class="filter-slider-group">
-                        <input type="range" id="quality-threshold-slider" class="filter-slider" min="0" max="100" value="0" step="5">
+                        <input type="range" id="quality-threshold-slider" class="filter-slider" min="0" max="100" value="0" step="5" aria-label="Quality threshold percentage filter">
                         <div class="filter-slider-labels">
                             <span>0%</span>
                             <span class="filter-slider-value">0%</span>
