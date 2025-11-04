@@ -2051,121 +2051,131 @@ function renderAcquisitionTreemap(metricsData) {
         'Uncategorized': 'Other'
     };
 
-    // Treemap dimensions - use clientWidth for accurate measurement
+    // Treemap dimensions
     const CONTAINER_HEIGHT = 320;
-    const GAP = 4; // Gap between rectangles
-    const ROW_GAP = 6; // Gap between rows
+    const GAP = 4; // Gap between rectangles (horizontal only)
+    const ROW_GAP = 6; // Gap between rows (vertical only)
 
-    // Create treemap wrapper first to measure width accurately
+    // Create treemap wrapper first
     const treemapWrapper = document.createElement('div');
     treemapWrapper.style.position = 'relative';
     treemapWrapper.style.width = '100%';
     treemapWrapper.style.height = `${CONTAINER_HEIGHT}px`;
-    treemapWrapper.style.overflow = 'hidden'; // Prevent overflow
+    treemapWrapper.style.overflow = 'hidden';
     treemapWrapper.setAttribute('role', 'list');
     treemapWrapper.setAttribute('aria-label', 'Acquisition method treemap');
 
-    // Append to container first to get accurate width
+    // Append to container first
     container.appendChild(treemapWrapper);
 
-    // Now measure the actual available width
-    const CONTAINER_WIDTH = treemapWrapper.clientWidth || treemapWrapper.offsetWidth || 1000;
+    // Wait for layout to complete before measuring width
+    // This ensures consistent measurements across page loads
+    requestAnimationFrame(() => {
+        const CONTAINER_WIDTH = treemapWrapper.clientWidth || treemapWrapper.offsetWidth || 1000;
 
-    // Simple row-based treemap algorithm
-    // Strategy: Fill rows top-to-bottom, distributing items to minimize aspect ratio
-    const totalArea = CONTAINER_WIDTH * CONTAINER_HEIGHT;
+        // Simple row-based treemap algorithm
+        // Strategy: Fill rows top-to-bottom, distributing items to minimize aspect ratio
+        const totalArea = CONTAINER_WIDTH * CONTAINER_HEIGHT;
 
-    // First pass: Determine rows and their shares
-    const rows = [];
-    let remainingNodes = [...nodes];
+        // First pass: Determine rows and their shares
+        const rows = [];
+        let remainingNodes = [...nodes];
 
-    while (remainingNodes.length > 0) {
-        let rowNodes = [];
-        let rowShare = 0;
+        while (remainingNodes.length > 0) {
+            let rowNodes = [];
+            let rowShare = 0;
 
-        const remainingShare = remainingNodes.reduce((sum, n) => sum + n.share, 0);
-        const targetRowShare = Math.min(remainingShare, 50); // Aim for ~50% per row max
+            const remainingShare = remainingNodes.reduce((sum, n) => sum + n.share, 0);
+            const targetRowShare = Math.min(remainingShare, 50); // Aim for ~50% per row max
 
-        for (let i = 0; i < remainingNodes.length; i++) {
-            const node = remainingNodes[i];
-            if (rowShare === 0 || rowShare + node.share <= targetRowShare * 1.5) {
-                rowNodes.push(node);
-                rowShare += node.share;
+            for (let i = 0; i < remainingNodes.length; i++) {
+                const node = remainingNodes[i];
+                if (rowShare === 0 || rowShare + node.share <= targetRowShare * 1.5) {
+                    rowNodes.push(node);
+                    rowShare += node.share;
+                }
+                if (rowShare >= targetRowShare && rowNodes.length >= 1) break;
             }
-            if (rowShare >= targetRowShare && rowNodes.length >= 1) break;
+
+            if (rowNodes.length === 0) {
+                rowNodes.push(remainingNodes[0]);
+                rowShare = remainingNodes[0].share;
+            }
+
+            rows.push({ nodes: rowNodes, share: rowShare });
+            remainingNodes = remainingNodes.filter(n => !rowNodes.includes(n));
         }
 
-        if (rowNodes.length === 0) {
-            rowNodes.push(remainingNodes[0]);
-            rowShare = remainingNodes[0].share;
-        }
+        // Calculate available height after accounting for gaps between rows
+        // Only add gaps BETWEEN rows, not after the last row
+        const totalGapHeight = (rows.length - 1) * ROW_GAP;
+        const availableHeight = CONTAINER_HEIGHT - totalGapHeight;
 
-        rows.push({ nodes: rowNodes, share: rowShare });
-        remainingNodes = remainingNodes.filter(n => !rowNodes.includes(n));
-    }
+        // Second pass: Calculate layout with adjusted heights
+        const layout = [];
+        let currentY = 0;
 
-    // Calculate available height after accounting for gaps between rows
-    const totalGapHeight = (rows.length - 1) * ROW_GAP;
-    const availableHeight = CONTAINER_HEIGHT - totalGapHeight;
+        rows.forEach((row, rowIndex) => {
+            // Calculate row height proportionally from available height
+            const rowHeight = (row.share / 100) * availableHeight;
 
-    // Second pass: Calculate layout with adjusted heights
-    const layout = [];
-    let currentY = 0;
+            // Layout items within this row
+            let currentX = 0;
+            row.nodes.forEach((node, nodeIndex) => {
+                const itemWidth = (node.share / row.share) * CONTAINER_WIDTH;
 
-    rows.forEach((row) => {
-        // Calculate row height proportionally from available height
-        const rowHeight = (row.share / 100) * availableHeight;
+                // Only subtract GAP from width (horizontal spacing between items)
+                // Height uses full rowHeight - vertical spacing handled by ROW_GAP
+                const rectWidth = nodeIndex < row.nodes.length - 1 ? itemWidth - GAP : CONTAINER_WIDTH - currentX;
 
-        // Layout items within this row
-        let currentX = 0;
-        row.nodes.forEach((node) => {
-            const itemWidth = (node.share / row.share) * CONTAINER_WIDTH;
+                layout.push({
+                    node,
+                    x: currentX,
+                    y: currentY,
+                    width: rectWidth,
+                    height: rowHeight
+                });
 
-            layout.push({
-                node,
-                x: currentX,
-                y: currentY,
-                width: itemWidth - GAP,
-                height: rowHeight - GAP
+                currentX += itemWidth;
             });
 
-            currentX += itemWidth;
+            // Add row gap only between rows, not after the last row
+            currentY += rowHeight;
+            if (rowIndex < rows.length - 1) {
+                currentY += ROW_GAP;
+            }
         });
 
-        currentY += rowHeight + ROW_GAP; // Add row gap between rows
-    });
+        // Render rectangles
+        layout.forEach(({ node, x, y, width, height }) => {
+            const div = document.createElement('div');
+            div.className = 'treemap-node';
+            div.style.position = 'absolute';
+            div.style.left = `${x}px`;
+            div.style.top = `${y}px`;
+            div.style.width = `${width}px`;
+            div.style.height = `${height}px`;
+            div.style.overflow = 'hidden';
 
-    // Render rectangles
-    layout.forEach(({ node, x, y, width, height }) => {
-        const div = document.createElement('div');
-        div.className = 'treemap-node';
-        div.style.position = 'absolute';
-        div.style.left = `${x}px`;
-        div.style.top = `${y}px`;
-        div.style.width = `${width}px`;
-        div.style.height = `${height}px`;
-        div.style.overflow = 'hidden';
+            div.setAttribute('role', 'listitem');
+            div.setAttribute('aria-label', `${node.method} ${node.share.toFixed(1)} percent of volume`);
+            div.style.background = ACQUISITION_COLOR_MAP[node.method] || ACQUISITION_COLOR_MAP.Uncategorized;
+            div.title = `${node.method} · ${node.share.toFixed(1)}% (${node.records.toLocaleString()} records)`;
 
-        div.setAttribute('role', 'listitem');
-        div.setAttribute('aria-label', `${node.method} ${node.share.toFixed(1)} percent of volume`);
-        div.style.background = ACQUISITION_COLOR_MAP[node.method] || ACQUISITION_COLOR_MAP.Uncategorized;
-        div.title = `${node.method} · ${node.share.toFixed(1)}% (${node.records.toLocaleString()} records)`;
+            const displayLabel = displayLabelMap[node.method] || node.method;
 
-        const displayLabel = displayLabelMap[node.method] || node.method;
+            // Adaptive font sizing based on rectangle size
+            const fontSize = Math.min(width / 8, height / 6, 14);
+            const smallFont = fontSize * 0.8;
 
-        // Adaptive font sizing based on rectangle size
-        const fontSize = Math.min(width / 8, height / 6, 14);
-        const smallFont = fontSize * 0.8;
+            div.innerHTML = `
+                <strong style="display: block; font-size: ${fontSize}px; line-height: 1.2;">${displayLabel}</strong>
+                <span style="display: block; font-size: ${smallFont}px; opacity: 0.9; margin-top: 0.25rem;">${node.share.toFixed(1)}% · ${node.records.toLocaleString()}</span>
+            `;
 
-        div.innerHTML = `
-            <strong style="display: block; font-size: ${fontSize}px; line-height: 1.2;">${displayLabel}</strong>
-            <span style="display: block; font-size: ${smallFont}px; opacity: 0.9; margin-top: 0.25rem;">${node.share.toFixed(1)}% · ${node.records.toLocaleString()}</span>
-        `;
-
-        treemapWrapper.appendChild(div);
-    });
-
-    // Wrapper already appended to container earlier for width measurement
+            treemapWrapper.appendChild(div);
+        });
+    }); // End of requestAnimationFrame callback
 }
 
 // Module-level storage for timeline source filter state
