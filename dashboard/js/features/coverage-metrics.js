@@ -1529,12 +1529,21 @@ function createSourceBalanceChart(metricsData) {
             indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    top: 8,
+                    bottom: 4,
+                    left: 0,
+                    right: 0
+                }
+            },
             plugins: {
                 legend: {
                     position: 'bottom',
                     labels: {
                         usePointStyle: true,
-                        padding: 16
+                        padding: 12,
+                        boxHeight: 8
                     }
                 },
                 tooltip: {
