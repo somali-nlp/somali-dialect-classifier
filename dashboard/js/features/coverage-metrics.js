@@ -2051,18 +2051,24 @@ function renderAcquisitionTreemap(metricsData) {
         'Uncategorized': 'Other'
     };
 
-    // Treemap dimensions
-    const CONTAINER_WIDTH = container.offsetWidth || 1000;
+    // Treemap dimensions - use clientWidth for accurate measurement
     const CONTAINER_HEIGHT = 280;
     const GAP = 4; // Gap between rectangles
 
-    // Create treemap wrapper
+    // Create treemap wrapper first to measure width accurately
     const treemapWrapper = document.createElement('div');
     treemapWrapper.style.position = 'relative';
     treemapWrapper.style.width = '100%';
     treemapWrapper.style.height = `${CONTAINER_HEIGHT}px`;
+    treemapWrapper.style.overflow = 'hidden'; // Prevent overflow
     treemapWrapper.setAttribute('role', 'list');
     treemapWrapper.setAttribute('aria-label', 'Acquisition method treemap');
+
+    // Append to container first to get accurate width
+    container.appendChild(treemapWrapper);
+
+    // Now measure the actual available width
+    const CONTAINER_WIDTH = treemapWrapper.clientWidth || treemapWrapper.offsetWidth || 1000;
 
     // Simple row-based treemap algorithm
     // Strategy: Fill rows top-to-bottom, distributing items to minimize aspect ratio
@@ -2151,7 +2157,7 @@ function renderAcquisitionTreemap(metricsData) {
         treemapWrapper.appendChild(div);
     });
 
-    container.appendChild(treemapWrapper);
+    // Wrapper already appended to container earlier for width measurement
 }
 
 // Module-level storage for timeline source filter state

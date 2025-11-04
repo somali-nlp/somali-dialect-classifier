@@ -496,7 +496,8 @@
     color: white;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);  /* Enhanced readability for white text */
     min-height: 120px;
-    flex: 1 1 180px;
+    /* Note: flex-basis and flex-grow are set dynamically via JavaScript for proportional sizing */
+    flex-shrink: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -524,6 +525,20 @@
 .treemap-node:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
+}
+
+/* Adaptive styling for small nodes */
+.treemap-node.small-node {
+    padding: var(--space-3);
+    min-height: 80px;
+}
+
+.treemap-node.small-node strong {
+    font-size: 11px;
+}
+
+.treemap-node.small-node span {
+    font-size: 10px;
 }
 
 /* Responsive font sizing for mobile/tablet viewports */
