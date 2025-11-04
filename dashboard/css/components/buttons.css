@@ -5,9 +5,9 @@
 /* Chart Actions */
 .chart-action {
     background: var(--tableau-bg-off-white);
-    border: 2px solid transparent;
+    border: 1px solid var(--gray-300);
     padding: 0.5rem var(--space-4);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     font-size: var(--text-sm);
     font-weight: 500;
     cursor: pointer;
@@ -16,9 +16,9 @@
 }
 
 .chart-action:hover {
-    background: var(--tableau-blue);
-    border-color: var(--tableau-blue);
-    color: white;
+    background: var(--gray-50);
+    border-color: var(--brand-primary);
+    color: var(--brand-primary);
     transform: translateY(-1px);
 }
 
