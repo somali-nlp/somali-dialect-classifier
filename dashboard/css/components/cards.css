@@ -437,6 +437,7 @@
     font-size: var(--text-xs);
     color: var(--gray-500);
     line-height: 1.5;
+    text-align: center;
 }
 
 .acquisition-insights {
@@ -481,6 +482,27 @@
     font-size: var(--text-xs);
     opacity: 0.9;
     line-height: 1.2;
+}
+
+/* Responsive font sizing for mobile/tablet viewports */
+@media (max-width: 768px) {
+    .treemap-node strong {
+        font-size: 11px;
+    }
+
+    .treemap-node span {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 375px) {
+    .treemap-node strong {
+        font-size: 10px;
+    }
+
+    .treemap-node span {
+        font-size: 9px;
+    }
 }
 
 .ingestion-timeline {
