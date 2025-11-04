@@ -97,11 +97,13 @@ def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optio
                 "source": source,
                 "timestamp": validated.timestamp,
                 "duration_seconds": snapshot.duration_seconds,
+                "pipeline_type": snapshot.pipeline_type,
 
                 # Discovery metrics (from legacy for backward compatibility)
                 "urls_discovered": snapshot.urls_discovered,
                 "urls_fetched": snapshot.urls_fetched,
                 "urls_processed": snapshot.urls_processed,
+                "records_extracted": snapshot.records_extracted,
 
                 # Volume metrics (from layered_metrics.volume)
                 "records_written": volume.records_written,
@@ -136,11 +138,13 @@ def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optio
                 "source": source,
                 "timestamp": data.get("_timestamp") or snapshot.get("timestamp", ""),
                 "duration_seconds": snapshot.get("duration_seconds", 0),
+                "pipeline_type": data.get("_pipeline_type") or snapshot.get("pipeline_type", "unknown"),
 
                 # Discovery metrics (from legacy for backward compatibility)
                 "urls_discovered": snapshot.get("urls_discovered", 0),
                 "urls_fetched": snapshot.get("urls_fetched", 0),
                 "urls_processed": snapshot.get("urls_processed", 0),
+                "records_extracted": snapshot.get("records_extracted", 0),
 
                 # Volume metrics (from layered_metrics.volume)
                 "records_written": volume.get("records_written", 0),

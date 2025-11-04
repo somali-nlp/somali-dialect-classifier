@@ -1896,25 +1896,52 @@ function buildStageSegments(metrics = []) {
 
     metrics.forEach(metric => {
         const source = normalizeSourceName(metric.source || 'Unknown');
+        const pipelineType = metric.pipeline_type || 'unknown';
+
         if (!bySource.has(source)) {
             bySource.set(source, {
                 discovered: 0,
                 extracted: 0,
                 received: 0,
                 written: 0,
-                filtered: 0
+                filtered: 0,
+                pipelineType: pipelineType
             });
         }
 
         const entry = bySource.get(source);
 
-        // Use normalized fields from data-service.js
-        // For file_processing: urls_discovered maps to files_discovered
-        // For web_scraping: urls_discovered maps to URLs discovered
-        const discovered = Number(metric.urls_discovered) || 0;
-        const extracted = Number(metric.records_extracted) || 0;
+        // Unified metric mapping: normalize different pipeline types to common stages
+        // Discovery stage: What was found/received at the very start
+        let discovered = 0;
+        let extracted = 0;
+
+        if (pipelineType === 'web_scraping') {
+            // Web scraping: URLs discovered → URLs fetched → Records extracted
+            discovered = Number(metric.urls_discovered) || 0;
+            extracted = Number(metric.urls_fetched) || 0;
+        } else if (pipelineType === 'file_processing') {
+            // File processing: Files processed → Records extracted → Quality filters
+            // No URL discovery phase - start from extraction
+            discovered = 0;
+            extracted = Number(metric.records_extracted) || 0;
+        } else if (pipelineType === 'stream_processing') {
+            // Stream processing: Stream opened → Records received → Quality filters
+            // No discovery or extraction phase - start from quality
+            discovered = 0;
+            extracted = 0;
+        } else {
+            // Unknown pipeline type: fallback to urls_discovered
+            discovered = Number(metric.urls_discovered) || 0;
+            extracted = Number(metric.records_extracted) || 0;
+        }
+
+        // Quality filter stage: What entered quality filters
         const written = Number(metric.records_written) || 0;
-        const filtered = Object.values(metric.filter_breakdown || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        const filtered = Object.values(metric.filter_breakdown || {}).reduce(
+            (sum, value) => sum + (Number(value) || 0),
+            0
+        );
         const received = written + filtered;
 
         // Accumulate totals per source across all runs
@@ -1926,24 +1953,29 @@ function buildStageSegments(metrics = []) {
     });
 
     return Array.from(bySource.entries()).map(([name, entry]) => {
-        // Calculate pipeline stage segments
-        // Discovery Backlog: Items discovered but not yet extracted
-        const discoveryBacklog = Math.max(entry.discovered - entry.extracted, 0);
+        // Calculate pipeline stage segments based on pipeline type
+        let discoveryBacklog = 0;
+        let extractionLoss = 0;
+        let qualityLoss = 0;
+        let silver = 0;
+        let denominator = 1;
 
-        // Extraction Loss: Items that should have been extracted but weren't
-        // (gap between discovered and what entered quality filters)
-        const extractionLoss = Math.max(entry.extracted - entry.received, 0);
-
-        // Quality Loss: Items that entered filters but were rejected
-        const qualityLoss = entry.filtered;
-
-        // Silver: Items that passed all stages
-        const silver = entry.written;
-
-        // Use total discovered as denominator, fallback to received if no discovery tracking
-        const denominator = entry.discovered > 0
-            ? entry.discovered
-            : (entry.received > 0 ? entry.received : 1);
+        if (entry.pipelineType === 'web_scraping') {
+            // Web scraping: Discovery → Extraction → Quality → Silver
+            discoveryBacklog = Math.max(entry.discovered - entry.extracted, 0);
+            extractionLoss = Math.max(entry.extracted - entry.received, 0);
+            qualityLoss = entry.filtered;
+            silver = entry.written;
+            denominator = entry.discovered > 0 ? entry.discovered : entry.received > 0 ? entry.received : 1;
+        } else {
+            // File processing and stream processing: Extraction → Quality → Silver
+            // No discovery stage for these pipelines
+            extractionLoss = Math.max(entry.extracted - entry.received, 0);
+            qualityLoss = entry.filtered;
+            silver = entry.written;
+            // Use received as denominator (what entered the quality filters)
+            denominator = entry.received > 0 ? entry.received : 1;
+        }
 
         return {
             name,
