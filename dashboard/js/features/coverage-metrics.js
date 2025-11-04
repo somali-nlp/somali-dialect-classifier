@@ -28,12 +28,12 @@ const SOURCE_COLOR_MAP = {
 };
 
 const ACQUISITION_COLOR_MAP = {
-    'API + file snapshots': '#0891b2',  // Cyan-600 (WCAG AA: 4.52:1 contrast)
-    'Partner file drop': '#ea580c',      // Orange-600 (WCAG AA: 4.51:1 contrast)
-    'Dataset API': '#16a34a',            // Green-600 (WCAG AA: 4.54:1 contrast)
-    'Apify actor': '#7c3aed',            // Violet-600 (WCAG AA: 5.71:1 contrast)
-    'Web crawler': '#db2777',            // Fuchsia-600 (WCAG AA: 5.12:1 contrast)
-    'Uncategorized': '#6b7280'           // Gray fallback
+    'API + file snapshots': '#4e79a7',  // Tableau Blue
+    'Partner file drop': '#f28e2b',     // Tableau Orange
+    'Dataset API': '#59a14f',           // Tableau Green
+    'Apify actor': '#b07aa1',           // Tableau Purple
+    'Web crawler': '#76b7b2',           // Tableau Teal
+    'Uncategorized': '#9c755f'          // Tableau Brown fallback
 };
 
 const SOURCE_METADATA = {
@@ -2006,11 +2006,17 @@ function renderAcquisitionTreemap(metricsData) {
         return;
     }
 
-    container.innerHTML = '';
     const catalog = getSourceCatalog();
+    const emptyStateMarkup = '<p class="chart-empty-state">Acquisition mix will appear after the next ingestion run.</p>';
+    const resetState = () => {
+        container.innerHTML = emptyStateMarkup;
+        if (container.__treemapState) {
+            container.__treemapState.layoutFn = null;
+        }
+    };
 
     if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
-        container.innerHTML = '<p class="chart-empty-state">Acquisition mix will appear after the next ingestion run.</p>';
+        resetState();
         return;
     }
 
@@ -2029,7 +2035,7 @@ function renderAcquisitionTreemap(metricsData) {
     });
 
     if (!totalRecords || methodTotals.size === 0) {
-        container.innerHTML = '<p class="chart-empty-state">Acquisition mix will appear after the next ingestion run.</p>';
+        resetState();
         return;
     }
 
@@ -2041,7 +2047,21 @@ function renderAcquisitionTreemap(metricsData) {
         }))
         .sort((a, b) => b.share - a.share);
 
-    // Map to shorter display labels to prevent text cutoff
+    container.innerHTML = '';
+
+    const vizEl = document.createElement('div');
+    vizEl.className = 'treemap-viz';
+    vizEl.setAttribute('role', 'list');
+    vizEl.setAttribute('aria-label', 'Acquisition method treemap');
+    vizEl.style.position = 'relative';
+    container.appendChild(vizEl);
+
+    const legendEl = document.createElement('ul');
+    legendEl.className = 'treemap-legend';
+    legendEl.setAttribute('role', 'list');
+    legendEl.setAttribute('aria-label', 'Acquisition method legend');
+    container.appendChild(legendEl);
+
     const displayLabelMap = {
         'API + file snapshots': 'API + File',
         'Web crawler': 'Web Crawler',
@@ -2051,131 +2071,165 @@ function renderAcquisitionTreemap(metricsData) {
         'Uncategorized': 'Other'
     };
 
-    // Treemap dimensions
-    const CONTAINER_HEIGHT = 320;
-    const GAP = 4; // Gap between rectangles (horizontal only)
-    const ROW_GAP = 6; // Gap between rows (vertical only)
+    const legendFragment = document.createDocumentFragment();
+    nodes.forEach(node => {
+        const legendItem = document.createElement('li');
+        legendItem.className = 'treemap-legend__item';
+        legendItem.setAttribute('role', 'listitem');
+        legendItem.dataset.method = node.method;
 
-    // Create treemap wrapper first
-    const treemapWrapper = document.createElement('div');
-    treemapWrapper.style.position = 'relative';
-    treemapWrapper.style.width = '100%';
-    treemapWrapper.style.height = `${CONTAINER_HEIGHT}px`;
-    treemapWrapper.style.overflow = 'hidden';
-    treemapWrapper.setAttribute('role', 'list');
-    treemapWrapper.setAttribute('aria-label', 'Acquisition method treemap');
+        const swatch = document.createElement('span');
+        swatch.className = 'treemap-legend__swatch';
+        swatch.style.backgroundColor = ACQUISITION_COLOR_MAP[node.method] || ACQUISITION_COLOR_MAP.Uncategorized;
 
-    // Append to container first
-    container.appendChild(treemapWrapper);
+        const label = document.createElement('span');
+        label.className = 'treemap-legend__label';
+        label.textContent = displayLabelMap[node.method] || node.method;
 
-    // Wait for layout to complete before measuring width
-    // This ensures consistent measurements across page loads
-    requestAnimationFrame(() => {
-        const CONTAINER_WIDTH = treemapWrapper.clientWidth || treemapWrapper.offsetWidth || 1000;
+        const value = document.createElement('span');
+        value.className = 'treemap-legend__value';
+        value.textContent = `${node.share.toFixed(1)}% · ${node.records.toLocaleString()}`;
 
-        // Simple row-based treemap algorithm
-        // Strategy: Fill rows top-to-bottom, distributing items to minimize aspect ratio
-        const totalArea = CONTAINER_WIDTH * CONTAINER_HEIGHT;
+        legendItem.append(swatch, label, value);
+        legendFragment.appendChild(legendItem);
+    });
+    legendEl.appendChild(legendFragment);
 
-        // First pass: Determine rows and their shares
-        const rows = [];
-        let remainingNodes = [...nodes];
+    const COLUMN_GAP = 8;
+    const ROW_GAP = 8;
+    const TREEMAP_HEIGHT = 320;
+    vizEl.style.height = `${TREEMAP_HEIGHT}px`;
 
-        while (remainingNodes.length > 0) {
-            let rowNodes = [];
-            let rowShare = 0;
+    const rows = [];
+    let remainingNodes = [...nodes];
 
-            const remainingShare = remainingNodes.reduce((sum, n) => sum + n.share, 0);
-            const targetRowShare = Math.min(remainingShare, 50); // Aim for ~50% per row max
+    while (remainingNodes.length > 0) {
+        let rowNodes = [];
+        let rowShare = 0;
 
-            for (let i = 0; i < remainingNodes.length; i++) {
-                const node = remainingNodes[i];
-                if (rowShare === 0 || rowShare + node.share <= targetRowShare * 1.5) {
-                    rowNodes.push(node);
-                    rowShare += node.share;
-                }
-                if (rowShare >= targetRowShare && rowNodes.length >= 1) break;
+        const remainingShare = remainingNodes.reduce((sum, n) => sum + n.share, 0);
+        const targetRowShare = Math.min(remainingShare, 45);
+
+        for (let i = 0; i < remainingNodes.length; i++) {
+            const node = remainingNodes[i];
+            if (rowShare === 0 || rowShare + node.share <= targetRowShare * 1.5) {
+                rowNodes.push(node);
+                rowShare += node.share;
             }
-
-            if (rowNodes.length === 0) {
-                rowNodes.push(remainingNodes[0]);
-                rowShare = remainingNodes[0].share;
-            }
-
-            rows.push({ nodes: rowNodes, share: rowShare });
-            remainingNodes = remainingNodes.filter(n => !rowNodes.includes(n));
+            if (rowShare >= targetRowShare && rowNodes.length >= 1) break;
         }
 
-        // Calculate available height after accounting for gaps between rows
-        // Only add gaps BETWEEN rows, not after the last row
-        const totalGapHeight = (rows.length - 1) * ROW_GAP;
-        const availableHeight = CONTAINER_HEIGHT - totalGapHeight;
+        if (rowNodes.length === 0) {
+            rowNodes.push(remainingNodes[0]);
+            rowShare = remainingNodes[0].share;
+        }
 
-        // Second pass: Calculate layout with adjusted heights
-        const layout = [];
+        rows.push({ nodes: rowNodes, share: rowShare });
+        remainingNodes = remainingNodes.filter(n => !rowNodes.includes(n));
+    }
+
+    const layoutTreemap = (attempt = 0) => {
+        const bounds = vizEl.getBoundingClientRect();
+        const containerWidth = Math.floor(bounds.width);
+
+        if (containerWidth < 80 && attempt < 6) {
+            requestAnimationFrame(() => layoutTreemap(attempt + 1));
+            return;
+        }
+
+        const widthForLayout = Math.max(containerWidth, 120);
+        const totalGapHeight = Math.max(0, rows.length - 1) * ROW_GAP;
+        const availableHeight = TREEMAP_HEIGHT - totalGapHeight;
+
+        vizEl.innerHTML = '';
+        const fragment = document.createDocumentFragment();
         let currentY = 0;
 
         rows.forEach((row, rowIndex) => {
-            // Calculate row height proportionally from available height
             const rowHeight = (row.share / 100) * availableHeight;
-
-            // Layout items within this row
             let currentX = 0;
+
             row.nodes.forEach((node, nodeIndex) => {
-                const itemWidth = (node.share / row.share) * CONTAINER_WIDTH;
+                const rawWidth = (node.share / row.share) * widthForLayout;
+                const isLast = nodeIndex === row.nodes.length - 1;
+                const rectWidth = isLast ? Math.max(widthForLayout - currentX, 0) : Math.max(rawWidth - COLUMN_GAP, 0);
 
-                // Only subtract GAP from width (horizontal spacing between items)
-                // Height uses full rowHeight - vertical spacing handled by ROW_GAP
-                const rectWidth = nodeIndex < row.nodes.length - 1 ? itemWidth - GAP : CONTAINER_WIDTH - currentX;
+                const div = document.createElement('div');
+                div.className = 'treemap-node';
+                div.style.position = 'absolute';
+                div.style.left = `${currentX}px`;
+                div.style.top = `${currentY}px`;
+                div.style.width = `${rectWidth}px`;
+                div.style.height = `${rowHeight}px`;
+                div.style.backgroundColor = ACQUISITION_COLOR_MAP[node.method] || ACQUISITION_COLOR_MAP.Uncategorized;
+                div.setAttribute('role', 'listitem');
+                div.setAttribute('aria-label', `${node.method} ${node.share.toFixed(1)} percent of volume`);
+                div.title = `${node.method} · ${node.share.toFixed(1)}% (${node.records.toLocaleString()} records)`;
 
-                layout.push({
-                    node,
-                    x: currentX,
-                    y: currentY,
-                    width: rectWidth,
-                    height: rowHeight
-                });
+                const labelFits = rectWidth >= 140 && rowHeight >= 90;
+                const detailFits = rectWidth >= 180 && rowHeight >= 110;
+                const displayLabel = displayLabelMap[node.method] || node.method;
 
-                currentX += itemWidth;
+                if (labelFits) {
+                    const labelFont = Math.max(13, Math.min(20, Math.floor(Math.min(rectWidth / 10, rowHeight / 3))));
+                    const valueFont = Math.max(11, Math.floor(labelFont * 0.78));
+
+                    const labelEl = document.createElement('strong');
+                    labelEl.className = 'treemap-node__label';
+                    labelEl.style.fontSize = `${labelFont}px`;
+                    labelEl.textContent = displayLabel;
+                    div.appendChild(labelEl);
+
+                    if (detailFits) {
+                        const valueEl = document.createElement('span');
+                        valueEl.className = 'treemap-node__value';
+                        valueEl.style.fontSize = `${valueFont}px`;
+                        valueEl.textContent = `${node.share.toFixed(1)}% · ${node.records.toLocaleString()}`;
+                        div.appendChild(valueEl);
+                    } else {
+                        const srValue = document.createElement('span');
+                        srValue.className = 'sr-only';
+                        srValue.textContent = `${node.share.toFixed(1)} percent, ${node.records.toLocaleString()} records`;
+                        div.appendChild(srValue);
+                    }
+                } else {
+                    div.classList.add('treemap-node--compact');
+                    const srLabel = document.createElement('span');
+                    srLabel.className = 'sr-only';
+                    srLabel.textContent = `${displayLabel} ${node.share.toFixed(1)} percent, ${node.records.toLocaleString()} records`;
+                    div.appendChild(srLabel);
+                }
+
+                fragment.appendChild(div);
+                currentX += rawWidth;
             });
 
-            // Add row gap only between rows, not after the last row
             currentY += rowHeight;
             if (rowIndex < rows.length - 1) {
                 currentY += ROW_GAP;
             }
         });
 
-        // Render rectangles
-        layout.forEach(({ node, x, y, width, height }) => {
-            const div = document.createElement('div');
-            div.className = 'treemap-node';
-            div.style.position = 'absolute';
-            div.style.left = `${x}px`;
-            div.style.top = `${y}px`;
-            div.style.width = `${width}px`;
-            div.style.height = `${height}px`;
-            div.style.overflow = 'hidden';
+        vizEl.appendChild(fragment);
+    };
 
-            div.setAttribute('role', 'listitem');
-            div.setAttribute('aria-label', `${node.method} ${node.share.toFixed(1)} percent of volume`);
-            div.style.background = ACQUISITION_COLOR_MAP[node.method] || ACQUISITION_COLOR_MAP.Uncategorized;
-            div.title = `${node.method} · ${node.share.toFixed(1)}% (${node.records.toLocaleString()} records)`;
+    const state = container.__treemapState || {};
+    container.__treemapState = state;
+    state.layoutFn = layoutTreemap;
+    state.nodes = nodes;
 
-            const displayLabel = displayLabelMap[node.method] || node.method;
-
-            // Adaptive font sizing based on rectangle size
-            const fontSize = Math.min(width / 8, height / 6, 14);
-            const smallFont = fontSize * 0.8;
-
-            div.innerHTML = `
-                <strong style="display: block; font-size: ${fontSize}px; line-height: 1.2;">${displayLabel}</strong>
-                <span style="display: block; font-size: ${smallFont}px; opacity: 0.9; margin-top: 0.25rem;">${node.share.toFixed(1)}% · ${node.records.toLocaleString()}</span>
-            `;
-
-            treemapWrapper.appendChild(div);
+    if (!state.resizeObserver && typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => {
+            const currentState = container.__treemapState;
+            if (currentState && typeof currentState.layoutFn === 'function') {
+                currentState.layoutFn(0);
+            }
         });
-    }); // End of requestAnimationFrame callback
+        ro.observe(container);
+        state.resizeObserver = ro;
+    }
+
+    layoutTreemap();
 }
 
 // Module-level storage for timeline source filter state

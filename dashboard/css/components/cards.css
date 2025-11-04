@@ -477,88 +477,120 @@
 .acquisition-insights {
     display: grid;
     gap: var(--space-6);
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: minmax(360px, 1.25fr) minmax(320px, 1fr);
     margin-bottom: var(--space-12);
 }
 
 .treemap-container {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.treemap-viz {
+    position: relative;
     height: 320px;
-    align-content: flex-start;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.05);
+    background: var(--tableau-bg-white);
 }
 
 .treemap-node {
-    position: relative;
     border-radius: var(--radius-lg);
     padding: var(--space-5);
     color: white;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);  /* Enhanced readability for white text */
-    min-height: 120px;
-    /* Note: flex-basis and flex-grow are set dynamically via JavaScript for proportional sizing */
-    flex-shrink: 1;
+    text-shadow: 0 1px 2px rgba(15, 23, 42, 0.35);
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: flex-start;
-    gap: 0.5rem;
+    gap: 0.35rem;
     box-shadow: var(--shadow-sm);
-    transition: transform 200ms ease, box-shadow 200ms ease;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+    overflow: hidden;
 }
 
-.treemap-node strong {
-    font-size: var(--text-sm);
+.treemap-node__label {
     font-family: var(--font-display);
     font-weight: 600;
+    letter-spacing: 0.01em;
     line-height: 1.2;
+    font-size: var(--text-sm);
     word-break: break-word;
 }
 
-.treemap-node span {
+.treemap-node__value {
     font-size: var(--text-xs);
-    opacity: 0.95;  /* Increased from 0.9 for better contrast */
+    opacity: 0.95;
     line-height: 1.2;
 }
 
-/* Hover state for better interactivity */
 .treemap-node:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
 
-/* Adaptive styling for small nodes */
-.treemap-node.small-node {
+.treemap-node--compact {
     padding: var(--space-3);
-    min-height: 80px;
+    box-shadow: var(--shadow-sm);
 }
 
-.treemap-node.small-node strong {
-    font-size: 11px;
+.treemap-legend {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--space-3) var(--space-5);
+    margin: 0;
+    padding: 0;
 }
 
-.treemap-node.small-node span {
-    font-size: 10px;
+.treemap-legend__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--tableau-text-secondary);
 }
 
-/* Responsive font sizing for mobile/tablet viewports */
+.treemap-legend__swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.treemap-legend__label {
+    flex: 1;
+    font-weight: 600;
+    color: var(--tableau-text-primary);
+}
+
+.treemap-legend__value {
+    font-family: var(--font-mono, var(--font-sans));
+    font-size: var(--text-xs);
+    color: var(--tableau-text-tertiary);
+}
+
+@media (max-width: 1100px) {
+    .acquisition-insights {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 768px) {
-    .treemap-node strong {
-        font-size: 11px;
+    .treemap-viz {
+        height: 280px;
     }
 
-    .treemap-node span {
-        font-size: 10px;
+    .treemap-node {
+        padding: var(--space-4);
     }
 }
 
-@media (max-width: 375px) {
-    .treemap-node strong {
-        font-size: 10px;
-    }
-
-    .treemap-node span {
-        font-size: 9px;
+@media (max-width: 480px) {
+    .treemap-viz {
+        height: 260px;
     }
 }
 
