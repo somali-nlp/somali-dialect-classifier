@@ -28,12 +28,12 @@ const SOURCE_COLOR_MAP = {
 };
 
 const ACQUISITION_COLOR_MAP = {
-    'API + file snapshots': '#2563eb',
-    'Web crawler': '#f97316',
-    'Dataset API': '#059669',
-    'Partner file drop': '#8b5cf6',
-    'Apify actor': '#db2777',
-    'Uncategorized': '#6b7280'
+    'API + file snapshots': '#06b6d4',  // Cyan (per design spec)
+    'Partner file drop': '#f97316',      // Orange
+    'Dataset API': '#22c55e',            // Green (per design spec)
+    'Apify actor': '#8b5cf6',            // Violet
+    'Web crawler': '#ec4899',            // Fuchsia (per design spec)
+    'Uncategorized': '#6b7280'           // Gray fallback
 };
 
 const SOURCE_METADATA = {
@@ -1899,37 +1899,51 @@ function buildStageSegments(metrics = []) {
         if (!bySource.has(source)) {
             bySource.set(source, {
                 discovered: 0,
-                fetched: 0,
                 extracted: 0,
-                quality: 0,
+                received: 0,
                 written: 0,
-                filters: 0
+                filtered: 0
             });
         }
 
         const entry = bySource.get(source);
+
+        // Use normalized fields from data-service.js
+        // For file_processing: urls_discovered maps to files_discovered
+        // For web_scraping: urls_discovered maps to URLs discovered
         const discovered = Number(metric.urls_discovered) || 0;
-        const fetched = Number(metric.urls_fetched) || discovered;
-        const extracted = Number(metric.records_extracted) || Number(metric.records_written) || 0;
+        const extracted = Number(metric.records_extracted) || 0;
         const written = Number(metric.records_written) || 0;
         const filtered = Object.values(metric.filter_breakdown || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
-        const qualityReceived = written + filtered;
+        const received = written + filtered;
 
+        // Accumulate totals per source across all runs
         entry.discovered += discovered;
-        entry.fetched += Math.min(fetched, discovered);
-        entry.extracted += Math.min(extracted, fetched);
-        entry.quality += Math.min(qualityReceived, extracted || qualityReceived);
+        entry.extracted += extracted;
+        entry.received += received;
         entry.written += written;
-        entry.filters += filtered;
+        entry.filtered += filtered;
     });
 
     return Array.from(bySource.entries()).map(([name, entry]) => {
-        const totalDiscovered = entry.discovered || entry.quality || 1;
-        const discoveryBacklog = Math.max(entry.discovered - entry.fetched, 0);
-        const extractionLoss = Math.max(entry.fetched - entry.quality, 0);
-        const qualityLoss = Math.max(entry.quality - entry.written, 0);
-        const silver = Math.max(entry.written, 0);
-        const denominator = discoveryBacklog + extractionLoss + qualityLoss + silver || 1;
+        // Calculate pipeline stage segments
+        // Discovery Backlog: Items discovered but not yet extracted
+        const discoveryBacklog = Math.max(entry.discovered - entry.extracted, 0);
+
+        // Extraction Loss: Items that should have been extracted but weren't
+        // (gap between discovered and what entered quality filters)
+        const extractionLoss = Math.max(entry.extracted - entry.received, 0);
+
+        // Quality Loss: Items that entered filters but were rejected
+        const qualityLoss = entry.filtered;
+
+        // Silver: Items that passed all stages
+        const silver = entry.written;
+
+        // Use total discovered as denominator, fallback to received if no discovery tracking
+        const denominator = entry.discovered > 0
+            ? entry.discovered
+            : (entry.received > 0 ? entry.received : 1);
 
         return {
             name,
@@ -2121,23 +2135,6 @@ function renderIngestionTimeline(metricsData) {
 
         const header = document.createElement('h4');
         header.textContent = source;
-        header.style.cursor = 'pointer';
-        header.style.userSelect = 'none';
-        header.style.transition = 'opacity 0.2s ease, color 0.2s ease';
-
-        // Visual feedback for toggle state
-        const isActive = timelineFilteredSources.size === 0 || timelineFilteredSources.has(source);
-        if (!isActive) {
-            header.style.opacity = '0.4';
-            header.style.color = 'var(--gray-400)';
-        }
-        header.title = isActive ? 'Click to hide this source' : 'Click to show this source';
-
-        // Add click handler to header for toggling
-        header.addEventListener('click', () => {
-            toggleTimelineSource(source);
-        });
-
         column.appendChild(header);
 
         const segment = document.createElement('div');

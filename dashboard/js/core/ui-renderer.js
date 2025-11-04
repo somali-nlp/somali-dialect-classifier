@@ -91,6 +91,62 @@ function formatFilterName(reason) {
     return /filter/i.test(baseLabel) ? baseLabel : `${baseLabel} filter`;
 }
 
+/**
+ * Get filter category for semantic coloring (5-category system)
+ * @param {string} reason - Filter reason key
+ * @returns {string} CSS class suffix (validation|normalization|quality|guard|dedup)
+ */
+function getFilterCategory(reason) {
+    if (!reason) return 'neutral';
+
+    // Validation Filters (Blue): Data integrity checks
+    const validationFilters = [
+        'langid_filter',
+        'invalid_charset_filter',
+        'utf8_validation_filter',
+        'http_monitor_filter'
+    ];
+
+    // Normalization Filters (Green): Text preprocessing
+    const normalizationFilters = [
+        'emoji_only_comment',
+        'text_too_short_after_cleanup',
+        'translation_guard_filter',
+        'emoji_normalization_filter'
+    ];
+
+    // Quality Filters (Purple): Content quality assessment
+    const qualityFilters = [
+        'quality_score_filter',
+        'empty_after_cleaning',
+        'metadata_harmonizer_filter',
+        'article_extractor_filter'
+    ];
+
+    // Guard Filters (Amber): Domain-specific heuristics
+    const guardFilters = [
+        'dialect_heuristic_filter',
+        'min_length_filter',
+        'namespace_filter',
+        'profanity_filter',
+        'toxic_filter'
+    ];
+
+    // Deduplication (Teal): Duplicate detection
+    const dedupFilters = [
+        'duplicate_filter',
+        'dedupe_filter'
+    ];
+
+    if (validationFilters.includes(reason)) return 'filter-validation';
+    if (normalizationFilters.includes(reason)) return 'filter-normalization';
+    if (qualityFilters.includes(reason)) return 'filter-quality';
+    if (guardFilters.includes(reason)) return 'filter-guard';
+    if (dedupFilters.includes(reason)) return 'filter-dedup';
+
+    return 'neutral'; // Fallback for unknown filters
+}
+
 function getMetadataKey(sourceName) {
     if (!sourceName) return null;
     if (sourceName.includes('Wikipedia')) return 'Wikipedia';
@@ -152,8 +208,19 @@ export function buildSourceAnalytics(customMetrics = null) {
     const totalRecords = metricsArray.reduce((sum, metric) => sum + (metric.records_written || 0), 0);
     const catalog = getSourceCatalog();
 
-    const items = metricsArray.map(metric => {
+    // FIXED: Group metrics by source name to avoid duplication
+    const sourceGroups = new Map();
+
+    metricsArray.forEach(metric => {
         const sourceName = normalizeSourceName(metric.source);
+        if (!sourceGroups.has(sourceName)) {
+            sourceGroups.set(sourceName, []);
+        }
+        sourceGroups.get(sourceName).push(metric);
+    });
+
+    // Aggregate metrics for each unique source
+    const items = Array.from(sourceGroups.entries()).map(([sourceName, metrics]) => {
         const metadataKey = getMetadataKey(sourceName);
         const meta = SOURCE_METADATA[metadataKey] || {
             role: 'Active Source',
@@ -171,14 +238,38 @@ export function buildSourceAnalytics(customMetrics = null) {
         const dependencies = Array.isArray(catalogInfo.dependencies) ? catalogInfo.dependencies : [];
         const notes = catalogInfo.notes || meta.description || '';
 
-        const records = metric.records_written || 0;
+        // Aggregate data across all runs for this source
+        const records = metrics.reduce((sum, m) => sum + (m.records_written || 0), 0);
         const share = totalRecords > 0 ? (records / totalRecords) * 100 : 0;
-        const quality = metric.quality_pass_rate || 0;
-        const avgLength = metric.text_length_stats?.mean || 0;
-        const totalChars = metric.text_length_stats?.total_chars || 0;
-        const timestamp = metric.timestamp || null;
+
+        // Use weighted average for quality (by record count)
+        const totalRecordsForQuality = metrics.reduce((sum, m) => sum + (m.records_written || 0), 0);
+        const quality = totalRecordsForQuality > 0
+            ? metrics.reduce((sum, m) => sum + ((m.quality_pass_rate || 0) * (m.records_written || 0)), 0) / totalRecordsForQuality
+            : 0;
+
+        // Average length across all runs
+        const avgLength = metrics.reduce((sum, m) => sum + (m.text_length_stats?.mean || 0), 0) / metrics.length;
+        const totalChars = metrics.reduce((sum, m) => sum + (m.text_length_stats?.total_chars || 0), 0);
+
+        // Use the most recent timestamp
+        const mostRecentMetric = metrics.reduce((latest, m) => {
+            const latestMs = latest.timestamp ? Date.parse(latest.timestamp) : 0;
+            const currentMs = m.timestamp ? Date.parse(m.timestamp) : 0;
+            return currentMs > latestMs ? m : latest;
+        }, metrics[0]);
+
+        const timestamp = mostRecentMetric.timestamp || null;
         const timestampMs = timestamp ? Date.parse(timestamp) : null;
-        const filterBreakdown = metric.filter_breakdown || {};
+
+        // Aggregate filter breakdowns across all runs
+        const filterBreakdown = {};
+        metrics.forEach(m => {
+            const breakdown = m.filter_breakdown || {};
+            Object.entries(breakdown).forEach(([reason, count]) => {
+                filterBreakdown[reason] = (filterBreakdown[reason] || 0) + count;
+            });
+        });
         const topFilter = getTopFilterInsight(filterBreakdown);
 
         return {
@@ -186,6 +277,7 @@ export function buildSourceAnalytics(customMetrics = null) {
             records,
             share,
             quality,
+            qualityRate: quality, // Add qualityRate field for SLA comparison
             avgLength,
             totalChars,
             lastUpdated: timestamp,
@@ -203,14 +295,16 @@ export function buildSourceAnalytics(customMetrics = null) {
             refreshSla,
             integrationStage,
             dependencies,
-            notes
+            notes,
+            metrics  // Keep reference to all metrics for this source if needed
         };
     });
 
     return {
         totalRecords,
         totalSources: items.length,
-        items
+        items,
+        metrics: metricsArray  // Keep original metrics array for other uses
     };
 }
 
@@ -441,19 +535,98 @@ export function populateSourceMixSnapshot(analyticsOverride = null) {
         return acc;
     }, null);
 
+    // Build single cohesive narrative combining portfolio and ETL story
     if (narrativeEl) {
+        // Calculate coverage progress
+        const coverageProgress = targetTotal > 0 ? ((totalRecords / targetTotal) * 100).toFixed(1) : null;
+
+        // Get governance exclusions from pipeline status
+        const excludedSources = roadmap?.decommissioned || [];
+        const exclusionList = excludedSources.map(src => src.name).join(' and ');
+        const exclusionReasons = excludedSources.length > 0
+            ? excludedSources.map(src => src.reason.toLowerCase()).join(' and ')
+            : '';
+
+        // Build source list
+        const sourceNames = items.map(item => item.name).join(', ').replace(/, ([^,]*)$/, ', and $1');
+
+        // Count unique pipeline types
+        const pipelineTypes = pipelineSet.map(p => {
+            if (p === 'File Processing') return 'file processing';
+            if (p === 'Web Scraping') return 'web scraping';
+            if (p === 'Stream Processing') return 'stream processing';
+            return p.toLowerCase();
+        }).join(', ');
+
+        // Get quality analytics for pipeline health
+        const qualityAnalytics = computeQualityAnalytics(analytics.metrics || []);
+        const avgQuality = qualityAnalytics?.avgQualityRate
+            ? (qualityAnalytics.avgQualityRate * 100).toFixed(1)
+            : null;
+
+        // Count sources exceeding 85% quality SLA
+        const highQualitySources = items.filter(item => {
+            const qualityRate = item.qualityRate || 0;
+            return qualityRate >= 0.85;
+        });
+        const highQualityCount = highQualitySources.length;
+        const highQualityNames = highQualitySources.slice(0, 3).map(i => i.name).join(', ').replace(/, ([^,]*)$/, ', and $1');
+
+        // Build pipeline path descriptions
+        const fileProcessingSources = items.filter(i => i.pipeline === 'File Processing').map(i => i.name);
+        const webScrapingSources = items.filter(i => i.pipeline === 'Web Scraping').map(i => i.name);
+        const streamProcessingSources = items.filter(i => i.pipeline === 'Stream Processing').map(i => i.name);
+
+        const pathDescriptions = [];
+        if (fileProcessingSources.length > 0) {
+            const sourceList = fileProcessingSources.join(' and ');
+            pathDescriptions.push(`${sourceList} flow${fileProcessingSources.length === 1 ? 's' : ''} through discovery → extraction → silver via batch file processing`);
+        }
+        if (webScrapingSources.length > 0) {
+            const sourceList = webScrapingSources.join(' and ');
+            pathDescriptions.push(`${sourceList} use${webScrapingSources.length === 1 ? 's' : ''} continuous web scraping with daily refresh windows`);
+        }
+        if (streamProcessingSources.length > 0) {
+            const sourceList = streamProcessingSources.join(' and ');
+            pathDescriptions.push(`${sourceList} leverage${streamProcessingSources.length === 1 ? 's' : ''} streaming APIs for near-real-time ingestion`);
+        }
+        const pipelineDescription = pathDescriptions.length > 0 ? pathDescriptions.join(', while ') : 'multiple ETL paths';
+
+        // Build governance clause
+        const governanceClause = exclusionList
+            ? ` Governance decisions have explicitly excluded ${exclusionList} due to ${exclusionReasons}, prioritizing signal quality over raw volume growth.`
+            : '';
+
+        // Build quality health clause
+        const qualityClause = avgQuality && highQualityCount > 0
+            ? ` Current pipeline health shows ${avgQuality}% average quality pass rate across all sources, with ${highQualityCount} source${highQualityCount !== 1 ? 's' : ''} (${highQualityNames}) exceeding the 85% quality SLA.`
+            : avgQuality
+            ? ` Pipeline health averages ${avgQuality}% quality pass rate.`
+            : '';
+
+        // Build onboarding roadmap
+        const onboardingClause = plannedSources.length > 0
+            ? ` The onboarding roadmap includes ${plannedSources.slice(0, 2).map(src => {
+                const statusLower = src.status.toLowerCase();
+                const notesFirstPart = src.notes.split('.')[0].split(';')[0].toLowerCase();
+                return `${src.name} (${statusLower}, ${notesFirstPart})`;
+              }).join(' and ')}.`
+            : '';
+
+        // Combine into single flowing narrative
         narrativeEl.textContent =
-            `Current portfolio spans ${totalRecords.toLocaleString()} records across ${items.length} active sources. ` +
-            `${leader.name} leads delivered volume at ${leader.share.toFixed(1)}% while ${freshest.name} supplied the most recent load on ${freshest.lastUpdatedLabel}.`;
+            `The portfolio integrates ${items.length} production data sources—${sourceNames}—spanning ${pipelineSet.length} distinct pipeline architecture${pipelineSet.length !== 1 ? 's' : ''} (${pipelineTypes}). ` +
+            `Collectively, these sources have delivered ${totalRecords.toLocaleString()} silver-tier records` +
+            (coverageProgress ? `, representing ${coverageProgress}% progress toward the ${targetTotal.toLocaleString()}-record coverage target.` : '.') +
+            governanceClause +
+            ` Each source traverses a tailored ETL path: ${pipelineDescription}.` +
+            qualityClause +
+            onboardingClause;
     }
 
+    // Hide the second paragraph element since we're using single narrative
     if (etlNarrativeEl) {
-        const stageSummary = stageSet.join(', ');
-        const cadenceText = plannedSources.length
-            ? `On-deck sources: ${plannedSources.slice(0, 2).map(src => `${src.name} (${src.status})`).join(', ')}`
-            : 'No additional sources queued at this time.';
-        etlNarrativeEl.textContent =
-            `ETL coverage now blends ${pipelineSet.join(', ')} pipelines with integration stages ${stageSummary}. ${cadenceText}.`;
+        etlNarrativeEl.style.display = 'none';
     }
 
     if (activeValueEl) activeValueEl.textContent = items.length.toString();
@@ -775,6 +948,7 @@ function renderQualityBriefingCard(item) {
     const rejectionPct = (item.rejectionRate * 100).toFixed(1);
     const topFilterName = item.topFilter ? formatFilterName(item.topFilter.reason) : null;
     const topFilterPct = item.topFilter ? item.topFilter.percentage.toFixed(1) : null;
+    const topFilterCategory = item.topFilter ? getFilterCategory(item.topFilter.reason) : 'neutral';
     const lastUpdated = item.lastUpdated ? formatDate(item.lastUpdated) : 'Not yet run';
     const totalSubmissions = item.records + rejectedCount;
     const trimmedChip = rejectedCount > 0
@@ -806,10 +980,10 @@ function renderQualityBriefingCard(item) {
                 </div>
             </div>
             <div class="briefing-chip-row">
-                <span class="briefing-chip">${sharePct}% Share</span>
+                <span class="briefing-chip acquisition-method">${sharePct}% Share</span>
                 <span class="briefing-chip ${qualityClass}">${qualityPct}% Kept</span>
                 <span class="briefing-chip neutral">${trimmedChip}</span>
-                <span class="briefing-chip neutral">${filterChip}</span>
+                <span class="briefing-chip ${topFilterCategory}">${filterChip}</span>
                 <span class="briefing-chip neutral">${lastUpdated}</span>
             </div>
             <p class="source-briefing-text">${narrative}</p>

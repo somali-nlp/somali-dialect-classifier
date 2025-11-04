@@ -102,6 +102,39 @@
     --transition-fast: 150ms ease;
     --transition-base: 250ms ease;
     --transition-slow: 350ms ease;
+
+    /* ===== ACQUISITION METHOD COLORS (Tableau-Aligned) ===== */
+    --acquisition-api-file: #06b6d4;      /* Cyan - API + File Snapshots */
+    --acquisition-partner: #f97316;        /* Orange - Partner File Drop */
+    --acquisition-dataset: #22c55e;        /* Green - Dataset API */
+    --acquisition-actor: #8b5cf6;          /* Violet - Apify Actor */
+    --acquisition-crawler: #ec4899;        /* Fuchsia - Web Crawler */
+
+    /* ===== FILTER TYPE COLORS (5-Category Semantic System) ===== */
+    /* Validation Filters (Blue Family) */
+    --filter-validation: #2563eb;          /* Primary validation */
+    --filter-validation-light: #60a5fa;    /* Light validation accent */
+    --filter-validation-bg: rgba(37, 99, 235, 0.12);
+
+    /* Normalization Filters (Green Family) */
+    --filter-normalization: #059669;       /* Primary normalization */
+    --filter-normalization-light: #10b981; /* Light normalization accent */
+    --filter-normalization-bg: rgba(5, 150, 105, 0.12);
+
+    /* Quality Filters (Purple Family) */
+    --filter-quality: #7c3aed;             /* Primary quality */
+    --filter-quality-light: #a78bfa;       /* Light quality accent */
+    --filter-quality-bg: rgba(124, 58, 237, 0.12);
+
+    /* Guard Filters (Amber Family) */
+    --filter-guard: #d97706;               /* Primary guard */
+    --filter-guard-light: #f59e0b;         /* Light guard accent */
+    --filter-guard-bg: rgba(217, 119, 6, 0.12);
+
+    /* Deduplication (Teal) */
+    --filter-dedup: #0d9488;               /* Primary deduplication */
+    --filter-dedup-light: #14b8a6;         /* Light dedup accent */
+    --filter-dedup-bg: rgba(13, 148, 136, 0.12);
 }
 
 @media (prefers-reduced-motion: reduce) {
