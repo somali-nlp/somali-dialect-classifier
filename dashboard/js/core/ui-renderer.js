@@ -831,35 +831,40 @@ function renderQualityNarrative(element, analytics) {
         previous
     } = analytics;
 
+    // 1. OPENING: Current run retention with context
     const qualityDelta = latest && previous ? (latest.quality - previous.quality) * 100 : null;
     const keptPercent = (avgQualityRate * 100).toFixed(1);
     const rejectedPercent = (rejectionRate * 100).toFixed(1);
-    const languageSentence = languageRejected > 0
-        ? `Language guard removed ${languageRejected.toLocaleString()} records (${(languageShare * 100).toFixed(1)}% of rejections).`
-        : 'Language guard did not trigger this run.';
 
+    const retentionOpening = qualityDelta !== null
+        ? `The quality pipeline processed ${candidateRecords.toLocaleString()} candidate records in the current cycle, retaining ${totalRecords.toLocaleString()} records (${keptPercent}%) for the silver dataset while filtering ${totalRejected.toLocaleString()} records (${rejectedPercent}%). Retention ${qualityDelta >= 0 ? 'improved' : 'declined'} ${qualityDelta >= 0 ? '+' : ''}${qualityDelta.toFixed(1)} percentage points compared to the prior run, indicating ${qualityDelta >= 0 ? 'strengthened' : 'adjusted'} filtering thresholds.`
+        : `The quality pipeline processed ${candidateRecords.toLocaleString()} candidate records in the current cycle, retaining ${totalRecords.toLocaleString()} records (${keptPercent}%) for the silver dataset while filtering ${totalRejected.toLocaleString()} records (${rejectedPercent}%). This represents the initial baseline run; retention trends will become visible after subsequent cycles.`;
+
+    // 2. MIDDLE: Guardrail posture and behavior
+    const filterSentence = topFilter
+        ? `The ${formatFilterName(topFilter.reason)} served as the primary quality gate, blocking ${topFilter.count.toLocaleString()} records to maintain dataset standards.`
+        : 'Quality filters distributed rejections evenly across guardrail families, indicating balanced filtering behavior.';
+
+    const languageSentence = languageRejected > 0
+        ? ` The language identification guardrail intercepted ${languageRejected.toLocaleString()} non-Somali records (${(languageShare * 100).toFixed(1)}% of total rejections), preventing off-language content from reaching the silver tier.`
+        : ' The language identification guardrail did not trigger during this cycle, suggesting strong upstream language filtering.';
+
+    const guardrailSection = filterSentence + languageSentence;
+
+    // 3. CLOSING: Watch list and actionable callouts
     const underperforming = perSource.filter(source => {
         const benchmark = SOURCE_METADATA[getMetadataKey(source.name)]?.qualityBenchmark ?? 0.7;
         return source.quality < benchmark;
     });
 
-    const watchList = underperforming
-        .map(source => `${source.name} ${ (source.quality * 100).toFixed(1)}% (goal ${(SOURCE_METADATA[getMetadataKey(source.name)]?.qualityBenchmark || 0) * 100}%)`)
-        .join('; ');
+    const watchSection = underperforming.length > 0
+        ? ` Quality monitoring has flagged ${underperforming.length} source${underperforming.length !== 1 ? 's' : ''} operating below their retention benchmarks: ${underperforming.map(source =>
+            `${source.name} at ${(source.quality * 100).toFixed(1)}% (target ${(SOURCE_METADATA[getMetadataKey(source.name)]?.qualityBenchmark || 0) * 100}%)`
+          ).join(', ')}. Review filter tuning and source-specific heuristics to restore alignment with quality SLAs.`
+        : ' All sources currently meet or exceed their quality retention benchmarks, demonstrating stable pipeline health across the portfolio.';
 
-    const watchSentence = watchList
-        ? `Watch list: ${watchList}.`
-        : 'All sources tracked within benchmark expectations.';
-
-    const filterSentence = topFilter
-        ? `Dominant guardrail: ${formatFilterName(topFilter.reason)} (${topFilter.count.toLocaleString()} records).`
-        : 'Guardrails distributed evenly across filters.';
-
-    const deltaSentence = qualityDelta !== null
-        ? `Retention ${qualityDelta >= 0 ? 'improved' : 'declined'} ${qualityDelta >= 0 ? '+' : ''}${qualityDelta.toFixed(1)} pts since the prior run.`
-        : 'Retention trend awaiting prior baseline comparison.';
-
-    element.textContent = `Quality filters processed ${candidateRecords.toLocaleString()} candidate records this cycle, keeping ${totalRecords.toLocaleString()} (${keptPercent}%) and filtering ${totalRejected.toLocaleString()} (${rejectedPercent}%). ${deltaSentence} ${filterSentence} ${languageSentence} ${watchSentence}`.replace(/\s+/g, ' ').trim();
+    // Combine sections with proper spacing and flow
+    element.textContent = `${retentionOpening} ${guardrailSection}${watchSection}`;
 }
 
 function renderQualityOutcomes(analytics) {

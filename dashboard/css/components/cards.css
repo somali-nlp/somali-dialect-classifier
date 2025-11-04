@@ -345,13 +345,16 @@
 
 .quality-intro {
     max-width: 960px;
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-10);
 }
 
 .quality-intro-narrative {
-    font-size: var(--text-lg);
-    line-height: 1.7;
+    font-size: var(--text-base);
+    font-weight: 400;
+    line-height: 1.8;
     color: var(--gray-700);
+    max-width: 960px;
+    width: 100%;
 }
 
 .quality-charter {
