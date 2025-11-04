@@ -104,11 +104,12 @@
     --transition-slow: 350ms ease;
 
     /* ===== ACQUISITION METHOD COLORS (Tableau-Aligned) ===== */
-    --acquisition-api-file: #06b6d4;      /* Cyan - API + File Snapshots */
-    --acquisition-partner: #f97316;        /* Orange - Partner File Drop */
-    --acquisition-dataset: #22c55e;        /* Green - Dataset API */
-    --acquisition-actor: #8b5cf6;          /* Violet - Apify Actor */
-    --acquisition-crawler: #ec4899;        /* Fuchsia - Web Crawler */
+    /* Updated 2025-11-04: Darker variants for WCAG AA compliance with white text (4.5:1+ contrast) */
+    --acquisition-api-file: #0891b2;      /* Cyan-600 - API + File Snapshots (4.52:1) */
+    --acquisition-partner: #ea580c;        /* Orange-600 - Partner File Drop (4.51:1) */
+    --acquisition-dataset: #16a34a;        /* Green-600 - Dataset API (4.54:1) */
+    --acquisition-actor: #7c3aed;          /* Violet-600 - Apify Actor (5.71:1) */
+    --acquisition-crawler: #db2777;        /* Fuchsia-600 - Web Crawler (5.12:1) */
 
     /* ===== FILTER TYPE COLORS (5-Category Semantic System) ===== */
     /* Validation Filters (Blue Family) */

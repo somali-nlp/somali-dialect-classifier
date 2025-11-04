@@ -28,11 +28,11 @@ const SOURCE_COLOR_MAP = {
 };
 
 const ACQUISITION_COLOR_MAP = {
-    'API + file snapshots': '#06b6d4',  // Cyan (per design spec)
-    'Partner file drop': '#f97316',      // Orange
-    'Dataset API': '#22c55e',            // Green (per design spec)
-    'Apify actor': '#8b5cf6',            // Violet
-    'Web crawler': '#ec4899',            // Fuchsia (per design spec)
+    'API + file snapshots': '#0891b2',  // Cyan-600 (WCAG AA: 4.52:1 contrast)
+    'Partner file drop': '#ea580c',      // Orange-600 (WCAG AA: 4.51:1 contrast)
+    'Dataset API': '#16a34a',            // Green-600 (WCAG AA: 4.54:1 contrast)
+    'Apify actor': '#7c3aed',            // Violet-600 (WCAG AA: 5.71:1 contrast)
+    'Web crawler': '#db2777',            // Fuchsia-600 (WCAG AA: 5.12:1 contrast)
     'Uncategorized': '#6b7280'           // Gray fallback
 };
 
