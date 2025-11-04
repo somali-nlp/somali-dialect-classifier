@@ -38,7 +38,7 @@ class TestTikTokFilterInstrumentation:
             TikTokSomaliProcessor instance ready for testing
         """
         with patch(
-            "somali_dialect_classifier.preprocessing.tiktok_somali_processor.get_config"
+            "somali_dialect_classifier.config.get_config"
         ) as mock_config:
             # Configure temporary directories
             config = Mock()
@@ -550,7 +550,7 @@ class TestTikTokProcessorIntegration:
             TikTokSomaliProcessor and Path to staging directory
         """
         with patch(
-            "somali_dialect_classifier.preprocessing.tiktok_somali_processor.get_config"
+            "somali_dialect_classifier.config.get_config"
         ) as mock_config:
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"

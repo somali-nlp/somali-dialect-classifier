@@ -109,7 +109,7 @@ class TestBuildSilverRecord:
         assert record["source_type"] == "wiki"
         assert record["language"] == "so"
         assert record["license"] == "CC-BY-SA-3.0"
-        assert record["pipeline_version"] == "1.0.0"
+        assert record["pipeline_version"] == "2.1.0"  # Updated to current version
         # Verify empty metadata is JSON-serialized empty object
         assert record["source_metadata"] == "{}"
         assert json.loads(record["source_metadata"]) == {}

@@ -26,7 +26,7 @@ test.describe('Dashboard Visual Regression', () => {
   });
 
   test('should load dashboard without errors', async ({ page }) => {
-    await expect(page).toHaveTitle(/Somali NLP/);
+    await expect(page).toHaveTitle(/Somali Dialect Classifier/);
 
     // Check that main sections exist
     await expect(page.locator('h1')).toBeVisible();
