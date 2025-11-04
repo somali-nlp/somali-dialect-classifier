@@ -2052,8 +2052,9 @@ function renderAcquisitionTreemap(metricsData) {
     };
 
     // Treemap dimensions - use clientWidth for accurate measurement
-    const CONTAINER_HEIGHT = 280;
+    const CONTAINER_HEIGHT = 320;
     const GAP = 4; // Gap between rectangles
+    const ROW_GAP = 6; // Gap between rows
 
     // Create treemap wrapper first to measure width accurately
     const treemapWrapper = document.createElement('div');
@@ -2074,18 +2075,14 @@ function renderAcquisitionTreemap(metricsData) {
     // Strategy: Fill rows top-to-bottom, distributing items to minimize aspect ratio
     const totalArea = CONTAINER_WIDTH * CONTAINER_HEIGHT;
 
-    // Calculate layout using row-based algorithm
-    const layout = [];
+    // First pass: Determine rows and their shares
+    const rows = [];
     let remainingNodes = [...nodes];
-    let currentY = 0;
 
     while (remainingNodes.length > 0) {
-        // Determine how many items fit well in this row
         let rowNodes = [];
         let rowShare = 0;
 
-        // Greedy approach: add items until row is "full enough"
-        // Target: each row should use roughly 1/3 to 1/2 of remaining height
         const remainingShare = remainingNodes.reduce((sum, n) => sum + n.share, 0);
         const targetRowShare = Math.min(remainingShare, 50); // Aim for ~50% per row max
 
@@ -2098,19 +2095,31 @@ function renderAcquisitionTreemap(metricsData) {
             if (rowShare >= targetRowShare && rowNodes.length >= 1) break;
         }
 
-        // If we didn't add anything (edge case), add at least one
         if (rowNodes.length === 0) {
             rowNodes.push(remainingNodes[0]);
             rowShare = remainingNodes[0].share;
         }
 
-        // Calculate row height based on its share
-        const rowHeight = (rowShare / 100) * CONTAINER_HEIGHT;
+        rows.push({ nodes: rowNodes, share: rowShare });
+        remainingNodes = remainingNodes.filter(n => !rowNodes.includes(n));
+    }
+
+    // Calculate available height after accounting for gaps between rows
+    const totalGapHeight = (rows.length - 1) * ROW_GAP;
+    const availableHeight = CONTAINER_HEIGHT - totalGapHeight;
+
+    // Second pass: Calculate layout with adjusted heights
+    const layout = [];
+    let currentY = 0;
+
+    rows.forEach((row) => {
+        // Calculate row height proportionally from available height
+        const rowHeight = (row.share / 100) * availableHeight;
 
         // Layout items within this row
         let currentX = 0;
-        rowNodes.forEach((node) => {
-            const itemWidth = (node.share / rowShare) * CONTAINER_WIDTH;
+        row.nodes.forEach((node) => {
+            const itemWidth = (node.share / row.share) * CONTAINER_WIDTH;
 
             layout.push({
                 node,
@@ -2123,9 +2132,8 @@ function renderAcquisitionTreemap(metricsData) {
             currentX += itemWidth;
         });
 
-        currentY += rowHeight;
-        remainingNodes = remainingNodes.filter(n => !rowNodes.includes(n));
-    }
+        currentY += rowHeight + ROW_GAP; // Add row gap between rows
+    });
 
     // Render rectangles
     layout.forEach(({ node, x, y, width, height }) => {
