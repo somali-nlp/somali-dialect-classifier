@@ -2051,25 +2051,84 @@ function renderAcquisitionTreemap(metricsData) {
         'Uncategorized': 'Other'
     };
 
-    nodes.forEach(node => {
+    // Create treemap wrapper for boxes + legend
+    const treemapWrapper = document.createElement('div');
+    treemapWrapper.style.display = 'flex';
+    treemapWrapper.style.flexDirection = 'column';
+    treemapWrapper.style.gap = '1rem';
+
+    // Create boxes container (no wrapping - single row)
+    const boxesContainer = document.createElement('div');
+    boxesContainer.setAttribute('role', 'list');
+    boxesContainer.setAttribute('aria-label', 'Acquisition method treemap');
+    boxesContainer.style.display = 'flex';
+    boxesContainer.style.flexWrap = 'nowrap'; // KEY: No wrapping
+    boxesContainer.style.gap = '0.5rem';
+    boxesContainer.style.height = '240px';
+    boxesContainer.style.alignItems = 'stretch';
+
+    // Create boxes with direct percentage-based widths
+    nodes.forEach((node) => {
         const div = document.createElement('div');
         div.className = 'treemap-node';
+
+        // Use direct percentage for width (this ensures true proportionality)
+        // Subtract gap space proportionally to account for flexbox gaps
+        const gapAdjustment = 0.9; // Slight reduction to account for gaps
+        div.style.width = `${node.share * gapAdjustment}%`;
+        div.style.flexShrink = '0'; // Don't shrink
+        div.style.flexGrow = '0'; // Don't grow
+        div.style.minWidth = '0'; // Allow very small boxes
+
         div.setAttribute('role', 'listitem');
         div.setAttribute('aria-label', `${node.method} ${node.share.toFixed(1)} percent of volume`);
         div.style.background = ACQUISITION_COLOR_MAP[node.method] || ACQUISITION_COLOR_MAP.Uncategorized;
-        div.style.flexBasis = `${Math.max(node.share * 4, 160)}px`;
-        div.style.flexGrow = Math.max(node.share / 10, 1);
         div.title = `${node.method} · ${node.share.toFixed(1)}% (${node.records.toLocaleString()} records)`;
 
-        // Use shorter label for display, full label in tooltip
-        const displayLabel = displayLabelMap[node.method] || node.method;
-
+        // Content: Only percentage and records (no method name)
         div.innerHTML = `
-            <strong style="display: block; width: 100%; overflow-wrap: break-word; hyphens: auto;">${displayLabel}</strong>
-            <span style="display: block; width: 100%;">${node.share.toFixed(1)}% · ${node.records.toLocaleString()} records</span>
+            <strong style="display: block; font-size: ${node.share < 2 ? '0.7rem' : '0.875rem'}; line-height: 1.2;">${node.share.toFixed(1)}%</strong>
+            <span style="display: block; font-size: ${node.share < 2 ? '0.65rem' : '0.75rem'}; opacity: 0.9; margin-top: 0.25rem;">${node.records.toLocaleString()}</span>
         `;
-        container.appendChild(div);
+        boxesContainer.appendChild(div);
     });
+
+    // Create legend below the boxes
+    const legend = document.createElement('div');
+    legend.style.display = 'flex';
+    legend.style.flexWrap = 'wrap';
+    legend.style.gap = '1rem';
+    legend.style.justifyContent = 'center';
+    legend.style.paddingTop = '0.5rem';
+    legend.style.borderTop = '1px solid var(--border-color, #e5e7eb)';
+
+    nodes.forEach((node) => {
+        const legendItem = document.createElement('div');
+        legendItem.style.display = 'flex';
+        legendItem.style.alignItems = 'center';
+        legendItem.style.gap = '0.5rem';
+        legendItem.style.fontSize = '0.875rem';
+
+        const displayLabel = displayLabelMap[node.method] || node.method;
+        const colorBox = document.createElement('div');
+        colorBox.style.width = '1rem';
+        colorBox.style.height = '1rem';
+        colorBox.style.borderRadius = '0.25rem';
+        colorBox.style.background = ACQUISITION_COLOR_MAP[node.method] || ACQUISITION_COLOR_MAP.Uncategorized;
+        colorBox.style.flexShrink = '0';
+
+        const label = document.createElement('span');
+        label.textContent = displayLabel;
+        label.style.color = 'var(--text-color, #374151)';
+
+        legendItem.appendChild(colorBox);
+        legendItem.appendChild(label);
+        legend.appendChild(legendItem);
+    });
+
+    treemapWrapper.appendChild(boxesContainer);
+    treemapWrapper.appendChild(legend);
+    container.appendChild(treemapWrapper);
 }
 
 // Module-level storage for timeline source filter state
