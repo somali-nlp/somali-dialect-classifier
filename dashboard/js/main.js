@@ -303,7 +303,6 @@ function initAdvancedFeatures() {
         FilterManager.onFilterChange((filteredMetrics) => {
             // Update advanced charts with filtered data
             SankeyChart.create('sankeyContainer', filteredMetrics);
-            RidgePlot.create('ridgePlotContainer', filteredMetrics);
 
             const analytics = buildSourceAnalytics(filteredMetrics);
             populateSourceMixSnapshot(analytics);
@@ -318,7 +317,6 @@ function initAdvancedFeatures() {
 
         // Create advanced charts
         SankeyChart.create('sankeyContainer', dashboardData.metrics, sankeyFlow);
-        RidgePlot.create('ridgePlotContainer', dashboardData.metrics, textDistributions);
 
         // Initialize comparison mode
         ComparisonMode.init(dashboardData.metrics);

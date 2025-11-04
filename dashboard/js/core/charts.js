@@ -199,6 +199,9 @@ function createQualityTrendChart(metricsData) {
         records: entry.records || 0
     }));
 
+    // Calculate latest quality value for Y-axis scaling
+    const latestQuality = trendDataset.length > 0 ? trendDataset[trendDataset.length - 1].y : 100;
+
     new Chart(context, {
         type: 'line',
         data: {
