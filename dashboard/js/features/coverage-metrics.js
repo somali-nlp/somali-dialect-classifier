@@ -2082,6 +2082,9 @@ function renderAcquisitionTreemap(metricsData) {
         swatch.className = 'treemap-legend__swatch';
         swatch.style.backgroundColor = ACQUISITION_COLOR_MAP[node.method] || ACQUISITION_COLOR_MAP.Uncategorized;
 
+        const textWrap = document.createElement('span');
+        textWrap.className = 'treemap-legend__text';
+
         const label = document.createElement('span');
         label.className = 'treemap-legend__label';
         label.textContent = displayLabelMap[node.method] || node.method;
@@ -2090,7 +2093,8 @@ function renderAcquisitionTreemap(metricsData) {
         value.className = 'treemap-legend__value';
         value.textContent = `${node.share.toFixed(1)}% · ${node.records.toLocaleString()}`;
 
-        legendItem.append(swatch, label, value);
+        textWrap.append(label, value);
+        legendItem.append(swatch, textWrap);
         legendFragment.appendChild(legendItem);
     });
     legendEl.appendChild(legendFragment);
@@ -2166,39 +2170,11 @@ function renderAcquisitionTreemap(metricsData) {
                 div.setAttribute('aria-label', `${node.method} ${node.share.toFixed(1)} percent of volume`);
                 div.title = `${node.method} · ${node.share.toFixed(1)}% (${node.records.toLocaleString()} records)`;
 
-                const labelFits = rectWidth >= 140 && rowHeight >= 90;
-                const detailFits = rectWidth >= 180 && rowHeight >= 110;
                 const displayLabel = displayLabelMap[node.method] || node.method;
-
-                if (labelFits) {
-                    const labelFont = Math.max(13, Math.min(20, Math.floor(Math.min(rectWidth / 10, rowHeight / 3))));
-                    const valueFont = Math.max(11, Math.floor(labelFont * 0.78));
-
-                    const labelEl = document.createElement('strong');
-                    labelEl.className = 'treemap-node__label';
-                    labelEl.style.fontSize = `${labelFont}px`;
-                    labelEl.textContent = displayLabel;
-                    div.appendChild(labelEl);
-
-                    if (detailFits) {
-                        const valueEl = document.createElement('span');
-                        valueEl.className = 'treemap-node__value';
-                        valueEl.style.fontSize = `${valueFont}px`;
-                        valueEl.textContent = `${node.share.toFixed(1)}% · ${node.records.toLocaleString()}`;
-                        div.appendChild(valueEl);
-                    } else {
-                        const srValue = document.createElement('span');
-                        srValue.className = 'sr-only';
-                        srValue.textContent = `${node.share.toFixed(1)} percent, ${node.records.toLocaleString()} records`;
-                        div.appendChild(srValue);
-                    }
-                } else {
-                    div.classList.add('treemap-node--compact');
-                    const srLabel = document.createElement('span');
-                    srLabel.className = 'sr-only';
-                    srLabel.textContent = `${displayLabel} ${node.share.toFixed(1)} percent, ${node.records.toLocaleString()} records`;
-                    div.appendChild(srLabel);
-                }
+                const srLabel = document.createElement('span');
+                srLabel.className = 'sr-only';
+                srLabel.textContent = `${displayLabel} ${node.share.toFixed(1)} percent, ${node.records.toLocaleString()} records`;
+                div.appendChild(srLabel);
 
                 fragment.appendChild(div);
                 currentX += rawWidth;

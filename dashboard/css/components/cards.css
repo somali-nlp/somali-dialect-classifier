@@ -477,7 +477,7 @@
 .acquisition-insights {
     display: grid;
     gap: var(--space-6);
-    grid-template-columns: minmax(360px, 1.25fr) minmax(320px, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-bottom: var(--space-12);
 }
 
@@ -511,38 +511,20 @@
     overflow: hidden;
 }
 
-.treemap-node__label {
-    font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    line-height: 1.2;
-    font-size: var(--text-sm);
-    word-break: break-word;
-}
-
-.treemap-node__value {
-    font-size: var(--text-xs);
-    opacity: 0.95;
-    line-height: 1.2;
-}
-
 .treemap-node:hover {
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
 
-.treemap-node--compact {
-    padding: var(--space-3);
-    box-shadow: var(--shadow-sm);
-}
 
 .treemap-legend {
     list-style: none;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--space-3) var(--space-5);
+    display: flex;
+    align-items: stretch;
+    gap: var(--space-4);
     margin: 0;
     padding: 0;
+    flex-wrap: wrap;
 }
 
 .treemap-legend__item {
@@ -551,6 +533,7 @@
     gap: var(--space-3);
     font-size: var(--text-sm);
     color: var(--tableau-text-secondary);
+    padding-right: var(--space-2);
 }
 
 .treemap-legend__swatch {
@@ -560,8 +543,15 @@
     box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
 }
 
+.treemap-legend__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 120px;
+}
+
 .treemap-legend__label {
-    flex: 1;
+    font-family: var(--font-display);
     font-weight: 600;
     color: var(--tableau-text-primary);
 }
