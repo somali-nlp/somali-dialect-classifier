@@ -733,8 +733,13 @@
 
                 <section class="ingestion-timeline" aria-label="Ingestion cadence timeline">
                     <div class="timeline-header">
-                        <h3 class="section-title">Ingestion Cadence</h3>
-                        <p class="timeline-caption" id="timeline-caption">Tracking latest orchestrations…</p>
+                        <div>
+                            <h3 class="section-title">Ingestion Cadence</h3>
+                            <p class="timeline-caption" id="timeline-caption">Tracking latest orchestrations…</p>
+                        </div>
+                        <div class="timeline-filter-buttons" id="timelineFilterButtons" role="group" aria-label="Filter timeline by source">
+                            <!-- Populated by JavaScript -->
+                        </div>
                     </div>
                     <div class="timeline-grid" id="ingestionTimeline" role="list">
                         <!-- Populated by JavaScript -->

@@ -382,7 +382,8 @@
 
 .source-intro {
     margin-bottom: var(--space-10);
-    max-width: 960px;
+    width: 100%;
+    max-width: 100%;
 }
 
 .source-intro-lede {
@@ -390,12 +391,16 @@
     line-height: 1.7;
     color: var(--gray-700);
     margin-bottom: var(--space-3);
+    max-width: 100%;
+    width: 100%;
 }
 
 .source-intro-detail {
     font-size: var(--text-base);
     line-height: 1.6;
     color: var(--gray-600);
+    max-width: 100%;
+    width: 100%;
 }
 
 .source-roster-grid {
@@ -458,21 +463,24 @@
     flex: 1 1 180px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    overflow: hidden;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0.5rem;
     box-shadow: var(--shadow-sm);
 }
 
 .treemap-node strong {
-    font-size: var(--text-base);
+    font-size: var(--text-sm);
     font-family: var(--font-display);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    font-weight: 600;
+    line-height: 1.2;
+    word-break: break-word;
 }
 
 .treemap-node span {
-    font-size: var(--text-sm);
-    opacity: 0.85;
+    font-size: var(--text-xs);
+    opacity: 0.9;
+    line-height: 1.2;
 }
 
 .ingestion-timeline {
@@ -496,6 +504,49 @@
     display: grid;
     gap: 0.75rem;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: var(--space-6);
+}
+
+.timeline-filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.timeline-filter-btn {
+    padding: 0.5rem 1rem;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--gray-300);
+    background: white;
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.timeline-filter-btn:hover {
+    border-color: var(--brand-primary);
+    color: var(--brand-primary);
+}
+
+.timeline-filter-btn.active {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: white;
+}
+
+.timeline-filter-btn:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
 }
 
 .timeline-column {

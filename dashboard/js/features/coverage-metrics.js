@@ -1862,16 +1862,14 @@ function renderStageAllocationChart(metricsData) {
                     },
                     title: {
                         display: true,
-                        text: 'Share of discovered records',
-                        font: { size: 12, weight: 600 }
+                        text: 'Record flow through pipeline stages (%)',
+                        font: { size: 11, weight: 500 }
                     }
                 },
                 y: {
                     stacked: true,
                     title: {
-                        display: true,
-                        text: 'Source',
-                        font: { size: 12, weight: 600 }
+                        display: false
                     }
                 }
             },
@@ -1986,6 +1984,16 @@ function renderAcquisitionTreemap(metricsData) {
         }))
         .sort((a, b) => b.share - a.share);
 
+    // Map to shorter display labels to prevent text cutoff
+    const displayLabelMap = {
+        'API + file snapshots': 'API + File',
+        'Web crawler': 'Web Crawler',
+        'Dataset API': 'Dataset API',
+        'Partner file drop': 'File Drop',
+        'Apify actor': 'Apify',
+        'Uncategorized': 'Other'
+    };
+
     nodes.forEach(node => {
         const div = document.createElement('div');
         div.className = 'treemap-node';
@@ -1995,17 +2003,46 @@ function renderAcquisitionTreemap(metricsData) {
         div.style.flexBasis = `${Math.max(node.share * 4, 160)}px`;
         div.style.flexGrow = Math.max(node.share / 10, 1);
         div.title = `${node.method} · ${node.share.toFixed(1)}% (${node.records.toLocaleString()} records)`;
+
+        // Use shorter label for display, full label in tooltip
+        const displayLabel = displayLabelMap[node.method] || node.method;
+
         div.innerHTML = `
-            <strong>${node.method}</strong>
-            <span>${node.share.toFixed(1)}% · ${node.records.toLocaleString()} records</span>
+            <strong style="display: block; width: 100%; overflow-wrap: break-word; hyphens: auto;">${displayLabel}</strong>
+            <span style="display: block; width: 100%;">${node.share.toFixed(1)}% · ${node.records.toLocaleString()} records</span>
         `;
         container.appendChild(div);
     });
 }
 
+// Module-level storage for timeline source filter state
+let timelineFilteredSources = new Set();
+
+/**
+ * Toggle source visibility in timeline
+ * @param {string} source - Source name to toggle
+ */
+function toggleTimelineSource(source) {
+    if (!source) return;
+
+    // Toggle source in filter set
+    if (timelineFilteredSources.has(source)) {
+        timelineFilteredSources.delete(source);
+    } else {
+        timelineFilteredSources.add(source);
+    }
+
+    // Re-render timeline with updated filter
+    const metricsData = getMetrics();
+    if (metricsData) {
+        renderIngestionTimeline(metricsData);
+    }
+}
+
 function renderIngestionTimeline(metricsData) {
     const container = document.getElementById('ingestionTimeline');
     const caption = document.getElementById('timeline-caption');
+    const filterButtonsContainer = document.getElementById('timelineFilterButtons');
     if (!container) return;
 
     container.innerHTML = '';
@@ -2013,6 +2050,7 @@ function renderIngestionTimeline(metricsData) {
     if (!metricsData || !Array.isArray(metricsData.metrics) || metricsData.metrics.length === 0) {
         if (caption) caption.textContent = 'Timeline will populate after the next orchestration run.';
         container.innerHTML = '<p class="chart-empty-state">Timeline will populate after the next orchestration run.</p>';
+        if (filterButtonsContainer) filterButtonsContainer.innerHTML = '';
         return;
     }
 
@@ -2020,6 +2058,7 @@ function renderIngestionTimeline(metricsData) {
     if (!runSeries.length) {
         if (caption) caption.textContent = 'Timeline will populate after the next orchestration run.';
         container.innerHTML = '<p class="chart-empty-state">Timeline will populate after the next orchestration run.</p>';
+        if (filterButtonsContainer) filterButtonsContainer.innerHTML = '';
         return;
     }
 
@@ -2029,17 +2068,76 @@ function renderIngestionTimeline(metricsData) {
 
     if (caption) {
         const latest = runs[runs.length - 1];
+        const activeCount = timelineFilteredSources.size > 0 ? timelineFilteredSources.size : sources.length;
         caption.textContent = `Latest orchestration ${formatRunWindow(latest.startTimestamp, latest.endTimestamp)} · ${runs.length} runs shown`;
+    }
+
+    // Render filter toggle buttons
+    if (filterButtonsContainer) {
+        const orderedFilterSources = SOURCE_ORDER.filter(source => sources.includes(source))
+            .concat(sources.filter(source => !SOURCE_ORDER.includes(source)));
+
+        const buttonsHTML = orderedFilterSources.map(source => {
+            const isActive = timelineFilteredSources.size === 0 || timelineFilteredSources.has(source);
+            return `<button
+                type="button"
+                class="timeline-filter-btn ${isActive ? 'active' : ''}"
+                data-source="${source}"
+                aria-pressed="${isActive}"
+                title="${isActive ? 'Hide' : 'Show'} ${source} in timeline">
+                ${source}
+            </button>`;
+        }).join('');
+
+        filterButtonsContainer.innerHTML = buttonsHTML;
+
+        // Add click handlers to filter buttons
+        filterButtonsContainer.querySelectorAll('.timeline-filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const source = btn.dataset.source;
+                if (source) {
+                    toggleTimelineSource(source);
+                }
+            });
+        });
     }
 
     const orderedSources = SOURCE_ORDER.filter(source => sources.includes(source))
         .concat(sources.filter(source => !SOURCE_ORDER.includes(source)));
 
     orderedSources.forEach(source => {
+        // Apply source filtering
+        const isFiltered = timelineFilteredSources.size > 0 && !timelineFilteredSources.has(source);
+
         const column = document.createElement('div');
         column.className = 'timeline-column';
+        column.dataset.source = source;
+
+        // Hide column if filtered out
+        if (isFiltered) {
+            column.style.display = 'none';
+        }
+
         const header = document.createElement('h4');
         header.textContent = source;
+        header.style.cursor = 'pointer';
+        header.style.userSelect = 'none';
+        header.style.transition = 'opacity 0.2s ease, color 0.2s ease';
+
+        // Visual feedback for toggle state
+        const isActive = timelineFilteredSources.size === 0 || timelineFilteredSources.has(source);
+        if (!isActive) {
+            header.style.opacity = '0.4';
+            header.style.color = 'var(--gray-400)';
+        }
+        header.title = isActive ? 'Click to hide this source' : 'Click to show this source';
+
+        // Add click handler to header for toggling
+        header.addEventListener('click', () => {
+            toggleTimelineSource(source);
+        });
+
         column.appendChild(header);
 
         const segment = document.createElement('div');
@@ -2050,6 +2148,8 @@ function renderIngestionTimeline(metricsData) {
             button.type = 'button';
             const hasRun = (run.sources && run.sources[source]) ? run.sources[source] > 0 : false;
             button.dataset.active = hasRun.toString();
+            button.dataset.source = source;
+            button.setAttribute('aria-label', `${source} ${hasRun ? 'delivered' : 'idle'} · ${formatRunWindow(run.startTimestamp, run.endTimestamp)}`);
             const sr = document.createElement('span');
             sr.textContent = `${source} ${hasRun ? 'delivered' : 'idle'} · ${formatRunWindow(run.startTimestamp, run.endTimestamp)}`;
             button.appendChild(sr);
