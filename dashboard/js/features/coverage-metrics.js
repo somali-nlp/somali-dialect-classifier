@@ -1758,6 +1758,8 @@ export function initCoverageCharts() {
  */
 export async function initCoverageMetrics() {
     await loadSourceMixTargets();
+    // Reset timeline filter to show all sources by default
+    timelineFilteredSources.clear();
 }
 
 export function getSourceMixTargetsSnapshot() {
