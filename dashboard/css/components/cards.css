@@ -598,10 +598,21 @@
     background: var(--gray-200);
     position: relative;
     cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.timeline-segment button:hover {
+    opacity: 0.8;
+    filter: brightness(1.1);
+    transform: scaleY(1.15);
 }
 
 .timeline-segment button[data-active="true"] {
     background: var(--tableau-blue);
+}
+
+.timeline-segment button[data-active="true"]:hover {
+    filter: brightness(0.9);
 }
 
 .timeline-segment button:focus-visible {
@@ -746,6 +757,8 @@
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--gray-500);
+    display: block;
+    margin-top: var(--space-2);
 }
 
 .roadmap-card p {
