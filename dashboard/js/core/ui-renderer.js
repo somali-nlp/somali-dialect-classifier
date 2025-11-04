@@ -170,7 +170,7 @@ function getTopFilterInsight(breakdown = {}) {
     const [reason, count] = entries[0];
     const label = FILTER_REASON_LABELS[reason] || reason.replace(/_/g, ' ');
     const percentage = (count / total) * 100;
-    return { label, percentage };
+    return { reason, label, percentage, count };
 }
 
 function describeFilterReason(reason) {
