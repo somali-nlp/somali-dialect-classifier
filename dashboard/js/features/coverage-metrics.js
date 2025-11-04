@@ -2051,83 +2051,106 @@ function renderAcquisitionTreemap(metricsData) {
         'Uncategorized': 'Other'
     };
 
-    // Create treemap wrapper for boxes + legend
+    // Treemap dimensions
+    const CONTAINER_WIDTH = container.offsetWidth || 1000;
+    const CONTAINER_HEIGHT = 280;
+    const GAP = 4; // Gap between rectangles
+
+    // Create treemap wrapper
     const treemapWrapper = document.createElement('div');
-    treemapWrapper.style.display = 'flex';
-    treemapWrapper.style.flexDirection = 'column';
-    treemapWrapper.style.gap = '1rem';
+    treemapWrapper.style.position = 'relative';
+    treemapWrapper.style.width = '100%';
+    treemapWrapper.style.height = `${CONTAINER_HEIGHT}px`;
+    treemapWrapper.setAttribute('role', 'list');
+    treemapWrapper.setAttribute('aria-label', 'Acquisition method treemap');
 
-    // Create boxes container (no wrapping - single row)
-    const boxesContainer = document.createElement('div');
-    boxesContainer.setAttribute('role', 'list');
-    boxesContainer.setAttribute('aria-label', 'Acquisition method treemap');
-    boxesContainer.style.display = 'flex';
-    boxesContainer.style.flexWrap = 'nowrap'; // KEY: No wrapping
-    boxesContainer.style.gap = '0.5rem';
-    boxesContainer.style.height = '240px';
-    boxesContainer.style.alignItems = 'stretch';
+    // Simple row-based treemap algorithm
+    // Strategy: Fill rows top-to-bottom, distributing items to minimize aspect ratio
+    const totalArea = CONTAINER_WIDTH * CONTAINER_HEIGHT;
 
-    // Create boxes with direct percentage-based widths
-    nodes.forEach((node) => {
+    // Calculate layout using row-based algorithm
+    const layout = [];
+    let remainingNodes = [...nodes];
+    let currentY = 0;
+
+    while (remainingNodes.length > 0) {
+        // Determine how many items fit well in this row
+        let rowNodes = [];
+        let rowShare = 0;
+
+        // Greedy approach: add items until row is "full enough"
+        // Target: each row should use roughly 1/3 to 1/2 of remaining height
+        const remainingShare = remainingNodes.reduce((sum, n) => sum + n.share, 0);
+        const targetRowShare = Math.min(remainingShare, 50); // Aim for ~50% per row max
+
+        for (let i = 0; i < remainingNodes.length; i++) {
+            const node = remainingNodes[i];
+            if (rowShare === 0 || rowShare + node.share <= targetRowShare * 1.5) {
+                rowNodes.push(node);
+                rowShare += node.share;
+            }
+            if (rowShare >= targetRowShare && rowNodes.length >= 1) break;
+        }
+
+        // If we didn't add anything (edge case), add at least one
+        if (rowNodes.length === 0) {
+            rowNodes.push(remainingNodes[0]);
+            rowShare = remainingNodes[0].share;
+        }
+
+        // Calculate row height based on its share
+        const rowHeight = (rowShare / 100) * CONTAINER_HEIGHT;
+
+        // Layout items within this row
+        let currentX = 0;
+        rowNodes.forEach((node) => {
+            const itemWidth = (node.share / rowShare) * CONTAINER_WIDTH;
+
+            layout.push({
+                node,
+                x: currentX,
+                y: currentY,
+                width: itemWidth - GAP,
+                height: rowHeight - GAP
+            });
+
+            currentX += itemWidth;
+        });
+
+        currentY += rowHeight;
+        remainingNodes = remainingNodes.filter(n => !rowNodes.includes(n));
+    }
+
+    // Render rectangles
+    layout.forEach(({ node, x, y, width, height }) => {
         const div = document.createElement('div');
         div.className = 'treemap-node';
-
-        // Use direct percentage for width (this ensures true proportionality)
-        // Subtract gap space proportionally to account for flexbox gaps
-        const gapAdjustment = 0.9; // Slight reduction to account for gaps
-        div.style.width = `${node.share * gapAdjustment}%`;
-        div.style.flexShrink = '0'; // Don't shrink
-        div.style.flexGrow = '0'; // Don't grow
-        div.style.minWidth = '0'; // Allow very small boxes
+        div.style.position = 'absolute';
+        div.style.left = `${x}px`;
+        div.style.top = `${y}px`;
+        div.style.width = `${width}px`;
+        div.style.height = `${height}px`;
+        div.style.overflow = 'hidden';
 
         div.setAttribute('role', 'listitem');
         div.setAttribute('aria-label', `${node.method} ${node.share.toFixed(1)} percent of volume`);
         div.style.background = ACQUISITION_COLOR_MAP[node.method] || ACQUISITION_COLOR_MAP.Uncategorized;
         div.title = `${node.method} · ${node.share.toFixed(1)}% (${node.records.toLocaleString()} records)`;
 
-        // Content: Only percentage and records (no method name)
-        div.innerHTML = `
-            <strong style="display: block; font-size: ${node.share < 2 ? '0.7rem' : '0.875rem'}; line-height: 1.2;">${node.share.toFixed(1)}%</strong>
-            <span style="display: block; font-size: ${node.share < 2 ? '0.65rem' : '0.75rem'}; opacity: 0.9; margin-top: 0.25rem;">${node.records.toLocaleString()}</span>
-        `;
-        boxesContainer.appendChild(div);
-    });
-
-    // Create legend below the boxes
-    const legend = document.createElement('div');
-    legend.style.display = 'flex';
-    legend.style.flexWrap = 'wrap';
-    legend.style.gap = '1rem';
-    legend.style.justifyContent = 'center';
-    legend.style.paddingTop = '0.5rem';
-    legend.style.borderTop = '1px solid var(--border-color, #e5e7eb)';
-
-    nodes.forEach((node) => {
-        const legendItem = document.createElement('div');
-        legendItem.style.display = 'flex';
-        legendItem.style.alignItems = 'center';
-        legendItem.style.gap = '0.5rem';
-        legendItem.style.fontSize = '0.875rem';
-
         const displayLabel = displayLabelMap[node.method] || node.method;
-        const colorBox = document.createElement('div');
-        colorBox.style.width = '1rem';
-        colorBox.style.height = '1rem';
-        colorBox.style.borderRadius = '0.25rem';
-        colorBox.style.background = ACQUISITION_COLOR_MAP[node.method] || ACQUISITION_COLOR_MAP.Uncategorized;
-        colorBox.style.flexShrink = '0';
 
-        const label = document.createElement('span');
-        label.textContent = displayLabel;
-        label.style.color = 'var(--text-color, #374151)';
+        // Adaptive font sizing based on rectangle size
+        const fontSize = Math.min(width / 8, height / 6, 14);
+        const smallFont = fontSize * 0.8;
 
-        legendItem.appendChild(colorBox);
-        legendItem.appendChild(label);
-        legend.appendChild(legendItem);
+        div.innerHTML = `
+            <strong style="display: block; font-size: ${fontSize}px; line-height: 1.2;">${displayLabel}</strong>
+            <span style="display: block; font-size: ${smallFont}px; opacity: 0.9; margin-top: 0.25rem;">${node.share.toFixed(1)}% · ${node.records.toLocaleString()}</span>
+        `;
+
+        treemapWrapper.appendChild(div);
     });
 
-    treemapWrapper.appendChild(boxesContainer);
-    treemapWrapper.appendChild(legend);
     container.appendChild(treemapWrapper);
 }
 
