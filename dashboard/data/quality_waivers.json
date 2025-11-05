@@ -1,21 +1,26 @@
 {
-  "version": "2025-11-quality-waivers",
   "waivers": [
     {
-      "name": "TikTok Toxicity Flag",
+      "id": "waiver-1",
+      "name": "TikTok-Somali Stream Connection",
       "status": "Active",
-      "granted_on": "2025-10-30",
-      "expires_on": "2025-12-15",
+      "granted_on": "2025-11-02",
+      "expires_on": "2025-12-17",
       "owner": "Social Media Squad",
-      "notes": "Allow 5% tolerance for toxic_filter while new classifier is calibrated."
+      "reason": "API rate limiting and connection stability issues under investigation. Deployment authorized with reduced volume.",
+      "report_url": "data/reports/20251102_071104_tiktok-somali_d400941e_final_quality_report.md"
     },
     {
-      "name": "Språkbanken Manual Review Queue",
-      "status": "Monitoring",
-      "granted_on": "2025-10-15",
-      "expires_on": "2026-01-15",
-      "owner": "Linguistics",
-      "notes": "Academic corpora flagged for encoding issues require manual QA before silver."
+      "id": "waiver-2",
+      "name": "Wikipedia-Somali Low Pass Rate",
+      "status": "Active",
+      "granted_on": "2025-11-02",
+      "expires_on": "2025-12-17",
+      "owner": "Data Quality Team",
+      "reason": "Encyclopedia content naturally has higher filtering rate due to article structure and formatting. Current rate: 64.2%",
+      "report_url": "data/reports/20251102_071104_wikipedia-somali_8be7bd4d_final_quality_report.md"
     }
-  ]
+  ],
+  "generated_at": "2025-11-05T10:22:38.113928+00:00",
+  "total_waivers": 2
 }

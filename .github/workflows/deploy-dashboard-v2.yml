@@ -57,6 +57,12 @@ jobs:
           # - Generates _site/data/all_metrics.json, summary.json, and reports.json
           python scripts/export_dashboard_data.py
 
+          # Step 2b: Generate quality feed data (alerts and waivers)
+          # - Parses quality reports from data/reports/ directory
+          # - Generates dashboard/data/quality_alerts.json and quality_waivers.json
+          # - Links to actual quality reports for transparency
+          python scripts/generate_quality_feed.py
+
       - name: Verify build
         run: |
           # Step 3: Verify all required files are present before deployment

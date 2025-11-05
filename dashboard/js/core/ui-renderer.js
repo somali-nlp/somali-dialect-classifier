@@ -1079,14 +1079,20 @@ function renderExceptionFeed(analytics) {
         }
     };
 
-    tbody.innerHTML = activeAlerts.map(alert => `
-        <tr>
-            <td style="color:${severityColor(alert.severity)};font-weight:600;">${(alert.severity || 'Info').toUpperCase()}</td>
-            <td>${alert.source || 'Portfolio'}</td>
-            <td>${alert.message || ''}</td>
-            <td>${alert.recommendation || ''}</td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = activeAlerts.map(alert => {
+        const recommendation = alert.recommendation || '';
+        const reportLink = alert.report_url
+            ? `<a href="${alert.report_url}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:0.5rem;font-size:var(--text-sm);color:var(--blue-600);text-decoration:none;">View Report →</a>`
+            : '';
+        return `
+            <tr>
+                <td style="color:${severityColor(alert.severity)};font-weight:600;">${(alert.severity || 'Info').toUpperCase()}</td>
+                <td>${alert.source || 'Portfolio'}</td>
+                <td>${alert.message || ''}</td>
+                <td>${recommendation}${reportLink}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function renderQualityWaivers(waivers) {
@@ -1102,9 +1108,13 @@ function renderQualityWaivers(waivers) {
         const status = item.status || 'Active';
         const meta = [
             item.owner ? `Owner: ${item.owner}` : null,
-            item.grantedOn ? `Granted: ${formatDate(item.grantedOn)}` : null,
-            item.expiresOn ? `Expires: ${formatDate(item.expiresOn)}` : null
+            item.granted_on ? `Granted: ${formatDate(item.granted_on)}` : null,
+            item.expires_on ? `Expires: ${formatDate(item.expires_on)}` : null
         ].filter(Boolean).join(' • ');
+        const reason = item.reason || item.notes || 'No additional notes.';
+        const reportLink = item.report_url
+            ? `<a href="${item.report_url}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:0.75rem;font-size:var(--text-sm);color:var(--blue-600);text-decoration:none;">View Quality Report →</a>`
+            : '';
         return `
             <article class="waiver-item">
                 <header class="waiver-header" role="button">
@@ -1112,7 +1122,8 @@ function renderQualityWaivers(waivers) {
                     <span>${status}</span>
                 </header>
                 <div class="waiver-content">
-                    <p>${item.notes || 'No additional notes.'}</p>
+                    <p>${reason}</p>
+                    ${reportLink}
                     <div class="waiver-meta">${meta}</div>
                 </div>
             </article>
