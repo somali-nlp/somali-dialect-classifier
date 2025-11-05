@@ -37,7 +37,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pydantic
+          pip install pydantic numpy
 
       - name: Build dashboard site
         run: |
