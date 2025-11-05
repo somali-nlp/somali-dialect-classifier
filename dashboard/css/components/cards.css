@@ -1432,10 +1432,12 @@
 
 .roster-card {
     background: white;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     padding: var(--space-6);
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);  /* Subtle shadow like Quality Insights */
-    text-align: left;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
 }
 
 /* Add extra space between card groups (between card 2 and 3) to match chart gap */
@@ -1462,27 +1464,23 @@
 }
 
 .roster-card h3 {
-    font-size: var(--text-xs);  /* Match quality-outcome-tile header */
-    color: var(--gray-500);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;  /* Match quality-outcome-tile header */
+    font-size: var(--text-xs);
     font-weight: 700;
-    margin: 0 0 var(--space-2) 0;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gray-500);
 }
 
 .roster-value {
     font-family: var(--font-display);
-    font-size: var(--text-3xl);  /* Match quality-outcome-tile value */
-    color: var(--tableau-navy);  /* Match quality-outcome-tile value */
-    margin-bottom: var(--space-2);
+    font-size: var(--text-3xl);
+    color: var(--tableau-navy);
 }
 
 .roster-caption {
     font-size: var(--text-sm);
     color: var(--gray-600);
-    line-height: 1.5;  /* Match quality-outcome-tile caption */
-    text-align: left;
-    margin: 0;
+    line-height: 1.5;
 }
 
 .acquisition-insights {
