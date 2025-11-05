@@ -91,8 +91,10 @@
 }
 
 .tab-panel-wide {
-    max-width: none;
+    max-width: 1400px;      /* Enforce standard width to prevent overflow */
     width: 100%;
+    margin-left: auto;      /* Center container */
+    margin-right: auto;     /* Center container */
     padding-left: var(--space-12);
     padding-right: var(--space-12);
 }

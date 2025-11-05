@@ -875,9 +875,9 @@
 }
 
 .source-roster-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--space-6);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5);  /* 20px gap */
     margin-bottom: var(--space-10);
 }
 
@@ -889,6 +889,42 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+    flex: 1 1 calc((100% - 80px) / 5);  /* 5 cards with 4 gaps of 20px */
+    min-width: 220px;
+    max-width: 260px;
+}
+
+/* Responsive: 4 cards per row on medium screens */
+@media (max-width: 1200px) {
+    .roster-card {
+        flex: 1 1 calc((100% - 60px) / 4);
+        min-width: 200px;
+    }
+}
+
+/* Responsive: 3 cards per row on small laptops */
+@media (max-width: 900px) {
+    .roster-card {
+        flex: 1 1 calc((100% - 40px) / 3);
+        min-width: 180px;
+    }
+}
+
+/* Responsive: 2 cards per row on tablet */
+@media (max-width: 768px) {
+    .roster-card {
+        flex: 1 1 calc((100% - 20px) / 2);
+        min-width: 160px;
+    }
+}
+
+/* Responsive: 1 card per row on mobile */
+@media (max-width: 480px) {
+    .roster-card {
+        flex: 1 1 100%;
+        min-width: unset;
+        max-width: none;
+    }
 }
 
 .roster-card h3 {

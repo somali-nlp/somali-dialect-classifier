@@ -2,12 +2,51 @@
    LAYOUT GRIDS
    ======================================== */
 
-/* Source Grid */
+/* Source Grid - 5 source cards (Wikipedia, Språkbanken, TikTok, HuggingFace, BBC) */
 .source-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--space-6);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5);  /* 20px gap */
     margin-bottom: var(--space-12);
+}
+
+.source-card {
+    flex: 1 1 calc((100% - 80px) / 5);  /* 5 cards with 4 gaps of 20px */
+    min-width: 220px;
+    max-width: 260px;
+}
+
+/* Responsive: 4 cards per row on medium screens */
+@media (max-width: 1200px) {
+    .source-card {
+        flex: 1 1 calc((100% - 60px) / 4);
+        min-width: 200px;
+    }
+}
+
+/* Responsive: 3 cards per row on small laptops */
+@media (max-width: 900px) {
+    .source-card {
+        flex: 1 1 calc((100% - 40px) / 3);
+        min-width: 180px;
+    }
+}
+
+/* Responsive: 2 cards per row on tablet */
+@media (max-width: 768px) {
+    .source-card {
+        flex: 1 1 calc((100% - 20px) / 2);
+        min-width: 160px;
+    }
+}
+
+/* Responsive: 1 card per row on mobile */
+@media (max-width: 480px) {
+    .source-card {
+        flex: 1 1 100%;
+        min-width: unset;
+        max-width: none;
+    }
 }
 
 /* Charts Grid */
@@ -96,10 +135,34 @@
     margin-bottom: var(--space-8);
 }
 
-/* Coverage Scorecard */
+/* Coverage Scorecard - Updated for flexible card layout */
 .coverage-scorecard {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--space-4);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5);  /* 20px gap */
     margin-bottom: var(--space-8);
+}
+
+/* Coverage metric cards - optimized for 4 cards */
+.coverage-metric {
+    flex: 1 1 calc((100% - 60px) / 4);  /* 4 cards with 3 gaps of 20px */
+    min-width: 260px;
+    max-width: 310px;
+}
+
+/* Responsive: 2 cards per row on tablet */
+@media (max-width: 768px) {
+    .coverage-metric {
+        flex: 1 1 calc((100% - 20px) / 2);
+        min-width: 220px;
+    }
+}
+
+/* Responsive: 1 card per row on mobile */
+@media (max-width: 480px) {
+    .coverage-metric {
+        flex: 1 1 100%;
+        min-width: unset;
+        max-width: none;
+    }
 }

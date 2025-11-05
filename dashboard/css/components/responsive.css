@@ -102,9 +102,7 @@
         justify-content: flex-start;
     }
 
-    .source-grid {
-        grid-template-columns: 1fr;
-    }
+    /* Source grid responsive behavior now handled in grid.css with flexbox */
 
     .source-card,
     .chart-card,
@@ -162,9 +160,7 @@
         width: fit-content;
     }
 
-    .coverage-scorecard {
-        grid-template-columns: 1fr;
-    }
+    /* Coverage scorecard responsive behavior now handled in grid.css */
 
 }
 
