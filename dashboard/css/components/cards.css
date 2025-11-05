@@ -878,7 +878,8 @@
     display: grid;
     grid-template-columns: repeat(4, 1fr);  /* 4 cards in one row */
     gap: var(--space-4);  /* Small gap within groups */
-    margin-bottom: var(--space-10);
+    margin-top: var(--space-8);  /* Breathing room from paragraph above */
+    margin-bottom: var(--space-12);  /* More space before charts below */
 }
 
 .roster-card {
