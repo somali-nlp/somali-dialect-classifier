@@ -97,6 +97,13 @@ def generate_sankey_flow(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
         }
 
     # Aggregate across all runs
+    # The pipeline flow represents the full journey from candidate records to final dataset:
+    # 1. Discovered/Fetched/Extracted: Candidate records (quality_received + filtered_out)
+    # 2. Quality Check: Records that reached quality filters (quality_received)
+    # 3. Silver Dataset: Records that passed quality filters (quality_passed)
+    #
+    # Note: filter_breakdown includes records filtered at ANY stage (extraction, quality, etc.)
+    # So to get the true "discovered" count, we need: quality_received + sum(filter_breakdown)
     total_discovered = 0
     total_fetched = 0
     total_extracted = 0
@@ -116,47 +123,31 @@ def generate_sankey_flow(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
         quality = layered.get("quality", {})
         volume = layered.get("volume", {})
 
-        # Discovery stage (URLs or files discovered)
-        discovered = snapshot.get("urls_discovered", 0) + snapshot.get("files_discovered", 0)
-        total_discovered += discovered
-
-        # Fetch stage (HTTP requests or files processed)
-        fetched = (
-            snapshot.get("urls_fetched", 0) +
-            snapshot.get("files_processed", 0) +
-            extraction.get("http_requests_successful", 0)
-        )
-        total_fetched += fetched if fetched > 0 else discovered
-
-        # Extraction stage (content extracted)
-        extracted = extraction.get("content_extracted", 0)
-        if extracted == 0:
-            extracted = snapshot.get("records_extracted", 0)
-        if extracted == 0:
-            extracted = snapshot.get("urls_processed", 0)
-        total_extracted += extracted
-
-        # Quality check stage
+        # Quality stage metrics
         quality_received = quality.get("records_received", 0)
         quality_passed = quality.get("records_passed_filters", 0)
-        total_quality_received += quality_received if quality_received > 0 else extracted
-        total_quality_passed += quality_passed
-
-        # Final written records
         written = volume.get("records_written", 0)
+
+        # Aggregate filter breakdown (these are records filtered at any stage)
+        filter_breakdown = quality.get("filter_breakdown", {})
+        total_filtered_out = sum(filter_breakdown.values())
+
+        # Candidate records = records that passed quality + records filtered out
+        # Note: quality_received may include some records not in filter_breakdown
+        # (e.g., records rejected at quality stage but not tracked in breakdown)
+        # To match UI analytics calculation, use quality_passed + filter_breakdown
+        candidate_records = quality_passed + total_filtered_out
+
+        total_discovered += candidate_records
+        total_fetched += candidate_records  # Same as discovered for aggregated view
+        total_extracted += candidate_records  # Same as discovered for aggregated view
+        total_quality_received += candidate_records  # All records enter quality pipeline
+        total_quality_passed += quality_passed
         total_written += written
 
-        # Aggregate filter breakdown
-        filter_breakdown = quality.get("filter_breakdown", {})
+        # Aggregate filter breakdown for display
         for filter_name, count in filter_breakdown.items():
             filter_totals[filter_name] += count
-
-    # Ensure logical flow (no stage can have more than previous)
-    total_fetched = min(total_fetched, total_discovered) if total_discovered > 0 else total_fetched
-    total_extracted = min(total_extracted, total_fetched) if total_fetched > 0 else total_extracted
-    total_quality_received = min(total_quality_received, total_extracted) if total_extracted > 0 else total_quality_received
-    total_quality_passed = min(total_quality_passed, total_quality_received)
-    total_written = min(total_written, total_quality_passed) if total_quality_passed > 0 else total_written
 
     # Build Sankey structure
     nodes = [
