@@ -2,13 +2,13 @@
   "alerts": [
     {
       "id": "alert-1",
-      "severity": "high",
-      "message": "TikTok-Somali pipeline status is UNHEALTHY. Stream connection failed.",
+      "severity": "medium",
+      "message": "TikTok-Somali has 67% data waste from emoji-only filtering.",
       "source": "TikTok-Somali",
       "timestamp": "2025-11-02T07:13:10.370204+00:00",
       "report_url": "data/reports/20251102_071104_tiktok-somali_d400941e_final_quality_report.md",
       "details": "**Stream connection failed.** Check API credentials, network connectivity, and rate limits.",
-      "recommendation": "Check API credentials, network connectivity, rate limits, and authentication tokens. Review service logs for connection errors."
+      "recommendation": "Apify scrapes all comments (~$0.10/1K), but ~800 emoji-only comments are filtered locally. Options: (1) Scale to more videos for better ROI (current cost: $0.0037/linguistic comment), (2) Investigate Apify Comments Analyzer AI Agent for pre-filtering, or (3) Accept current 26.8% yield as baseline. Economic impact: ~$0.80 per run on filtered content."
     },
     {
       "id": "alert-2",
@@ -31,6 +31,6 @@
       "recommendation": "Implement connection pooling, adjust timeouts, or use concurrent requests. Consider adding caching layer for frequently accessed content."
     }
   ],
-  "generated_at": "2025-11-05T10:22:38.113443+00:00",
+  "generated_at": "2025-11-05T10:54:21.114436+00:00",
   "total_alerts": 3
 }

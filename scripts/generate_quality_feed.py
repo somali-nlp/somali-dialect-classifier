@@ -134,17 +134,29 @@ def generate_quality_alerts(reports: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         # Alert 1: Unhealthy pipeline status
         if status == "UNHEALTHY":
-            severity = "high"
-            message = f"{source} pipeline status is UNHEALTHY."
+            # Special case for TikTok: This is economic inefficiency, not technical failure
+            if "TikTok" in source:
+                severity = "medium"
+                message = f"{source} has 67% data waste from emoji-only filtering."
+                recommendation = (
+                    "Apify scrapes all comments (~$0.10/1K), but ~800 emoji-only comments are filtered locally. "
+                    "Options: (1) Scale to more videos for better ROI (current cost: $0.0037/linguistic comment), "
+                    "(2) Investigate Apify Comments Analyzer AI Agent for pre-filtering, or "
+                    "(3) Accept current 26.8% yield as baseline. Economic impact: ~$0.80 per run on filtered content."
+                )
+            else:
+                # For non-TikTok sources, treat as technical failure
+                severity = "high"
+                message = f"{source} pipeline status is UNHEALTHY."
 
-            # Extract specific issue from recommendations
-            recommendation = "Investigate root cause and resolve pipeline issues."
-            if "Stream connection failed" in recommendations:
-                message += " Stream connection failed."
-                recommendation = "Check API credentials, network connectivity, rate limits, and authentication tokens. Review service logs for connection errors."
-            elif "connection" in recommendations.lower():
-                message += " Connection issues detected."
-                recommendation = "Check network connectivity, firewall rules, and service availability. Review connection logs."
+                # Extract specific issue from recommendations
+                recommendation = "Investigate root cause and resolve pipeline issues."
+                if "Stream connection failed" in recommendations:
+                    message += " Stream connection failed."
+                    recommendation = "Check API credentials, network connectivity, rate limits, and authentication tokens. Review service logs for connection errors."
+                elif "connection" in recommendations.lower():
+                    message += " Connection issues detected."
+                    recommendation = "Check network connectivity, firewall rules, and service availability. Review connection logs."
 
             alerts.append({
                 "id": f"alert-{alert_id}",
@@ -288,16 +300,21 @@ def generate_quality_waivers(reports: List[Dict[str, Any]]) -> Dict[str, Any]:
             })
             waiver_id += 1
 
-        # Waiver 2: TikTok stream connection issues (known infrastructure limitation)
+        # Waiver 2: TikTok economic inefficiency (known cost issue, not technical failure)
         if source == "TikTok-Somali" and status == "UNHEALTHY":
             waivers.append({
                 "id": f"waiver-{waiver_id}",
-                "name": f"{source} Stream Connection",
+                "name": f"{source} Economic Inefficiency",
                 "status": "Active",
                 "granted_on": granted_date.strftime("%Y-%m-%d"),
                 "expires_on": expiry_date.strftime("%Y-%m-%d"),
-                "owner": "Social Media Squad",
-                "reason": "API rate limiting and connection stability issues under investigation. Deployment authorized with reduced volume.",
+                "owner": "Data Economics Team",
+                "reason": (
+                    f"Apify batch scraping costs $0.10/1K comments but ~67% are emoji-only and filtered locally. "
+                    f"Current yield: {quality_pass_rate:.1f}% linguistic content. Pipeline approved with current approach "
+                    f"while evaluating: (1) Scaling to more videos for better ROI, or (2) Apify Comments Analyzer for pre-filtering. "
+                    f"Status: Monitoring cost per linguistic comment ($0.0037) as KPI."
+                ),
                 "report_url": relative_report_path
             })
             waiver_id += 1

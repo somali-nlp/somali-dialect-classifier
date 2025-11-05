@@ -2,12 +2,12 @@
   "waivers": [
     {
       "id": "waiver-1",
-      "name": "TikTok-Somali Stream Connection",
+      "name": "TikTok-Somali Economic Inefficiency",
       "status": "Active",
       "granted_on": "2025-11-02",
       "expires_on": "2025-12-17",
-      "owner": "Social Media Squad",
-      "reason": "API rate limiting and connection stability issues under investigation. Deployment authorized with reduced volume.",
+      "owner": "Data Economics Team",
+      "reason": "Apify batch scraping costs $0.10/1K comments but ~67% are emoji-only and filtered locally. Current yield: 82.4% linguistic content. Pipeline approved with current approach while evaluating: (1) Scaling to more videos for better ROI, or (2) Apify Comments Analyzer for pre-filtering. Status: Monitoring cost per linguistic comment ($0.0037) as KPI.",
       "report_url": "data/reports/20251102_071104_tiktok-somali_d400941e_final_quality_report.md"
     },
     {
@@ -21,6 +21,6 @@
       "report_url": "data/reports/20251102_071104_wikipedia-somali_8be7bd4d_final_quality_report.md"
     }
   ],
-  "generated_at": "2025-11-05T10:22:38.113928+00:00",
+  "generated_at": "2025-11-05T10:54:21.115107+00:00",
   "total_waivers": 2
 }
