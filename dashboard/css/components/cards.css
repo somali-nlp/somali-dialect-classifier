@@ -1432,12 +1432,23 @@
 
 .roster-card {
     background: white;
-    border-radius: var(--radius-card);
-    padding: var(--space-6);  /* Balanced padding: 24px all sides */
-    box-shadow: var(--shadow-md);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);  /* Comfortable spacing between elements */
+    border: 1px solid var(--gray-200);  /* Match coverage-metric border */
+    border-radius: var(--radius-lg);  /* Match coverage-metric */
+    padding: var(--space-6);
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Top accent bar like coverage-metric */
+.roster-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--brand-primary), var(--success));
 }
 
 /* Add extra space between card groups (between card 2 and 3) to match chart gap */
@@ -1464,28 +1475,29 @@
 }
 
 .roster-card h3 {
-    font-size: var(--text-xs);  /* Smaller heading like Quality Insights */
+    font-size: var(--text-sm);  /* Match coverage-label */
+    color: var(--gray-600);
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--gray-500);
-    font-weight: 500;
-    margin-bottom: var(--space-1);
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    margin: 0 0 var(--space-2) 0;
 }
 
 .roster-value {
     font-family: var(--font-display);
-    font-size: var(--text-3xl);  /* Keep large number */
-    font-weight: 600;
-    color: var(--tableau-navy);
+    font-size: var(--text-4xl);  /* Match coverage-value size */
+    font-weight: 700;
+    color: var(--brand-primary);  /* Match coverage-value color */
     line-height: 1.2;
     margin-bottom: var(--space-2);
 }
 
 .roster-caption {
-    font-size: var(--text-sm);  /* Slightly larger for better readability */
+    font-size: var(--text-sm);
     color: var(--gray-600);
     line-height: 1.4;
-    text-align: left;  /* Left-aligned instead of centered */
+    text-align: left;
+    margin: 0;
 }
 
 .acquisition-insights {
