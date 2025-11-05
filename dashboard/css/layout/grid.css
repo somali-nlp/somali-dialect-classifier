@@ -6,37 +6,37 @@
 .source-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-5);  /* 20px gap */
+    gap: var(--space-6);  /* 24px gap for better breathing room */
     margin-bottom: var(--space-12);
 }
 
 .source-card {
-    flex: 1 1 calc((100% - 80px) / 5);  /* 5 cards with 4 gaps of 20px */
-    min-width: 220px;
-    max-width: 260px;
+    flex: 1 1 calc((100% - 96px) / 5);  /* 5 cards with 4 gaps of 24px */
+    min-width: 230px;
+    max-width: 270px;
 }
 
 /* Responsive: 4 cards per row on medium screens */
 @media (max-width: 1200px) {
     .source-card {
-        flex: 1 1 calc((100% - 60px) / 4);
-        min-width: 200px;
+        flex: 1 1 calc((100% - 72px) / 4);  /* 4 cards with 3 gaps of 24px */
+        min-width: 210px;
     }
 }
 
 /* Responsive: 3 cards per row on small laptops */
 @media (max-width: 900px) {
     .source-card {
-        flex: 1 1 calc((100% - 40px) / 3);
-        min-width: 180px;
+        flex: 1 1 calc((100% - 48px) / 3);  /* 3 cards with 2 gaps of 24px */
+        min-width: 200px;
     }
 }
 
 /* Responsive: 2 cards per row on tablet */
 @media (max-width: 768px) {
     .source-card {
-        flex: 1 1 calc((100% - 20px) / 2);
-        min-width: 160px;
+        flex: 1 1 calc((100% - 24px) / 2);  /* 2 cards with 1 gap of 24px */
+        min-width: 180px;
     }
 }
 
