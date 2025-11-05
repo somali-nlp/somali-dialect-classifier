@@ -678,8 +678,23 @@ export function populateSourceBriefings(analyticsOverride = null) {
         return;
     }
 
+    // Define order to match toggle indicators: Wikipedia, BBC, HuggingFace, Språkbanken, TikTok
+    const sourceOrder = ['Wikipedia', 'BBC', 'HuggingFace', 'Språkbanken', 'TikTok'];
+
     const cards = analytics.items
-        .sort((a, b) => b.records - a.records)
+        .sort((a, b) => {
+            const aIndex = sourceOrder.indexOf(a.name);
+            const bIndex = sourceOrder.indexOf(b.name);
+            // If both sources are in the predefined order, sort by that order
+            if (aIndex !== -1 && bIndex !== -1) {
+                return aIndex - bIndex;
+            }
+            // If only one is in the order, prioritize it
+            if (aIndex !== -1) return -1;
+            if (bIndex !== -1) return 1;
+            // Otherwise fall back to record count
+            return b.records - a.records;
+        })
         .map(item => renderSourceBriefingCard(item))
         .join('');
 
