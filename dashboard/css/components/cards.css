@@ -884,11 +884,11 @@
 .roster-card {
     background: white;
     border-radius: var(--radius-card);
-    padding: var(--space-5) var(--space-6);  /* Reduced vertical padding: 20px top/bottom, 24px sides */
+    padding: var(--space-6);  /* Balanced padding: 24px all sides */
     box-shadow: var(--shadow-md);
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);  /* Tighter spacing between elements */
+    gap: var(--space-2);  /* Comfortable spacing between elements */
 }
 
 /* Add extra space between card groups (between card 2 and 3) to match chart gap */
