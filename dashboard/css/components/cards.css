@@ -361,7 +361,7 @@
     font-size: 16px;
     line-height: 1.8;
     color: var(--gray-700);
-    max-width: 960px;
+    max-width: 100%;
     width: 100%;
     margin: 0;
 }
@@ -475,7 +475,7 @@
 
 .section-header h3 {
     font-family: var(--font-display);
-    font-size: var(--text-xl);
+    font-size: var(--text-3xl);
     color: var(--tableau-navy);
 }
 
