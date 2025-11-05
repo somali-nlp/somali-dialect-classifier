@@ -958,126 +958,109 @@
 
         <!-- Tab 4: Pipeline Performance -->
         <div class="tab-content" id="pipeline-panel" role="tabpanel" aria-labelledby="pipeline-tab" data-show-in="analyst">
-            <div class="tab-panel">
+            <div class="tab-panel tab-panel-wide pipeline-panel">
                 <h2 class="section-title">Pipeline Performance Metrics</h2>
-                <p class="mb-8" style="color: var(--gray-600); font-size: var(--text-base);">
-                    Real-time monitoring for the ingestion stage today and placeholders for the annotation, modeling, evaluation, and deployment stages as they come online.
-                </p>
-
-                <!-- Performance Charts -->
-                <div class="charts-section">
-                    <!-- Advanced Charts: Sankey Diagram (Data Flow) -->
-                    <div class="chart-card" style="grid-column: 1 / -1; margin-bottom: 2rem;">
-                        <div class="chart-header">
-                            <h3 class="chart-title">Data Pipeline Flow (Sankey Diagram)</h3>
-                            <p style="font-size: var(--text-sm); color: var(--gray-600); margin-top: 0.5rem;">
-                                Visualizing data flow through discovery, extraction, quality filtering, and final output stages
-                            </p>
-                        </div>
-                        <div class="chart-canvas">
-                            <div id="sankeyContainer" style="min-height: 500px;"></div>
-                        </div>
-                    </div>
-
-                    <!-- Chart 1: Performance Efficiency (Bullet Graph) -->
-                    <div class="chart-card" style="grid-column: 1 / -1;">
-                        <div class="chart-canvas">
-                            <canvas id="performanceBulletChart" aria-label="Performance efficiency bullet graph comparing sources"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Chart 2: Quality vs Speed (Scatter) and Chart 3: Cumulative Timeline (Stream) -->
-                    <div class="charts-grid">
-                        <div class="chart-card">
-                            <div class="chart-canvas">
-                                <canvas id="qualityVsSpeedChart" aria-label="Scatter plot showing quality vs speed trade-off"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-card">
-                            <div class="chart-canvas">
-                                <canvas id="cumulativeTimelineChart" aria-label="Stream graph showing cumulative data collection timeline"></canvas>
-                            </div>
-                        </div>
-                    </div>
+                <div class="pipeline-intro">
+                    <p class="pipeline-narrative" id="pipeline-overview-narrative" aria-live="polite">
+                        Compiling performance insights…
+                    </p>
+                </div>
+                <div class="pipeline-sla-strip" id="pipeline-sla-strip" aria-label="Run SLA targets">
+                    <!-- Populated by JavaScript -->
                 </div>
 
-                <!-- Performance Summary -->
-                <div class="mt-8">
-                    <h3 class="section-title">Performance Summary</h3>
-                    <div class="source-grid">
-                        <div class="source-card">
-                            <h4 class="source-card-title">Wikipedia</h4>
-                            <div class="source-card-metrics">
-                                <div class="source-metric">
-                                    <span class="source-metric-label">URLs/Second</span>
-                                    <span class="source-metric-value">0</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Records/Minute</span>
-                                    <span class="source-metric-value">0</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Duration</span>
-                                    <span class="source-metric-value">0s</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="source-card">
-                            <h4 class="source-card-title">BBC</h4>
-                            <div class="source-card-metrics">
-                                <div class="source-metric">
-                                    <span class="source-metric-label">URLs/Second</span>
-                                    <span class="source-metric-value">0</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Records/Minute</span>
-                                    <span class="source-metric-value">0</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Duration</span>
-                                    <span class="source-metric-value">0s</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="source-card">
-                            <h4 class="source-card-title">HuggingFace</h4>
-                            <div class="source-card-metrics">
-                                <div class="source-metric">
-                                    <span class="source-metric-label">URLs/Second</span>
-                                    <span class="source-metric-value">0</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Records/Minute</span>
-                                    <span class="source-metric-value">0</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Duration</span>
-                                    <span class="source-metric-value">0s</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="source-card">
-                            <h4 class="source-card-title">Språkbanken</h4>
-                            <div class="source-card-metrics">
-                                <div class="source-metric">
-                                    <span class="source-metric-label">URLs/Second</span>
-                                    <span class="source-metric-value">0</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Records/Minute</span>
-                                    <span class="source-metric-value">0</span>
-                                </div>
-                                <div class="source-metric">
-                                    <span class="source-metric-label">Duration</span>
-                                    <span class="source-metric-value">0s</span>
-                                </div>
-                            </div>
-                        </div>
+                <section class="pipeline-throughput" aria-label="Throughput dashboard">
+                    <div class="pipeline-throughput-grid" id="pipeline-throughput-grid">
+                        <!-- Populated by JavaScript -->
                     </div>
-                </div>
+                </section>
+
+                <section class="pipeline-stage-flow" aria-label="Stage latency waterfall">
+                    <div class="section-header">
+                        <h3>Stage Latency Waterfall</h3>
+                        <p class="section-subtitle">Time spent across discovery, fetch, extract, quality, and write stages</p>
+                    </div>
+                    <div class="stage-waterfall" id="pipeline-waterfall">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                    <div class="stage-waterfall-legend" id="pipeline-waterfall-legend">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+
+                <section class="pipeline-sla-monitor" aria-label="Source SLA monitor">
+                    <div class="section-header">
+                        <h3>Source SLA Monitor</h3>
+                        <p class="section-subtitle">Live throughput vs SLA for each ingestion source</p>
+                    </div>
+                    <div class="pipeline-sla-grid" id="pipeline-sla-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+
+                <section class="pipeline-timeline" aria-label="Run timeline and backlog">
+                    <div class="section-header">
+                        <h3>Run Timeline &amp; Backlog</h3>
+                        <p class="section-subtitle">Recent orchestrations with duration, throughput, and retries</p>
+                    </div>
+                    <div class="pipeline-timeline-grid" id="pipeline-timeline-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+
+                <section class="pipeline-heatmap" aria-label="Retry and error heatmap">
+                    <div class="section-header">
+                        <h3>Retry &amp; Error Heatmap</h3>
+                        <p class="section-subtitle">Sources vs error types to spotlight hotspots</p>
+                    </div>
+                    <div class="pipeline-heatmap-table" id="pipeline-heatmap-table">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+
+                <section class="pipeline-resources" aria-label="Resource utilization">
+                    <div class="section-header">
+                        <h3>Resource Utilization</h3>
+                        <p class="section-subtitle">Worker concurrency, queue depth, and bandwidth</p>
+                    </div>
+                    <div class="pipeline-resource-grid" id="pipeline-resource-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+
+                <section class="pipeline-alerts" aria-label="Runbook alerts">
+                    <div class="section-header">
+                        <h3>Runbook Alerts</h3>
+                        <p class="section-subtitle">Operator actions required for upcoming runs</p>
+                    </div>
+                    <div class="exception-table-wrapper">
+                        <table class="exception-table" id="pipeline-alert-table">
+                            <thead>
+                                <tr>
+                                    <th>Severity</th>
+                                    <th>Scope</th>
+                                    <th>Alert</th>
+                                    <th>Recommendation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" class="empty-state">Loading alerts…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="pipeline-observations" aria-label="Observation log">
+                    <div class="section-header">
+                        <h3>Observation Log</h3>
+                        <p class="section-subtitle">Known throttles and operational notes</p>
+                    </div>
+                    <div class="pipeline-observation-accordion" id="pipeline-observation-accordion">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
             </div>
         </div>
 

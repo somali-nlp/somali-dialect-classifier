@@ -368,7 +368,7 @@ function extractTimestamp(metric) {
     return metric.last_successful_write || metric.timestamp || metric.snapshot?.timestamp || null;
 }
 
-function aggregateRunSeries(metrics, limit = 8) {
+export function aggregateRunSeries(metrics, limit = 8) {
     const runMap = new Map();
     metrics.forEach(metric => {
         if (!metric) return;

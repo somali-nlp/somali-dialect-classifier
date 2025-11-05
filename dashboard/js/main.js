@@ -316,6 +316,7 @@ function initAdvancedFeatures() {
             const qualityAnalytics = computeQualityAnalytics(filteredMetrics || []);
             populateQualityOverview(qualityAnalytics);
             refreshQualityCharts(filteredMetrics || []);
+            populatePerformanceMetrics(filteredMetrics);
         });
 
         // Create advanced charts

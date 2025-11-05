@@ -1,0 +1,19 @@
+{
+  "version": "2025-11-pipeline-alerts",
+  "alerts": [
+    {
+      "id": "bbc-duration-sla",
+      "severity": "medium",
+      "message": "BBC ingestion exceeded 30-minute SLA during the last run.",
+      "recommendation": "Inspect extractor throttling and retry budget before next schedule.",
+      "source": "BBC"
+    },
+    {
+      "id": "tik-retry-spike",
+      "severity": "high",
+      "message": "TikTok retries consumed 80% of the allowed budget.",
+      "recommendation": "Evaluate Apify actor settings and adjust retry backoff.",
+      "source": "TikTok"
+    }
+  ]
+}

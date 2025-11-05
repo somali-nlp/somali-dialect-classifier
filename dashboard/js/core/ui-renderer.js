@@ -3,9 +3,19 @@
  * Populates DOM elements with metrics data
  */
 
-import { getMetrics, getSourceCatalog, getPipelineStatus, getSankeyFlow, getQualityAlerts, getQualityWaivers } from './data-service.js';
+import {
+    getMetrics,
+    getSourceCatalog,
+    getPipelineStatus,
+    getSankeyFlow,
+    getQualityAlerts,
+    getQualityWaivers,
+    getPipelineAlerts,
+    getPipelineObservations
+} from './data-service.js';
 import { normalizeSourceName, formatDate } from '../utils/formatters.js';
-import { computeQualityAnalytics, FILTER_REASON_LABELS } from './aggregates.js';
+import { computeQualityAnalytics, computePerformanceAnalytics, FILTER_REASON_LABELS } from './aggregates.js';
+import { renderPipelineCharts } from './charts.js';
 import { getSourceMixTargetsSnapshot } from '../features/coverage-metrics.js';
 import { FilterManager } from '../features/filter-manager.js';
 
@@ -1190,83 +1200,853 @@ window.addEventListener('qualityFilterSummary', event => {
 /**
  * Populate performance metrics cards in the Pipeline tab
  */
-export function populatePerformanceMetrics() {
-    const metricsData = getMetrics();
+const PIPELINE_STAGE_ORDER = ['discover', 'fetch', 'extract', 'quality', 'write'];
+const PIPELINE_STAGE_LABELS = {
+    discover: 'Discover',
+    fetch: 'Fetch',
+    extract: 'Extract',
+    quality: 'Quality',
+    write: 'Write'
+};
 
-    if (!metricsData || !metricsData.metrics || metricsData.metrics.length === 0) {
-        const perfSection = document.querySelector('#pipeline-panel .source-grid');
-        if (perfSection) {
-            perfSection.innerHTML = `
-                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray-500);">
-                    <p>No performance metrics available yet. Run the data ingestion pipeline to populate metrics.</p>
-                </div>
-            `;
+const PIPELINE_STAGE_DESCRIPTIONS = {
+    discover: 'URL discovery and scheduling',
+    fetch: 'HTTP fetch and retry',
+    extract: 'Content extraction and parsing',
+    quality: 'Quality gate evaluation',
+    write: 'Writing to silver storage'
+};
+
+const PIPELINE_STAGE_COLORS = {
+    discover: '#1d4ed8',
+    fetch: '#2563eb',
+    extract: '#0d9488',
+    quality: '#7c3aed',
+    write: '#f59e0b'
+};
+
+const PIPELINE_SLA_DEFINITIONS = [
+    {
+        key: 'duration',
+        label: 'End-to-End Runtime',
+        targetLabel: '≤ 30 min',
+        targetValue: 1800,
+        comparison: 'max',
+        accessor: analytics => analytics?.lastRun?.durationSeconds ?? null
+    },
+    {
+        key: 'success',
+        label: 'Fetch Success',
+        targetLabel: '≥ 95%',
+        targetValue: 0.95,
+        comparison: 'min',
+        accessor: analytics => {
+            const values = (analytics?.perSource || [])
+                .map(item => item.successRate)
+                .filter(value => Number.isFinite(value));
+            if (!values.length) return null;
+            return values.reduce((sum, value) => sum + value, 0) / values.length;
         }
-        return;
+    },
+    {
+        key: 'retries',
+        label: 'Retry Budget',
+        targetLabel: '≤ 20',
+        targetValue: 20,
+        comparison: 'max',
+        accessor: analytics => analytics?.lastRun?.retries ?? null
+    },
+    {
+        key: 'fetchRate',
+        label: 'Fetch Cadence',
+        targetLabel: '≥ 50 urls/s',
+        targetValue: 50,
+        comparison: 'min',
+        accessor: analytics => analytics?.lastRun?.urlsPerSecond ?? null
+    }
+];
+
+const PIPELINE_SEVERITY_ORDER = ['high', 'medium', 'low', 'info'];
+const PIPELINE_DELTA_THRESHOLDS = {
+    duration: 5,
+    rpm: 10,
+    workers: 0.1,
+    retries: 1,
+    ups: 1
+};
+
+function formatDuration(seconds, { compact = false } = {}) {
+    if (!Number.isFinite(seconds) || seconds <= 0) {
+        return compact ? '0s' : '0 seconds';
     }
 
-    // Create a map of sources to their performance data
-    const sourcePerfMap = {
-        'Wikipedia': metricsData.metrics.find(m => m.source.includes('Wikipedia')),
-        'BBC': metricsData.metrics.find(m => m.source.includes('BBC')),
-        'HuggingFace': metricsData.metrics.find(m => m.source.includes('HuggingFace')),
-        'Språkbanken': metricsData.metrics.find(m => m.source.includes('Sprakbanken')),
-        'TikTok': metricsData.metrics.find(m => m.source.includes('TikTok'))
+    const total = Math.round(seconds);
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const secs = total % 60;
+
+    if (compact) {
+        const parts = [];
+        if (hours) parts.push(`${hours}h`);
+        if (minutes) parts.push(`${minutes}m`);
+        if (!hours && !minutes && secs) parts.push(`${secs}s`);
+        if (!parts.length && secs) parts.push(`${secs}s`);
+        if (!parts.length) parts.push('0s');
+        return parts.slice(0, 2).join(' ');
+    }
+
+    const parts = [];
+    if (hours) parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
+    if (minutes) parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
+    if (!hours && secs) {
+        parts.push(`${secs} second${secs !== 1 ? 's' : ''}`);
+    }
+    if (!parts.length) {
+        parts.push(`${secs} second${secs !== 1 ? 's' : ''}`);
+    }
+    if (parts.length === 1) return parts[0];
+    if (parts.length === 2) return `${parts[0]} ${parts[1]}`;
+    return `${parts[0]} ${parts[1]}`;
+}
+
+function formatDurationDelta(value) {
+    if (!Number.isFinite(value) || value === 0) return null;
+    return `${value > 0 ? '+' : '-'}${formatDuration(Math.abs(value), { compact: true })}`;
+}
+
+function formatNumberShort(value, { digits = 1 } = {}) {
+    if (!Number.isFinite(value)) return '—';
+    const abs = Math.abs(value);
+    if (abs >= 1000000) {
+        return `${(value / 1000000).toFixed(digits)}M`;
+    }
+    if (abs >= 1000) {
+        return `${(value / 1000).toFixed(abs >= 10000 ? 0 : digits)}K`;
+    }
+    if (abs >= 100) {
+        return Math.round(value).toLocaleString();
+    }
+    if (abs >= 10) {
+        return value.toFixed(1);
+    }
+    if (abs >= 1) {
+        return value.toFixed(1);
+    }
+    if (abs > 0) {
+        return value.toFixed(2);
+    }
+    return '0';
+}
+
+function formatPercent(value, digits = 1) {
+    if (!Number.isFinite(value)) return '—';
+    return `${(value * 100).toFixed(digits)}%`;
+}
+
+function formatNumericDelta(value, { digits = 1 } = {}) {
+    if (!Number.isFinite(value)) return null;
+    const abs = Math.abs(value);
+    let formatted;
+    if (abs >= 1000000) {
+        formatted = `${(abs / 1000000).toFixed(digits)}M`;
+    } else if (abs >= 1000) {
+        formatted = `${(abs / 1000).toFixed(abs >= 10000 ? 0 : digits)}K`;
+    } else if (abs >= 100) {
+        formatted = Math.round(abs).toLocaleString();
+    } else if (abs >= 10) {
+        formatted = abs.toFixed(1);
+    } else if (abs >= 1) {
+        formatted = abs.toFixed(1);
+    } else if (abs > 0) {
+        formatted = abs.toFixed(2);
+    } else {
+        formatted = '0';
+    }
+    return `${value > 0 ? '+' : '-'}${formatted}`;
+}
+
+function evaluateSla(value, target, comparison) {
+    if (!Number.isFinite(value) || !Number.isFinite(target)) {
+        return { status: 'warn', delta: null };
+    }
+
+    if (comparison === 'max') {
+        const diff = value - target;
+        if (diff <= 0) return { status: 'good', delta: diff };
+        if (diff <= target * 0.1) return { status: 'warn', delta: diff };
+        return { status: 'bad', delta: diff };
+    }
+
+    const diff = target - value;
+    if (diff <= 0) return { status: 'good', delta: -diff };
+    if (diff <= target * 0.1) return { status: 'warn', delta: -diff };
+    return { status: 'bad', delta: -diff };
+}
+
+function createEmptyState(message) {
+    return `<div class="empty-state" role="note">${message}</div>`;
+}
+
+function describeStageVariance(stage) {
+    if (!stage || !Number.isFinite(stage.variance)) {
+        return null;
+    }
+
+    const magnitude = Math.abs(stage.variance);
+    if (magnitude < 30) {
+        return null;
+    }
+
+    const label = PIPELINE_STAGE_LABELS[stage.key] || stage.key;
+    const direction = stage.variance > 0 ? 'ran over target by' : 'completed under target by';
+    return `${label} stage ${direction} ${formatDuration(magnitude, { compact: true })}`;
+}
+
+function formatAlertSummary(alert) {
+    if (!alert) return null;
+    const scope = alert.source && alert.source !== 'Pipeline' ? alert.source : 'Pipeline';
+    if (alert.message) {
+        return `${scope} — ${alert.message}`;
+    }
+    return scope;
+}
+
+function sortAlerts(alerts = []) {
+    return [...alerts].sort((a, b) => {
+        const aSeverity = (a.severity || 'info').toLowerCase();
+        const bSeverity = (b.severity || 'info').toLowerCase();
+        const aIndex = PIPELINE_SEVERITY_ORDER.includes(aSeverity) ? PIPELINE_SEVERITY_ORDER.indexOf(aSeverity) : PIPELINE_SEVERITY_ORDER.length;
+        const bIndex = PIPELINE_SEVERITY_ORDER.includes(bSeverity) ? PIPELINE_SEVERITY_ORDER.indexOf(bSeverity) : PIPELINE_SEVERITY_ORDER.length;
+        return aIndex - bIndex;
+    });
+}
+
+function shouldDisplayDelta(key, delta) {
+    if (!Number.isFinite(delta)) return false;
+    const threshold = PIPELINE_DELTA_THRESHOLDS[key] ?? 0.01;
+    return Math.abs(delta) >= threshold;
+}
+
+function getDeltaClass(key, delta) {
+    if (!shouldDisplayDelta(key, delta)) {
+        return '';
+    }
+
+    const positiveIsGoodMap = {
+        duration: false,
+        rpm: true,
+        workers: null,
+        retries: false,
+        ups: true
     };
-
-    // Update Wikipedia card
-    const wikipediaCard = document.querySelector('#pipeline-panel .source-grid .source-card:nth-child(1)');
-    if (wikipediaCard && sourcePerfMap['Wikipedia']) {
-        updatePerformanceCard(wikipediaCard, sourcePerfMap['Wikipedia']);
+    const positiveIsGood = positiveIsGoodMap[key];
+    if (positiveIsGood === null) {
+        return '';
     }
+    const isIncrease = delta > 0;
+    const isGood = positiveIsGood ? isIncrease : !isIncrease;
+    return isGood ? 'positive' : 'negative';
+}
 
-    // Update BBC card
-    const bbcCard = document.querySelector('#pipeline-panel .source-grid .source-card:nth-child(2)');
-    if (bbcCard && sourcePerfMap['BBC']) {
-        updatePerformanceCard(bbcCard, sourcePerfMap['BBC']);
-    }
-
-    // Update HuggingFace card
-    const hfCard = document.querySelector('#pipeline-panel .source-grid .source-card:nth-child(3)');
-    if (hfCard && sourcePerfMap['HuggingFace']) {
-        updatePerformanceCard(hfCard, sourcePerfMap['HuggingFace']);
-    }
-
-    // Update Språkbanken card
-    const sprakCard = document.querySelector('#pipeline-panel .source-grid .source-card:nth-child(4)');
-    if (sprakCard && sourcePerfMap['Språkbanken']) {
-        updatePerformanceCard(sprakCard, sourcePerfMap['Språkbanken']);
+function computeSparklineSeries(timeline = [], key) {
+    const ordered = [...timeline].reverse();
+    switch (key) {
+        case 'duration':
+            return ordered.map(run => Number.isFinite(run.durationSeconds) ? run.durationSeconds : null);
+        case 'rpm':
+            return ordered.map(run => {
+                if (Number.isFinite(run.avgThroughput)) return run.avgThroughput;
+                if (Number.isFinite(run.records) && Number.isFinite(run.durationSeconds) && run.durationSeconds > 0) {
+                    return (run.records * 60) / run.durationSeconds;
+                }
+                return null;
+            });
+        case 'retries':
+            return ordered.map(run => Number.isFinite(run.retries) ? run.retries : 0);
+        default:
+            return ordered.map(() => null);
     }
 }
 
-/**
- * Update a single performance card with metric data
- */
-function updatePerformanceCard(card, metric) {
-    if (!card || !metric) return;
+function renderSlaMetric(label, value, target, comparison, status, isPercent = false, isDuration = false) {
+    const valueText = isPercent
+        ? formatPercent(value)
+        : isDuration
+            ? formatDuration(value, { compact: true })
+            : Number.isFinite(value)
+                ? formatNumberShort(value)
+                : '—';
 
-    const metrics = card.querySelectorAll('.source-metric-value');
-    if (metrics.length === 3) {
-        // URLs/Second
-        // Bug Fix #3: Use flattened urls_per_second (normalized by data-service)
-        const urlsPerSec = metric.urls_per_second || 0;
-        metrics[0].textContent = urlsPerSec >= 1
-            ? Math.round(urlsPerSec).toLocaleString()
-            : urlsPerSec.toFixed(2);
+    const targetText = Number.isFinite(target)
+        ? (isPercent
+            ? formatPercent(target)
+            : isDuration
+                ? formatDuration(target, { compact: true })
+                : formatNumberShort(target))
+        : '—';
 
-        // Records/Minute
-        // Bug Fix #3: Use flattened records_per_minute (normalized by data-service)
-        const recordsPerMin = metric.records_per_minute || 0;
-        metrics[1].textContent = recordsPerMin >= 1
-            ? Math.round(recordsPerMin).toLocaleString()
-            : recordsPerMin.toFixed(2);
+    const comparator = comparison === 'min' ? '≥' : '≤';
 
-        // Duration
-        const duration = metric.duration_seconds || 0;
-        metrics[2].textContent = duration >= 60
-            ? Math.round(duration / 60).toLocaleString() + 'm'
-            : duration.toFixed(1) + 's';
+    return `
+        <div class="pipeline-sla-metric pipeline-sla-metric-${status}">
+            <span>${label}</span>
+            <strong>${valueText}</strong>
+            <small>Target ${comparator} ${targetText}</small>
+        </div>
+    `;
+}
+
+function renderHeatmapCell(value, label) {
+    const count = Number.isFinite(value) ? value : 0;
+    let severity = 'zero';
+    if (count >= 1000) {
+        severity = 'high';
+    } else if (count >= 200) {
+        severity = 'medium';
+    } else if (count > 0) {
+        severity = 'low';
     }
+    return `
+        <div class="heatmap-cell heatmap-cell-${severity}" role="cell">
+            <strong>${count.toLocaleString()}</strong>
+            <span>${label}</span>
+        </div>
+    `;
+}
+
+function formatTimelineTimestamp(timestamp) {
+    if (!timestamp) return 'Unknown run';
+    try {
+        return formatDate(timestamp);
+    } catch (error) {
+        return timestamp;
+    }
+}
+
+export function populatePerformanceMetrics(filteredMetrics = null) {
+    const metricsData = getMetrics();
+    const metrics = Array.isArray(filteredMetrics) ? filteredMetrics : metricsData?.metrics || [];
+
+    const narrativeEl = document.getElementById('pipeline-overview-narrative');
+    const slaStrip = document.getElementById('pipeline-sla-strip');
+    const throughputGrid = document.getElementById('pipeline-throughput-grid');
+    const waterfallEl = document.getElementById('pipeline-waterfall');
+    const waterfallLegend = document.getElementById('pipeline-waterfall-legend');
+    const slaGrid = document.getElementById('pipeline-sla-grid');
+    const timelineGrid = document.getElementById('pipeline-timeline-grid');
+    const heatmapTable = document.getElementById('pipeline-heatmap-table');
+    const resourceGrid = document.getElementById('pipeline-resource-grid');
+    const alertTableBody = document.querySelector('#pipeline-alert-table tbody');
+    const observationAccordion = document.getElementById('pipeline-observation-accordion');
+
+    if (!metrics.length) {
+        if (narrativeEl) narrativeEl.textContent = 'Run the ingestion pipelines to populate pipeline performance insights.';
+        if (slaStrip) slaStrip.innerHTML = '';
+        if (throughputGrid) throughputGrid.innerHTML = createEmptyState('Awaiting performance metrics.');
+        if (waterfallEl) waterfallEl.innerHTML = createEmptyState('Stage latency metrics will appear once the next run completes.');
+        if (waterfallLegend) waterfallLegend.innerHTML = '';
+        if (slaGrid) slaGrid.innerHTML = createEmptyState('Per-source SLA metrics will render after data ingestion runs.');
+        if (timelineGrid) timelineGrid.innerHTML = createEmptyState('Run history will display after the upcoming orchestration.');
+        if (heatmapTable) heatmapTable.innerHTML = createEmptyState('Retry and error telemetry not yet collected.');
+        if (resourceGrid) resourceGrid.innerHTML = createEmptyState('Resource telemetry will appear once performance counters are wired.');
+        if (alertTableBody) alertTableBody.innerHTML = `<tr><td colspan="4" class="empty-state">No active alerts.</td></tr>`;
+        if (observationAccordion) observationAccordion.innerHTML = createEmptyState('No observation log entries recorded yet.');
+        requestAnimationFrame(() => renderPipelineCharts());
+        return;
+    }
+
+    const analytics = computePerformanceAnalytics(metrics);
+    const alerts = getPipelineAlerts();
+    const observations = getPipelineObservations();
+
+    renderPipelineNarrative(analytics, alerts);
+    renderPipelineSlaStrip(analytics);
+    renderPipelineTiles(analytics);
+    renderPipelineWaterfall(analytics);
+    renderPipelineSlaMonitor(analytics);
+    renderPipelineTimeline(analytics);
+    renderPipelineHeatmap(analytics);
+    renderPipelineResources(analytics);
+    renderPipelineAlerts(alerts);
+    renderPipelineObservations(observations);
+    requestAnimationFrame(() => renderPipelineCharts());
+}
+
+function renderPipelineNarrative(analytics, alertData) {
+    const narrativeEl = document.getElementById('pipeline-overview-narrative');
+    if (!narrativeEl) return;
+
+    const lastRun = analytics?.lastRun;
+    if (!lastRun || (!Number.isFinite(lastRun.durationSeconds) && !Number.isFinite(lastRun.recordsPerMinute))) {
+        narrativeEl.textContent = 'Run the ingestion pipelines to populate pipeline performance insights.';
+        return;
+    }
+
+    const durationText = formatDuration(lastRun.durationSeconds);
+    const rpmValue = lastRun.recordsPerMinute;
+    const rpmText = Number.isFinite(rpmValue) && rpmValue > 0 ? `${formatNumberShort(rpmValue)} records/min` : null;
+    const rpmDelta = analytics?.tiles?.rpm?.delta;
+    const rpmCallout = shouldDisplayDelta('rpm', rpmDelta)
+        ? `${rpmDelta > 0 ? 'up' : 'down'} ${formatNumberShort(Math.abs(rpmDelta))} vs prior run`
+        : 'holding steady';
+
+    const fetchRateValue = lastRun.urlsPerSecond;
+    const fetchText = Number.isFinite(fetchRateValue) && fetchRateValue > 0
+        ? `${formatNumberShort(fetchRateValue)} urls/sec`
+        : null;
+
+    const stageHotspot = describeStageVariance(
+        (analytics?.stages || [])
+            .slice()
+            .sort((a, b) => Math.abs(b?.variance || 0) - Math.abs(a?.variance || 0))[0]
+    );
+
+    const alerts = sortAlerts(alertData?.alerts || []);
+    const alertSnippet = formatAlertSummary(alerts[0]);
+
+    let narrative = `Latest orchestration closed in ${durationText}`;
+    if (rpmText) {
+        narrative += ` delivering ${rpmText} (${rpmCallout}).`;
+    } else {
+        narrative += '.';
+    }
+
+    if (fetchText) {
+        narrative += ` Fetch cadence held at ${fetchText}.`;
+    }
+
+    const secondaryClauses = [];
+    if (stageHotspot) {
+        secondaryClauses.push(stageHotspot);
+    }
+    if (alertSnippet) {
+        secondaryClauses.push(`Watch list: ${alertSnippet}`);
+    }
+
+    if (secondaryClauses.length) {
+        narrative += ` ${secondaryClauses.join('. ')}.`;
+    }
+
+    narrativeEl.textContent = narrative.trim();
+}
+
+function renderPipelineSlaStrip(analytics) {
+    const strip = document.getElementById('pipeline-sla-strip');
+    if (!strip) return;
+
+    strip.innerHTML = PIPELINE_SLA_DEFINITIONS.map(def => {
+        const value = def.accessor(analytics);
+        const evaluation = evaluateSla(value, def.targetValue, def.comparison);
+        let valueLabel = '—';
+
+        if (def.key === 'duration') {
+            valueLabel = formatDuration(value, { compact: true });
+        } else if (def.key === 'success') {
+            valueLabel = formatPercent(value);
+        } else if (def.key === 'retries') {
+            valueLabel = Number.isFinite(value) ? Math.round(value).toLocaleString() : '—';
+        } else if (def.key === 'fetchRate') {
+            valueLabel = Number.isFinite(value) ? `${formatNumberShort(value)} urls/s` : '—';
+        } else if (Number.isFinite(value)) {
+            valueLabel = formatNumberShort(value);
+        }
+
+        return `
+            <span class="pipeline-sla-pill pipeline-sla-pill-${evaluation.status}" data-key="${def.key}">
+                <span>${def.label}</span>
+                <span>${valueLabel} · ${def.targetLabel}</span>
+            </span>
+        `;
+    }).join('');
+}
+
+function renderPipelineTiles(analytics) {
+    const grid = document.getElementById('pipeline-throughput-grid');
+    if (!grid) return;
+
+    const lastRun = analytics?.lastRun || {};
+    const previousRun = analytics?.previousRun || {};
+    const tiles = analytics?.tiles || {};
+    const timeline = analytics?.timeline || [];
+
+    const tileData = [
+        {
+            key: 'duration',
+            label: 'End-to-End Duration',
+            description: 'Target ≤ 30 min',
+            value: tiles.duration?.value ?? lastRun.durationSeconds ?? null,
+            delta: tiles.duration?.delta ?? null,
+            target: tiles.duration?.sla ?? 1800,
+            format: value => formatDuration(value, { compact: true }),
+            deltaFormatter: value => formatDurationDelta(value),
+            sparklineKey: 'duration'
+        },
+        {
+            key: 'rpm',
+            label: 'Records / min',
+            description: 'Weighted throughput per run',
+            value: tiles.rpm?.value ?? lastRun.recordsPerMinute ?? null,
+            delta: tiles.rpm?.delta ?? null,
+            target: tiles.rpm?.sla ?? null,
+            format: value => formatNumberShort(value),
+            deltaFormatter: value => formatNumericDelta(value),
+            sparklineKey: 'rpm'
+        },
+        {
+            key: 'workers',
+            label: 'Parallel Workers',
+            description: 'Average worker pool',
+            value: Number.isFinite(lastRun.parallelWorkers) ? lastRun.parallelWorkers : null,
+            delta: (Number.isFinite(lastRun.parallelWorkers) && Number.isFinite(previousRun.parallelWorkers))
+                ? lastRun.parallelWorkers - previousRun.parallelWorkers
+                : null,
+            target: null,
+            format: value => Number.isFinite(value) ? value.toFixed(1) : '—',
+            deltaFormatter: value => formatNumericDelta(value, { digits: 1 }),
+            sparklineKey: null
+        },
+        {
+            key: 'retries',
+            label: 'Retry Count',
+            description: 'Budget ≤ 20 per run',
+            value: tiles.retries?.value ?? lastRun.retries ?? null,
+            delta: tiles.retries?.delta ?? null,
+            target: tiles.retries?.sla ?? 20,
+            format: value => Number.isFinite(value) ? Math.round(value).toLocaleString() : '—',
+            deltaFormatter: value => formatNumericDelta(value),
+            sparklineKey: 'retries'
+        }
+    ];
+
+    grid.innerHTML = tileData.map(tile => {
+        const showDelta = shouldDisplayDelta(tile.key, tile.delta);
+        const valueText = tile.format(tile.value);
+        const deltaText = showDelta ? tile.deltaFormatter(tile.delta) : null;
+        const deltaClass = showDelta ? getDeltaClass(tile.key, tile.delta) : '';
+        const sparklineData = tile.sparklineKey ? computeSparklineSeries(timeline, tile.sparklineKey) : [];
+        const footerText = tile.target
+            ? (tile.key === 'duration'
+                ? `Target ${formatDuration(tile.target, { compact: true })}`
+                : tile.key === 'retries'
+                    ? `Budget ≤ ${Math.round(tile.target)}`
+                    : tile.key === 'rpm' && tile.target
+                        ? `Benchmark ${formatNumberShort(tile.target)}`
+                        : '')
+            : '';
+
+        return `
+            <article class="pipeline-tile" data-metric="${tile.key}">
+                <header>${tile.label}</header>
+                <div class="pipeline-tile-main">
+                    <span>${valueText}</span>
+                    <span class="pipeline-tile-delta ${deltaClass}">
+                        ${deltaText || 'Flat vs prior run'}
+                    </span>
+                </div>
+                <div class="pipeline-tile-sparkline" data-points='${JSON.stringify(sparklineData)}' aria-hidden="true"></div>
+                <footer>${tile.description}${footerText ? ` · ${footerText}` : ''}</footer>
+            </article>
+        `;
+    }).join('');
+}
+
+function renderPipelineWaterfall(analytics) {
+    const container = document.getElementById('pipeline-waterfall');
+    const legend = document.getElementById('pipeline-waterfall-legend');
+    if (!container || !legend) return;
+
+    const stages = (analytics?.stages || [])
+        .filter(stage => PIPELINE_STAGE_ORDER.includes(stage.key));
+
+    if (!stages.length) {
+        container.innerHTML = createEmptyState('Stage latency metrics are not yet available.');
+        legend.innerHTML = '';
+        return;
+    }
+
+    const ordered = PIPELINE_STAGE_ORDER.map(key => {
+        const stage = stages.find(item => item.key === key) || { seconds: 0, target: 0, variance: 0 };
+        return {
+            key,
+            label: PIPELINE_STAGE_LABELS[key],
+            description: PIPELINE_STAGE_DESCRIPTIONS[key],
+            seconds: stage.seconds,
+            target: stage.target,
+            variance: stage.variance,
+            color: PIPELINE_STAGE_COLORS[key]
+        };
+    });
+
+    container.innerHTML = `
+        <canvas id="pipeline-waterfall-canvas" height="220" role="img" aria-label="Stage latency performance"></canvas>
+    `;
+    container.dataset.stages = JSON.stringify(ordered);
+
+    legend.innerHTML = ordered.map(stage => {
+        const varianceText = Number.isFinite(stage.variance) && Math.abs(stage.variance) >= 30
+            ? `${stage.variance > 0 ? '+' : '-'}${formatDuration(Math.abs(stage.variance), { compact: true })}`
+            : 'On target';
+        return `
+            <div class="stage-waterfall-legend-item" data-stage="${stage.key}">
+                <span class="stage-waterfall-color" style="background:${stage.color};"></span>
+                <div class="stage-waterfall-copy">
+                    <strong>${stage.label}</strong>
+                    <p>${formatDuration(stage.seconds, { compact: false })} · Target ${formatDuration(stage.target, { compact: true })} · ${varianceText}</p>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderPipelineSlaMonitor(analytics) {
+    const grid = document.getElementById('pipeline-sla-grid');
+    if (!grid) return;
+
+    const perSource = analytics?.perSource || [];
+    if (!perSource.length) {
+        grid.innerHTML = createEmptyState('Per-source SLA metrics will render after data ingestion runs.');
+        return;
+    }
+
+    grid.innerHTML = perSource
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(source => {
+            const urlsStatus = evaluateSla(source.urlsPerSecond, source.sla?.urlsPerSecond ?? 0, 'min');
+            const rpmStatus = evaluateSla(source.recordsPerMinute, source.sla?.recordsPerMinute ?? 0, 'min');
+            const successStatus = evaluateSla(source.successRate, source.sla?.successRate ?? 0, 'min');
+            const durationStatus = evaluateSla(source.durationSeconds, source.sla?.durationSeconds ?? 0, 'max');
+
+            const statuses = [urlsStatus.status, rpmStatus.status, successStatus.status, durationStatus.status];
+            const overallStatus = statuses.includes('bad') ? 'bad' : (statuses.includes('warn') ? 'warn' : 'good');
+            const statusLabel = overallStatus === 'good' ? 'On target' : overallStatus === 'warn' ? 'Watch' : 'Action';
+
+            return `
+                <article class="pipeline-sla-card" data-source="${source.name}">
+                    <header>
+                        <h4>${source.name}</h4>
+                        <span class="pipeline-sla-status ${overallStatus}">${statusLabel}</span>
+                    </header>
+                    <div class="pipeline-sla-metrics">
+                        ${renderSlaMetric('URLs / sec', source.urlsPerSecond, source.sla?.urlsPerSecond, 'min', urlsStatus.status)}
+                        ${renderSlaMetric('Records / min', source.recordsPerMinute, source.sla?.recordsPerMinute, 'min', rpmStatus.status)}
+                        ${renderSlaMetric('Success rate', source.successRate, source.sla?.successRate, 'min', successStatus.status, true)}
+                        ${renderSlaMetric('Duration', source.durationSeconds, source.sla?.durationSeconds, 'max', durationStatus.status, false, true)}
+                    </div>
+                    <p class="pipeline-sla-footnote">Retries: ${Number.isFinite(source.retries) ? Math.round(source.retries).toLocaleString() : '—'}</p>
+                </article>
+            `;
+        }).join('');
+}
+
+function renderPipelineTimeline(analytics) {
+    const grid = document.getElementById('pipeline-timeline-grid');
+    if (!grid) return;
+
+    const timeline = analytics?.timeline || [];
+    if (!timeline.length) {
+        grid.innerHTML = createEmptyState('Run history will display after the upcoming orchestration.');
+        return;
+    }
+
+    grid.innerHTML = timeline.map(run => {
+        const timestamp = formatTimelineTimestamp(run.timestamp);
+        const durationText = formatDuration(run.durationSeconds, { compact: true });
+        const throughput = Number.isFinite(run.avgThroughput)
+            ? `${formatNumberShort(run.avgThroughput)} records/min`
+            : (Number.isFinite(run.records) && Number.isFinite(run.durationSeconds) && run.durationSeconds > 0
+                ? `${formatNumberShort((run.records * 60) / run.durationSeconds)} records/min`
+                : '—');
+        const recordsText = Number.isFinite(run.records)
+            ? `${formatNumberShort(run.records)} records`
+            : '—';
+        const retriesText = Number.isFinite(run.retries)
+            ? `${Math.round(run.retries).toLocaleString()} retries`
+            : '—';
+
+        return `
+            <article class="pipeline-timeline-card" data-run="${run.runId}">
+                <h4>${timestamp}</h4>
+                <div class="pipeline-timeline-meta">
+                    <span>${durationText}</span>
+                    <span>${recordsText}</span>
+                    <span>${throughput}</span>
+                    <span>${retriesText}</span>
+                    <span>${run.activeSources || 0} sources</span>
+                </div>
+            </article>
+        `;
+    }).join('');
+}
+
+function renderPipelineHeatmap(analytics) {
+    const container = document.getElementById('pipeline-heatmap-table');
+    if (!container) return;
+
+    const matrix = analytics?.errorMatrix || {};
+    const sources = Object.keys(matrix);
+
+    if (!sources.length) {
+        container.innerHTML = createEmptyState('Retry and error telemetry not yet collected.');
+        return;
+    }
+
+    const headerRow = `
+        <div class="heatmap-row heatmap-row-header" role="row">
+            <div class="heatmap-header" role="columnheader">Source</div>
+            <div class="heatmap-header" role="columnheader">HTTP</div>
+            <div class="heatmap-header" role="columnheader">Extraction</div>
+            <div class="heatmap-header" role="columnheader">Quality</div>
+        </div>
+    `;
+
+    const bodyRows = sources.map(source => {
+        const errors = matrix[source] || {};
+        const http = Number(errors.http) || 0;
+        const extraction = Number(errors.extraction) || 0;
+        const quality = Number(errors.quality) || 0;
+
+        return `
+            <div class="heatmap-row" role="row" data-source="${source}">
+                <div class="heatmap-cell heatmap-source" role="cell">${source}</div>
+                ${renderHeatmapCell(http, 'HTTP')}
+                ${renderHeatmapCell(extraction, 'Extraction')}
+                ${renderHeatmapCell(quality, 'Quality')}
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `<div class="heatmap-grid" role="table">${headerRow}${bodyRows}</div>`;
+}
+
+function renderPipelineResources(analytics) {
+    const grid = document.getElementById('pipeline-resource-grid');
+    if (!grid) return;
+
+    const resources = analytics?.resources || {};
+    const cards = [];
+
+    if (Number.isFinite(resources.concurrency)) {
+        cards.push({
+            key: 'concurrency',
+            label: 'Parallel Workers',
+            value: resources.concurrency.toFixed(1),
+            description: 'Average worker count across the latest run'
+        });
+    }
+    if (Number.isFinite(resources.queueDepth)) {
+        cards.push({
+            key: 'queueDepth',
+            label: 'Queue Depth',
+            value: resources.queueDepth.toFixed(1),
+            description: 'Mean items queued per stage'
+        });
+    }
+    if (Number.isFinite(resources.bandwidth)) {
+        cards.push({
+            key: 'bandwidth',
+            label: 'Bandwidth',
+            value: `${formatNumberShort(resources.bandwidth)} Mbps`,
+            description: 'Estimated network throughput'
+        });
+    }
+
+    if (!cards.length) {
+        grid.innerHTML = createEmptyState('Resource telemetry will appear once performance counters are wired.');
+        return;
+    }
+
+    grid.innerHTML = cards.map(card => `
+        <article class="pipeline-resource-card" data-metric="${card.key}">
+            <h4>${card.label}</h4>
+            <strong>${card.value}</strong>
+            <p>${card.description}</p>
+        </article>
+    `).join('');
+}
+
+function renderPipelineAlerts(alertData) {
+    const table = document.getElementById('pipeline-alert-table');
+    if (!table) return;
+
+    const body = table.querySelector('tbody');
+    if (!body) return;
+
+    const alerts = sortAlerts(alertData?.alerts || []);
+    if (!alerts.length) {
+        body.innerHTML = `<tr><td colspan="4" class="empty-state">No active alerts.</td></tr>`;
+        return;
+    }
+
+    body.innerHTML = alerts.map(alert => {
+        const severity = (alert.severity || 'info').toLowerCase();
+        const label = severity.charAt(0).toUpperCase() + severity.slice(1);
+        const scope = alert.source || 'Pipeline';
+        return `
+            <tr data-severity="${severity}">
+                <td><span class="severity-pill severity-${severity}">${label}</span></td>
+                <td>${scope}</td>
+                <td>${alert.message || '—'}</td>
+                <td>${alert.recommendation || '—'}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderPipelineObservations(data) {
+    const container = document.getElementById('pipeline-observation-accordion');
+    if (!container) return;
+
+    const entries = data?.entries || [];
+    if (!entries.length) {
+        container.innerHTML = createEmptyState('No observation log entries recorded yet.');
+        return;
+    }
+
+    container.innerHTML = entries.map((entry, index) => {
+        const panelId = `pipeline-observation-${index}`;
+        const expanded = index === 0;
+        const linkMarkup = entry.link
+            ? `<p class="pipeline-observation-meta"><a href="${entry.link}" target="_blank" rel="noopener">Open runbook</a></p>`
+            : '';
+        return `
+            <div class="pipeline-observation-item">
+                <button class="pipeline-observation-header" type="button" aria-expanded="${expanded}" aria-controls="${panelId}">
+                    <h4>${entry.title}</h4>
+                    <span>${entry.status || 'Active'}</span>
+                </button>
+                <div class="pipeline-observation-content" id="${panelId}" ${expanded ? '' : 'hidden'}>
+                    <p>${entry.notes || 'No notes recorded.'}</p>
+                    <p class="pipeline-observation-meta"><strong>Owner:</strong> ${entry.owner || 'Unassigned'}</p>
+                    ${linkMarkup}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.querySelectorAll('.pipeline-observation-header').forEach(button => {
+        button.addEventListener('click', () => {
+            const expanded = button.getAttribute('aria-expanded') === 'true';
+            const targetId = button.getAttribute('aria-controls');
+            const target = document.getElementById(targetId);
+
+            container.querySelectorAll('.pipeline-observation-header').forEach(otherButton => {
+                if (otherButton !== button) {
+                    otherButton.setAttribute('aria-expanded', 'false');
+                    const otherTargetId = otherButton.getAttribute('aria-controls');
+                    const otherPanel = document.getElementById(otherTargetId);
+                    if (otherPanel) {
+                        otherPanel.hidden = true;
+                    }
+                }
+            });
+
+            button.setAttribute('aria-expanded', String(!expanded));
+            if (target) {
+                target.hidden = expanded;
+            }
+        });
+    });
 }
 
 /**

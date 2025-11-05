@@ -7,6 +7,14 @@ import { Logger } from '../utils/logger.js';
 import { normalizeSourceName } from '../utils/formatters.js';
 import { loadFilterCatalog, extractLabels } from '../data/filter-catalog-loader.js';
 
+const DEFAULT_SLA = {
+    durationSeconds: 1800,
+    recordsPerMinute: 1800,
+    urlsPerSecond: 50,
+    successRate: 0.95,
+    retries: 20
+};
+
 function toNumber(value, fallback = 0) {
     const num = Number(value);
     return Number.isFinite(num) ? num : fallback;
@@ -515,4 +523,385 @@ export function computeQualityAnalytics(metrics = []) {
         latest,
         previous
     };
+}
+
+export function computePerformanceAnalytics(metrics = []) {
+    if (!Array.isArray(metrics) || metrics.length === 0) {
+        return {
+            lastRun: null,
+            previousRun: null,
+            tiles: null,
+            stages: [],
+            perSource: [],
+            timeline: [],
+            errorMatrix: {},
+            resources: {
+                concurrency: null,
+                queueDepth: null,
+                bandwidth: null
+            }
+        };
+    }
+
+    const sorted = metrics
+        .filter(Boolean)
+        .sort((a, b) => {
+            const timeA = a.timestamp ? Date.parse(a.timestamp) : 0;
+            const timeB = b.timestamp ? Date.parse(b.timestamp) : 0;
+            return timeB - timeA;
+        });
+
+    const groupedByTimestamp = new Map();
+    sorted.forEach(metric => {
+        const key = metric.timestamp || metric.run_id || 'latest';
+        if (!groupedByTimestamp.has(key)) groupedByTimestamp.set(key, []);
+        groupedByTimestamp.get(key).push(metric);
+    });
+
+    const [latestKey, previousKey] = Array.from(groupedByTimestamp.keys());
+    const latestMetrics = groupedByTimestamp.get(latestKey) || [];
+    const previousMetrics = previousKey ? groupedByTimestamp.get(previousKey) : [];
+
+    const lastRun = summarizePerformanceRun(latestMetrics);
+    const previousRun = summarizePerformanceRun(previousMetrics);
+
+    const tiles = buildPerformanceTiles(lastRun, previousRun);
+    const stages = lastRun.stages;
+    const perSource = summarizePerformanceSources(latestMetrics);
+    const timeline = buildPerformanceTimeline(metrics, 8);
+    const errorMatrix = buildErrorMatrix(metrics);
+    const resources = summarizeResources(latestMetrics);
+
+    return {
+        lastRun,
+        previousRun,
+        tiles,
+        stages,
+        perSource,
+        timeline,
+        errorMatrix,
+        resources
+    };
+}
+
+function summarizePerformanceRun(metrics = []) {
+    if (!metrics.length) {
+        return {
+            durationSeconds: 0,
+            recordsPerMinute: 0,
+            urlsPerSecond: 0,
+            retries: 0,
+            parallelWorkers: null,
+            stageTotals: {
+                discover: 0,
+                fetch: 0,
+                extract: 0,
+                quality: 0,
+                write: 0
+            },
+            stages: []
+        };
+    }
+
+    let durationSum = 0;
+    let recordsPerMinuteSum = 0;
+    let urlsPerSecondSum = 0;
+    let retriesSum = 0;
+    let workersSum = 0;
+    let workersCount = 0;
+    const stageTotals = {
+        discover: 0,
+        fetch: 0,
+        extract: 0,
+        quality: 0,
+        write: 0
+    };
+
+    metrics.forEach(metric => {
+        const duration = toNumber(metric.duration_seconds, 0);
+        const rpm = toNumber(metric.records_per_minute, 0);
+        const ups = toNumber(metric.urls_per_second, 0);
+        durationSum += duration;
+        recordsPerMinuteSum += rpm;
+        urlsPerSecondSum += ups;
+        retriesSum += extractRetryCount(metric);
+        const workers = toNumber(metric.performance?.parallel_workers, null);
+        if (Number.isFinite(workers) && workers > 0) {
+            workersSum += workers;
+            workersCount += 1;
+        }
+
+        const stageBreakdown = estimateStageDurations(metric);
+        stageTotals.discover += stageBreakdown.discover;
+        stageTotals.fetch += stageBreakdown.fetch;
+        stageTotals.extract += stageBreakdown.extract;
+        stageTotals.quality += stageBreakdown.quality;
+        stageTotals.write += stageBreakdown.write;
+    });
+
+    const count = metrics.length;
+    const averageDuration = durationSum / count;
+    const averageRpm = recordsPerMinuteSum / count;
+    const averageUps = urlsPerSecondSum / count;
+    const averageWorkers = workersCount > 0 ? workersSum / workersCount : null;
+
+    const stages = Object.keys(stageTotals).map(key => ({
+        key,
+        seconds: stageTotals[key],
+        target: getStageTarget(key),
+        variance: stageTotals[key] - getStageTarget(key)
+    }));
+
+    return {
+        durationSeconds: averageDuration,
+        recordsPerMinute: averageRpm,
+        urlsPerSecond: averageUps,
+        retries: retriesSum,
+        parallelWorkers: averageWorkers,
+        stageTotals,
+        stages
+    };
+}
+
+function buildPerformanceTiles(lastRun, previousRun) {
+    if (!lastRun) return null;
+
+    const prevDuration = previousRun?.durationSeconds ?? null;
+    const prevRpm = previousRun?.recordsPerMinute ?? null;
+    const prevUps = previousRun?.urlsPerSecond ?? null;
+    const prevRetries = previousRun?.retries ?? null;
+
+    return {
+        duration: {
+            value: lastRun.durationSeconds,
+            delta: prevDuration !== null ? lastRun.durationSeconds - prevDuration : null,
+            sla: DEFAULT_SLA.durationSeconds
+        },
+        rpm: {
+            value: lastRun.recordsPerMinute,
+            delta: prevRpm !== null ? lastRun.recordsPerMinute - prevRpm : null,
+            sla: DEFAULT_SLA.recordsPerMinute
+        },
+        ups: {
+            value: lastRun.urlsPerSecond,
+            delta: prevUps !== null ? lastRun.urlsPerSecond - prevUps : null,
+            sla: DEFAULT_SLA.urlsPerSecond
+        },
+        retries: {
+            value: lastRun.retries,
+            delta: prevRetries !== null ? lastRun.retries - prevRetries : null,
+            sla: DEFAULT_SLA.retries
+        }
+    };
+}
+
+function summarizePerformanceSources(metrics = []) {
+    const sourceMap = new Map();
+
+    metrics.forEach(metric => {
+        if (!metric) return;
+        const source = normalizeSourceName(metric.source || 'Unknown');
+        if (!sourceMap.has(source)) {
+            sourceMap.set(source, {
+                name: source,
+                urlsPerSecond: 0,
+                recordsPerMinute: 0,
+                successRate: 0,
+                durationSeconds: 0,
+                retries: 0,
+                count: 0
+            });
+        }
+        const entry = sourceMap.get(source);
+        entry.urlsPerSecond += toNumber(metric.urls_per_second, 0);
+        entry.recordsPerMinute += toNumber(metric.records_per_minute, 0);
+        entry.successRate += clampRatio(metric.http_request_success_rate);
+        entry.durationSeconds += toNumber(metric.duration_seconds, 0);
+        entry.retries += extractRetryCount(metric);
+        entry.count += 1;
+    });
+
+    return Array.from(sourceMap.values()).map(entry => {
+        const count = entry.count || 1;
+        return {
+            name: entry.name,
+            urlsPerSecond: entry.urlsPerSecond / count,
+            recordsPerMinute: entry.recordsPerMinute / count,
+            successRate: entry.successRate / count,
+            durationSeconds: entry.durationSeconds / count,
+            retries: entry.retries,
+            sla: {
+                durationSeconds: DEFAULT_SLA.durationSeconds,
+                successRate: DEFAULT_SLA.successRate,
+                urlsPerSecond: DEFAULT_SLA.urlsPerSecond,
+                recordsPerMinute: DEFAULT_SLA.recordsPerMinute,
+                retries: DEFAULT_SLA.retries
+            }
+        };
+    });
+}
+
+function buildPerformanceTimeline(metrics = [], limit = 8) {
+    const runMap = new Map();
+    metrics.forEach(metric => {
+        if (!metric) return;
+        const runId = (metric.run_id || metric.timestamp || '').split('_')[0];
+        if (!runMap.has(runId)) {
+            runMap.set(runId, {
+                runId,
+                timestamp: metric.timestamp || null,
+                durationSeconds: 0,
+                records: 0,
+                retries: 0,
+                sources: new Set()
+            });
+        }
+        const entry = runMap.get(runId);
+        entry.durationSeconds += toNumber(metric.duration_seconds, 0);
+        entry.records += toNumber(metric.records_written, 0);
+        entry.retries += extractRetryCount(metric);
+        entry.sources.add(normalizeSourceName(metric.source || 'Unknown'));
+        if (!entry.timestamp && metric.timestamp) {
+            entry.timestamp = metric.timestamp;
+        }
+    });
+
+    return Array.from(runMap.values())
+        .sort((a, b) => {
+            const timeA = a.timestamp ? Date.parse(a.timestamp) : 0;
+            const timeB = b.timestamp ? Date.parse(b.timestamp) : 0;
+            return timeB - timeA;
+        })
+        .slice(0, limit)
+        .map(item => ({
+            runId: item.runId,
+            timestamp: item.timestamp,
+            durationSeconds: item.durationSeconds,
+            records: item.records,
+            retries: item.retries,
+            sources: Array.from(item.sources)
+        }));
+}
+
+function buildErrorMatrix(metrics = []) {
+    const matrix = {};
+
+    metrics.forEach(metric => {
+        if (!metric) return;
+        const source = normalizeSourceName(metric.source || 'Unknown');
+        if (!matrix[source]) {
+            matrix[source] = { http: 0, extraction: 0, quality: 0 };
+        }
+        const urlsFetched = toNumber(metric.urls_fetched, toNumber(metric.urls_discovered, 0));
+        const httpFailures = Math.max(0, Math.round((1 - clampRatio(metric.http_request_success_rate)) * urlsFetched));
+        const extractionFailures = Math.max(0, Math.round((1 - clampRatio(metric.content_extraction_success_rate)) * toNumber(metric.urls_processed, urlsFetched)));
+        const qualityFailures = Object.values(metric.filter_breakdown || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
+
+        matrix[source].http += httpFailures;
+        matrix[source].extraction += extractionFailures;
+        matrix[source].quality += qualityFailures;
+    });
+
+    return matrix;
+}
+
+function summarizeResources(metrics = []) {
+    let workersSum = 0;
+    let workersCount = 0;
+    let queueSum = 0;
+    let queueCount = 0;
+    let bandwidthSum = 0;
+    let bandwidthCount = 0;
+
+    metrics.forEach(metric => {
+        const workers = toNumber(metric.performance?.parallel_workers, null);
+        if (Number.isFinite(workers) && workers > 0) {
+            workersSum += workers;
+            workersCount += 1;
+        }
+        const queueDepth = toNumber(metric.performance?.queue_depth, null);
+        if (Number.isFinite(queueDepth) && queueDepth >= 0) {
+            queueSum += queueDepth;
+            queueCount += 1;
+        }
+        const bandwidth = toNumber(metric.performance?.bandwidth_mbps, null);
+        if (Number.isFinite(bandwidth) && bandwidth > 0) {
+            bandwidthSum += bandwidth;
+            bandwidthCount += 1;
+        }
+    });
+
+    return {
+        concurrency: workersCount > 0 ? workersSum / workersCount : null,
+        queueDepth: queueCount > 0 ? queueSum / queueCount : null,
+        bandwidth: bandwidthCount > 0 ? bandwidthSum / bandwidthCount : null
+    };
+}
+
+function estimateStageDurations(metric) {
+    const total = Math.max(toNumber(metric.duration_seconds, 0), 0);
+    if (total <= 0) {
+        return { discover: 0, fetch: 0, extract: 0, quality: 0, write: 0 };
+    }
+
+    const urlsFetched = Math.max(toNumber(metric.urls_fetched, 0), 0);
+    const recordsWritten = Math.max(toNumber(metric.records_written, 0), 0);
+    const ups = Math.max(toNumber(metric.urls_per_second, 0), 0);
+    const rpm = Math.max(toNumber(metric.records_per_minute, 0), 0);
+
+    let fetch = ups > 0 ? urlsFetched / ups : total * 0.25;
+    let extract = rpm > 0 ? (recordsWritten / rpm) * 60 : total * 0.25;
+    fetch = Math.min(fetch, total * 0.6);
+    extract = Math.min(extract, total * 0.6);
+
+    let remaining = total - fetch - extract;
+    if (remaining < 0) {
+        remaining = total * 0.2;
+    }
+
+    const failureRatio = Math.min(Math.max(1 - clampRatio(metric.quality_pass_rate), 0.1), 0.6);
+    let quality = remaining * failureRatio;
+    let write = remaining - quality;
+    let discover = total - (fetch + extract + quality + write);
+    if (discover < 0) {
+        discover = total * 0.1;
+        write = Math.max(0, total - (fetch + extract + quality + discover));
+    }
+
+    return { discover, fetch, extract, quality, write };
+}
+
+function getStageTarget(stageKey) {
+    switch (stageKey) {
+        case 'discover':
+            return DEFAULT_SLA.durationSeconds * 0.1;
+        case 'fetch':
+            return DEFAULT_SLA.durationSeconds * 0.35;
+        case 'extract':
+            return DEFAULT_SLA.durationSeconds * 0.25;
+        case 'quality':
+            return DEFAULT_SLA.durationSeconds * 0.2;
+        case 'write':
+            return DEFAULT_SLA.durationSeconds * 0.1;
+        default:
+            return DEFAULT_SLA.durationSeconds * 0.2;
+    }
+}
+
+function extractRetryCount(metric) {
+    const direct = toNumber(metric.retries, null);
+    if (Number.isFinite(direct)) return direct;
+    const perf = metric.performance || {};
+    const legacy = metric.legacy_metrics?.statistics || {};
+    const candidates = [
+        perf.retries,
+        perf.retry_count,
+        legacy.retry_count,
+        legacy.retries
+    ];
+    for (const candidate of candidates) {
+        const value = toNumber(candidate, null);
+        if (Number.isFinite(value)) return value;
+    }
+    return 0;
 }

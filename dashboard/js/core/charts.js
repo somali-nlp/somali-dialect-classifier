@@ -16,6 +16,9 @@ function prepareCanvas(id) {
     return canvas;
 }
 
+let pipelineWaterfallChart = null;
+const pipelineTileSparklineCharts = new Map();
+
 /**
  * Initialize all dashboard charts
  * Creates Chart.js instances for all visualizations
@@ -1096,6 +1099,267 @@ function createCumulativeTimelineChart(metricsData) {
             }
         });
     }
+}
+
+export function renderPipelineCharts() {
+    renderPipelineWaterfallChart();
+    renderPipelineTileSparklines();
+    stylePipelineHeatmap();
+}
+
+function renderPipelineWaterfallChart() {
+    const container = document.getElementById('pipeline-waterfall');
+    const canvas = document.getElementById('pipeline-waterfall-canvas');
+
+    if (!container || !canvas) {
+        if (pipelineWaterfallChart) {
+            pipelineWaterfallChart.destroy();
+            pipelineWaterfallChart = null;
+        }
+        return;
+    }
+
+    const rawStages = container.dataset?.stages;
+    if (!rawStages) {
+        if (pipelineWaterfallChart) {
+            pipelineWaterfallChart.destroy();
+            pipelineWaterfallChart = null;
+        }
+        return;
+    }
+
+    let stages;
+    try {
+        stages = JSON.parse(rawStages);
+    } catch (error) {
+        stages = [];
+    }
+
+    if (!Array.isArray(stages) || !stages.length) {
+        if (pipelineWaterfallChart) {
+            pipelineWaterfallChart.destroy();
+            pipelineWaterfallChart = null;
+        }
+        return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    if (pipelineWaterfallChart) {
+        pipelineWaterfallChart.destroy();
+    }
+
+    const labels = stages.map(stage => stage.label || stage.key);
+    const actualData = stages.map(stage => {
+        const seconds = Number(stage.seconds);
+        return Number.isFinite(seconds) ? seconds / 60 : 0;
+    });
+    const targetData = stages.map(stage => {
+        const seconds = Number(stage.target);
+        return Number.isFinite(seconds) ? seconds / 60 : 0;
+    });
+    const colors = stages.map(stage => stage.color || '#2563eb');
+
+    pipelineWaterfallChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Actual duration',
+                    data: actualData,
+                    backgroundColor: colors,
+                    borderRadius: 12,
+                    borderSkipped: false,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.6,
+                    maxBarThickness: 28
+                },
+                {
+                    label: 'Target',
+                    data: targetData,
+                    type: 'line',
+                    borderColor: '#111827',
+                    borderWidth: 1.5,
+                    borderDash: [6, 6],
+                    pointRadius: 0,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 14,
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label(context) {
+                            const minutes = context.parsed.x;
+                            return `${context.dataset.label}: ${minutes.toFixed(2)} minutes`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(17, 24, 39, 0.08)'
+                    },
+                    ticks: {
+                        callback: value => `${value}m`
+                    },
+                    title: {
+                        display: true,
+                        text: 'Minutes',
+                        font: { size: 12, weight: 600 }
+                    }
+                },
+                y: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#4b5563',
+                        font: {
+                            size: 12,
+                            weight: 600
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderPipelineTileSparklines() {
+    const sparklineElements = document.querySelectorAll('.pipeline-tile-sparkline');
+    sparklineElements.forEach(element => {
+        let points = [];
+        try {
+            const parsed = JSON.parse(element.dataset.points || '[]');
+            if (Array.isArray(parsed)) {
+                points = parsed
+                    .map(value => Number(value))
+                    .filter(value => Number.isFinite(value));
+            }
+        } catch (error) {
+            points = [];
+        }
+
+        if (!points.length) {
+            if (pipelineTileSparklineCharts.has(element)) {
+                pipelineTileSparklineCharts.get(element).destroy();
+                pipelineTileSparklineCharts.delete(element);
+            }
+            element.innerHTML = '';
+            return;
+        }
+
+        let canvas = element.querySelector('canvas');
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            element.innerHTML = '';
+            element.appendChild(canvas);
+        }
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        if (pipelineTileSparklineCharts.has(element)) {
+            pipelineTileSparklineCharts.get(element).destroy();
+        }
+
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: points.map((_, index) => index + 1),
+                datasets: [{
+                    data: points,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.45,
+                    fill: false
+                }]
+            },
+            options: {
+                animation: false,
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                },
+                elements: {
+                    line: {
+                        capBezierPoints: true
+                    }
+                }
+            }
+        });
+
+        pipelineTileSparklineCharts.set(element, chart);
+    });
+
+    pipelineTileSparklineCharts.forEach((chart, element) => {
+        if (!document.body.contains(element)) {
+            chart.destroy();
+            pipelineTileSparklineCharts.delete(element);
+        }
+    });
+}
+
+function stylePipelineHeatmap() {
+    const table = document.querySelector('.pipeline-heatmap-table');
+    if (!table) return;
+
+    const cells = Array.from(table.querySelectorAll('.heatmap-row:not(.heatmap-row-header) .heatmap-cell:not(.heatmap-source)'));
+    if (!cells.length) return;
+
+    let maxValue = 0;
+    const parsedCells = cells.map(cell => {
+        const strong = cell.querySelector('strong');
+        const rawValue = strong ? strong.textContent.replace(/,/g, '') : '0';
+        const value = Number(rawValue);
+        if (Number.isFinite(value) && value > maxValue) {
+            maxValue = value;
+        }
+        return { cell, value: Number.isFinite(value) ? value : 0 };
+    });
+
+    if (maxValue <= 0) {
+        parsedCells.forEach(({ cell }) => {
+            cell.style.background = 'var(--gray-50)';
+            cell.style.color = 'var(--gray-700)';
+        });
+        return;
+    }
+
+    parsedCells.forEach(({ cell, value }) => {
+        const ratio = value / maxValue;
+        const alpha = 0.15 + (ratio * 0.45);
+        cell.style.background = `rgba(37, 99, 235, ${alpha.toFixed(2)})`;
+        cell.style.color = ratio > 0.55 ? '#ffffff' : 'var(--gray-700)';
+    });
 }
 
 /**

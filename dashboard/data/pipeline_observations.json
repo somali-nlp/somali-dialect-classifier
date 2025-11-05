@@ -1,0 +1,19 @@
+{
+  "version": "2025-11-pipeline-observations",
+  "entries": [
+    {
+      "title": "Wikipedia throttle window",
+      "status": "Active",
+      "owner": "Data Acquisition",
+      "notes": "Extended throttle to 450 req/min between 02:00-04:00 UTC per Wikimedia policy.",
+      "link": "docs/runbooks/wikipedia-throttle.md"
+    },
+    {
+      "title": "Språkbanken encoding fix",
+      "status": "Monitoring",
+      "owner": "Linguistics",
+      "notes": "Manual UTF-8 validator remains in place until upstream patch deploys.",
+      "link": ""
+    }
+  ]
+}

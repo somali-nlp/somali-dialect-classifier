@@ -17,7 +17,9 @@ let dashboardData = {
     sourceCatalog: null,
     pipelineStatus: null,
     qualityAlerts: null,
-    qualityWaivers: null
+    qualityWaivers: null,
+    pipelineAlerts: null,
+    pipelineObservations: null
 };
 
 /**
@@ -37,7 +39,9 @@ export async function loadMetrics() {
             sourceCatalog,
             pipelineStatus,
             qualityAlerts,
-            qualityWaivers
+            qualityWaivers,
+            pipelineAlerts,
+            pipelineObservations
         ] = await Promise.all([
             fetchWithFallback(Config.DATA_PATHS),
             fetchWithOptionalFallback(Config.METADATA_PATHS),
@@ -46,7 +50,9 @@ export async function loadMetrics() {
             fetchWithOptionalFallback(Config.SOURCE_CATALOG_PATHS),
             fetchWithOptionalFallback(Config.PIPELINE_STATUS_PATHS),
             fetchWithOptionalFallback(Config.QUALITY_ALERTS_PATHS),
-            fetchWithOptionalFallback(Config.QUALITY_WAIVERS_PATHS)
+            fetchWithOptionalFallback(Config.QUALITY_WAIVERS_PATHS),
+            fetchWithOptionalFallback(Config.PIPELINE_ALERTS_PATHS),
+            fetchWithOptionalFallback(Config.PIPELINE_OBSERVATIONS_PATHS)
         ]);
 
         if (!rawMetrics) {
@@ -59,7 +65,9 @@ export async function loadMetrics() {
                 sourceCatalog: normalizeSourceCatalog(sourceCatalog),
                 pipelineStatus: normalizePipelineStatus(pipelineStatus),
                 qualityAlerts: normalizeQualityAlerts(qualityAlerts),
-                qualityWaivers: normalizeQualityWaivers(qualityWaivers)
+                qualityWaivers: normalizeQualityWaivers(qualityWaivers),
+                pipelineAlerts: normalizePipelineAlerts(pipelineAlerts),
+                pipelineObservations: normalizePipelineObservations(pipelineObservations)
             };
             return dashboardData;
         }
@@ -74,7 +82,9 @@ export async function loadMetrics() {
             sourceCatalog: normalizeSourceCatalog(sourceCatalog),
             pipelineStatus: normalizePipelineStatus(pipelineStatus),
             qualityAlerts: normalizeQualityAlerts(qualityAlerts),
-            qualityWaivers: normalizeQualityWaivers(qualityWaivers)
+            qualityWaivers: normalizeQualityWaivers(qualityWaivers),
+            pipelineAlerts: normalizePipelineAlerts(pipelineAlerts),
+            pipelineObservations: normalizePipelineObservations(pipelineObservations)
         };
 
         Logger.info(`Dashboard data loaded: metrics=${dashboardData.metrics.length}, sankey=${dashboardData.sankey ? 'yes' : 'no'}, distributions=${dashboardData.textDistributions ? 'yes' : 'no'}`);
@@ -90,7 +100,9 @@ export async function loadMetrics() {
             sourceCatalog: null,
             pipelineStatus: null,
             qualityAlerts: null,
-            qualityWaivers: null
+            qualityWaivers: null,
+            pipelineAlerts: null,
+            pipelineObservations: null
         };
         return dashboardData;
     }
@@ -470,6 +482,14 @@ export function getQualityWaivers() {
     return dashboardData.qualityWaivers;
 }
 
+export function getPipelineAlerts() {
+    return dashboardData.pipelineAlerts;
+}
+
+export function getPipelineObservations() {
+    return dashboardData.pipelineObservations;
+}
+
 /**
  * Validate metrics data structure
  * @param {Object} data - Data to validate
@@ -599,5 +619,43 @@ function normalizeQualityWaivers(data) {
     return {
         version: data.version || null,
         waivers
+    };
+}
+
+function normalizePipelineAlerts(data) {
+    if (!data || typeof data !== 'object') {
+        return null;
+    }
+
+    const alerts = Array.isArray(data.alerts) ? data.alerts.map(alert => ({
+        id: alert.id || 'performance-alert',
+        severity: (alert.severity || 'info').toLowerCase(),
+        message: alert.message || '',
+        recommendation: alert.recommendation || '',
+        source: alert.source || 'Pipeline'
+    })) : [];
+
+    return {
+        version: data.version || null,
+        alerts
+    };
+}
+
+function normalizePipelineObservations(data) {
+    if (!data || typeof data !== 'object') {
+        return null;
+    }
+
+    const entries = Array.isArray(data.entries) ? data.entries.map(entry => ({
+        title: entry.title || 'Observation',
+        status: entry.status || 'Active',
+        owner: entry.owner || 'Unassigned',
+        notes: entry.notes || '',
+        link: entry.link || ''
+    })) : [];
+
+    return {
+        version: data.version || null,
+        entries
     };
 }

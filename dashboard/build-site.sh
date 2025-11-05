@@ -73,6 +73,16 @@ if [ -f "dashboard/data/quality_waivers.json" ]; then
     echo "✓ Copied quality_waivers.json"
 fi
 
+if [ -f "dashboard/data/pipeline_alerts.json" ]; then
+    cp dashboard/data/pipeline_alerts.json _site/data/
+    echo "✓ Copied pipeline_alerts.json"
+fi
+
+if [ -f "dashboard/data/pipeline_observations.json" ]; then
+    cp dashboard/data/pipeline_observations.json _site/data/
+    echo "✓ Copied pipeline_observations.json"
+fi
+
 # Copy favicon
 if [ -f "dashboard/favicon.svg" ]; then
     cp dashboard/favicon.svg _site/favicon.svg
