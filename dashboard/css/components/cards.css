@@ -1438,6 +1438,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+    min-height: 140px;
 }
 
 /* Add extra space between card groups (between card 2 and 3) to match chart gap */
@@ -1469,18 +1470,21 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--gray-500);
+    margin: 0;
 }
 
 .roster-value {
     font-family: var(--font-display);
     font-size: var(--text-3xl);
     color: var(--tableau-navy);
+    margin: 0;
 }
 
 .roster-caption {
     font-size: var(--text-sm);
     color: var(--gray-600);
     line-height: 1.5;
+    margin: 0;
 }
 
 .acquisition-insights {
