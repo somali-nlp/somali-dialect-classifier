@@ -287,9 +287,17 @@ export function computeQualityAnalytics(metrics = []) {
         'non_somali_filter'
     ]);
     const lengthReasons = new Set([
-        'min_length_filter',
+        'min_length_filter'
+    ]);
+    const contentReasons = new Set([
+        'emoji_only_comment',
         'text_too_short_after_cleanup',
-        'empty_after_cleaning'
+        'empty_after_cleaning',
+        'emoji_normalization_filter',
+        'translation_guard_filter',
+        'quality_score_filter',
+        'metadata_harmonizer_filter',
+        'article_extractor_filter'
     ]);
     const toxicityReasons = new Set([
         'toxic_filter',
@@ -308,11 +316,13 @@ export function computeQualityAnalytics(metrics = []) {
     function getFamily(reason = '') {
         if (languageReasons.has(reason)) return 'Language';
         if (lengthReasons.has(reason)) return 'Length';
+        if (contentReasons.has(reason)) return 'Content';
         if (toxicityReasons.has(reason)) return 'Toxicity';
         if (dedupeReasons.has(reason)) return 'Deduplication';
         if (manualReasons.has(reason)) return 'Manual';
         if (/lang/.test(reason)) return 'Language';
-        if (/length|short|empty/.test(reason)) return 'Length';
+        if (/min_length|minimum.*length/.test(reason)) return 'Length';
+        if (/emoji|short|empty|clean|quality|translation/.test(reason)) return 'Content';
         if (/tox|prof/.test(reason)) return 'Toxicity';
         if (/dup/.test(reason)) return 'Deduplication';
         if (/manual|override/.test(reason)) return 'Manual';
