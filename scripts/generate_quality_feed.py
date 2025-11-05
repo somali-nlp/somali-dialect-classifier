@@ -139,10 +139,10 @@ def generate_quality_alerts(reports: List[Dict[str, Any]]) -> Dict[str, Any]:
                 severity = "medium"
                 message = f"{source} has 67% data waste from emoji-only filtering."
                 recommendation = (
-                    "Apify scrapes all comments (~$0.10/1K), but ~800 emoji-only comments are filtered locally. "
-                    "Options: (1) Scale to more videos for better ROI (current cost: $0.0037/linguistic comment), "
+                    "Apify scrapes all comments ($1.00/1K), but ~67% are emoji-only and filtered locally. "
+                    "Options: (1) Scale to more videos for better ROI (current cost: ~$3.03/1K linguistic comments), "
                     "(2) Investigate Apify Comments Analyzer AI Agent for pre-filtering, or "
-                    "(3) Accept current 26.8% yield as baseline. Economic impact: ~$0.80 per run on filtered content."
+                    "(3) Accept current ~33% yield as baseline. Economic inefficiency: This is a cost optimization issue, not technical failure."
                 )
             else:
                 # For non-TikTok sources, treat as technical failure
@@ -310,10 +310,10 @@ def generate_quality_waivers(reports: List[Dict[str, Any]]) -> Dict[str, Any]:
                 "expires_on": expiry_date.strftime("%Y-%m-%d"),
                 "owner": "Data Economics Team",
                 "reason": (
-                    f"Apify batch scraping costs $0.10/1K comments but ~67% are emoji-only and filtered locally. "
+                    f"Apify batch scraping costs $1.00/1K comments but ~67% are emoji-only and filtered locally. "
                     f"Current yield: {quality_pass_rate:.1f}% linguistic content. Pipeline approved with current approach "
                     f"while evaluating: (1) Scaling to more videos for better ROI, or (2) Apify Comments Analyzer for pre-filtering. "
-                    f"Status: Monitoring cost per linguistic comment ($0.0037) as KPI."
+                    f"Status: Monitoring cost per linguistic comment (${1.00 / (quality_pass_rate/100) / 1000:.4f}) as KPI."
                 ),
                 "report_url": relative_report_path
             })

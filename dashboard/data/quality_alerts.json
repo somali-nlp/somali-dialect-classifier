@@ -8,7 +8,7 @@
       "timestamp": "2025-11-02T07:13:10.370204+00:00",
       "report_url": "data/reports/20251102_071104_tiktok-somali_d400941e_final_quality_report.md",
       "details": "**Stream connection failed.** Check API credentials, network connectivity, and rate limits.",
-      "recommendation": "Apify scrapes all comments (~$0.10/1K), but ~800 emoji-only comments are filtered locally. Options: (1) Scale to more videos for better ROI (current cost: $0.0037/linguistic comment), (2) Investigate Apify Comments Analyzer AI Agent for pre-filtering, or (3) Accept current 26.8% yield as baseline. Economic impact: ~$0.80 per run on filtered content."
+      "recommendation": "Apify scrapes all comments ($1.00/1K), but ~67% are emoji-only and filtered locally. Options: (1) Scale to more videos for better ROI (current cost: ~$3.03/1K linguistic comments), (2) Investigate Apify Comments Analyzer AI Agent for pre-filtering, or (3) Accept current ~33% yield as baseline. Economic inefficiency: This is a cost optimization issue, not technical failure."
     },
     {
       "id": "alert-2",
@@ -31,6 +31,6 @@
       "recommendation": "Implement connection pooling, adjust timeouts, or use concurrent requests. Consider adding caching layer for frequently accessed content."
     }
   ],
-  "generated_at": "2025-11-05T10:54:21.114436+00:00",
+  "generated_at": "2025-11-05T11:21:55.566899+00:00",
   "total_alerts": 3
 }
