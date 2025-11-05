@@ -112,6 +112,17 @@ async function init() {
             // Non-critical: tabs can fail without breaking dashboard
         }
 
+        // CRITICAL: Populate quality analytics BEFORE initializing charts
+        // This ensures lastQualityAnalytics is set when chart events fire (qualityFilterSummary)
+        // Without this order, Filter Detail panel shows placeholder instead of auto-selecting first filter
+        try {
+            populateQualityOverview();
+            populateQualityBriefings();
+        } catch (error) {
+            Logger.error('Failed to populate quality insights', error);
+            // Non-critical: quality insights can fail without breaking dashboard
+        }
+
         try {
             initCharts();
         } catch (error) {
@@ -132,14 +143,6 @@ async function init() {
             populateIntegrationRoadmap();
         } catch (error) {
             Logger.error('Failed to populate source mix snapshot', error);
-        }
-
-        try {
-            populateQualityOverview();
-            populateQualityBriefings();
-        } catch (error) {
-            Logger.error('Failed to populate quality insights', error);
-            // Non-critical: quality insights can fail without breaking dashboard
         }
 
         try {
