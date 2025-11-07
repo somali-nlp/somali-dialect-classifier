@@ -795,8 +795,8 @@
 }
 
 .pipeline-intro-lede {
-    font-size: var(--text-base);
-    line-height: 1.8;
+    font-size: var(--text-lg);
+    line-height: 1.6;
     color: var(--gray-700);
     margin-bottom: var(--space-6);
 }
@@ -807,15 +807,15 @@
 }
 
 .pipeline-intro-detail {
-    font-size: var(--text-base);
-    line-height: 1.8;
+    font-size: var(--text-lg);
+    line-height: 1.6;
     color: var(--gray-600);
     margin-bottom: var(--space-6);
 }
 
 .pipeline-intro-roadmap {
-    font-size: var(--text-base);
-    line-height: 1.8;
+    font-size: var(--text-lg);
+    line-height: 1.6;
     color: var(--gray-700);
     margin-bottom: var(--space-10);
 }
