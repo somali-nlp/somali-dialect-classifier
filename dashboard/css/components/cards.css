@@ -790,14 +790,34 @@
 }
 
 .pipeline-intro {
-    max-width: 960px;
+    max-width: 900px;
+    margin-bottom: var(--space-10);
+}
+
+.pipeline-intro-lede {
+    font-size: var(--text-base);
+    line-height: 1.8;
+    color: var(--gray-700);
     margin-bottom: var(--space-6);
 }
 
-.pipeline-narrative {
-    font-size: var(--text-lg);
-    line-height: 1.7;
+.pipeline-intro-lede strong {
+    color: var(--gray-900);
+    font-weight: 600;
+}
+
+.pipeline-intro-detail {
+    font-size: var(--text-base);
+    line-height: 1.8;
+    color: var(--gray-600);
+    margin-bottom: var(--space-6);
+}
+
+.pipeline-intro-roadmap {
+    font-size: var(--text-base);
+    line-height: 1.8;
     color: var(--gray-700);
+    margin-bottom: var(--space-10);
 }
 
 .pipeline-sla-strip {

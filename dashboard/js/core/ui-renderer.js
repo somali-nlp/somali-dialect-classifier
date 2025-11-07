@@ -1572,62 +1572,111 @@ export function populatePerformanceMetrics(filteredMetrics = null) {
     requestAnimationFrame(() => renderPipelineCharts());
 }
 
-function renderPipelineNarrative(analytics, alertData) {
-    const narrativeEl = document.getElementById('pipeline-overview-narrative');
-    if (!narrativeEl) return;
+async function renderPipelineNarrative(analytics, alertData) {
+    const ledeEl = document.querySelector('.pipeline-intro-lede');
+    const detailEl = document.querySelector('.pipeline-intro-detail');
+    const roadmapEl = document.querySelector('.pipeline-intro-roadmap');
+
+    if (!ledeEl || !detailEl || !roadmapEl) return;
 
     const lastRun = analytics?.lastRun;
     if (!lastRun || (!Number.isFinite(lastRun.durationSeconds) && !Number.isFinite(lastRun.recordsPerMinute))) {
-        narrativeEl.textContent = 'Run the ingestion pipelines to populate pipeline performance insights.';
+        ledeEl.textContent = 'Run the ingestion pipelines to populate pipeline performance insights.';
+        detailEl.textContent = '';
+        roadmapEl.textContent = '';
         return;
     }
 
-    const durationText = formatDuration(lastRun.durationSeconds);
-    const rpmValue = lastRun.recordsPerMinute;
-    const rpmText = Number.isFinite(rpmValue) && rpmValue > 0 ? `${formatNumberShort(rpmValue)} records/min` : null;
-    const rpmDelta = analytics?.tiles?.rpm?.delta;
-    const rpmCallout = shouldDisplayDelta('rpm', rpmDelta)
-        ? `${rpmDelta > 0 ? 'up' : 'down'} ${formatNumberShort(Math.abs(rpmDelta))} vs prior run`
-        : 'holding steady';
+    // Load observations and alerts from data files
+    const observations = await loadPipelineObservations();
+    const alerts = await loadPipelineAlerts();
 
-    const fetchRateValue = lastRun.urlsPerSecond;
-    const fetchText = Number.isFinite(fetchRateValue) && fetchRateValue > 0
-        ? `${formatNumberShort(fetchRateValue)} urls/sec`
-        : null;
-
-    const stageHotspot = describeStageVariance(
-        (analytics?.stages || [])
-            .slice()
-            .sort((a, b) => Math.abs(b?.variance || 0) - Math.abs(a?.variance || 0))[0]
+    // Filter to recent performance observations
+    const recentObs = getRecentObservations(
+        filterObservationsByCategory(observations, 'performance'),
+        24
     );
 
-    const alerts = sortAlerts(alertData?.alerts || []);
-    const alertSnippet = formatAlertSummary(alerts[0]);
+    // Build multi-paragraph narrative using data-driven helper functions
+    const contextText = buildPipelineContextParagraph(analytics, observations);
+    const stateText = buildPipelineStateParagraph(analytics, recentObs, alerts);
+    const roadmapText = buildPipelineRoadmapParagraph(alerts);
+
+    // Render with strategic emphasis in first paragraph
+    ledeEl.innerHTML = `<strong>Real-time orchestration monitoring</strong> ${contextText}`;
+    detailEl.textContent = stateText;
+    roadmapEl.textContent = roadmapText;
+}
+
+// Pipeline data loading functions
+async function loadPipelineObservations() {
+    try {
+        const response = await fetch('data/pipeline_observations.json');
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to load observations:', error);
+        return [];
+    }
+}
+
+async function loadPipelineAlerts() {
+    try {
+        const response = await fetch('data/pipeline_alerts.json');
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to load alerts:', error);
+        return [];
+    }
+}
+
+function filterObservationsByCategory(observations, category) {
+    return observations.filter(obs => obs.category === category);
+}
+
+function getRecentObservations(observations, hours = 24) {
+    const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+    return observations.filter(obs => new Date(obs.timestamp) >= cutoff);
+}
+
+// Narrative building functions (following ux-writing skill standards)
+function buildPipelineContextParagraph(metrics, observations) {
+    return "tracks every ingestion cycle from source fetch to dataset delivery. The system validates data quality, monitors throughput performance, and surfaces alerts when metrics drift outside established guardrails.";
+}
+
+function buildPipelineStateParagraph(metrics, recentObservations, alerts) {
+    const lastRun = metrics?.lastRun || {};
+    const durationText = formatDuration(lastRun.duration, { compact: false });
+    const rpmText = lastRun.recordsPerMinute
+        ? `${formatNumberShort(lastRun.recordsPerMinute)} records/min`
+        : null;
 
     let narrative = `Latest orchestration closed in ${durationText}`;
     if (rpmText) {
-        narrative += ` delivering ${rpmText} (${rpmCallout}).`;
-    } else {
-        narrative += '.';
+        const successRate = lastRun.successRate ? `${formatPercent(lastRun.successRate)} success rate` : '';
+        narrative += ` delivering ${rpmText}${successRate ? ' at ' + successRate : ''}.`;
     }
 
-    if (fetchText) {
-        narrative += ` Fetch cadence held at ${fetchText}.`;
+    // Add key observation insights if available
+    if (recentObservations && recentObservations.length > 0) {
+        const performanceObs = recentObservations.filter(obs => obs.severity === 'info' || obs.severity === 'success');
+        if (performanceObs.length > 0) {
+            narrative += ` ${performanceObs[0].summary}`;
+        }
     }
 
-    const secondaryClauses = [];
-    if (stageHotspot) {
-        secondaryClauses.push(stageHotspot);
-    }
-    if (alertSnippet) {
-        secondaryClauses.push(`Watch list: ${alertSnippet}`);
+    return narrative;
+}
+
+function buildPipelineRoadmapParagraph(alerts) {
+    const activeImprovements = alerts?.filter(a =>
+        a.resolution_status === 'monitoring' || a.resolution_status === 'planned'
+    ) || [];
+
+    if (activeImprovements.length > 0) {
+        return `Upcoming improvements focus on ${activeImprovements.map(a => a.category.toLowerCase()).join(', ')} optimization. Quality guardrails continue monitoring throughput stability and error recovery patterns.`;
     }
 
-    if (secondaryClauses.length) {
-        narrative += ` ${secondaryClauses.join('. ')}.`;
-    }
-
-    narrativeEl.textContent = narrative.trim();
+    return "Quality guardrails continue monitoring throughput stability and error recovery patterns. Pipeline health tracking provides real-time visibility into data flow performance.";
 }
 
 function renderPipelineSlaStrip(analytics) {
