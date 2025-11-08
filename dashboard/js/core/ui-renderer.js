@@ -2631,5 +2631,158 @@ function updateOverviewCard(card, item, totalRecords) {
 }
 
 /**
+ * Render Alert Notifications at Top of Pipeline Performance Tab
+ * Displays high-severity alerts as dismissible banners
+ * Auto-dismisses after configurable timeout
+ *
+ * @param {Array} alerts - Array of alert objects from pipeline_alerts.json
+ * @param {Object} options - Configuration options
+ * @param {boolean} options.autoDismiss - Auto-dismiss low-severity alerts (default: true)
+ * @param {number} options.dismissTimeout - Timeout in ms for auto-dismiss (default: 10000)
+ * @param {number} options.criticalTimeout - Timeout in ms for critical alerts (default: 30000)
+ */
+export function renderAlertNotifications(alerts, options = {}) {
+    const {
+        autoDismiss = true,
+        dismissTimeout = 10000,      // 10 seconds
+        criticalTimeout = 30000       // 30 seconds
+    } = options;
+
+    // Find alert container (add to HTML if not present)
+    let container = document.getElementById('pipeline-alert-notifications');
+    if (!container) {
+        const pipelinePanel = document.getElementById('pipeline-panel');
+        if (!pipelinePanel) {
+            console.warn('[renderAlertNotifications] Pipeline panel not found');
+            return;
+        }
+
+        container = document.createElement('div');
+        container.id = 'pipeline-alert-notifications';
+        container.className = 'alert-notifications-container';
+        container.setAttribute('role', 'alert');
+        container.setAttribute('aria-live', 'polite');
+        container.setAttribute('aria-atomic', 'true');
+
+        // Insert at top of pipeline panel (after h2 title)
+        const title = pipelinePanel.querySelector('h2.section-title');
+        if (title && title.nextSibling) {
+            pipelinePanel.insertBefore(container, title.nextSibling);
+        } else {
+            pipelinePanel.insertBefore(container, pipelinePanel.firstChild);
+        }
+    }
+
+    // Clear existing notifications
+    container.innerHTML = '';
+
+    // Filter for high-severity alerts only (high, critical)
+    const highSeverityAlerts = alerts.filter(alert =>
+        ['high', 'critical'].includes(alert.severity?.toLowerCase())
+    );
+
+    if (highSeverityAlerts.length === 0) {
+        // No high-severity alerts, hide container
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+
+    // Render each alert
+    highSeverityAlerts.forEach((alert, index) => {
+        const banner = createAlertBanner(alert, index);
+        container.appendChild(banner);
+
+        // Auto-dismiss logic
+        if (autoDismiss) {
+            const timeout = alert.severity?.toLowerCase() === 'critical'
+                ? criticalTimeout
+                : dismissTimeout;
+
+            setTimeout(() => {
+                dismissBanner(banner);
+            }, timeout);
+        }
+    });
+}
+
+/**
+ * Create Alert Banner Element
+ * @param {Object} alert - Alert object
+ * @param {number} index - Alert index
+ * @returns {HTMLElement} Banner element
+ */
+function createAlertBanner(alert, index) {
+    const banner = document.createElement('div');
+    banner.className = `alert-banner alert-banner-${alert.severity?.toLowerCase() || 'medium'}`;
+    banner.setAttribute('role', 'alert');
+    banner.setAttribute('aria-labelledby', `alert-title-${index}`);
+    banner.setAttribute('aria-describedby', `alert-desc-${index}`);
+
+    // Severity icon
+    const iconMap = {
+        critical: '🔴',
+        high: '⚠️',
+        medium: '🟡',
+        low: 'ℹ️'
+    };
+    const icon = iconMap[alert.severity?.toLowerCase()] || '⚠️';
+
+    // Build banner HTML
+    banner.innerHTML = `
+        <div class="alert-banner-icon" aria-hidden="true">${icon}</div>
+        <div class="alert-banner-content">
+            <div class="alert-banner-title" id="alert-title-${index}">
+                <strong>${alert.severity?.toUpperCase()}: ${alert.scope || 'Pipeline'}</strong>
+            </div>
+            <div class="alert-banner-description" id="alert-desc-${index}">
+                ${alert.alert_type || 'System Alert'}
+            </div>
+            <div class="alert-banner-action">
+                <a href="#pipeline-alert-table" class="alert-banner-link">
+                    View details in Runbook Alerts →
+                </a>
+            </div>
+        </div>
+        <button class="alert-banner-dismiss" aria-label="Dismiss alert" title="Dismiss">
+            ✕
+        </button>
+    `;
+
+    // Add dismiss handler
+    const dismissBtn = banner.querySelector('.alert-banner-dismiss');
+    dismissBtn.addEventListener('click', () => {
+        dismissBanner(banner);
+    });
+
+    return banner;
+}
+
+/**
+ * Dismiss Alert Banner with Animation
+ * @param {HTMLElement} banner - Banner element to dismiss
+ */
+function dismissBanner(banner) {
+    // Add fade-out animation
+    banner.style.opacity = '0';
+    banner.style.transform = 'translateX(20px)';
+    banner.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+
+    // Remove from DOM after animation
+    setTimeout(() => {
+        if (banner.parentNode) {
+            banner.parentNode.removeChild(banner);
+
+            // Hide container if no more alerts
+            const container = document.getElementById('pipeline-alert-notifications');
+            if (container && container.children.length === 0) {
+                container.style.display = 'none';
+            }
+        }
+    }, 300);
+}
+
+/**
  * Update quality metrics with real data
  */

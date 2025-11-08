@@ -378,15 +378,21 @@ export function createQualityDistributionChart(canvasId, sourceMetrics) {
 }
 
 /**
- * Create Run Timeline Chart
- * Shows last N pipeline runs with duration and status
+ * Create Run Timeline Chart (Enhanced Scatter Plot)
+ * Scatter plot showing all historical pipeline runs on timeline
+ * X-axis: timestamp, Y-axis: throughput (RPM)
+ * Color-coded by success/failure or quality threshold
+ * Bubble size indicates duration
  *
  * @param {string} canvasId - Canvas element ID
  * @param {Array} runHistory - Array of historical run objects
- * @param {number} limit - Number of runs to show (default: 10)
+ * @param {Object} options - Configuration options
+ * @param {number} options.limit - Number of runs to show (default: 20)
+ * @param {string} options.colorBy - Color by 'status' or 'quality' (default: 'status')
+ * @param {number} options.qualityThreshold - Quality threshold for success (default: 0.70)
  * @returns {Chart} Chart.js instance
  */
-export function createRunTimelineChart(canvasId, runHistory, limit = 10) {
+export function createRunTimelineChart(canvasId, runHistory, options = {}) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
         console.warn(`Canvas element #${canvasId} not found`);
@@ -395,19 +401,82 @@ export function createRunTimelineChart(canvasId, runHistory, limit = 10) {
 
     const ctx = canvas.getContext('2d');
 
-    const recentRuns = runHistory.slice(0, limit).reverse();
-    const labels = recentRuns.map(run => {
-        const date = new Date(run.timestamp);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    });
-    const durations = recentRuns.map(run => run.total_duration_seconds);
-    const retries = recentRuns.map(run => run.retries || 0);
+    // Default options (handle legacy limit parameter)
+    let limit, colorBy, qualityThreshold;
+    if (typeof options === 'number') {
+        // Legacy: createRunTimelineChart(canvasId, runHistory, limit)
+        limit = options;
+        colorBy = 'status';
+        qualityThreshold = 0.70;
+    } else {
+        limit = options.limit || 20;
+        colorBy = options.colorBy || 'status';
+        qualityThreshold = options.qualityThreshold || 0.70;
+    }
 
-    // Color based on retry count
-    const colors = retries.map(r => {
-        if (r === 0) return '#00A651';       // Green
-        if (r < 5) return '#FFC857';         // Yellow
-        return '#FF6B35';                     // Red
+    // Prepare data
+    const recentRuns = runHistory.slice(0, limit).reverse();
+
+    // Convert to scatter data points
+    const dataPoints = recentRuns.map((run, index) => {
+        const timestamp = new Date(run.timestamp).getTime();
+        const throughput = run.throughput_rpm || 0;
+        const duration = run.total_duration_seconds || 0;
+        const quality = run.quality_pass_rate || 0;
+        const retries = run.retries || 0;
+        const errors = run.errors || 0;
+
+        // Determine status
+        let status = 'success';
+        if (errors > 0 || quality < qualityThreshold) {
+            status = 'warning';
+        }
+        if (retries > 5 || quality < 0.50) {
+            status = 'error';
+        }
+
+        // Color mapping
+        const colorMap = {
+            success: '#00A651',   // Green
+            warning: '#FFC857',   // Yellow
+            error: '#FF6B35'      // Red
+        };
+
+        // Quality-based coloring (alternative)
+        let color;
+        if (colorBy === 'quality') {
+            if (quality >= 0.90) color = '#00A651';      // Excellent
+            else if (quality >= 0.70) color = '#0176D3'; // Good
+            else if (quality >= 0.50) color = '#FFC857'; // Fair
+            else color = '#FF6B35';                       // Poor
+        } else {
+            color = colorMap[status];
+        }
+
+        // Bubble size based on duration (normalize to 5-15 range)
+        const minSize = 5;
+        const maxSize = 15;
+        const maxDuration = Math.max(...recentRuns.map(r => r.total_duration_seconds || 0));
+        const minDuration = Math.min(...recentRuns.map(r => r.total_duration_seconds || 0));
+        const normalizedSize = minSize + ((duration - minDuration) / (maxDuration - minDuration || 1)) * (maxSize - minSize);
+
+        return {
+            x: timestamp,
+            y: throughput,
+            r: normalizedSize,
+            backgroundColor: color,
+            borderColor: '#FFFFFF',
+            borderWidth: 2,
+            // Store metadata for tooltips
+            run_id: run.run_id,
+            duration,
+            quality,
+            retries,
+            errors,
+            sources: run.sources_processed,
+            records: run.total_records,
+            status
+        };
     });
 
     // Destroy existing chart if present
@@ -416,15 +485,21 @@ export function createRunTimelineChart(canvasId, runHistory, limit = 10) {
         existingChart.destroy();
     }
 
+    // Calculate statistics for title
+    const successCount = dataPoints.filter(p => p.status === 'success').length;
+    const warningCount = dataPoints.filter(p => p.status === 'warning').length;
+    const errorCount = dataPoints.filter(p => p.status === 'error').length;
+    const successRate = ((successCount / dataPoints.length) * 100).toFixed(0);
+
     return new Chart(ctx, {
-        type: 'bar',
+        type: 'bubble',
         data: {
-            labels,
             datasets: [{
-                label: 'Duration',
-                data: durations,
-                backgroundColor: colors,
-                borderWidth: 0
+                label: 'Pipeline Runs',
+                data: dataPoints,
+                backgroundColor: dataPoints.map(p => p.backgroundColor),
+                borderColor: dataPoints.map(p => p.borderColor),
+                borderWidth: 2
             }]
         },
         options: {
@@ -432,46 +507,107 @@ export function createRunTimelineChart(canvasId, runHistory, limit = 10) {
             maintainAspectRatio: false,
             plugins: {
                 title: {
-                    display: false
+                    display: true,
+                    text: `Run Timeline - ${successRate}% success rate (${successCount}/${dataPoints.length} runs)`,
+                    font: { size: 14, weight: '600' },
+                    align: 'start',
+                    padding: { bottom: 10 }
                 },
                 legend: {
-                    display: false
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        generateLabels: () => {
+                            if (colorBy === 'status') {
+                                return [
+                                    { text: 'Success', fillStyle: '#00A651', strokeStyle: '#FFFFFF', lineWidth: 2 },
+                                    { text: 'Warning', fillStyle: '#FFC857', strokeStyle: '#FFFFFF', lineWidth: 2 },
+                                    { text: 'Error', fillStyle: '#FF6B35', strokeStyle: '#FFFFFF', lineWidth: 2 }
+                                ];
+                            } else {
+                                return [
+                                    { text: 'Excellent (≥90%)', fillStyle: '#00A651', strokeStyle: '#FFFFFF', lineWidth: 2 },
+                                    { text: 'Good (70-89%)', fillStyle: '#0176D3', strokeStyle: '#FFFFFF', lineWidth: 2 },
+                                    { text: 'Fair (50-69%)', fillStyle: '#FFC857', strokeStyle: '#FFFFFF', lineWidth: 2 },
+                                    { text: 'Poor (<50%)', fillStyle: '#FF6B35', strokeStyle: '#FFFFFF', lineWidth: 2 }
+                                ];
+                            }
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 15
+                    }
                 },
                 tooltip: {
                     callbacks: {
+                        title: (tooltipItems) => {
+                            const point = tooltipItems[0].raw;
+                            const date = new Date(point.x);
+                            return date.toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                        },
                         label: (context) => {
-                            const idx = context.dataIndex;
-                            const duration = durations[idx];
-                            const retry = retries[idx];
-                            const run = recentRuns[idx];
+                            const point = context.raw;
                             return [
-                                `Duration: ${formatDuration(duration)}`,
-                                `Retries: ${retry}`,
-                                `Records: ${run.total_records?.toLocaleString() || '—'}`,
-                                `Throughput: ${run.throughput_rpm?.toLocaleString() || '—'} rpm`
+                                `Run ID: ${point.run_id}`,
+                                `Throughput: ${point.y.toLocaleString()} rpm`,
+                                `Duration: ${formatDuration(point.duration)}`,
+                                `Quality: ${(point.quality * 100).toFixed(1)}%`,
+                                `Records: ${point.records?.toLocaleString() || '—'}`,
+                                `Sources: ${point.sources || '—'}`,
+                                `Retries: ${point.retries}`,
+                                `Errors: ${point.errors}`,
+                                `Status: ${point.status.toUpperCase()}`
                             ];
                         }
-                    }
+                    },
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    displayColors: false
                 }
             },
             scales: {
                 x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day',
+                        displayFormats: {
+                            day: 'MMM d'
+                        },
+                        tooltipFormat: 'MMM d, yyyy HH:mm'
+                    },
                     title: {
                         display: true,
-                        text: 'Run Date',
+                        text: 'Run Date/Time',
                         font: { size: 12, weight: '500' }
+                    },
+                    grid: {
+                        display: true,
+                        color: 'rgba(0, 0, 0, 0.05)'
                     }
                 },
                 y: {
                     title: {
                         display: true,
-                        text: 'Duration (seconds)',
+                        text: 'Throughput (records/min)',
                         font: { size: 12, weight: '500' }
                     },
                     grid: {
                         color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        callback: (value) => value.toLocaleString()
                     }
                 }
+            },
+            interaction: {
+                mode: 'nearest',
+                intersect: true
             }
         }
     });
