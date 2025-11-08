@@ -407,11 +407,11 @@ export function createRunTimelineChart(canvasId, runHistory, options = {}) {
         // Legacy: createRunTimelineChart(canvasId, runHistory, limit)
         limit = options;
         colorBy = 'status';
-        qualityThreshold = 0.70;
+        qualityThreshold = 0.50;
     } else {
         limit = options.limit || 20;
         colorBy = options.colorBy || 'status';
-        qualityThreshold = options.qualityThreshold || 0.70;
+        qualityThreshold = options.qualityThreshold || 0.50;
     }
 
     // Prepare data
@@ -426,13 +426,17 @@ export function createRunTimelineChart(canvasId, runHistory, options = {}) {
         const retries = run.retries || 0;
         const errors = run.errors || 0;
 
-        // Determine status
+        // Determine status - prioritize errors, then quality
         let status = 'success';
-        if (errors > 0 || quality < qualityThreshold) {
+        if (quality < qualityThreshold) {
             status = 'warning';
         }
-        if (retries > 5 || quality < 0.50) {
+        if (errors > 0 || retries > 5) {
             status = 'error';
+        }
+        // Override: if quality is decent and no errors, it's success
+        if (quality >= qualityThreshold && errors === 0 && retries <= 2) {
+            status = 'success';
         }
 
         // Color mapping
@@ -505,17 +509,26 @@ export function createRunTimelineChart(canvasId, runHistory, options = {}) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    top: 10,
+                    right: 15,
+                    bottom: 10,
+                    left: 15
+                }
+            },
             plugins: {
                 title: {
                     display: true,
                     text: `Run Timeline - ${successRate}% success rate (${successCount}/${dataPoints.length} runs)`,
                     font: { size: 14, weight: '600' },
                     align: 'start',
-                    padding: { bottom: 10 }
+                    padding: { top: 5, bottom: 20 }
                 },
                 legend: {
                     display: true,
                     position: 'top',
+                    align: 'end',
                     labels: {
                         generateLabels: () => {
                             if (colorBy === 'status') {
@@ -535,7 +548,9 @@ export function createRunTimelineChart(canvasId, runHistory, options = {}) {
                         },
                         usePointStyle: true,
                         pointStyle: 'circle',
-                        padding: 15
+                        padding: 20,
+                        boxWidth: 12,
+                        boxHeight: 12
                     }
                 },
                 tooltip: {
