@@ -969,9 +969,50 @@
                     <!-- Populated by JavaScript -->
                 </div>
 
+                <!-- Hero Metrics -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 2rem 0;">
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">Throughput</div>
+                        <div id="pipeline-metric-throughput" style="font-size: 1.875rem; font-weight: 600; color: #111827;">—</div>
+                    </div>
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">Duration</div>
+                        <div id="pipeline-metric-duration" style="font-size: 1.875rem; font-weight: 600; color: #111827;">—</div>
+                    </div>
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">Quality Pass Rate</div>
+                        <div id="pipeline-metric-quality" style="font-size: 1.875rem; font-weight: 600; color: #111827;">—</div>
+                    </div>
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">Retries</div>
+                        <div id="pipeline-metric-retries" style="font-size: 1.875rem; font-weight: 600; color: #111827;">—</div>
+                    </div>
+                </div>
+
                 <section class="pipeline-throughput" aria-label="Throughput dashboard">
-                    <div class="pipeline-throughput-grid" id="pipeline-throughput-grid">
-                        <!-- Populated by JavaScript -->
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 2rem; margin: 2rem 0;">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <h3 class="chart-title">Throughput Trend</h3>
+                                    <p class="chart-subtitle">Records processed per minute over the last 10 runs with 7-day moving average</p>
+                                </div>
+                            </div>
+                            <div class="chart-canvas">
+                                <canvas id="pipeline-throughput-trend-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <h3 class="chart-title">Quality Pass Rate by Source</h3>
+                                    <p class="chart-subtitle">Percentage of records passing validation checks per data source</p>
+                                </div>
+                            </div>
+                            <div class="chart-canvas">
+                                <canvas id="pipeline-quality-chart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -980,11 +1021,16 @@
                         <h3 class="section-title">Stage Latency Waterfall</h3>
                         <p class="section-subtitle">Time spent across discovery, fetch, extract, quality, and write stages</p>
                     </div>
-                    <div class="stage-waterfall" id="pipeline-waterfall">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                    <div class="stage-waterfall-legend" id="pipeline-waterfall-legend">
-                        <!-- Populated by JavaScript -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 class="chart-title">Pipeline Stage Durations</h3>
+                                <p class="chart-subtitle">Breakdown of time spent in each pipeline stage for the latest run</p>
+                            </div>
+                        </div>
+                        <div class="chart-canvas">
+                            <canvas id="pipeline-waterfall-canvas"></canvas>
+                        </div>
                     </div>
                 </section>
 
@@ -993,7 +1039,7 @@
                         <h3 class="section-title">Source SLA Monitor</h3>
                         <p class="section-subtitle">Live throughput vs SLA for each ingestion source</p>
                     </div>
-                    <div class="pipeline-sla-grid" id="pipeline-sla-grid">
+                    <div id="pipeline-sla-grid" class="source-grid">
                         <!-- Populated by JavaScript -->
                     </div>
                 </section>
@@ -1003,8 +1049,16 @@
                         <h3 class="section-title">Run Timeline &amp; Backlog</h3>
                         <p class="section-subtitle">Recent orchestrations with duration, throughput, and retries</p>
                     </div>
-                    <div class="pipeline-timeline-grid" id="pipeline-timeline-grid">
-                        <!-- Populated by JavaScript -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 class="chart-title">Pipeline Run History</h3>
+                                <p class="chart-subtitle">Duration and retry status for the last 10 pipeline executions</p>
+                            </div>
+                        </div>
+                        <div class="chart-canvas">
+                            <canvas id="pipeline-timeline-chart"></canvas>
+                        </div>
                     </div>
                 </section>
 
@@ -1023,7 +1077,7 @@
                         <h3 class="section-title">Resource Utilization</h3>
                         <p class="section-subtitle">Worker concurrency, queue depth, and bandwidth</p>
                     </div>
-                    <div class="pipeline-resource-grid" id="pipeline-resource-grid">
+                    <div id="pipeline-resource-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 1.5rem 0;">
                         <!-- Populated by JavaScript -->
                     </div>
                 </section>

@@ -114,6 +114,30 @@ export const Config = {
 };
 
 /**
+ * Design System Color Palettes
+ * Dual-palette system: Brand colors for UI, Data colors for visualizations
+ */
+export const BRAND_COLORS = {
+    primary: '#0176D3',      // Tableau Blue - primary brand
+    primaryDark: '#032D60',  // Deep Navy - headers, emphasis
+    success: '#10b981',      // Green
+    warning: '#f59e0b',      // Amber
+    danger: '#ef4444',       // Red
+    info: '#3b82f6'          // Blue
+};
+
+export const DATA_COLORS = [
+    '#33BBEE',  // Cyan (primary data color)
+    '#0077BB',  // Blue
+    '#EE7733',  // Orange
+    '#009988',  // Teal
+    '#CC3311',  // Red
+    '#EE3377',  // Magenta
+    '#BBBBBB',  // Gray
+    '#000000'   // Black
+];
+
+/**
  * Override configuration values
  * Useful for testing or environment-specific settings
  * @param {Object} overrides - Object with configuration overrides

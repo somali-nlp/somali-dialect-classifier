@@ -56,6 +56,7 @@ import {
     populateQualityOverview,
     populateQualityBriefings,
     populatePerformanceMetrics,
+    populatePipelinePerformance,
     populateOverviewCards,
 } from './core/ui-renderer.js';
 import { initializeFilterLabels, computeQualityAnalytics } from './core/aggregates.js';
@@ -146,6 +147,11 @@ async function init() {
         }
 
         try {
+            // Use new pipeline performance function (async)
+            populatePipelinePerformance().catch(error => {
+                Logger.error('Failed to populate pipeline performance', error);
+            });
+            // Keep legacy performance metrics for backward compatibility
             populatePerformanceMetrics();
         } catch (error) {
             Logger.error('Failed to populate performance metrics', error);

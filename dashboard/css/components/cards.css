@@ -110,12 +110,14 @@
 .source-metric-label {
     color: var(--gray-600);
     font-size: var(--text-sm);
+    white-space: nowrap;
 }
 
 .source-metric-value {
     font-weight: 600;
     font-size: var(--text-lg);
     color: var(--tableau-navy);
+    white-space: nowrap;
 }
 
 .source-card-footer {
