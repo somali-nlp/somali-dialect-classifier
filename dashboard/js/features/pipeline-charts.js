@@ -478,15 +478,21 @@ export function createRunTimelineChart(canvasId, runHistory, limit = 10) {
 }
 
 /**
- * Create Throughput Trend Chart
- * Line chart showing throughput over time with trend indicator
+ * Create Enhanced Throughput Trend Chart
+ * Line chart showing throughput over time with:
+ * - Actual throughput line (blue)
+ * - 7-run moving average (gray dashed)
+ * - Baseline target line (red dashed, if baselineMetrics provided)
+ * - Trend arrows with percentage change in title
+ * - Anomaly detection highlights (if baselineMetrics provided)
  *
  * @param {string} canvasId - Canvas element ID
  * @param {Array} runHistory - Array of historical run objects
+ * @param {Object} baselineMetrics - Optional baseline metrics from calculateBaselines()
  * @param {number} limit - Number of runs to show (default: 10)
  * @returns {Chart} Chart.js instance
  */
-export function createThroughputTrendChart(canvasId, runHistory, limit = 10) {
+export function createThroughputTrendChart(canvasId, runHistory, baselineMetrics = null, limit = 10) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
         console.warn(`Canvas element #${canvasId} not found`);
@@ -502,7 +508,7 @@ export function createThroughputTrendChart(canvasId, runHistory, limit = 10) {
     });
     const throughputs = recentRuns.map(run => run.throughput_rpm || 0);
 
-    // Calculate 7-day moving average (if enough data)
+    // Calculate 7-run moving average
     const movingAvg = [];
     const window = Math.min(7, recentRuns.length);
     for (let i = 0; i < throughputs.length; i++) {
@@ -510,6 +516,91 @@ export function createThroughputTrendChart(canvasId, runHistory, limit = 10) {
         const slice = throughputs.slice(start, i + 1);
         const avg = slice.reduce((sum, val) => sum + val, 0) / slice.length;
         movingAvg.push(avg);
+    }
+
+    // Calculate trend (first vs last)
+    const firstThroughput = throughputs[0];
+    const lastThroughput = throughputs[throughputs.length - 1];
+    const trendPercent = firstThroughput > 0
+        ? ((lastThroughput - firstThroughput) / firstThroughput * 100).toFixed(1)
+        : 0;
+    const trendDirection = parseFloat(trendPercent) > 0 ? 'up' : parseFloat(trendPercent) < 0 ? 'down' : 'stable';
+    const trendIcon = trendDirection === 'up' ? '↑' : trendDirection === 'down' ? '↓' : '→';
+    const trendColor = trendDirection === 'up' ? '#00A651' : trendDirection === 'down' ? '#FF6B35' : '#9CA3AF';
+
+    // Baseline target line (if available)
+    const baselineTarget = baselineMetrics?.throughput?.p50 || null;
+    const baselineTargetData = baselineTarget ? new Array(labels.length).fill(baselineTarget) : null;
+
+    // Detect anomalies (throughput < p50 * 0.8 or > p95 * 1.2)
+    const anomalyPoints = [];
+    if (baselineMetrics?.throughput) {
+        const p50 = baselineMetrics.throughput.p50;
+        const p95 = baselineMetrics.throughput.p95;
+
+        throughputs.forEach((value, idx) => {
+            if (value < p50 * 0.8 || value > p95 * 1.2) {
+                anomalyPoints.push({
+                    x: idx,
+                    y: value,
+                    r: 8
+                });
+            }
+        });
+    }
+
+    // Build datasets
+    const datasets = [
+        {
+            label: 'Throughput (rpm)',
+            data: throughputs,
+            borderColor: '#0176D3',
+            backgroundColor: 'rgba(1, 118, 211, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#0176D3',
+            pointBorderColor: '#FFFFFF',
+            pointBorderWidth: 2
+        },
+        {
+            label: `${window}-Run Moving Average`,
+            data: movingAvg,
+            borderColor: '#9CA3AF',
+            borderDash: [5, 5],
+            fill: false,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 0
+        }
+    ];
+
+    // Add baseline target if available
+    if (baselineTargetData) {
+        datasets.push({
+            label: 'P50 Baseline',
+            data: baselineTargetData,
+            borderColor: '#FF6B35',
+            borderDash: [10, 5],
+            fill: false,
+            tension: 0,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            borderWidth: 2
+        });
+    }
+
+    // Add anomaly points if detected
+    if (anomalyPoints.length > 0) {
+        datasets.push({
+            label: 'Anomalies',
+            data: anomalyPoints,
+            type: 'bubble',
+            backgroundColor: '#FF6B35',
+            borderColor: '#FFFFFF',
+            borderWidth: 2
+        });
     }
 
     // Destroy existing chart if present
@@ -522,42 +613,78 @@ export function createThroughputTrendChart(canvasId, runHistory, limit = 10) {
         type: 'line',
         data: {
             labels,
-            datasets: [
-                {
-                    label: 'Throughput (rpm)',
-                    data: throughputs,
-                    borderColor: '#0176D3',
-                    backgroundColor: 'rgba(1, 118, 211, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                },
-                {
-                    label: '7-Day Moving Average',
-                    data: movingAvg,
-                    borderColor: '#9CA3AF',
-                    borderDash: [5, 5],
-                    fill: false,
-                    tension: 0.4,
-                    pointRadius: 0
-                }
-            ]
+            datasets
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
                 title: {
-                    display: false
+                    display: true,
+                    text: `Throughput Trend: ${trendIcon} ${Math.abs(trendPercent)}% over ${labels.length} runs`,
+                    color: trendColor,
+                    font: { size: 14, weight: '600' },
+                    align: 'start',
+                    padding: { bottom: 10 }
                 },
                 legend: {
                     display: true,
-                    position: 'top'
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        filter: (item) => {
+                            // Hide anomalies legend if no anomalies
+                            return !(item.text === 'Anomalies' && anomalyPoints.length === 0);
+                        }
+                    }
                 },
                 tooltip: {
                     mode: 'index',
-                    intersect: false
+                    intersect: false,
+                    callbacks: {
+                        label: (context) => {
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y;
+
+                            if (label.includes('Moving Average')) {
+                                return `${label}: ${value.toLocaleString(undefined, {maximumFractionDigits: 0})} rpm`;
+                            }
+
+                            if (label === 'Throughput (rpm)') {
+                                const runIndex = context.dataIndex;
+                                const run = recentRuns[runIndex];
+
+                                let status = '';
+                                if (baselineMetrics?.throughput) {
+                                    const p50 = baselineMetrics.throughput.p50;
+                                    if (value >= p50) {
+                                        status = ' (Above median ✓)';
+                                    } else if (value >= p50 * 0.8) {
+                                        status = ' (Near median)';
+                                    } else {
+                                        status = ' (Below median ⚠)';
+                                    }
+                                }
+
+                                return [
+                                    `${label}: ${value.toLocaleString(undefined, {maximumFractionDigits: 0})} rpm${status}`,
+                                    `Duration: ${formatDuration(run.total_duration_seconds)}`,
+                                    `Quality: ${(run.quality_pass_rate * 100).toFixed(1)}%`
+                                ];
+                            }
+
+                            if (label === 'P50 Baseline') {
+                                return `${label}: ${value.toLocaleString(undefined, {maximumFractionDigits: 0})} rpm (median target)`;
+                            }
+
+                            if (label === 'Anomalies') {
+                                return `⚠ Anomaly detected: ${value.toLocaleString(undefined, {maximumFractionDigits: 0})} rpm`;
+                            }
+
+                            return `${label}: ${value}`;
+                        }
+                    }
                 }
             },
             scales: {
@@ -566,6 +693,9 @@ export function createThroughputTrendChart(canvasId, runHistory, limit = 10) {
                         display: true,
                         text: 'Run Date',
                         font: { size: 12, weight: '500' }
+                    },
+                    grid: {
+                        display: false
                     }
                 },
                 y: {
@@ -576,8 +706,16 @@ export function createThroughputTrendChart(canvasId, runHistory, limit = 10) {
                     },
                     grid: {
                         color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        callback: (value) => value.toLocaleString()
                     }
                 }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
             }
         }
     });

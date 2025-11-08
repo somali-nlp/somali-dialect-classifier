@@ -1568,8 +1568,15 @@ export async function populatePipelinePerformance() {
         }
 
         if (analytics.runHistory.length >= 3) {
+            // Calculate baseline metrics for enhanced chart features
+            const baselineMetrics = await pipelineDataService.calculateBaselines();
+
             createRunTimelineChart('pipeline-timeline-chart', analytics.runHistory);
-            createThroughputTrendChart('pipeline-throughput-trend-chart', analytics.runHistory);
+            createThroughputTrendChart(
+                'pipeline-throughput-trend-chart',
+                analytics.runHistory,
+                baselineMetrics
+            );
         }
 
         renderPipelinePerformanceAlerts(alerts);

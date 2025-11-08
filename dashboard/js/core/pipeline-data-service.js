@@ -385,6 +385,241 @@ class PipelineDataService {
       baseline
     };
   }
+
+  /**
+   * Calculate baseline metrics from historical runs
+   * Computes p50, p95, p99 percentiles for throughput and duration
+   * @param {number} windowSize - Number of recent runs to analyze (default: 15)
+   * @returns {Promise<Object>} Baseline metrics object with percentiles
+   */
+  async calculateBaselines(windowSize = 15) {
+    const runHistory = await this.loadRunHistory();
+
+    if (runHistory.length < 2) {
+      return {
+        sufficient_data: false,
+        message: 'Insufficient historical data for baseline calculation',
+        runs_available: runHistory.length,
+        runs_required: 2
+      };
+    }
+
+    const recentRuns = runHistory.slice(0, windowSize);
+
+    // Extract metrics for baseline calculation
+    const throughputs = recentRuns.map(r => r.throughput_rpm).filter(v => v != null);
+    const durations = recentRuns.map(r => r.total_duration_seconds).filter(v => v != null);
+    const qualityRates = recentRuns.map(r => r.quality_pass_rate).filter(v => v != null);
+
+    // Calculate percentiles
+    const calculatePercentiles = (values) => {
+      if (values.length === 0) return { p50: 0, p95: 0, p99: 0 };
+
+      const sorted = [...values].sort((a, b) => a - b);
+      const p50Index = Math.floor(sorted.length * 0.50);
+      const p95Index = Math.floor(sorted.length * 0.95);
+      const p99Index = Math.floor(sorted.length * 0.99);
+
+      return {
+        p50: sorted[p50Index] || sorted[sorted.length - 1],
+        p95: sorted[p95Index] || sorted[sorted.length - 1],
+        p99: sorted[p99Index] || sorted[sorted.length - 1],
+        min: Math.min(...sorted),
+        max: Math.max(...sorted),
+        mean: sorted.reduce((sum, v) => sum + v, 0) / sorted.length
+      };
+    };
+
+    return {
+      sufficient_data: true,
+      window_size: recentRuns.length,
+      date_range: {
+        start: recentRuns[recentRuns.length - 1].timestamp,
+        end: recentRuns[0].timestamp
+      },
+      throughput: calculatePercentiles(throughputs),
+      duration: calculatePercentiles(durations),
+      quality: calculatePercentiles(qualityRates),
+      runs_analyzed: recentRuns.length
+    };
+  }
+
+  /**
+   * Compare current run metrics to baseline percentiles
+   * @param {Object} currentMetrics - Current run metrics
+   * @param {Object} baselines - Baseline metrics from calculateBaselines()
+   * @returns {Object} Comparison results with deviation percentages
+   */
+  compareToBaseline(currentMetrics, baselines) {
+    if (!baselines.sufficient_data) {
+      return {
+        available: false,
+        message: 'Baseline comparison unavailable - insufficient historical data'
+      };
+    }
+
+    const calculateDeviation = (current, baseline) => {
+      if (!baseline || baseline === 0) return 0;
+      return ((current - baseline) / baseline) * 100;
+    };
+
+    return {
+      available: true,
+      throughput: {
+        current: currentMetrics.throughput_rpm,
+        baseline_p50: baselines.throughput.p50,
+        baseline_p95: baselines.throughput.p95,
+        deviation_from_p50: calculateDeviation(currentMetrics.throughput_rpm, baselines.throughput.p50),
+        deviation_from_p95: calculateDeviation(currentMetrics.throughput_rpm, baselines.throughput.p95),
+        status: currentMetrics.throughput_rpm >= baselines.throughput.p50 ? 'above_median' : 'below_median'
+      },
+      duration: {
+        current: currentMetrics.total_duration_seconds,
+        baseline_p50: baselines.duration.p50,
+        baseline_p95: baselines.duration.p95,
+        deviation_from_p50: calculateDeviation(currentMetrics.total_duration_seconds, baselines.duration.p50),
+        deviation_from_p95: calculateDeviation(currentMetrics.total_duration_seconds, baselines.duration.p95),
+        status: currentMetrics.total_duration_seconds <= baselines.duration.p50 ? 'below_median' : 'above_median'
+      },
+      quality: {
+        current: currentMetrics.quality_pass_rate,
+        baseline_p50: baselines.quality.p50,
+        baseline_p95: baselines.quality.p95,
+        deviation_from_p50: calculateDeviation(currentMetrics.quality_pass_rate, baselines.quality.p50),
+        deviation_from_p95: calculateDeviation(currentMetrics.quality_pass_rate, baselines.quality.p95),
+        status: currentMetrics.quality_pass_rate >= baselines.quality.p50 ? 'above_median' : 'below_median'
+      },
+      baseline_window: baselines.window_size
+    };
+  }
+
+  /**
+   * Detect anomalies using Z-score statistical method
+   * Flags metrics when |z-score| > 2 (medium severity) or > 3 (high severity)
+   * @param {Object} currentRun - Current run metrics
+   * @param {number} windowSize - Number of recent runs for baseline (default: 15)
+   * @returns {Promise<Object>} Anomaly detection results
+   */
+  async detectAnomalies(currentRun, windowSize = 15) {
+    const runHistory = await this.loadRunHistory();
+
+    if (runHistory.length < 5) {
+      return {
+        anomalies: [],
+        detection_available: false,
+        message: 'Insufficient historical data for anomaly detection (need 5+ runs)',
+        runs_available: runHistory.length
+      };
+    }
+
+    const recentRuns = runHistory.slice(0, windowSize);
+    const anomalies = [];
+
+    // Helper function to calculate Z-score
+    const calculateZScore = (values) => {
+      if (values.length === 0) return { mean: 0, stdDev: 0 };
+
+      const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+      const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
+      const stdDev = Math.sqrt(variance);
+
+      return { mean, stdDev };
+    };
+
+    const detectMetricAnomaly = (metricName, currentValue, historicalValues, higherIsBetter = true) => {
+      const { mean, stdDev } = calculateZScore(historicalValues);
+
+      if (stdDev === 0) {
+        // No variance in historical data - can't detect anomalies
+        return null;
+      }
+
+      const zScore = (currentValue - mean) / stdDev;
+      const absZScore = Math.abs(zScore);
+
+      if (absZScore > 2) {
+        const severity = absZScore > 3 ? 'high' : 'medium';
+        const direction = zScore > 0 ? 'increase' : 'decrease';
+        const isGood = higherIsBetter ? (zScore > 0) : (zScore < 0);
+
+        return {
+          metric: metricName,
+          value: currentValue,
+          expected: mean,
+          z_score: Math.round(zScore * 100) / 100,
+          std_deviations: Math.round(absZScore * 100) / 100,
+          severity,
+          direction,
+          is_positive_anomaly: isGood,
+          message: `${metricName} ${direction} detected: ${currentValue.toFixed(2)} vs expected ${mean.toFixed(2)} (${absZScore.toFixed(1)}σ ${direction})`
+        };
+      }
+
+      return null;
+    };
+
+    // Check throughput anomalies (higher is better)
+    const throughputs = recentRuns.map(r => r.throughput_rpm).filter(v => v != null);
+    const throughputAnomaly = detectMetricAnomaly(
+      'throughput_rpm',
+      currentRun.throughput_rpm,
+      throughputs,
+      true
+    );
+    if (throughputAnomaly) anomalies.push(throughputAnomaly);
+
+    // Check duration anomalies (lower is better)
+    const durations = recentRuns.map(r => r.total_duration_seconds).filter(v => v != null);
+    const durationAnomaly = detectMetricAnomaly(
+      'total_duration_seconds',
+      currentRun.total_duration_seconds,
+      durations,
+      false
+    );
+    if (durationAnomaly) anomalies.push(durationAnomaly);
+
+    // Check quality rate anomalies (higher is better)
+    const qualityRates = recentRuns.map(r => r.quality_pass_rate).filter(v => v != null);
+    const qualityAnomaly = detectMetricAnomaly(
+      'quality_pass_rate',
+      currentRun.quality_pass_rate,
+      qualityRates,
+      true
+    );
+    if (qualityAnomaly) anomalies.push(qualityAnomaly);
+
+    // Check retry anomalies (lower is better)
+    const retries = recentRuns.map(r => r.retries || 0).filter(v => v != null);
+    const retryAnomaly = detectMetricAnomaly(
+      'retries',
+      currentRun.retries || 0,
+      retries,
+      false
+    );
+    if (retryAnomaly) anomalies.push(retryAnomaly);
+
+    // Check error anomalies (lower is better)
+    const errors = recentRuns.map(r => r.errors || 0).filter(v => v != null);
+    const errorAnomaly = detectMetricAnomaly(
+      'errors',
+      currentRun.errors || 0,
+      errors,
+      false
+    );
+    if (errorAnomaly) anomalies.push(errorAnomaly);
+
+    return {
+      anomalies,
+      detection_available: true,
+      window_size: recentRuns.length,
+      anomalies_detected: anomalies.length,
+      run_id: currentRun.run_id,
+      timestamp: currentRun.timestamp,
+      summary: anomalies.length > 0
+        ? `${anomalies.length} anomaly(ies) detected`
+        : 'No anomalies detected - performance within normal range'
+    };
+  }
 }
 
 // Export both the class and singleton instance
