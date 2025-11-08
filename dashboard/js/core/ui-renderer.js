@@ -1643,14 +1643,10 @@ function getRecentObservations(observations, hours = 24) {
 // Narrative building functions (following ux-writing skill standards)
 function buildPipelineContextParagraph(analytics, observations) {
     const sourceCount = analytics?.perSource?.length || 0;
-    const sourceText = sourceCount > 0
-        ? `tracks ${sourceCount} data sources`
-        : "tracks data sources";
-
     const stageCount = analytics?.stages?.length || 5;
     const observationCount = observations?.length || 0;
 
-    return `${sourceText} through ${stageCount}-stage orchestration from source fetch to dataset delivery. The system validates data quality${observationCount > 0 ? `, logs ${observationCount} operational observations,` : ','} and monitors throughput performance across all pipeline stages.`;
+    return `tracks ${sourceCount} data ${sourceCount === 1 ? 'source' : 'sources'} through a ${stageCount}-stage orchestration—from initial fetch to production-ready datasets. Each orchestration validates data quality, captures operational insights${observationCount > 0 ? ` (${observationCount} ${observationCount === 1 ? 'observation' : 'observations'} logged)` : ''}, and measures throughput performance to ensure pipeline health across discovery, extraction, transformation, quality assurance, and delivery stages.`;
 }
 
 function buildPipelineStateParagraph(analytics, recentObservations, alerts) {
@@ -1669,24 +1665,27 @@ function buildPipelineStateParagraph(analytics, recentObservations, alerts) {
     const observationCount = Array.isArray(recentObservations) ? recentObservations.length : 0;
 
     let narrative = durationSeconds > 0
-        ? `Latest orchestration closed in ${durationText}`
-        : 'Pipeline orchestration';
+        ? `The most recent orchestration completed in ${durationText}`
+        : 'Pipeline orchestration awaiting first run';
 
     if (rpmText) {
+        narrative += `, processing ${rpmText}`;
         const retries = lastRun.retries || 0;
-        const retryText = retries > 0 ? ` with ${retries} retries` : '';
-        narrative += ` delivering ${rpmText}${retryText}.`;
+        if (retries > 0) {
+            narrative += ` with ${retries} ${retries === 1 ? 'retry' : 'retries'} for error recovery`;
+        }
+        narrative += '.';
     } else if (durationSeconds > 0) {
         narrative += '.';
     }
 
-    // Add operational status context
+    // Add operational status with context
     if (activeAlertCount > 0) {
-        narrative += ` ${activeAlertCount} active alert${activeAlertCount > 1 ? 's' : ''} require attention.`;
+        narrative += ` ${activeAlertCount} active ${activeAlertCount === 1 ? 'alert requires' : 'alerts require'} attention to maintain pipeline health.`;
     } else if (observationCount > 0) {
-        narrative += ` ${observationCount} operational observation${observationCount > 1 ? 's' : ''} logged in the last 24 hours.`;
+        narrative += ` System health monitored through ${observationCount} operational ${observationCount === 1 ? 'observation' : 'observations'} logged in the past 24 hours.`;
     } else {
-        narrative += ' All guardrails green.';
+        narrative += ' All quality guardrails report healthy status.';
     }
 
     return narrative;
@@ -1705,19 +1704,19 @@ function buildPipelineRoadmapParagraph(alerts) {
     if (highSeverityAlerts.length > 0) {
         const sources = highSeverityAlerts.map(a => a.source).filter(Boolean);
         const sourceText = sources.length > 0
-            ? `${sources.slice(0, 2).join(' and ')} ${sources.length > 1 ? 'sources require' : 'source requires'}`
-            : 'High-priority issues require';
+            ? `${sources.slice(0, 2).join(' and ')} ${sources.length === 1 ? 'source' : 'sources'}`
+            : 'Critical issues';
 
-        return `${sourceText} immediate attention before next orchestration run. Engineering team tracking resolution progress and monitoring guardrail stability across remaining pipeline stages.`;
+        return `${sourceText} ${sources.length === 1 ? 'requires' : 'require'} immediate resolution before the next orchestration run. The engineering team is actively tracking remediation progress while monitoring guardrail stability across all other pipeline stages to prevent cascading impacts.`;
     }
 
     if (mediumSeverityAlerts.length > 0) {
         const alertCount = mediumSeverityAlerts.length;
-        return `${alertCount} medium-priority alert${alertCount > 1 ? 's are' : ' is'} under investigation. Performance optimizations planned for affected pipeline stages. Quality guardrails continue monitoring throughput stability and error recovery patterns.`;
+        return `${alertCount} medium-priority ${alertCount === 1 ? 'alert is' : 'alerts are'} under active investigation. Performance optimizations are planned for affected pipeline stages, while quality guardrails continue monitoring throughput stability and error recovery patterns across the broader system.`;
     }
 
     // No active alerts - focus on continuous improvement
-    return "All pipeline stages operating within SLA targets. Quality guardrails continue monitoring throughput stability and error recovery patterns. Engineering team evaluating performance optimizations for upcoming orchestration cycles.";
+    return 'All pipeline stages operating within normal parameters. Continuous monitoring tracks performance trends and proactively identifies optimization opportunities to maintain system health and throughput efficiency.';
 }
 
 function renderPipelineSlaStrip(analytics) {

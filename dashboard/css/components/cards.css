@@ -820,11 +820,27 @@
     margin-bottom: var(--space-10);
 }
 
+/* Pipeline Performance: Generous section spacing */
 .pipeline-sla-strip {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-3);
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-10);    /* 40px gap before metric cards */
+}
+
+.pipeline-stage-flow,
+.pipeline-sla-monitor,
+.pipeline-timeline,
+.pipeline-heatmap,
+.pipeline-resources,
+.pipeline-alerts,
+.pipeline-observations {
+    margin-top: var(--space-12);       /* 48px - generous spacing before sections */
+    margin-bottom: var(--space-8);     /* 32px - breathing room after */
+}
+
+.pipeline-panel .section-header {
+    margin-bottom: var(--space-6);     /* 24px - space before section content */
 }
 
 .pipeline-sla-pill-good {
