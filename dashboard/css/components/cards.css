@@ -790,15 +790,19 @@
 }
 
 .pipeline-intro {
-    max-width: 900px;
     margin-bottom: var(--space-10);
+    width: 100%;
+    max-width: 100%;
 }
 
 .pipeline-intro-lede {
-    font-size: var(--text-lg);
-    line-height: 1.6;
+    font-size: var(--text-base);
+    font-weight: 400;
+    line-height: 1.8;
     color: var(--gray-700);
-    margin-bottom: var(--space-6);
+    margin-bottom: 0;
+    max-width: 100%;
+    width: 100%;
 }
 
 .pipeline-intro-lede strong {
@@ -807,17 +811,19 @@
 }
 
 .pipeline-intro-detail {
-    font-size: var(--text-lg);
+    font-size: var(--text-base);
     line-height: 1.6;
     color: var(--gray-600);
-    margin-bottom: var(--space-6);
+    max-width: 100%;
+    width: 100%;
 }
 
 .pipeline-intro-roadmap {
-    font-size: var(--text-lg);
+    font-size: var(--text-base);
     line-height: 1.6;
     color: var(--gray-700);
-    margin-bottom: var(--space-10);
+    max-width: 100%;
+    width: 100%;
 }
 
 /* Pipeline Performance: Generous section spacing */
