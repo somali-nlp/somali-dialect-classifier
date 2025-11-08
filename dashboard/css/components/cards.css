@@ -846,7 +846,7 @@
 }
 
 .pipeline-panel .section-header {
-    margin-bottom: var(--space-6);     /* 24px - space before section content */
+    margin-bottom: var(--space-4);     /* 16px - matches Data Sources spacing */
 }
 
 .pipeline-sla-pill-good {
