@@ -13,7 +13,7 @@
  */
 
 export class LocalStorageCache {
-  constructor(namespace = 'pipeline_cache', version = '2.0') {
+  constructor(namespace = 'pipeline_cache', version = '2.1') {
     this.namespace = namespace;
     this.version = version;
     this.DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
