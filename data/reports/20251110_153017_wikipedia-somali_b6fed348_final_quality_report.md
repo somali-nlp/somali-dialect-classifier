@@ -1,9 +1,9 @@
 # Data Quality Report
 
-**Run ID:** 20251102_071104_wikipedia-somali_8be7bd4d
+**Run ID:** 20251110_153017_wikipedia-somali_b6fed348
 **Source:** Wikipedia-Somali
-**Timestamp:** 2025-11-02T07:11:18.917352+00:00
-**Duration:** 14s
+**Timestamp:** 2025-11-10T15:30:37.713885+00:00
+**Duration:** 20s
 
 ---
 
@@ -14,9 +14,9 @@
 
 - **File Extraction Success Rate:** 100.0%
 - **Record Parsing Success Rate:** 100.0%
-- **Quality Filter Pass Rate:** 0.0%
+- **Quality Filter Pass Rate:** 64.2%
 - **Deduplication Rate:** 0.0%
-- **Total Records Processed:** 0
+- **Total Records Processed:** 9,960
 - **Data Downloaded:** 14.1 MB
 
 ---
@@ -28,7 +28,7 @@
 | Files Discovered | 1 |
 | Files Processed | 1 |
 | Records Extracted | 1,507 |
-| Records Written | 0 |
+| Records Written | 9,960 |
 
 ---
 
@@ -36,24 +36,24 @@
 
 ### Download Performance
 
-- **Mean:** 11293 ms
-- **Median:** 11293 ms
-- **P95:** 11293 ms
-- **P99:** 11293 ms
-- **Min:** 11293 ms
-- **Max:** 11293 ms
+- **Mean:** 13343 ms
+- **Median:** 13343 ms
+- **P95:** 13343 ms
+- **P99:** 13343 ms
+- **Min:** 13343 ms
+- **Max:** 13343 ms
 
 ### Extraction Performance
 
-- **Mean:** 3367 ms
-- **Median:** 3367 ms
-- **P95:** 3367 ms
-- **P99:** 3367 ms
+- **Mean:** 3678 ms
+- **Median:** 3678 ms
+- **P95:** 3678 ms
+- **P99:** 3678 ms
 
 ### Throughput
 
-- **Records/minute:** 0.0
-- **Bytes/second:** 986.3 KB/s
+- **Records/minute:** 29073.5
+- **Bytes/second:** 703.7 KB/s
 
 ---
 
@@ -83,9 +83,20 @@
 
 ---
 
+## Filter Statistics
+
+**Total Filtered:** 5,547 records
+
+| Filter Reason | Count | Percentage |
+|---------------|-------|------------|
+| min_length_filter | 4,138 | 74.6% |
+| langid_filter | 1,208 | 21.8% |
+| empty_after_cleaning | 201 | 3.6% |
+
+---
+
 ## Recommendations
 
-⚠️ **Low quality filter pass rate.** Many records are being filtered out. Review filter configurations or consider adjusting quality thresholds.
 🐢 **Slow fetch times detected.** Consider implementing connection pooling, adjusting timeouts, or using concurrent requests.
 
 ---

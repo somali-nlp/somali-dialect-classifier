@@ -1,9 +1,9 @@
 # Data Quality Report
 
-**Run ID:** 20251102_081139_huggingface-somali_c4-so_8a88e83f
+**Run ID:** 20251110_155041_huggingface-somali_c4-so_54df892d
 **Source:** HuggingFace-Somali_c4-so
-**Timestamp:** 2025-11-02T08:13:51.988489+00:00
-**Duration:** 2m 12s
+**Timestamp:** 2025-11-10T15:52:24.154051+00:00
+**Duration:** 1m 43s
 
 ---
 
@@ -14,9 +14,9 @@
 
 - **Stream Connection Success:** 100.0%
 - **Record Retrieval Success Rate:** 100.0%
-- **Quality Filter Pass Rate:** 100.0%
+- **Quality Filter Pass Rate:** 0.0%
 - **Deduplication Rate:** 0.0%
-- **Total Records Processed:** 190
+- **Total Records Processed:** 0
 - **Data Downloaded:** 0.0 B
 
 ---
@@ -27,9 +27,9 @@
 |--------|-------|
 | Datasets Opened | 1 |
 | Records Fetched | 200 |
-| Records Processed | 190 |
+| Records Processed | 0 |
 | Batches Completed | 0 |
-| Records Written | 190 |
+| Records Written | 0 |
 
 ---
 
@@ -37,16 +37,16 @@
 
 ### Download Performance
 
-- **Mean:** 5 ms
-- **Median:** 2 ms
-- **P95:** 14 ms
-- **P99:** 46 ms
+- **Mean:** 6 ms
+- **Median:** 3 ms
+- **P95:** 16 ms
+- **P99:** 70 ms
 - **Min:** 0 ms
-- **Max:** 111 ms
+- **Max:** 103 ms
 
 ### Throughput
 
-- **Records/minute:** 86.0
+- **Records/minute:** 0.0
 - **Bytes/second:** 0.0 B/s
 
 ---
@@ -61,27 +61,16 @@
 
 ### Text Length Distribution
 
-- **Mean:** 4,614 chars
-- **Median:** 1,881 chars
-- **Min:** 102 chars
-- **Max:** 107,236 chars
-- **Total:** 901.2 KB
-
----
-
-## Filter Statistics
-
-**Total Filtered:** 10 records
-
-| Filter Reason | Count | Percentage |
-|---------------|-------|------------|
-| langid_filter | 8 | 80.0% |
-| min_length_filter | 2 | 20.0% |
+- **Mean:** 5,148 chars
+- **Median:** 1,818 chars
+- **Min:** 107 chars
+- **Max:** 93,463 chars
+- **Total:** 1015.5 KB
 
 ---
 
 ## Recommendations
 
-✅ All metrics within acceptable ranges.
+⚠️ **Low quality filter pass rate.** Many records are being filtered out. Review filter configurations or consider adjusting quality thresholds.
 
 ---

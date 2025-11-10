@@ -201,8 +201,13 @@ class SprakbankenSomaliProcessor(BasePipeline):
         source_name = "Sprakbanken-Somali"
 
         # Initialize deduplication BEFORE BasePipeline (which generates run_id)
+        # PHASE 3: Enable LSH persistence for cross-run near-duplicate detection
+        from pathlib import Path as PathLib
         dedup_config = DedupConfig(
-            hash_fields=["text"], enable_minhash=True, similarity_threshold=0.85
+            hash_fields=["text"],
+            enable_minhash=True,
+            similarity_threshold=0.85,
+            storage_path=PathLib("data/ledger/lsh_index_sprakbanken.pkl")  # PHASE 3
         )
         self.dedup = DedupEngine(dedup_config)
         self.ledger = get_ledger()
@@ -314,6 +319,53 @@ class SprakbankenSomaliProcessor(BasePipeline):
         """
         return self.dedup.hasher.compute_hash(text=text, url=url)
 
+    def _get_downloaded_corpus_ids(self) -> set[str]:
+        """
+        Query ledger for corpus IDs that have been downloaded.
+
+        PHASE 1: Discovery-Stage Deduplication helper.
+
+        Returns:
+            Set of corpus IDs already in ledger
+        """
+        if not hasattr(self, 'ledger') or self.ledger is None:
+            return set()
+
+        try:
+            import re
+
+            # Get all processed URLs for this source
+            from .crawl_ledger import CrawlState
+
+            # Query ledger for processed URLs
+            processed_records = self.ledger.get_urls_by_state(
+                source=self.source,
+                state=CrawlState.PROCESSED
+            )
+
+            corpus_ids = set()
+            # Extract corpus IDs from Korp URLs
+            # Format: https://spraakbanken.gu.se/korp/?mode=somali#?corpus=CORPUS_ID
+            for record in processed_records:
+                url = record.get('url', '')
+                match = re.search(r'corpus=([a-z0-9-]+)', url)
+                if match:
+                    corpus_ids.add(match.group(1))
+
+            # Also check download URLs
+            # Format: https://spraakbanken.gu.se/lb/resurser/meningsmangder/CORPUS_ID.xml.bz2
+            for record in processed_records:
+                url = record.get('url', '')
+                match = re.search(r'/meningsmangder/([a-z0-9-]+)\.xml\.bz2', url)
+                if match:
+                    corpus_ids.add(match.group(1))
+
+            return corpus_ids
+
+        except Exception as e:
+            self.logger.warning(f"Failed to query ledger for corpus IDs: {e}")
+            return set()
+
     def download(self) -> Path:
         """
         Download all specified Språkbanken corpora.
@@ -341,10 +393,34 @@ class SprakbankenSomaliProcessor(BasePipeline):
                 self.logger.info(f"Corpora already downloaded: {self.manifest_file}")
                 return self.manifest_file
 
+        # PHASE 1: Discovery-Stage Deduplication
+        # Filter out already-downloaded corpora based on ledger state
+        downloaded_corpus_ids = self._get_downloaded_corpus_ids()
+        corpora_to_download = [
+            c for c in self.corpora_to_process
+            if c not in downloaded_corpus_ids
+        ]
+
+        if downloaded_corpus_ids:
+            skipped_count = len(self.corpora_to_process) - len(corpora_to_download)
+            self.logger.info(
+                f"PHASE 1 Dedup: Skipping {skipped_count} already-downloaded corpora "
+                f"(found {len(downloaded_corpus_ids)} corpus IDs in ledger)"
+            )
+            if hasattr(self, 'metrics') and self.metrics is not None:
+                self.metrics.increment("corpora_skipped_discovery_dedup", skipped_count)
+
+        # If ALL corpora already downloaded, skip everything
+        if not corpora_to_download:
+            self.logger.info(f"DISCOVERY DEDUP: All {len(self.corpora_to_process)} corpora already processed, skipping ALL work")
+            return None  # Signal to run() to skip extraction and processing
+
         self.logger.info("=" * 60)
         self.logger.info("PHASE 1: Downloading Språkbanken Corpora")
         self.logger.info("=" * 60)
-        self.logger.info(f"Corpora to download: {len(self.corpora_to_process)}")
+        self.logger.info(f"Corpora requested: {len(self.corpora_to_process)}")
+        self.logger.info(f"Corpora to download (new): {len(corpora_to_download)}")
+        self.logger.info(f"Corpora skipped (already downloaded): {len(downloaded_corpus_ids)}")
 
         manifest = {
             "corpora_ids": self.corpora_to_process,
@@ -355,7 +431,8 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
         session = self._get_http_session()
 
-        for corpus_id in tqdm(self.corpora_to_process, desc="Downloading corpora"):
+        # Download only new corpora (not already in ledger)
+        for corpus_id in tqdm(corpora_to_download, desc="Downloading corpora"):
             # Track discovery (use files_discovered for file processing)
             self.metrics.increment("files_discovered")
 
@@ -448,8 +525,17 @@ class SprakbankenSomaliProcessor(BasePipeline):
         self.logger.info("PHASE 2: Extracting Text from XML Corpora")
         self.logger.info("=" * 60)
 
+        # PHASE 5: Incremental Processing - Get already-processed corpus IDs
+        processed_corpus_ids = set() if self.force else self._get_downloaded_corpus_ids()
+
+        if processed_corpus_ids:
+            self.logger.info(
+                f"Incremental mode: skipping {len(processed_corpus_ids)} already-processed corpora"
+            )
+
         total_texts = 0
         total_sentences = 0
+        corpus_files_skipped_unchanged = 0
 
         # Track extraction timing
         with Timer() as timer:
@@ -461,6 +547,12 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
                     if not corpus_file.exists():
                         self.logger.warning(f"Corpus file not found: {corpus_file}")
+                        continue
+
+                    # PHASE 5: Skip already-processed corpora
+                    if corpus_id in processed_corpus_ids:
+                        self.logger.info(f"Skipping {corpus_id} (already processed)")
+                        corpus_files_skipped_unchanged += 1
                         continue
 
                     self.logger.info(f"Extracting {corpus_id}...")
@@ -486,8 +578,20 @@ class SprakbankenSomaliProcessor(BasePipeline):
         # Record total extraction timing (use process_duration for extraction phase)
         self.metrics.record_process_duration(timer.get_elapsed_ms())
 
+        # Track skipped corpora metric
+        if corpus_files_skipped_unchanged > 0:
+            self.metrics.increment("corpus_files_skipped_unchanged", corpus_files_skipped_unchanged)
+
         self.logger.info("=" * 60)
         self.logger.info(f"Extraction complete: {total_texts} texts, {total_sentences} sentences")
+        if corpus_files_skipped_unchanged > 0:
+            total_corpora = len(manifest["corpora"])
+            corpora_processed = total_corpora - corpus_files_skipped_unchanged
+            skip_rate = (corpus_files_skipped_unchanged / total_corpora * 100) if total_corpora > 0 else 0
+            self.logger.info(
+                f"Incremental processing: {corpus_files_skipped_unchanged} corpora skipped (already processed), "
+                f"{corpora_processed} corpora extracted ({skip_rate:.1f}% reduction)"
+            )
         self.logger.info(f"Staging file: {self.staging_file}")
         self.logger.info("=" * 60)
 
@@ -512,6 +616,10 @@ class SprakbankenSomaliProcessor(BasePipeline):
         """
         Extract text from a single corpus XML file.
 
+        Handles two corpus structures:
+        1. Multi-text: Multiple <text> elements (each is a document)
+        2. Single-text: One <text> with multiple <page> elements (each page is a document)
+
         Args:
             corpus_file: Path to compressed XML file
             corpus_info: Metadata about the corpus
@@ -522,7 +630,6 @@ class SprakbankenSomaliProcessor(BasePipeline):
         """
         texts_count = 0
         sentences_count = 0
-        text_index = 0  # Counter for all text elements (for unique URL generation)
 
         try:
             # Open and parse compressed XML
@@ -533,70 +640,234 @@ class SprakbankenSomaliProcessor(BasePipeline):
                 # Get corpus ID from root element
                 corpus_id = root.get("id", corpus_info["id"])
 
-                # Iterate through texts
-                for text_elem in root.findall(".//text"):
-                    text_index += 1  # Increment for every text element to ensure URL uniqueness
-                    text_metadata = self._extract_text_metadata(text_elem)
+                # ADAPTIVE PARSING: Detect corpus structure
+                text_elems = root.findall(".//text")
 
-                    # Collect sentences from all pages
-                    sentences = []
-                    for page in text_elem.findall(".//page"):
-                        for sentence in page.findall(".//sentence"):
-                            sentence_text = self._extract_sentence_text(sentence)
-                            if sentence_text:
-                                sentences.append(sentence_text)
-                                sentences_count += 1
+                if len(text_elems) == 1:
+                    # Single-text corpus: Check if it has pages
+                    pages = text_elems[0].findall(".//page")
 
-                    if sentences:
-                        # Build URL for this text with unique identifier
-                        # Use sequential index to ensure URL uniqueness (title alone is not unique)
-                        text_id = f"{text_index}"
-                        url = f"https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}&text={text_id}"
-                        text_content = " ".join(sentences)
-
-                        # Process duplicates with combined exact and near-duplicate detection
-                        is_dup, dup_type, similar_url, text_hash, minhash_sig = (
-                            self.dedup.process_document(text_content, url)
+                    if pages:
+                        # Single-text with pages: Treat each page as a document
+                        self.logger.info(
+                            f"  Detected single-text corpus with {len(pages)} pages"
                         )
+                        text_metadata = self._extract_text_metadata(text_elems[0])
 
-                        if not is_dup:
-                            # Create record for this text
-                            record = {
-                                "corpus_id": corpus_id,
-                                "title": text_metadata.get(
-                                    "title", f"{corpus_id}_text_{texts_count}"
-                                ),
-                                "text": text_content,
-                                "text_hash": text_hash,
-                                "minhash_signature": minhash_sig,
-                                "metadata": {
-                                    **corpus_info,  # Domain, period, etc.
-                                    **text_metadata,  # Author, date, publisher, etc.
-                                    "sentence_count": len(sentences),
-                                },
-                            }
-
-                            # Write to JSONL
-                            out_file.write(json.dumps(record, ensure_ascii=False) + "\n")
-                            texts_count += 1
-
-                            # Track text length metrics
-                            self.metrics.record_text_length(len(text_content))
-                        else:
-                            # Duplicate detected
-                            self.logger.debug(
-                                f"{dup_type.capitalize()} duplicate detected in {corpus_id}: {similar_url}"
+                        for page_index, page in enumerate(pages, start=1):
+                            result = self._process_page_as_document(
+                                page,
+                                corpus_id,
+                                page_index,
+                                text_metadata,
+                                corpus_info,
+                                out_file
                             )
-                            # Increment correct metric based on duplicate type
-                            if dup_type == "exact":
-                                self.metrics.increment("texts_deduplicated")
-                            elif dup_type == "near":
-                                self.metrics.increment("near_duplicates")
+                            if result:
+                                texts_count += 1
+                                sentences_count += result
+                    else:
+                        # Single-text without pages: Process as one document
+                        result = self._process_text_element(
+                            text_elems[0],
+                            corpus_id,
+                            1,
+                            corpus_info,
+                            out_file
+                        )
+                        if result:
+                            texts_count += 1
+                            sentences_count += result
+                else:
+                    # Multi-text corpus: Process each text as a document
+                    self.logger.info(
+                        f"  Detected multi-text corpus with {len(text_elems)} texts"
+                    )
+
+                    for text_index, text_elem in enumerate(text_elems, start=1):
+                        result = self._process_text_element(
+                            text_elem,
+                            corpus_id,
+                            text_index,
+                            corpus_info,
+                            out_file
+                        )
+                        if result:
+                            texts_count += 1
+                            sentences_count += result
 
         except Exception as e:
             self.logger.error(f"Error extracting {corpus_file}: {e}")
 
         return texts_count, sentences_count
+
+    def _process_page_as_document(
+        self,
+        page_elem: ET.Element,
+        corpus_id: str,
+        page_index: int,
+        text_metadata: dict[str, Any],
+        corpus_info: dict[str, Any],
+        out_file
+    ) -> Optional[int]:
+        """
+        Process a single page element as an individual document.
+
+        Args:
+            page_elem: Page XML element
+            corpus_id: Corpus identifier
+            page_index: Sequential page number
+            text_metadata: Metadata from parent text element
+            corpus_info: Corpus-level metadata
+            out_file: Output file handle
+
+        Returns:
+            Number of sentences extracted, or None if no content
+        """
+        # Extract page metadata
+        page_n = page_elem.get("n", f"page_{page_index}")
+        page_url = page_elem.get("purl", "")
+
+        # Collect sentences from this page
+        sentences = []
+        for sentence in page_elem.findall(".//sentence"):
+            sentence_text = self._extract_sentence_text(sentence)
+            if sentence_text:
+                sentences.append(sentence_text)
+
+        if not sentences:
+            return None
+
+        # Build URL (prefer page URL if available, otherwise construct from corpus)
+        if page_url:
+            url = page_url
+        else:
+            url = f"https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}&page={page_n}"
+
+        text_content = " ".join(sentences)
+
+        # Process duplicates with combined exact and near-duplicate detection
+        is_dup, dup_type, similar_url, text_hash, minhash_sig = (
+            self.dedup.process_document(text_content, url)
+        )
+
+        if not is_dup:
+            # Create record for this page
+            record = {
+                "corpus_id": corpus_id,
+                "title": f"{corpus_id} - {page_n}",
+                "text": text_content,
+                "text_hash": text_hash,
+                "minhash_signature": minhash_sig,
+                "metadata": {
+                    **corpus_info,  # Domain, period, etc.
+                    **text_metadata,  # Year, source, publisher from text element
+                    "page_id": page_n,
+                    "page_url": page_url,
+                    "sentence_count": len(sentences),
+                },
+            }
+
+            # Write to JSONL
+            out_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+            # Track text length metrics
+            self.metrics.record_text_length(len(text_content))
+
+            return len(sentences)
+        else:
+            # Duplicate detected
+            self.logger.debug(
+                f"{dup_type.capitalize()} duplicate detected in {corpus_id}: {similar_url}"
+            )
+            # Increment correct metric based on duplicate type
+            if dup_type == "exact":
+                self.metrics.increment("texts_deduplicated")
+            elif dup_type == "near":
+                self.metrics.increment("near_duplicates")
+
+            return None
+
+    def _process_text_element(
+        self,
+        text_elem: ET.Element,
+        corpus_id: str,
+        text_index: int,
+        corpus_info: dict[str, Any],
+        out_file
+    ) -> Optional[int]:
+        """
+        Process a single text element as an individual document.
+
+        Args:
+            text_elem: Text XML element
+            corpus_id: Corpus identifier
+            text_index: Sequential text number
+            corpus_info: Corpus-level metadata
+            out_file: Output file handle
+
+        Returns:
+            Number of sentences extracted, or None if no content
+        """
+        text_metadata = self._extract_text_metadata(text_elem)
+
+        # Collect sentences from all pages in this text
+        sentences = []
+        for page in text_elem.findall(".//page"):
+            for sentence in page.findall(".//sentence"):
+                sentence_text = self._extract_sentence_text(sentence)
+                if sentence_text:
+                    sentences.append(sentence_text)
+
+        if not sentences:
+            return None
+
+        # Build URL for this text with unique identifier
+        text_id = f"{text_index}"
+        url = f"https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}&text={text_id}"
+        text_content = " ".join(sentences)
+
+        # Process duplicates with combined exact and near-duplicate detection
+        is_dup, dup_type, similar_url, text_hash, minhash_sig = (
+            self.dedup.process_document(text_content, url)
+        )
+
+        if not is_dup:
+            # Create record for this text
+            record = {
+                "corpus_id": corpus_id,
+                "title": text_metadata.get(
+                    "title", f"{corpus_id}_text_{text_index}"
+                ),
+                "text": text_content,
+                "text_hash": text_hash,
+                "minhash_signature": minhash_sig,
+                "metadata": {
+                    **corpus_info,  # Domain, period, etc.
+                    **text_metadata,  # Author, date, publisher, etc.
+                    "sentence_count": len(sentences),
+                },
+            }
+
+            # Write to JSONL
+            out_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+            # Track text length metrics
+            self.metrics.record_text_length(len(text_content))
+
+            return len(sentences)
+        else:
+            # Duplicate detected
+            self.logger.debug(
+                f"{dup_type.capitalize()} duplicate detected in {corpus_id}: {similar_url}"
+            )
+            # Increment correct metric based on duplicate type
+            if dup_type == "exact":
+                self.metrics.increment("texts_deduplicated")
+            elif dup_type == "near":
+                self.metrics.increment("near_duplicates")
+
+            return None
 
     def _extract_text_metadata(self, text_elem: ET.Element) -> dict[str, Any]:
         """Extract metadata from text element."""
@@ -610,10 +881,16 @@ class SprakbankenSomaliProcessor(BasePipeline):
         return metadata
 
     def _extract_sentence_text(self, sentence_elem: ET.Element) -> str:
-        """Extract text from sentence element."""
+        """
+        Extract text from sentence element.
+
+        Språkbanken XML uses <token> tags for word tokens.
+        Example: <sentence><token>Nickolay</token><token>Mladenov</token>...</sentence>
+        """
         tokens = []
-        for token in sentence_elem.findall(".//token"):
-            word = token.text or ""
+        # Use 'token' tag for Språkbanken XML format
+        for word_elem in sentence_elem.findall("token"):
+            word = word_elem.text or ""
             if word:
                 tokens.append(word)
         return " ".join(tokens)

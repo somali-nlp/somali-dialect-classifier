@@ -1,23 +1,22 @@
 {
   "_schema_version": "3.0",
-  "_pipeline_type": "stream_processing",
-  "_timestamp": "2025-11-02T08:12:53.087893+00:00",
-  "_run_id": "20251102_081139_huggingface-somali_c4-so_8a88e83f",
-  "_source": "HuggingFace-Somali_c4-so",
+  "_pipeline_type": "web_scraping",
+  "_timestamp": "2025-11-10T15:30:44.835402+00:00",
+  "_run_id": "20251110_153017_bbc-somali_768ea3f4",
+  "_source": "BBC-Somali",
   "layered_metrics": {
     "connectivity": {
       "connection_attempted": true,
-      "connection_successful": true,
+      "connection_successful": false,
       "connection_duration_ms": 0.0,
       "connection_error": null
     },
     "extraction": {
-      "stream_opened": true,
-      "total_records_available": null,
-      "batches_attempted": 0,
-      "batches_completed": 0,
-      "batches_failed": 0,
-      "records_fetched": 0
+      "http_requests_attempted": 0,
+      "http_requests_successful": 0,
+      "http_status_distribution": {},
+      "pages_parsed": 0,
+      "content_extracted": 0
     },
     "quality": {
       "records_received": 0,
@@ -32,12 +31,12 @@
   },
   "legacy_metrics": {
     "snapshot": {
-      "timestamp": "2025-11-02T08:12:53.087893+00:00",
-      "run_id": "20251102_081139_huggingface-somali_c4-so_8a88e83f",
-      "source": "HuggingFace-Somali_c4-so",
-      "duration_seconds": 73.6449990272522,
-      "pipeline_type": "stream_processing",
-      "urls_discovered": 0,
+      "timestamp": "2025-11-10T15:30:44.835402+00:00",
+      "run_id": "20251110_153017_bbc-somali_768ea3f4",
+      "source": "BBC-Somali",
+      "duration_seconds": 27.677629947662354,
+      "pipeline_type": "web_scraping",
+      "urls_discovered": 173,
       "urls_fetched": 0,
       "urls_processed": 0,
       "urls_failed": 0,
@@ -46,7 +45,7 @@
       "files_discovered": 0,
       "files_processed": 0,
       "records_extracted": 0,
-      "datasets_opened": 1,
+      "datasets_opened": 0,
       "records_fetched": 0,
       "records_processed": 0,
       "batches_completed": 0,
@@ -64,28 +63,27 @@
       "near_duplicates": 0
     },
     "statistics": {
-      "stream_connection_success_rate": 0.0,
-      "record_retrieval_success_rate": 0.0,
-      "dataset_coverage_rate": null,
+      "http_request_success_rate": 0,
+      "content_extraction_success_rate": 0,
+      "http_request_failure_rate": 0,
       "quality_pass_rate": 0,
       "deduplication_rate": 0,
-      "fetch_success_rate": 0.0,
-      "fetch_failure_rate": 1.0,
+      "fetch_success_rate": 0,
+      "fetch_failure_rate": 0,
       "throughput": {
         "urls_per_second": 0.0,
         "bytes_per_second": 0.0,
         "records_per_minute": 0.0
       },
       "_metric_semantics": {
-        "stream_connection_success_rate": "Stream connection established (boolean: 1.0 or 0.0)",
-        "record_retrieval_success_rate": "Records successfully retrieved from stream",
-        "dataset_coverage_rate": "Fraction of total dataset consumed (if known)",
+        "http_request_success_rate": "Network-level HTTP success (2xx responses / attempted requests)",
+        "content_extraction_success_rate": "Content successfully extracted from HTTP responses",
         "quality_pass_rate": "Records passing quality filters (after deduplication)",
         "deduplication_rate": "Records filtered as duplicates",
-        "fetch_success_rate": "DEPRECATED: Use stream_connection_success_rate instead"
+        "fetch_success_rate": "DEPRECATED: Use http_request_success_rate instead"
       },
       "_deprecation_warnings": [
-        "fetch_success_rate is deprecated for stream processing. Use stream_connection_success_rate and record_retrieval_success_rate instead."
+        "fetch_success_rate is deprecated for web scraping. Use http_request_success_rate for HTTP success and content_extraction_success_rate for content extraction success."
       ]
     }
   }

@@ -1,18 +1,18 @@
 # Data Quality Report
 
-**Run ID:** 20251102_071104_bbc-somali_e52a5149
+**Run ID:** 20251110_155041_bbc-somali_049e4699
 **Source:** BBC-Somali
-**Timestamp:** 2025-11-02T08:01:07.621075+00:00
-**Duration:** 50m 3s
+**Timestamp:** 2025-11-10T15:55:42.104643+00:00
+**Duration:** 5m 1s
 
 ---
 
 ## Executive Summary
 
-**Pipeline Status:** ✅ **HEALTHY**
+**Pipeline Status:** ⚠️ **DEGRADED**
 **Pipeline Type:** web_scraping
 
-- **HTTP Request Success Rate:** 100.0%
+- **HTTP Request Success Rate:** 80.0%
 - **Content Extraction Success Rate:** 100.0%
 - **Quality Filter Pass Rate:** 0.0%
 - **Deduplication Rate:** 0.0%
@@ -25,10 +25,10 @@
 
 | Metric | Count | Percentage |
 |--------|-------|------------|
-| URLs Discovered | 190 | 100.0% |
-| URLs Fetched | 50 | 26.3% |
+| URLs Discovered | 168 | 100.0% |
+| URLs Fetched | 4 | 2.4% |
 | URLs Processed | 0 | 0.0% |
-| URLs Failed | 0 | 0.0% |
+| URLs Failed | 1 | 0.6% |
 | URLs Skipped | 0 | 0.0% |
 | URLs Deduplicated | 0 | 0.0% |
 
@@ -38,12 +38,12 @@
 
 ### Fetch Performance
 
-- **Mean:** 829 ms
-- **Median:** 726 ms
-- **P95:** 1194 ms
-- **P99:** 2201 ms
-- **Min:** 403 ms
-- **Max:** 2201 ms
+- **Mean:** 941 ms
+- **Median:** 631 ms
+- **P95:** 2050 ms
+- **P99:** 2050 ms
+- **Min:** 553 ms
+- **Max:** 2050 ms
 
 ### Throughput
 
@@ -63,11 +63,11 @@
 
 ### Text Length Distribution
 
-- **Mean:** 4,088 chars
-- **Median:** 4,090 chars
-- **Min:** 23 chars
-- **Max:** 12,724 chars
-- **Total:** 199.6 KB
+- **Mean:** 3,838 chars
+- **Median:** 4,320 chars
+- **Min:** 475 chars
+- **Max:** 6,235 chars
+- **Total:** 15.0 KB
 
 ---
 
@@ -75,12 +75,23 @@
 
 | Status Class | Count | Details |
 |--------------|-------|---------|
-| 2xx | 50 | 200:50 |
+| 2xx | 4 | 200:4 |
+
+---
+
+## Error Analysis
+
+**Total Errors:** 1
+
+| Error Type | Count | Percentage |
+|------------|-------|------------|
+| scrape_failed | 1 | 100.0% |
 
 ---
 
 ## Recommendations
 
 ⚠️ **Low quality filter pass rate.** Many records are being filtered out. Review filter configurations or consider adjusting quality thresholds.
+❌ **High error rate detected.** Review error types and consider implementing circuit breakers or exponential backoff.
 
 ---

@@ -1,9 +1,9 @@
 # Data Quality Report
 
-**Run ID:** 20251102_081139_huggingface-somali_c4-so_8a88e83f
+**Run ID:** 20251110_153017_huggingface-somali_c4-so_193df4bc
 **Source:** HuggingFace-Somali_c4-so
-**Timestamp:** 2025-11-02T08:13:51.919423+00:00
-**Duration:** 2m 12s
+**Timestamp:** 2025-11-10T15:31:57.056548+00:00
+**Duration:** 1m 39s
 
 ---
 
@@ -37,12 +37,12 @@
 
 ### Download Performance
 
-- **Mean:** 5 ms
+- **Mean:** 4 ms
 - **Median:** 2 ms
-- **P95:** 14 ms
-- **P99:** 46 ms
+- **P95:** 12 ms
+- **P99:** 42 ms
 - **Min:** 0 ms
-- **Max:** 111 ms
+- **Max:** 109 ms
 
 ### Throughput
 

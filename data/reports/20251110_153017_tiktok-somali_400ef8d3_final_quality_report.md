@@ -1,9 +1,9 @@
 # Data Quality Report
 
-**Run ID:** 20251102_071104_tiktok-somali_d400941e
+**Run ID:** 20251110_153017_tiktok-somali_400ef8d3
 **Source:** TikTok-Somali
-**Timestamp:** 2025-11-02T07:13:10.370204+00:00
-**Duration:** 2m 6s
+**Timestamp:** 2025-11-10T15:32:53.499487+00:00
+**Duration:** 2m 36s
 
 ---
 
@@ -14,9 +14,9 @@
 
 - **Stream Connection Success:** 0.0%
 - **Record Retrieval Success Rate:** 0.0%
-- **Quality Filter Pass Rate:** 82.4%
+- **Quality Filter Pass Rate:** 79.2%
 - **Deduplication Rate:** 0.0%
-- **Total Records Processed:** 322
+- **Total Records Processed:** 262
 - **Data Downloaded:** 0.0 B
 
 ---
@@ -29,7 +29,7 @@
 | Records Fetched | 0 |
 | Records Processed | 0 |
 | Batches Completed | 0 |
-| Records Written | 322 |
+| Records Written | 262 |
 
 ---
 
@@ -37,7 +37,7 @@
 
 ### Throughput
 
-- **Records/minute:** 153.2
+- **Records/minute:** 100.5
 - **Bytes/second:** 0.0 B/s
 
 ---
@@ -53,22 +53,22 @@
 ### Text Length Distribution
 
 - **Mean:** 35 chars
-- **Median:** 23 chars
+- **Median:** 21 chars
 - **Min:** 3 chars
-- **Max:** 1,614 chars
-- **Total:** 13.2 KB
+- **Max:** 1,617 chars
+- **Total:** 11.3 KB
 
 ---
 
 ## Filter Statistics
 
-**Total Filtered:** 873 records
+**Total Filtered:** 700 records
 
 | Filter Reason | Count | Percentage |
 |---------------|-------|------------|
-| emoji_only_comment | 801 | 91.8% |
-| empty_after_cleaning | 69 | 7.9% |
-| text_too_short_after_cleanup | 3 | 0.3% |
+| emoji_only_comment | 628 | 89.7% |
+| empty_after_cleaning | 69 | 9.9% |
+| text_too_short_after_cleanup | 3 | 0.4% |
 
 ---
 

@@ -1,0 +1,121 @@
+{
+  "_schema_version": "3.0",
+  "_pipeline_type": "web_scraping",
+  "_timestamp": "2025-11-10T15:35:18.017583+00:00",
+  "_run_id": "20251110_153017_bbc-somali_768ea3f4",
+  "_source": "BBC-Somali",
+  "layered_metrics": {
+    "connectivity": {
+      "connection_attempted": true,
+      "connection_successful": true,
+      "connection_duration_ms": 1550.8790016174316,
+      "connection_error": null
+    },
+    "extraction": {
+      "http_requests_attempted": 5,
+      "http_requests_successful": 5,
+      "http_status_distribution": {
+        "200": 5
+      },
+      "pages_parsed": 5,
+      "content_extracted": 5
+    },
+    "quality": {
+      "records_received": 5,
+      "records_passed_filters": 5,
+      "filter_breakdown": {}
+    },
+    "volume": {
+      "records_written": 5,
+      "bytes_downloaded": 0,
+      "total_chars": 25471
+    }
+  },
+  "legacy_metrics": {
+    "snapshot": {
+      "timestamp": "2025-11-10T15:35:18.017583+00:00",
+      "run_id": "20251110_153017_bbc-somali_768ea3f4",
+      "source": "BBC-Somali",
+      "duration_seconds": 300.8598110675812,
+      "pipeline_type": "web_scraping",
+      "urls_discovered": 173,
+      "urls_fetched": 5,
+      "urls_processed": 5,
+      "urls_failed": 0,
+      "urls_skipped": 0,
+      "urls_deduplicated": 0,
+      "files_discovered": 0,
+      "files_processed": 0,
+      "records_extracted": 0,
+      "datasets_opened": 0,
+      "records_fetched": 0,
+      "records_processed": 0,
+      "batches_completed": 0,
+      "bytes_downloaded": 0,
+      "records_written": 5,
+      "records_filtered": 0,
+      "http_status_codes": {
+        "200": 5
+      },
+      "filter_reasons": {},
+      "error_types": {},
+      "fetch_durations_ms": [
+        1550.8790016174316,
+        712.4950885772705,
+        720.8619117736816,
+        575.0269889831543,
+        619.3089485168457
+      ],
+      "process_durations_ms": [],
+      "text_lengths": [
+        5414,
+        10979,
+        3337,
+        805,
+        4936
+      ],
+      "unique_hashes": 0,
+      "duplicate_hashes": 0,
+      "near_duplicates": 0
+    },
+    "statistics": {
+      "http_request_success_rate": 1.0,
+      "content_extraction_success_rate": 1.0,
+      "http_request_failure_rate": 0.0,
+      "quality_pass_rate": 1.0,
+      "deduplication_rate": 0.0,
+      "fetch_success_rate": 1.0,
+      "fetch_failure_rate": 0.0,
+      "fetch_duration_stats": {
+        "min": 575.0269889831543,
+        "max": 1550.8790016174316,
+        "mean": 835.7143878936768,
+        "median": 712.4950885772705,
+        "p95": 1550.8790016174316,
+        "p99": 1550.8790016174316
+      },
+      "text_length_stats": {
+        "min": 805,
+        "max": 10979,
+        "mean": 5094.2,
+        "median": 4936,
+        "total_chars": 25471
+      },
+      "throughput": {
+        "urls_per_second": 0.016619035896678357,
+        "bytes_per_second": 0.0,
+        "records_per_minute": 0.9971421538007015
+      },
+      "_metric_semantics": {
+        "http_request_success_rate": "Network-level HTTP success (2xx responses / attempted requests)",
+        "content_extraction_success_rate": "Content successfully extracted from HTTP responses",
+        "quality_pass_rate": "Records passing quality filters (after deduplication)",
+        "deduplication_rate": "Records filtered as duplicates",
+        "fetch_success_rate": "DEPRECATED: Use http_request_success_rate instead"
+      },
+      "_deprecation_warnings": [
+        "fetch_success_rate is deprecated for web scraping. Use http_request_success_rate for HTTP success and content_extraction_success_rate for content extraction success."
+      ]
+    }
+  }
+}

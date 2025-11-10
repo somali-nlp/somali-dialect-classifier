@@ -1,8 +1,8 @@
 {
   "_schema_version": "3.0",
   "_pipeline_type": "file_processing",
-  "_timestamp": "2025-11-02T07:11:10.318213+00:00",
-  "_run_id": "20251102_071104_sprakbanken-somali_e6ab1bc9",
+  "_timestamp": "2025-11-10T15:49:49.373035+00:00",
+  "_run_id": "20251110_154942_sprakbanken-somali_fd5f05c8",
   "_source": "Sprakbanken-Somali",
   "layered_metrics": {
     "connectivity": {
@@ -20,25 +20,29 @@
     },
     "quality": {
       "records_received": 3018,
-      "records_passed_filters": 0,
-      "filter_breakdown": {}
+      "records_passed_filters": 2527,
+      "filter_breakdown": {
+        "langid_filter": 367,
+        "empty_after_cleaning": 11,
+        "min_length_filter": 113
+      }
     },
     "volume": {
-      "records_written": 0,
+      "records_written": 2527,
       "bytes_downloaded": 0,
       "total_chars": 93081
     }
   },
   "legacy_metrics": {
     "snapshot": {
-      "timestamp": "2025-11-02T07:11:10.318213+00:00",
-      "run_id": "20251102_071104_sprakbanken-somali_e6ab1bc9",
+      "timestamp": "2025-11-10T15:49:49.373035+00:00",
+      "run_id": "20251110_154942_sprakbanken-somali_fd5f05c8",
       "source": "Sprakbanken-Somali",
-      "duration_seconds": 6.049006938934326,
+      "duration_seconds": 6.492064952850342,
       "pipeline_type": "file_processing",
       "urls_discovered": 0,
       "urls_fetched": 0,
-      "urls_processed": 0,
+      "urls_processed": 2527,
       "urls_failed": 0,
       "urls_skipped": 0,
       "urls_deduplicated": 0,
@@ -50,16 +54,20 @@
       "records_processed": 0,
       "batches_completed": 0,
       "bytes_downloaded": 0,
-      "records_written": 0,
-      "records_filtered": 0,
+      "records_written": 2527,
+      "records_filtered": 491,
       "http_status_codes": {},
-      "filter_reasons": {},
+      "filter_reasons": {
+        "langid_filter": 367,
+        "empty_after_cleaning": 11,
+        "min_length_filter": 113
+      },
       "error_types": {},
       "fetch_durations_ms": [],
       "process_durations_ms": [
-        433,
-        3174,
-        3609
+        525,
+        3030,
+        3559
       ],
       "text_lengths": [
         58,
@@ -1071,17 +1079,17 @@
       "file_extraction_success_rate": 1.0,
       "file_extraction_failure_rate": 0.0,
       "record_parsing_success_rate": 1.0,
-      "quality_pass_rate": 0,
+      "quality_pass_rate": 0.8373094764744864,
       "deduplication_rate": 0.0,
       "fetch_success_rate": 1.0,
       "fetch_failure_rate": 0.0,
       "process_duration_stats": {
-        "min": 433,
-        "max": 3609,
-        "mean": 2405.3333333333335,
-        "median": 3174,
-        "p95": 3609,
-        "p99": 3609
+        "min": 525,
+        "max": 3559,
+        "mean": 2371.3333333333335,
+        "median": 3030,
+        "p95": 3559,
+        "p99": 3559
       },
       "text_length_stats": {
         "min": 8,
@@ -1091,9 +1099,9 @@
         "total_chars": 93081
       },
       "throughput": {
-        "urls_per_second": 0.0,
+        "urls_per_second": 389.2444111931629,
         "bytes_per_second": 0.0,
-        "records_per_minute": 0.0
+        "records_per_minute": 23354.664671589773
       },
       "_metric_semantics": {
         "file_extraction_success_rate": "File-level extraction success (local file I/O, not HTTP)",

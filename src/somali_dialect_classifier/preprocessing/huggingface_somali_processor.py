@@ -140,8 +140,13 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             source = f"HuggingFace-Somali_{dataset_slug}"
 
         # Initialize deduplication BEFORE BasePipeline (which generates run_id)
+        # PHASE 3: Enable LSH persistence for cross-run near-duplicate detection
+        from pathlib import Path as PathLib
         dedup_config = DedupConfig(
-            hash_fields=["text", "url"], enable_minhash=True, similarity_threshold=0.85
+            hash_fields=["text", "url"],
+            enable_minhash=True,
+            similarity_threshold=0.85,
+            storage_path=PathLib("data/ledger/lsh_index_huggingface.pkl")  # PHASE 3
         )
         self.dedup = DedupEngine(dedup_config)
         self.ledger = get_ledger()
@@ -354,8 +359,32 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             self.logger.info(f"Extraction already complete: {staging_dir}")
             return staging_dir
 
-        # Resume from last offset
-        start_offset = manifest.get("last_offset", 0)
+        # PHASE 1: Discovery-Stage Deduplication for HuggingFace
+        # Load set of already-processed URLs from ledger to skip in stream
+        # This prevents re-downloading the same records on subsequent runs
+        processed_urls = set()
+        if not self.force and hasattr(self, 'ledger') and self.ledger is not None:
+            try:
+                processed_urls = self._get_processed_urls()
+                self.logger.info(
+                    f"PHASE 1 DEDUP: Loaded {len(processed_urls)} already-processed URLs from ledger"
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to load processed URLs from ledger: {e}")
+
+        # PHASE 5: Load checkpoint for resumption
+        # Try checkpoint file first (more frequent saves), fallback to manifest
+        checkpoint = None if self.force else self._load_checkpoint()
+        start_offset = 0
+        if checkpoint:
+            start_offset = checkpoint.get('last_index', 0)
+            self.logger.info(f"Resuming from checkpoint: offset={start_offset}")
+        else:
+            # Fallback to manifest-based offset
+            start_offset = manifest.get("last_offset", 0)
+            if start_offset > 0:
+                self.logger.info(f"Resuming from manifest: offset={start_offset}")
+
         batches_completed = set(manifest.get("batches_completed", []))
 
         self.logger.info(
@@ -391,6 +420,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         batch_num = start_offset // self.streaming_batch_size
         current_offset = start_offset
         total_processed = 0
+        stopped_at_limit = False  # Track if we stopped due to max_records limit
 
         # Track metrics path for checkpointing
         metrics_path = Path("data/metrics") / f"{self.run_id}_extraction.json"
@@ -405,6 +435,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 # Check max_records limit
                 if self.max_records and total_processed >= self.max_records:
                     self.logger.info(f"Reached max_records limit: {self.max_records}")
+                    stopped_at_limit = True
                     break
 
                 # Time the record fetch
@@ -418,6 +449,11 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                     mapped_record = self.schema_mapper.map_record(record, index=i)
                     text = mapped_record.get("text")
                     url = mapped_record.get("url")
+
+                    # PHASE 1: Skip if URL already processed in previous runs
+                    if url and url in processed_urls:
+                        self.metrics.increment("records_skipped_discovery_dedup")
+                        continue
 
                     # Track text length
                     if text:
@@ -455,6 +491,15 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
                 current_offset = i + 1
                 total_processed += 1
+
+                # PHASE 5: Save checkpoint every 1000 records
+                if total_processed % 1000 == 0:
+                    self._save_checkpoint({
+                        'last_index': current_offset,
+                        'timestamp': datetime.now(timezone.utc).isoformat(),
+                        'processed_count': total_processed
+                    })
+                    self.metrics.increment("records_skipped_checkpoint")  # Track checkpoint frequency
 
                 # Write batch when full
                 if len(batch) >= self.streaming_batch_size:
@@ -505,8 +550,22 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
                     self.logger.info(f"Final batch {batch_num} complete: {len(batch)} records")
 
-            # Mark extraction as complete
-            extraction_complete_marker.touch()
+            # Mark extraction as complete ONLY if we exhausted the dataset
+            # (not if we stopped at max_records limit - there's more data to stream)
+            if not stopped_at_limit:
+                extraction_complete_marker.touch()
+                self.logger.info("Dataset exhausted - marking extraction as complete")
+            else:
+                self.logger.info(f"Stopped at max_records limit - more data available to stream from offset {current_offset}")
+
+            # PHASE 5: Save final checkpoint and clean up
+            self._save_checkpoint({
+                'last_index': current_offset,
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+                'processed_count': total_processed,
+                'completed': True
+            })
+            self.logger.info(f"Final checkpoint saved at offset {current_offset}")
 
             # Update manifest with final audit counts
             manifest["total_records_extracted"] = total_processed
@@ -529,8 +588,8 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             self.logger.info(f"Extraction quality report: {report_path}")
 
             # Set staging_file for BasePipeline.process() validation
-            # Point to the extraction complete marker as a sentinel
-            self.staging_file = extraction_complete_marker
+            # Point to staging directory so process() can find JSONL files
+            self.staging_file = staging_dir
 
         except Exception as e:
             self.logger.error(f"Extraction failed at offset {current_offset}: {e}")
@@ -606,10 +665,9 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 f"Staging directory not found: {staging_dir}. Run extract() first."
             )
 
-        # Check for extraction complete marker
-        extraction_marker = staging_dir / ".extraction_complete"
-        if not extraction_marker.exists():
-            raise FileNotFoundError("Extraction not complete. Run extract() first.")
+        # NOTE: We don't check for .extraction_complete marker anymore because
+        # it's only created when the dataset is exhausted, not when stopping at max_records.
+        # The process() method can run as long as JSONL files exist in staging.
 
         self.processed_dir.mkdir(parents=True, exist_ok=True)
 
@@ -623,7 +681,23 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         filter_stats = Counter()
         silver_records = []
 
+        # PHASE 1: Load already-processed URLs for cross-run deduplication
+        processed_urls = set()
+        if not self.force and hasattr(self, 'ledger') and self.ledger is not None:
+            try:
+                processed_urls = self._get_processed_urls()
+                self.logger.info(
+                    f"PHASE 1 DEDUP (process): Loaded {len(processed_urls)} already-processed URLs from ledger"
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to load processed URLs from ledger: {e}")
+
         for raw_record in self._extract_records():
+            # PHASE 1: Skip if URL already processed in previous runs
+            if raw_record.url and raw_record.url in processed_urls:
+                self.metrics.increment("records_skipped_discovery_dedup")
+                continue
+
             # Shared text cleaning
             cleaned = self.text_cleaner.clean(raw_record.text)
 
@@ -686,6 +760,23 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 embedding=None,  # Placeholder for future embeddings
                 register=self._get_register(),  # v2.1: Linguistic register
             )
+
+            # PHASE 1: Mark URL as processed in ledger for cross-run deduplication
+            if hasattr(self, "ledger") and self.ledger is not None:
+                try:
+                    # Get minhash_signature from metadata if available
+                    minhash_sig = raw_record.metadata.get("minhash_signature")
+                    # Use URL from silver record (has correct URL from JSONL)
+                    record_url = record["url"]
+                    self.ledger.mark_processed(
+                        url=record_url,
+                        text_hash=record["text_hash"],
+                        silver_id=record["id"],
+                        minhash_signature=minhash_sig,
+                        source=self.source,
+                    )
+                except Exception as e:
+                    self.logger.error(f"Failed to mark URL as processed in ledger: {e}")
 
             silver_records.append(record)
             records_processed += 1
@@ -969,6 +1060,71 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         else:
             # MC4 and web corpora are formal written text
             return "formal"
+
+    def _get_processed_urls(self) -> set[str]:
+        """
+        Get set of already-processed URLs from ledger.
+
+        PHASE 1: Discovery-Stage Deduplication helper for HuggingFace streaming.
+        Similar to Språkbanken's _get_downloaded_corpus_ids() approach.
+
+        Returns:
+            Set of URLs already in PROCESSED state in the ledger
+        """
+        if not hasattr(self, 'ledger') or self.ledger is None:
+            return set()
+
+        try:
+            # Get processed URLs for this source from ledger
+            # Use source name that matches what's stored in ledger
+            processed_urls_list = self.ledger.get_processed_urls(source=self.source)
+            processed_urls = set(processed_urls_list)
+            self.logger.info(
+                f"Loaded {len(processed_urls)} processed URLs from ledger for source '{self.source}'"
+            )
+            return processed_urls
+        except Exception as e:
+            self.logger.warning(f"Failed to query ledger for processed URLs: {e}")
+            return set()
+
+    def _load_checkpoint(self) -> Optional[dict]:
+        """
+        Load processing checkpoint from disk.
+
+        Used for incremental processing to resume from last processed index.
+
+        Returns:
+            Checkpoint dict with 'last_index' key, or None if no checkpoint
+        """
+        checkpoint_file = self.raw_dir / "checkpoint.json"
+        if checkpoint_file.exists():
+            try:
+                with open(checkpoint_file, encoding='utf-8') as f:
+                    checkpoint = json.load(f)
+                    self.logger.info(f"Loaded checkpoint: last_index={checkpoint.get('last_index', 0)}")
+                    return checkpoint
+            except Exception as e:
+                self.logger.warning(f"Failed to load checkpoint: {e}")
+                return None
+        return None
+
+    def _save_checkpoint(self, checkpoint: dict):
+        """
+        Save processing checkpoint to disk.
+
+        Used for incremental processing to track progress.
+
+        Args:
+            checkpoint: Dict containing 'last_index' and metadata
+        """
+        checkpoint_file = self.raw_dir / "checkpoint.json"
+        try:
+            checkpoint_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(checkpoint_file, 'w', encoding='utf-8') as f:
+                json.dump(checkpoint, f, indent=2, ensure_ascii=False)
+            self.logger.debug(f"Checkpoint saved: index={checkpoint['last_index']}")
+        except Exception as e:
+            self.logger.error(f"Failed to save checkpoint: {e}")
 
 
 # Factory functions for common datasets

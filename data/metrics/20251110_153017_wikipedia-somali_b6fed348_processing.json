@@ -1,14 +1,14 @@
 {
   "_schema_version": "3.0",
   "_pipeline_type": "file_processing",
-  "_timestamp": "2025-11-02T07:11:18.916486+00:00",
-  "_run_id": "20251102_071104_wikipedia-somali_8be7bd4d",
+  "_timestamp": "2025-11-10T15:30:37.712759+00:00",
+  "_run_id": "20251110_153017_wikipedia-somali_b6fed348",
   "_source": "Wikipedia-Somali",
   "layered_metrics": {
     "connectivity": {
       "connection_attempted": true,
       "connection_successful": true,
-      "connection_duration_ms": 11293,
+      "connection_duration_ms": 13343,
       "connection_error": null
     },
     "extraction": {
@@ -19,26 +19,30 @@
       "extraction_errors": {}
     },
     "quality": {
-      "records_received": 1507,
-      "records_passed_filters": 0,
-      "filter_breakdown": {}
+      "records_received": 15507,
+      "records_passed_filters": 9960,
+      "filter_breakdown": {
+        "min_length_filter": 4138,
+        "langid_filter": 1208,
+        "empty_after_cleaning": 201
+      }
     },
     "volume": {
-      "records_written": 0,
+      "records_written": 9960,
       "bytes_downloaded": 14810598,
       "total_chars": 5463570
     }
   },
   "legacy_metrics": {
     "snapshot": {
-      "timestamp": "2025-11-02T07:11:18.916486+00:00",
-      "run_id": "20251102_071104_wikipedia-somali_8be7bd4d",
+      "timestamp": "2025-11-10T15:30:37.712759+00:00",
+      "run_id": "20251110_153017_wikipedia-somali_b6fed348",
       "source": "Wikipedia-Somali",
-      "duration_seconds": 14.663179874420166,
+      "duration_seconds": 20.55369997024536,
       "pipeline_type": "file_processing",
       "urls_discovered": 0,
       "urls_fetched": 0,
-      "urls_processed": 0,
+      "urls_processed": 9960,
       "urls_failed": 0,
       "urls_skipped": 0,
       "urls_deduplicated": 0,
@@ -50,18 +54,22 @@
       "records_processed": 0,
       "batches_completed": 0,
       "bytes_downloaded": 14810598,
-      "records_written": 0,
-      "records_filtered": 0,
+      "records_written": 9960,
+      "records_filtered": 5547,
       "http_status_codes": {
         "200": 1
       },
-      "filter_reasons": {},
+      "filter_reasons": {
+        "min_length_filter": 4138,
+        "langid_filter": 1208,
+        "empty_after_cleaning": 201
+      },
       "error_types": {},
       "fetch_durations_ms": [
-        11293
+        13343
       ],
       "process_durations_ms": [
-        3367
+        3678
       ],
       "text_lengths": [
         20,
@@ -1073,25 +1081,25 @@
       "file_extraction_success_rate": 1.0,
       "file_extraction_failure_rate": 0.0,
       "record_parsing_success_rate": 1.0,
-      "quality_pass_rate": 0,
+      "quality_pass_rate": 0.6422905784484426,
       "deduplication_rate": 0.0,
       "fetch_success_rate": 1.0,
       "fetch_failure_rate": 0.0,
       "fetch_duration_stats": {
-        "min": 11293,
-        "max": 11293,
-        "mean": 11293,
-        "median": 11293,
-        "p95": 11293,
-        "p99": 11293
+        "min": 13343,
+        "max": 13343,
+        "mean": 13343,
+        "median": 13343,
+        "p95": 13343,
+        "p99": 13343
       },
       "process_duration_stats": {
-        "min": 3367,
-        "max": 3367,
-        "mean": 3367,
-        "median": 3367,
-        "p95": 3367,
-        "p99": 3367
+        "min": 3678,
+        "max": 3678,
+        "mean": 3678,
+        "median": 3678,
+        "p95": 3678,
+        "p99": 3678
       },
       "text_length_stats": {
         "min": 3,
@@ -1101,9 +1109,9 @@
         "total_chars": 5463570
       },
       "throughput": {
-        "urls_per_second": 0.0,
-        "bytes_per_second": 1010053.6259421468,
-        "records_per_minute": 0.0
+        "urls_per_second": 484.5842847963447,
+        "bytes_per_second": 720580.6264293346,
+        "records_per_minute": 29075.057087780682
       },
       "_metric_semantics": {
         "file_extraction_success_rate": "File-level extraction success (local file I/O, not HTTP)",

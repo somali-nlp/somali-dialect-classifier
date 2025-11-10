@@ -1,8 +1,8 @@
 # Data Quality Report
 
-**Run ID:** 20251102_071104_sprakbanken-somali_e6ab1bc9
+**Run ID:** 20251110_154942_sprakbanken-somali_fd5f05c8
 **Source:** Sprakbanken-Somali
-**Timestamp:** 2025-11-02T07:11:10.542182+00:00
+**Timestamp:** 2025-11-10T15:49:49.031724+00:00
 **Duration:** 6s
 
 ---
@@ -14,9 +14,9 @@
 
 - **File Extraction Success Rate:** 100.0%
 - **Record Parsing Success Rate:** 100.0%
-- **Quality Filter Pass Rate:** 83.7%
+- **Quality Filter Pass Rate:** 0.0%
 - **Deduplication Rate:** 0.0%
-- **Total Records Processed:** 2,527
+- **Total Records Processed:** 0
 - **Data Downloaded:** 0.0 B
 
 ---
@@ -28,7 +28,7 @@
 | Files Discovered | 2 |
 | Files Processed | 2 |
 | Records Extracted | 3,018 |
-| Records Written | 2,527 |
+| Records Written | 0 |
 
 ---
 
@@ -36,14 +36,14 @@
 
 ### Extraction Performance
 
-- **Mean:** 2405 ms
-- **Median:** 3174 ms
-- **P95:** 3609 ms
-- **P99:** 3609 ms
+- **Mean:** 2371 ms
+- **Median:** 3030 ms
+- **P95:** 3559 ms
+- **P99:** 3559 ms
 
 ### Throughput
 
-- **Records/minute:** 24170.3
+- **Records/minute:** 0.0
 - **Bytes/second:** 0.0 B/s
 
 ---
@@ -66,20 +66,8 @@
 
 ---
 
-## Filter Statistics
-
-**Total Filtered:** 491 records
-
-| Filter Reason | Count | Percentage |
-|---------------|-------|------------|
-| langid_filter | 367 | 74.7% |
-| min_length_filter | 113 | 23.0% |
-| empty_after_cleaning | 11 | 2.2% |
-
----
-
 ## Recommendations
 
-✅ All metrics within acceptable ranges.
+⚠️ **Low quality filter pass rate.** Many records are being filtered out. Review filter configurations or consider adjusting quality thresholds.
 
 ---

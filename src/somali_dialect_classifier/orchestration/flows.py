@@ -37,6 +37,99 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _get_ledger():
+    """Get ledger instance for orchestrator operations."""
+    from ..preprocessing.crawl_ledger import SQLiteLedger
+    from pathlib import Path
+
+    ledger_path = Path("data/ledger/crawl_ledger.db")
+    ledger_path.parent.mkdir(parents=True, exist_ok=True)
+    return SQLiteLedger(str(ledger_path))
+
+
+def should_run_source(source: str) -> tuple[bool, str]:
+    """
+    Determine if source should be processed based on refresh cadence.
+
+    Implements Phase 4 smart orchestrator logic per
+    analysis-dedup-orchestration-strategy-20251109.md
+
+    Args:
+        source: Data source name ('bbc', 'wikipedia', 'tiktok', etc.)
+
+    Returns:
+        Tuple of (should_run: bool, reason: str)
+    """
+    from ..config import get_config
+
+    config = get_config()
+
+    # Always run if in initial collection phase
+    if is_initial_collection_phase():
+        return True, "initial_collection"
+
+    # Get last successful run time from ledger
+    ledger = _get_ledger()
+    last_run = ledger.get_last_successful_run(source)
+
+    if last_run is None:
+        return True, "never_run"
+
+    # Check refresh cadence
+    cadence_days = config.orchestration.get_cadence(source)
+    time_since_last = (datetime.now(timezone.utc) - last_run).total_seconds() / 86400
+
+    if time_since_last >= cadence_days:
+        return True, f"refresh_due (last_run: {time_since_last:.1f} days ago)"
+    else:
+        days_until_refresh = cadence_days - time_since_last
+        return False, f"refresh_not_due (next in {days_until_refresh:.1f} days)"
+
+
+def is_initial_collection_phase() -> bool:
+    """
+    Check if we're still in initial 6-day collection phase.
+
+    During initial collection, all sources run daily regardless of cadence.
+    After initial collection completes, sources run per their refresh cadence.
+
+    Implements Phase 4 smart orchestrator logic per
+    analysis-dedup-orchestration-strategy-20251109.md
+
+    Returns:
+        True if still in initial collection phase, False if in refresh phase
+    """
+    from ..config import get_config
+
+    config = get_config()
+    ledger = _get_ledger()
+
+    sources = ["bbc", "wikipedia", "tiktok", "sprakbanken", "huggingface"]
+
+    # Check if any source has never been run
+    for source in sources:
+        if ledger.get_last_successful_run(source) is None:
+            return True  # Still in initial collection
+
+    # Check if oldest source run is within initial_collection_days window
+    first_runs = []
+    for source in sources:
+        first_run = ledger.get_first_successful_run(source)
+        if first_run is not None:
+            first_runs.append(first_run)
+
+    if not first_runs:
+        return True  # No runs yet, in initial collection
+
+    oldest_run = min(first_runs)
+    days_since_oldest = (datetime.now(timezone.utc) - oldest_run).total_seconds() / 86400
+
+    if days_since_oldest < config.orchestration.initial_collection_days:
+        return True  # Still within initial collection window
+
+    return False  # Moved to refresh phase
+
+
 def _setup_orchestrator_logging() -> None:
     """
     Set up logging for orchestration flows.
@@ -179,6 +272,7 @@ def run_huggingface_task(
     processor = HuggingFaceSomaliProcessor(
         dataset_name=dataset_name,
         dataset_config=dataset_config,
+        url_field="url",  # Required for ledger deduplication
         max_records=max_records,
         force=force,
     )
@@ -455,39 +549,77 @@ def run_all_pipelines(
     logger.info("STARTING COMPLETE DATA COLLECTION PIPELINE")
     logger.info("=" * 80)
 
+    # Check initial collection phase status
+    in_initial_phase = is_initial_collection_phase()
+    if in_initial_phase:
+        logger.info("📅 Initial collection phase: All sources will run")
+    else:
+        logger.info("🔄 Refresh phase: Sources run per cadence schedule")
+
     # Execute tasks either in parallel (with Prefect) or sequentially (without Prefect)
     results = []
+    skipped_sources = []
 
     if PREFECT_AVAILABLE:
         # Submit all tasks in parallel (Prefect handles concurrency)
         if run_wikipedia:
-            results.append(run_wikipedia_task.submit(force=force))
+            should_run, reason = should_run_source("wikipedia")
+            if should_run:
+                logger.info(f"✅ Running Wikipedia: {reason}")
+                results.append(run_wikipedia_task.submit(force=force))
+            else:
+                logger.info(f"⏭️  Skipping Wikipedia: {reason}")
+                skipped_sources.append(("Wikipedia-Somali", reason))
 
         if run_bbc:
-            results.append(run_bbc_task.submit(max_articles=max_bbc_articles, force=force))
+            should_run, reason = should_run_source("bbc")
+            if should_run:
+                logger.info(f"✅ Running BBC: {reason}")
+                results.append(run_bbc_task.submit(max_articles=max_bbc_articles, force=force))
+            else:
+                logger.info(f"⏭️  Skipping BBC: {reason}")
+                skipped_sources.append(("BBC-Somali", reason))
 
         if run_huggingface:
-            results.append(
-                run_huggingface_task.submit(
-                    dataset_name="allenai/c4",
-                    dataset_config="so",
-                    max_records=max_hf_records,
-                    force=force,
+            should_run, reason = should_run_source("huggingface")
+            if should_run:
+                logger.info(f"✅ Running HuggingFace: {reason}")
+                results.append(
+                    run_huggingface_task.submit(
+                        dataset_name="allenai/c4",
+                        dataset_config="so",
+                        max_records=max_hf_records,
+                        force=force,
+                    )
                 )
-            )
+            else:
+                logger.info(f"⏭️  Skipping HuggingFace: {reason}")
+                skipped_sources.append(("HuggingFace-Somali", reason))
 
         if run_sprakbanken:
-            results.append(run_sprakbanken_task.submit(corpus_id=sprakbanken_corpus, force=force))
+            should_run, reason = should_run_source("sprakbanken")
+            if should_run:
+                logger.info(f"✅ Running Språkbanken: {reason}")
+                results.append(run_sprakbanken_task.submit(corpus_id=sprakbanken_corpus, force=force))
+            else:
+                logger.info(f"⏭️  Skipping Språkbanken: {reason}")
+                skipped_sources.append(("Sprakbanken-Somali", reason))
 
         if run_tiktok and tiktok_video_urls and tiktok_api_token:
-            results.append(
-                run_tiktok_task.submit(
-                    video_urls=tiktok_video_urls,
-                    apify_api_token=tiktok_api_token,
-                    apify_user_id=tiktok_user_id,
-                    force=force,
+            should_run, reason = should_run_source("tiktok")
+            if should_run:
+                logger.info(f"✅ Running TikTok: {reason}")
+                results.append(
+                    run_tiktok_task.submit(
+                        video_urls=tiktok_video_urls,
+                        apify_api_token=tiktok_api_token,
+                        apify_user_id=tiktok_user_id,
+                        force=force,
+                    )
                 )
-            )
+            else:
+                logger.info(f"⏭️  Skipping TikTok: {reason}")
+                skipped_sources.append(("TikTok-Somali", reason))
         elif run_tiktok and tiktok_video_urls:
             logger.warning("TikTok pipeline skipped: API token not provided")
         elif run_tiktok:
@@ -500,35 +632,65 @@ def run_all_pipelines(
         completed_results = []
 
         if run_wikipedia:
-            completed_results.append(run_wikipedia_task(force=force))
+            should_run, reason = should_run_source("wikipedia")
+            if should_run:
+                logger.info(f"✅ Running Wikipedia: {reason}")
+                completed_results.append(run_wikipedia_task(force=force))
+            else:
+                logger.info(f"⏭️  Skipping Wikipedia: {reason}")
+                skipped_sources.append(("Wikipedia-Somali", reason))
 
         if run_bbc:
-            completed_results.append(run_bbc_task(max_articles=max_bbc_articles, force=force))
+            should_run, reason = should_run_source("bbc")
+            if should_run:
+                logger.info(f"✅ Running BBC: {reason}")
+                completed_results.append(run_bbc_task(max_articles=max_bbc_articles, force=force))
+            else:
+                logger.info(f"⏭️  Skipping BBC: {reason}")
+                skipped_sources.append(("BBC-Somali", reason))
 
         if run_huggingface:
-            completed_results.append(
-                run_huggingface_task(
-                    dataset_name="allenai/c4",
-                    dataset_config="so",
-                    max_records=max_hf_records,
-                    force=force,
+            should_run, reason = should_run_source("huggingface")
+            if should_run:
+                logger.info(f"✅ Running HuggingFace: {reason}")
+                completed_results.append(
+                    run_huggingface_task(
+                        dataset_name="allenai/c4",
+                        dataset_config="so",
+                        max_records=max_hf_records,
+                        force=force,
+                    )
                 )
-            )
+            else:
+                logger.info(f"⏭️  Skipping HuggingFace: {reason}")
+                skipped_sources.append(("HuggingFace-Somali", reason))
 
         if run_sprakbanken:
-            completed_results.append(
-                run_sprakbanken_task(corpus_id=sprakbanken_corpus, force=force)
-            )
+            should_run, reason = should_run_source("sprakbanken")
+            if should_run:
+                logger.info(f"✅ Running Språkbanken: {reason}")
+                completed_results.append(
+                    run_sprakbanken_task(corpus_id=sprakbanken_corpus, force=force)
+                )
+            else:
+                logger.info(f"⏭️  Skipping Språkbanken: {reason}")
+                skipped_sources.append(("Sprakbanken-Somali", reason))
 
         if run_tiktok and tiktok_video_urls and tiktok_api_token:
-            completed_results.append(
-                run_tiktok_task(
-                    video_urls=tiktok_video_urls,
-                    apify_api_token=tiktok_api_token,
-                    apify_user_id=tiktok_user_id,
-                    force=force,
+            should_run, reason = should_run_source("tiktok")
+            if should_run:
+                logger.info(f"✅ Running TikTok: {reason}")
+                completed_results.append(
+                    run_tiktok_task(
+                        video_urls=tiktok_video_urls,
+                        apify_api_token=tiktok_api_token,
+                        apify_user_id=tiktok_user_id,
+                        force=force,
+                    )
                 )
-            )
+            else:
+                logger.info(f"⏭️  Skipping TikTok: {reason}")
+                skipped_sources.append(("TikTok-Somali", reason))
         elif run_tiktok and tiktok_video_urls:
             logger.warning("TikTok pipeline skipped: API token not provided")
         elif run_tiktok:
@@ -543,6 +705,12 @@ def run_all_pipelines(
     logger.info("=" * 80)
     logger.info(f"Successful: {len(successful)}/{len(completed_results)}")
     logger.info(f"Failed: {len(failed)}/{len(completed_results)}")
+    logger.info(f"Skipped: {len(skipped_sources)}")
+
+    if skipped_sources:
+        logger.info("Skipped pipelines (cadence-based):")
+        for source, reason in skipped_sources:
+            logger.info(f"  - {source}: {reason}")
 
     if failed:
         logger.warning("Failed pipelines:")
@@ -649,9 +817,9 @@ def main():
         tiktok_video_urls = None
         tiktok_api_token = None
         tiktok_user_id = None
-        run_tiktok_pipeline = "tiktok" not in skip_sources
+        should_run_tiktok = "tiktok" not in skip_sources
 
-        if run_tiktok_pipeline:
+        if should_run_tiktok:
             # Load configuration for TikTok
             from ..config import get_config
 
@@ -678,7 +846,7 @@ def main():
                 except (FileNotFoundError, ValueError) as e:
                     logger.error(f"TikTok: Failed to load video URLs from {urls_file_path}: {e}")
                     logger.warning("TikTok pipeline will be skipped")
-                    run_tiktok_pipeline = False
+                    should_run_tiktok = False
             else:
                 if args.tiktok_video_urls:
                     # User specified a path but file doesn't exist - this is an error
@@ -692,15 +860,15 @@ def main():
                     logger.info(
                         f"TikTok: To enable, create {default_tiktok_urls_path} or use --tiktok-video-urls"
                     )
-                run_tiktok_pipeline = False
+                should_run_tiktok = False
 
             # Validate API token requirement
-            if run_tiktok_pipeline and not tiktok_api_token:
+            if should_run_tiktok and not tiktok_api_token:
                 logger.warning("TikTok: API token not provided, pipeline will be skipped")
                 logger.info(
                     "TikTok: Set SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN or use --tiktok-api-token"
                 )
-                run_tiktok_pipeline = False
+                should_run_tiktok = False
 
         result = run_all_pipelines(
             force=args.force,
@@ -711,7 +879,7 @@ def main():
             run_bbc="bbc" not in skip_sources,
             run_huggingface="huggingface" not in skip_sources,
             run_sprakbanken="sprakbanken" not in skip_sources,
-            run_tiktok=run_tiktok_pipeline,
+            run_tiktok=should_run_tiktok,
             tiktok_video_urls=tiktok_video_urls,
             tiktok_api_token=tiktok_api_token,
             tiktok_user_id=tiktok_user_id,

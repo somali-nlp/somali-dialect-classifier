@@ -1,9 +1,9 @@
 # Data Quality Report
 
-**Run ID:** 20251102_071104_tiktok-somali_d400941e
+**Run ID:** 20251110_153017_tiktok-somali_400ef8d3
 **Source:** TikTok-Somali
-**Timestamp:** 2025-11-02T07:13:10.327134+00:00
-**Duration:** 2m 6s
+**Timestamp:** 2025-11-10T15:32:53.456910+00:00
+**Duration:** 2m 36s
 
 ---
 
@@ -53,21 +53,21 @@
 ### Text Length Distribution
 
 - **Mean:** 35 chars
-- **Median:** 23 chars
+- **Median:** 21 chars
 - **Min:** 3 chars
-- **Max:** 1,614 chars
-- **Total:** 13.2 KB
+- **Max:** 1,617 chars
+- **Total:** 11.3 KB
 
 ---
 
 ## Filter Statistics
 
-**Total Filtered:** 804 records
+**Total Filtered:** 631 records
 
 | Filter Reason | Count | Percentage |
 |---------------|-------|------------|
-| emoji_only_comment | 801 | 99.6% |
-| text_too_short_after_cleanup | 3 | 0.4% |
+| emoji_only_comment | 628 | 99.5% |
+| text_too_short_after_cleanup | 3 | 0.5% |
 
 ---
 
