@@ -1,0 +1,26 @@
+{
+  "waivers": [
+    {
+      "id": "waiver-1",
+      "name": "TikTok-Somali Economic Inefficiency",
+      "status": "Active",
+      "granted_on": "2025-11-02",
+      "expires_on": "2025-12-17",
+      "owner": "Data Economics Team",
+      "reason": "Apify batch scraping costs $1.00/1K comments but ~67% are emoji-only and filtered locally. Current yield: 82.4% linguistic content. Pipeline approved with current approach while evaluating: (1) Scaling to more videos for better ROI, or (2) Apify Comments Analyzer for pre-filtering. Status: Monitoring cost per linguistic comment ($0.0012) as KPI.",
+      "report_url": "data/reports/20251102_071104_tiktok-somali_d400941e_final_quality_report.md"
+    },
+    {
+      "id": "waiver-2",
+      "name": "Wikipedia-Somali Low Pass Rate",
+      "status": "Active",
+      "granted_on": "2025-11-02",
+      "expires_on": "2025-12-17",
+      "owner": "Data Quality Team",
+      "reason": "Encyclopedia content naturally has higher filtering rate due to article structure and formatting. Current rate: 64.2%",
+      "report_url": "data/reports/20251102_071104_wikipedia-somali_8be7bd4d_final_quality_report.md"
+    }
+  ],
+  "generated_at": "2025-11-05T11:21:55.567703+00:00",
+  "total_waivers": 2
+}

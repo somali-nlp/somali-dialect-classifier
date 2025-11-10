@@ -1,0 +1,162 @@
+{
+  "_schema_version": "1.0",
+  "_methodology": "Targets set at p95 of 15-run sample (1 real + 14 synthetic) with 10% buffer for operational headroom",
+  "percentile_basis": "p95_oct2024_15runs",
+  "last_reviewed": "2025-11-08",
+  "review_cadence_days": 90,
+
+  "global_targets": {
+    "max_duration_seconds": 3600,
+    "min_throughput_rpm": 10000,
+    "min_quality_pass_rate": 0.85,
+    "max_retry_rate": 0.05,
+    "max_error_rate": 0.02,
+    "_notes": "Global targets apply to entire pipeline run, aggregated across all sources"
+  },
+
+  "per_source_targets": {
+    "Wikipedia-Somali": {
+      "pipeline_type": "file_processing",
+      "max_duration_seconds": 30,
+      "min_throughput_rpm": 28000,
+      "min_quality_pass_rate": 0.60,
+      "max_retry_rate": 0.01,
+      "p95_fetch_latency_ms": 12000,
+      "p95_process_latency_ms": 4000,
+      "_baseline_metrics": {
+        "actual_p95_duration": 19.6,
+        "actual_p95_throughput": 29668,
+        "actual_p95_quality": 0.651,
+        "sample_size": 15
+      },
+      "_notes": "Fast file processing source. Quality rate lower due to aggressive filtering (langid + min_length)."
+    },
+
+    "TikTok-Somali": {
+      "pipeline_type": "stream_processing",
+      "max_duration_seconds": 180,
+      "min_throughput_rpm": 120,
+      "min_quality_pass_rate": 0.75,
+      "max_retry_rate": 0.10,
+      "p95_fetch_latency_ms": 1000,
+      "p95_process_latency_ms": 500,
+      "_baseline_metrics": {
+        "actual_p95_duration": 138.5,
+        "actual_p95_throughput": 135,
+        "actual_p95_quality": 0.831,
+        "sample_size": 15
+      },
+      "_notes": "Stream processing with emoji filter. Higher retry tolerance due to API variability."
+    },
+
+    "BBC-Somali": {
+      "pipeline_type": "web_scraping",
+      "max_duration_seconds": 3600,
+      "min_throughput_rpm": 0.80,
+      "min_quality_pass_rate": 0.95,
+      "max_retry_rate": 0.03,
+      "p95_fetch_latency_ms": 2200,
+      "p95_process_latency_ms": 100,
+      "_baseline_metrics": {
+        "actual_p95_duration": 3198.4,
+        "actual_p95_throughput": 0.86,
+        "actual_p95_quality": 0.981,
+        "sample_size": 15
+      },
+      "_notes": "Slow web scraping source. Duration SLA set generously at 1 hour. High quality pass rate expected."
+    },
+
+    "Sprakbanken-Somali": {
+      "pipeline_type": "file_processing",
+      "max_duration_seconds": 10,
+      "min_throughput_rpm": 20000,
+      "min_quality_pass_rate": 0.80,
+      "max_retry_rate": 0.01,
+      "p95_fetch_latency_ms": 100,
+      "p95_process_latency_ms": 4000,
+      "_baseline_metrics": {
+        "actual_p95_duration": 6.72,
+        "actual_p95_throughput": 22232,
+        "actual_p95_quality": 0.845,
+        "sample_size": 15
+      },
+      "_notes": "Fast local file processing. Very tight duration SLA."
+    },
+
+    "HuggingFace-Somali_c4-so": {
+      "pipeline_type": "stream_processing",
+      "max_duration_seconds": 180,
+      "min_throughput_rpm": 75,
+      "min_quality_pass_rate": 0.90,
+      "max_retry_rate": 0.05,
+      "p95_fetch_latency_ms": 20,
+      "p95_process_latency_ms": 100,
+      "_baseline_metrics": {
+        "actual_p95_duration": 143.2,
+        "actual_p95_throughput": 79,
+        "actual_p95_quality": 0.948,
+        "sample_size": 15
+      },
+      "_notes": "Stream processing from HuggingFace datasets. High quality curated source."
+    }
+  },
+
+  "sla_violation_thresholds": {
+    "critical": {
+      "duration_multiplier": 1.5,
+      "throughput_multiplier": 0.5,
+      "quality_drop": 0.15,
+      "_description": "Critical violations trigger immediate alerts and require investigation"
+    },
+    "warning": {
+      "duration_multiplier": 1.2,
+      "throughput_multiplier": 0.8,
+      "quality_drop": 0.05,
+      "_description": "Warning level violations should be monitored but may not require immediate action"
+    }
+  },
+
+  "alert_configuration": {
+    "duration_breach": {
+      "severity_mapping": {
+        "1.0-1.2x": "low",
+        "1.2-1.5x": "medium",
+        ">1.5x": "high"
+      }
+    },
+    "throughput_degradation": {
+      "severity_mapping": {
+        "0.8-1.0x": "low",
+        "0.5-0.8x": "medium",
+        "<0.5x": "high"
+      }
+    },
+    "retry_budget": {
+      "severity_mapping": {
+        "0.5-0.8x budget": "low",
+        "0.8-1.0x budget": "medium",
+        ">1.0x budget": "high"
+      }
+    }
+  },
+
+  "_calculated_aggregates": {
+    "weighted_avg_throughput": 11720,
+    "total_duration_p50": 3267,
+    "total_duration_p95": 3512,
+    "total_records_p50": 13001,
+    "total_records_p95": 13321,
+    "global_quality_p50": 0.654,
+    "global_quality_p95": 0.668,
+    "_notes": "Calculated from 15-run historical sample. Weighted average accounts for source duration."
+  },
+
+  "_version_history": [
+    {
+      "version": "1.0",
+      "date": "2025-11-08",
+      "changes": "Initial SLA definitions based on Oct-Nov 2025 performance baseline",
+      "author": "data-engineer"
+    }
+  ]
+}

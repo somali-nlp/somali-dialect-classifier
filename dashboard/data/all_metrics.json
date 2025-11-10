@@ -1,0 +1,194 @@
+{
+  "count": 5,
+  "records": 13048,
+  "sources": [
+    "BBC-Somali",
+    "HuggingFace-Somali_c4-so",
+    "Sprakbanken-Somali",
+    "TikTok-Somali",
+    "Wikipedia-Somali"
+  ],
+  "metrics": [
+    {
+      "run_id": "20251102_071104_bbc-somali_e52a5149",
+      "source": "BBC-Somali",
+      "timestamp": "2025-11-02T08:01:07.657717+00:00",
+      "pipeline_type": "web_scraping",
+      "duration_seconds": 3003.406811952591,
+      "urls_discovered": 190,
+      "urls_fetched": 50,
+      "urls_processed": 49,
+      "records_written": 49,
+      "bytes_downloaded": 0,
+      "total_chars": 204380,
+      "http_request_success_rate": 1.0,
+      "content_extraction_success_rate": 1.0,
+      "quality_pass_rate": 0.98,
+      "deduplication_rate": 0,
+      "urls_per_second": 0.016314806174440238,
+      "bytes_per_second": 0.0,
+      "records_per_minute": 0.9788883704664143,
+      "text_length_stats": {
+        "min": 23,
+        "max": 12724,
+        "mean": 4087.6,
+        "median": 4090.0,
+        "total_chars": 204380
+      },
+      "fetch_duration_stats": {
+        "min": 403.05209159851074,
+        "max": 2200.657844543457,
+        "mean": 828.8393926620483,
+        "median": 725.5685329437256,
+        "p95": 1194.2739486694336,
+        "p99": 2200.657844543457
+      },
+      "filter_breakdown": {
+        "min_length_filter": 1
+      }
+    },
+    {
+      "run_id": "20251102_071104_sprakbanken-somali_e6ab1bc9",
+      "source": "Sprakbanken-Somali",
+      "timestamp": "2025-11-02T07:11:10.541149+00:00",
+      "pipeline_type": "file_processing",
+      "duration_seconds": 6.271942853927612,
+      "urls_discovered": 0,
+      "urls_fetched": 0,
+      "urls_processed": 2527,
+      "records_written": 2527,
+      "bytes_downloaded": 0,
+      "total_chars": 93081,
+      "http_request_success_rate": 0,
+      "content_extraction_success_rate": 0,
+      "quality_pass_rate": 0.8373094764744864,
+      "deduplication_rate": 0,
+      "urls_per_second": 402.90545670669553,
+      "bytes_per_second": 0.0,
+      "records_per_minute": 24174.32740240173,
+      "text_length_stats": {
+        "min": 8,
+        "max": 564,
+        "mean": 93.081,
+        "median": 69.0,
+        "total_chars": 93081
+      },
+      "filter_breakdown": {
+        "langid_filter": 367,
+        "empty_after_cleaning": 11,
+        "min_length_filter": 113
+      }
+    },
+    {
+      "run_id": "20251102_071104_tiktok-somali_d400941e",
+      "source": "TikTok-Somali",
+      "timestamp": "2025-11-02T07:13:10.369606+00:00",
+      "pipeline_type": "stream_processing",
+      "duration_seconds": 126.11198782920837,
+      "urls_discovered": 5,
+      "urls_fetched": 391,
+      "urls_processed": 322,
+      "records_written": 322,
+      "bytes_downloaded": 0,
+      "total_chars": 13508,
+      "http_request_success_rate": 0,
+      "content_extraction_success_rate": 0,
+      "quality_pass_rate": 0.2694560669456067,
+      "deduplication_rate": 0,
+      "urls_per_second": 2.5532862144404533,
+      "bytes_per_second": 0.0,
+      "records_per_minute": 153.1971728664272,
+      "text_length_stats": {
+        "min": 3,
+        "max": 1614,
+        "mean": 34.547314578005114,
+        "median": 23.0,
+        "total_chars": 13508
+      },
+      "filter_breakdown": {
+        "emoji_only_comment": 801,
+        "text_too_short_after_cleanup": 3,
+        "empty_after_cleaning": 69
+      }
+    },
+    {
+      "run_id": "20251102_071104_wikipedia-somali_8be7bd4d",
+      "source": "Wikipedia-Somali",
+      "timestamp": "2025-11-02T07:11:22.260509+00:00",
+      "pipeline_type": "file_processing",
+      "duration_seconds": 18.007202625274658,
+      "urls_discovered": 0,
+      "urls_fetched": 0,
+      "urls_processed": 9960,
+      "records_written": 9960,
+      "bytes_downloaded": 14810598,
+      "total_chars": 5463570,
+      "http_request_success_rate": 0,
+      "content_extraction_success_rate": 0,
+      "quality_pass_rate": 0.6422905784484426,
+      "deduplication_rate": 0,
+      "urls_per_second": 553.1120078595819,
+      "bytes_per_second": 822481.8872872598,
+      "records_per_minute": 33186.72047157492,
+      "text_length_stats": {
+        "min": 3,
+        "max": 122020,
+        "mean": 5463.57,
+        "median": 3512.0,
+        "total_chars": 5463570
+      },
+      "fetch_duration_stats": {
+        "min": 11293.0,
+        "max": 11293.0,
+        "mean": 11293.0,
+        "median": 11293.0,
+        "p95": 11293.0,
+        "p99": 11293.0
+      },
+      "filter_breakdown": {
+        "min_length_filter": 4138,
+        "langid_filter": 1208,
+        "empty_after_cleaning": 201
+      }
+    },
+    {
+      "run_id": "20251102_081139_huggingface-somali_c4-so_8a88e83f",
+      "source": "HuggingFace-Somali_c4-so",
+      "timestamp": "2025-11-02T08:13:51.987789+00:00",
+      "pipeline_type": "stream_processing",
+      "duration_seconds": 132.54489493370056,
+      "urls_discovered": 0,
+      "urls_fetched": 0,
+      "urls_processed": 0,
+      "records_written": 190,
+      "bytes_downloaded": 0,
+      "total_chars": 922843,
+      "http_request_success_rate": 0,
+      "content_extraction_success_rate": 0,
+      "quality_pass_rate": 0.95,
+      "deduplication_rate": 0,
+      "urls_per_second": 0.0,
+      "bytes_per_second": 0.0,
+      "records_per_minute": 86.00859358410086,
+      "text_length_stats": {
+        "min": 102,
+        "max": 107236,
+        "mean": 4614.215,
+        "median": 1881.0,
+        "total_chars": 922843
+      },
+      "fetch_duration_stats": {
+        "min": 0.0,
+        "max": 111.0,
+        "mean": 4.56,
+        "median": 2.5,
+        "p95": 14.0,
+        "p99": 46.0
+      },
+      "filter_breakdown": {
+        "langid_filter": 8,
+        "min_length_filter": 2
+      }
+    }
+  ]
+}
