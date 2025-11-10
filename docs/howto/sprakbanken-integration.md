@@ -566,7 +566,7 @@ for corpus_id in news_corpora:
 
 After processing Språkbanken corpora:
 
-1. **Deduplicate**: Run deduplication across all silver datasets
+1. **Verify Deduplication**: Discovery-stage deduplication now prevents duplicates automatically (see [Deduplication Guide](deduplication.md))
 2. **Analyze**: Use domain field to analyze dataset composition
 3. **Filter**: Select specific domains for downstream tasks
 4. **Train**: Use domain-diverse data for robust model training

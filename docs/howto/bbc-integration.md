@@ -1051,10 +1051,18 @@ bbcsom-download --max-articles 200 --force
 
 **Cause**: Article discovered from multiple sources (homepage + topic + sitemap)
 
-**Solution**: Run deduplication script:
+**Solution**: Discovery-stage deduplication now prevents this automatically!
+
+The pipeline now checks the crawl ledger BEFORE scraping (Phase 1 dedup), so duplicate articles are skipped automatically. This issue should only occur with legacy data processed before Phase 1 was implemented.
+
+**For legacy data cleanup only**:
 ```bash
-python scripts/deduplicate_silver.py --source BBC-Somali
+# Only needed for retroactive deduplication of old silver datasets
+# Discovery-stage dedup prevents new duplicates automatically
+python scripts/deduplicate_silver_dataset.py --source BBC-Somali
 ```
+
+**See**: [Deduplication Strategy Guide](deduplication.md) for comprehensive explanation
 
 ### Issue: Language Filter Rejecting Somali Articles
 
@@ -1246,9 +1254,14 @@ print(df.groupby('source')['tokens'].describe())
 
 After processing BBC data:
 
-1. **Deduplicate**: Remove duplicate articles
+1. **Verify Deduplication**: Discovery-stage deduplication now prevents duplicates automatically
    ```bash
-   python scripts/deduplicate_silver.py --source BBC-Somali
+   # Check ledger statistics
+   sqlite3 data/ledger/crawl_ledger.db \
+     "SELECT state, COUNT(*) FROM crawl_ledger WHERE source='bbc' GROUP BY state;"
+
+   # See deduplication guide for comprehensive testing
+   # docs/howto/deduplication.md
    ```
 
 2. **Analyze Topics**: Examine topic distribution

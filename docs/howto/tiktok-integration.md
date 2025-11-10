@@ -540,6 +540,32 @@ This means:
 
 See [Cost Analysis Guide](../cost-analysis/tiktok-apify-costs.md) for detailed breakdown.
 
+---
+
+## Next Steps
+
+After processing TikTok data:
+
+1. **Verify Deduplication**: Discovery-stage deduplication prevents re-scraping videos
+   ```bash
+   # Check ledger to verify video URLs marked as processed
+   sqlite3 data/ledger/crawl_ledger.db \
+     "SELECT state, COUNT(*) FROM crawl_ledger WHERE source='tiktok' GROUP BY state;"
+   ```
+
+2. **Analyze Comments**: Examine linguistic yield and filter statistics
+   ```python
+   import pandas as pd
+   df = pd.read_parquet("data/processed/silver/source=TikTok-Somali/")
+   print(f"Total comments: {len(df)}")
+   print(f"Authors: {df['source_metadata'].apply(lambda x: x.get('author')).nunique()}")
+   ```
+
+3. **Cost Tracking**: Monitor Apify usage to stay within budget
+4. **Comprehensive Deduplication Guide**: See [Deduplication Strategy](deduplication.md)
+
+---
+
 ### Cross-Links
 
 - **[Processing Pipelines Guide](processing-pipelines.md#filter-telemetry)** - General filter telemetry overview

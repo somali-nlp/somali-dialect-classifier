@@ -470,6 +470,33 @@ RuntimeError: Dataset scripts are no longer supported
 
 ---
 
+## Next Steps
+
+After processing HuggingFace data:
+
+1. **Verify Continuous Streaming**: Check that pipeline resumes from checkpoint correctly
+   ```bash
+   # Check checkpoint file
+   cat data/staging/source=HuggingFace-Somali_c4-so/.checkpoint
+
+   # Verify ledger entries for deduplication
+   sqlite3 data/ledger/crawl_ledger.db \
+     "SELECT state, COUNT(*) FROM crawl_ledger WHERE source='HuggingFace-Somali_c4-so' GROUP BY state;"
+   ```
+
+2. **Test Continuous Streaming**: Run pipeline multiple times to verify offset progression
+   ```bash
+   # Run 1: Downloads records 0-200
+   somali-orchestrate --pipeline huggingface --max-hf-records 200
+
+   # Run 2: Should resume from offset 200, download 200-400
+   somali-orchestrate --pipeline huggingface --max-hf-records 200
+   ```
+
+3. **Comprehensive Deduplication Guide**: See [Deduplication Strategy](deduplication.md) for Phase 1, 2, 3 explanation
+
+---
+
 ## See Also
 
 - [Processing Pipelines Guide](processing-pipelines.md) - Step-by-step guides for all sources

@@ -131,22 +131,59 @@ ledger.mark_processed(url, text_hash="sha256...", silver_id="uuid...")
 
 ### Deduplication
 
-**Two-Tier Approach:**
+**Three-Phase Strategy** to eliminate duplicates across pipeline runs:
 
-1. **Exact Deduplication** (SHA256):
+**Phase 1: Discovery-Stage Deduplication** ⭐ NEW
+- Check crawl ledger BEFORE fetching/streaming to skip already-processed URLs
+- Prevents re-downloading identical data on subsequent runs
+- Saves bandwidth and enables cross-run idempotency
+
+```python
+from somali_dialect_classifier.preprocessing.crawl_ledger import get_ledger
+
+ledger = get_ledger()
+
+# Phase 1: Skip already-processed URLs
+if ledger.should_fetch_url(url, force=False):
+    fetch_and_process(url)
+else:
+    logger.info(f"Skipping already-processed URL: {url}")
+    metrics.increment("records_skipped_discovery_dedup")
+```
+
+**Phase 2: Extraction-Stage Deduplication**
+1. **Exact Deduplication** (SHA256 hash):
 ```python
 from somali_dialect_classifier.preprocessing.dedup import DedupEngine, DedupConfig
 
 config = DedupConfig(hash_fields=["text", "url"], enable_minhash=True)
 dedup = DedupEngine(config)
 
-is_dup, text_hash, minhash_sig = dedup.process_document(text, url)
+text_hash, minhash_sig = dedup.get_content_hash(record)
+if dedup.is_exact_duplicate(text_hash):
+    logger.info("Exact duplicate detected")
 ```
 
 2. **Near-Duplicate Detection** (MinHash LSH):
    - Jaccard similarity threshold: 0.85
    - Detects paraphrased or lightly edited content
-   - Optional (requires `datasketch` package)
+   - In-memory LSH index for current batch
+
+**Phase 3: Processing-Stage Cross-Dataset Deduplication**
+- Persistent LSH index saved to disk for cross-run near-duplicate detection
+- Enables detecting duplicates ACROSS different sources and runs
+
+```python
+# Enable LSH persistence for Phase 3
+config = DedupConfig(
+    hash_fields=["text", "url"],
+    enable_minhash=True,
+    similarity_threshold=0.85,
+    storage_path=Path("data/ledger/lsh_index_{source}.pkl")
+)
+```
+
+**For comprehensive guide**, see [Deduplication Strategy](../howto/deduplication.md)
 
 ### Configuration
 

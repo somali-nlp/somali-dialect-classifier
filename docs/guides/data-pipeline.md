@@ -14,7 +14,8 @@ The Somali Dialect Classifier employs a comprehensive data pipeline that collect
 - **Structured Logging** - JSON logs with automatic context injection (run_id, source, phase)
 - **Metrics Collection** - Discovery, fetch, processing metrics with automated quality reports
 - **Crawl Ledger** - Persistent URL state tracking with resume capability and conditional requests
-- **Two-Tier Deduplication** - Exact SHA256 hashing + MinHash LSH for near-duplicates
+- **Three-Phase Deduplication** - Phase 1: Discovery-stage ledger checks | Phase 2: Extraction exact+near-duplicate | Phase 3: Cross-dataset LSH persistence
+- **Continuous Streaming** - Checkpoint-based resumption with conditional marker creation (HuggingFace)
 - **Quality Filters** - Pluggable filter framework (length, language, dialect heuristics)
 - **Unified Silver Dataset** - Consistent Parquet schema across all sources
 - **Workflow Orchestration** - Prefect-based coordination for parallel execution
@@ -109,10 +110,29 @@ print(stats)
 
 #### 2. Deduplication Engine
 
-Two-tier deduplication system:
+**Three-phase deduplication strategy** to eliminate duplicates across pipeline runs:
 
-- **Exact Duplicates**: SHA256 hash comparison
-- **Near-Duplicates**: MinHash LSH with 85% similarity threshold
+**Phase 1: Discovery-Stage Deduplication** (NEW)
+- Check crawl ledger BEFORE fetching/streaming to skip already-processed URLs
+- Saves bandwidth and processing time
+- Enables cross-run idempotency
+
+```python
+from somali_dialect_classifier.preprocessing.crawl_ledger import get_ledger
+
+ledger = get_ledger()
+
+# Phase 1: Check if URL already processed
+if ledger.should_fetch_url(url, force=False):
+    # Fetch and process new URL
+    fetch_and_process(url)
+else:
+    logger.info(f"Skipping already-processed URL: {url}")
+```
+
+**Phase 2: Extraction-Stage Deduplication**
+- Exact duplicates: SHA256 hash comparison
+- Near-duplicates: MinHash LSH with 85% similarity threshold
 
 ```python
 from somali_dialect_classifier.preprocessing.dedup import DedupEngine, DedupConfig
@@ -125,15 +145,42 @@ config = DedupConfig(
 dedup = DedupEngine(config)
 
 # Check exact duplicate
-text_hash = dedup.hasher.compute_hash(text=text, url=url)
-if dedup.hasher.is_duplicate(text_hash):
-    print("Exact duplicate found!")
+text_hash, minhash_sig = dedup.get_content_hash(record)
+if dedup.is_exact_duplicate(text_hash):
+    logger.info("Exact duplicate detected")
 
 # Check near-duplicate
-is_dup, similar_url, minhash_sig = dedup.process_document(text, url)
-if is_dup:
-    print(f"Near-duplicate of: {similar_url}")
+if dedup.is_near_duplicate(minhash_sig):
+    logger.info("Near-duplicate detected (similarity >= 0.85)")
 ```
+
+**Phase 3: Processing-Stage Cross-Dataset Deduplication**
+- Persistent LSH index for near-duplicates ACROSS sources
+- Saves to `data/ledger/lsh_index_{source}.pkl` for cross-run detection
+
+```python
+# Enable LSH persistence
+from pathlib import Path
+
+config = DedupConfig(
+    hash_fields=["text", "url"],
+    enable_minhash=True,
+    similarity_threshold=0.85,
+    storage_path=Path("data/ledger/lsh_index_huggingface.pkl")
+)
+dedup = DedupEngine(config)
+
+# Process records...
+for record in records:
+    text_hash, minhash_sig = dedup.get_content_hash(record)
+    dedup.add_document(text_hash, minhash_sig)
+
+# Save LSH index for next run
+dedup.save_lsh_index()
+logger.info(f"Saved LSH index with {dedup.doc_count} documents")
+```
+
+**For comprehensive deduplication guide**, see [Deduplication Strategy](../howto/deduplication.md)
 
 #### 3. Structured Logging
 

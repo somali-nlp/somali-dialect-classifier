@@ -1,6 +1,6 @@
 # Somali Dialect Classifier Documentation
 
-**Last Updated**: 2025-10-29
+**Last Updated**: 2025-11-10
 
 Welcome to the Somali Dialect Classifier documentation. This project provides a comprehensive pipeline for collecting, processing, and preparing Somali language data for dialect classification and NLP research.
 
@@ -50,11 +50,13 @@ High-level architecture and system design:
 
 Task-oriented guides for common workflows:
 
-- **[Processing Pipelines](howto/processing-pipelines.md)** - Quick-start guide comparing all four data sources
+- **[Processing Pipelines](howto/processing-pipelines.md)** - Quick-start guide comparing all five data sources
+- **[Deduplication Strategy](howto/deduplication.md)** - **⭐ Discovery-stage dedup, continuous streaming, and cross-run duplicate prevention**
 - **[Wikipedia Integration](howto/wikipedia-integration.md)** - Complete guide to Wikipedia dumps, XML parsing, namespace filtering
 - **[BBC Integration](howto/bbc-integration.md)** - Ethical web scraping, topic enrichment, rate limiting
-- **[HuggingFace Integration](howto/huggingface-integration.md)** - Streaming datasets, manifests, JSONL batching (MC4)
+- **[HuggingFace Integration](howto/huggingface-integration.md)** - Streaming datasets, continuous streaming, JSONL batching (MC4)
 - **[Språkbanken Integration](howto/sprakbanken-integration.md)** - All 66 corpora, domain mapping, metadata extraction
+- **[TikTok Integration](howto/tiktok-integration.md)** - Social media comments scraping via Apify API
 - **[Understanding Filter Statistics](howto/understanding-filter-statistics.md)** - Understanding quality filter impact and optimization
 - **[Custom Filters](howto/custom-filters.md)** - Writing and registering quality filters
 - **[Configuration](howto/configuration.md)** - Environment setup and config management
@@ -342,6 +344,7 @@ See [Documentation Guide](guides/documentation-guide.md) for comprehensive writi
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.4.0 | 2025-11-10 | Added deduplication guide, updated HuggingFace continuous streaming, Språkbanken XML token fix, comprehensive test suite for Phase 1 dedup |
 | 2.3.0 | 2025-10-27 | Final dashboard consolidation: merged all dashboard guides into single comprehensive guide |
 | 2.2.0 | 2025-10-27 | Dashboard documentation consolidation: merged guides, moved technical docs to reference/, relocated maintenance to operations/, cleaned advanced features |
 | 2.1.0 | 2025-10-27 | Added comprehensive dashboard docs, CI/CD operations, metrics schema, filter breakdown, and future ML pipeline documentation structure |
@@ -350,5 +353,5 @@ See [Documentation Guide](guides/documentation-guide.md) for comprehensive writi
 
 ---
 
-**Last Updated**: 2025-10-29
+**Last Updated**: 2025-11-10
 **Maintainers**: Somali NLP Contributors

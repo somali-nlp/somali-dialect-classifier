@@ -882,9 +882,14 @@ SprakbankenSomaliProcessor(corpus_id="all").run()
 
 After processing Wikipedia data:
 
-1. **Deduplicate**: Run deduplication across all silver datasets
+1. **Verify Deduplication**: Discovery-stage deduplication now prevents duplicates automatically
    ```bash
-   python scripts/deduplicate_silver.py --dry-run
+   # Check ledger statistics to verify deduplication
+   sqlite3 data/ledger/crawl_ledger.db \
+     "SELECT state, COUNT(*) FROM crawl_ledger WHERE source='wikipedia' GROUP BY state;"
+
+   # See comprehensive deduplication guide
+   # docs/howto/deduplication.md
    ```
 
 2. **Analyze**: Examine corpus statistics
