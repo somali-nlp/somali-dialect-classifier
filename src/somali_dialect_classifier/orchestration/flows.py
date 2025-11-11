@@ -10,6 +10,7 @@ Provides coordinated execution of all four data sources with:
 
 import logging
 import sys
+from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Optional
@@ -183,12 +184,27 @@ def run_wikipedia_task(force: bool = False) -> dict[str, Any]:
     Returns:
         Dictionary with pipeline results and metrics
     """
+    from ..preprocessing.crawl_ledger import CrawlLedger
     from ..preprocessing.wikipedia_somali_processor import WikipediaSomaliProcessor
 
     logger.info("Starting Wikipedia pipeline...")
-    processor = WikipediaSomaliProcessor(force=force)
+
+    # Check for concurrent runs before starting expensive work
+    ledger = CrawlLedger()
+    if ledger.is_source_locked("wikipedia"):
+        logger.warning("Wikipedia pipeline already running, skipping")
+        return {"source": "Wikipedia-Somali", "status": "skipped", "reason": "concurrent_run_active"}
+
+    # Acquire lock before pipeline starts
+    try:
+        lock = ledger.acquire_source_lock("wikipedia", timeout=30)
+    except RuntimeError as e:
+        logger.error(f"Failed to acquire lock: {e}")
+        return {"source": "Wikipedia-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
 
     try:
+        # Run pipeline with lock held
+        processor = WikipediaSomaliProcessor(force=force)
         silver_path = processor.run()
 
         # Get statistics from ledger
@@ -207,6 +223,10 @@ def run_wikipedia_task(force: bool = False) -> dict[str, Any]:
             "status": "failed",
             "error": str(e),
         }
+    finally:
+        # ALWAYS release lock, even if pipeline fails
+        ledger.release_source_lock("wikipedia")
+        logger.info("Wikipedia pipeline completed and lock released")
 
 
 @task(retries=2, retry_delay_seconds=10)
@@ -222,11 +242,26 @@ def run_bbc_task(max_articles: Optional[int] = None, force: bool = False) -> dic
         Dictionary with pipeline results and metrics
     """
     from ..preprocessing.bbc_somali_processor import BBCSomaliProcessor
+    from ..preprocessing.crawl_ledger import CrawlLedger
 
     logger.info("Starting BBC pipeline...")
-    processor = BBCSomaliProcessor(max_articles=max_articles, force=force)
+
+    # Check for concurrent runs before starting expensive work
+    ledger = CrawlLedger()
+    if ledger.is_source_locked("bbc"):
+        logger.warning("BBC pipeline already running, skipping")
+        return {"source": "BBC-Somali", "status": "skipped", "reason": "concurrent_run_active"}
+
+    # Acquire lock before pipeline starts
+    try:
+        lock = ledger.acquire_source_lock("bbc", timeout=30)
+    except RuntimeError as e:
+        logger.error(f"Failed to acquire lock: {e}")
+        return {"source": "BBC-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
 
     try:
+        # Run pipeline with lock held
+        processor = BBCSomaliProcessor(max_articles=max_articles, force=force)
         silver_path = processor.run()
 
         # Get statistics from ledger
@@ -245,6 +280,10 @@ def run_bbc_task(max_articles: Optional[int] = None, force: bool = False) -> dic
             "status": "failed",
             "error": str(e),
         }
+    finally:
+        # ALWAYS release lock, even if pipeline fails
+        ledger.release_source_lock("bbc")
+        logger.info("BBC pipeline completed and lock released")
 
 
 @task(retries=2, retry_delay_seconds=10)
@@ -266,18 +305,33 @@ def run_huggingface_task(
     Returns:
         Dictionary with pipeline results and metrics
     """
+    from ..preprocessing.crawl_ledger import CrawlLedger
     from ..preprocessing.huggingface_somali_processor import HuggingFaceSomaliProcessor
 
     logger.info(f"Starting HuggingFace pipeline: {dataset_name}...")
-    processor = HuggingFaceSomaliProcessor(
-        dataset_name=dataset_name,
-        dataset_config=dataset_config,
-        url_field="url",  # Required for ledger deduplication
-        max_records=max_records,
-        force=force,
-    )
+
+    # Check for concurrent runs before starting expensive work
+    ledger = CrawlLedger()
+    if ledger.is_source_locked("huggingface"):
+        logger.warning("HuggingFace pipeline already running, skipping")
+        return {"source": "HuggingFace-Somali", "status": "skipped", "reason": "concurrent_run_active"}
+
+    # Acquire lock before pipeline starts
+    try:
+        lock = ledger.acquire_source_lock("huggingface", timeout=30)
+    except RuntimeError as e:
+        logger.error(f"Failed to acquire lock: {e}")
+        return {"source": "HuggingFace-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
 
     try:
+        # Run pipeline with lock held
+        processor = HuggingFaceSomaliProcessor(
+            dataset_name=dataset_name,
+            dataset_config=dataset_config,
+            url_field="url",  # Required for ledger deduplication
+            max_records=max_records,
+            force=force,
+        )
         silver_path = processor.run()
 
         # Get statistics
@@ -298,6 +352,10 @@ def run_huggingface_task(
             "status": "failed",
             "error": str(e),
         }
+    finally:
+        # ALWAYS release lock, even if pipeline fails
+        ledger.release_source_lock("huggingface")
+        logger.info("HuggingFace pipeline completed and lock released")
 
 
 @task(retries=2, retry_delay_seconds=10)
@@ -312,12 +370,27 @@ def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> dict[st
     Returns:
         Dictionary with pipeline results and metrics
     """
+    from ..preprocessing.crawl_ledger import CrawlLedger
     from ..preprocessing.sprakbanken_somali_processor import SprakbankenSomaliProcessor
 
     logger.info(f"Starting Språkbanken pipeline: {corpus_id}...")
-    processor = SprakbankenSomaliProcessor(corpus_id=corpus_id, force=force)
+
+    # Check for concurrent runs before starting expensive work
+    ledger = CrawlLedger()
+    if ledger.is_source_locked("sprakbanken"):
+        logger.warning("Språkbanken pipeline already running, skipping")
+        return {"source": "Sprakbanken-Somali", "status": "skipped", "reason": "concurrent_run_active"}
+
+    # Acquire lock before pipeline starts
+    try:
+        lock = ledger.acquire_source_lock("sprakbanken", timeout=30)
+    except RuntimeError as e:
+        logger.error(f"Failed to acquire lock: {e}")
+        return {"source": "Sprakbanken-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
 
     try:
+        # Run pipeline with lock held
+        processor = SprakbankenSomaliProcessor(corpus_id=corpus_id, force=force)
         silver_path = processor.run()
 
         # Get statistics
@@ -336,6 +409,10 @@ def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> dict[st
             "status": "failed",
             "error": str(e),
         }
+    finally:
+        # ALWAYS release lock, even if pipeline fails
+        ledger.release_source_lock("sprakbanken")
+        logger.info("Språkbanken pipeline completed and lock released")
 
 
 @task(retries=2, retry_delay_seconds=10)
@@ -357,17 +434,32 @@ def run_tiktok_task(
     Returns:
         Dictionary with pipeline results and metrics
     """
+    from ..preprocessing.crawl_ledger import CrawlLedger
     from ..preprocessing.tiktok_somali_processor import TikTokSomaliProcessor
 
     logger.info(f"Starting TikTok pipeline for {len(video_urls)} videos...")
-    processor = TikTokSomaliProcessor(
-        apify_api_token=apify_api_token,
-        apify_user_id=apify_user_id,
-        video_urls=video_urls,
-        force=force,
-    )
+
+    # Check for concurrent runs before starting expensive work
+    ledger = CrawlLedger()
+    if ledger.is_source_locked("tiktok"):
+        logger.warning("TikTok pipeline already running, skipping")
+        return {"source": "TikTok-Somali", "status": "skipped", "reason": "concurrent_run_active"}
+
+    # Acquire lock before pipeline starts
+    try:
+        lock = ledger.acquire_source_lock("tiktok", timeout=30)
+    except RuntimeError as e:
+        logger.error(f"Failed to acquire lock: {e}")
+        return {"source": "TikTok-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
 
     try:
+        # Run pipeline with lock held
+        processor = TikTokSomaliProcessor(
+            apify_api_token=apify_api_token,
+            apify_user_id=apify_user_id,
+            video_urls=video_urls,
+            force=force,
+        )
         silver_path = processor.run()
 
         # Get statistics
@@ -386,6 +478,10 @@ def run_tiktok_task(
             "status": "failed",
             "error": str(e),
         }
+    finally:
+        # ALWAYS release lock, even if pipeline fails
+        ledger.release_source_lock("tiktok")
+        logger.info("TikTok pipeline completed and lock released")
 
 
 @flow(
