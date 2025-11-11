@@ -823,6 +823,7 @@ class CrawlLedger:
     High-level crawl ledger interface.
 
     Wraps backend implementation and provides convenience methods.
+    Includes distributed locking to prevent race conditions in concurrent runs.
     """
 
     def __init__(self, backend: Optional[LedgerBackend] = None, db_path: Optional[Path] = None):
@@ -846,6 +847,7 @@ class CrawlLedger:
             self.backend = SQLiteLedger(db_path)
 
         self.logger = logging.getLogger(__name__)
+        self.lock_manager = LockManager()
 
     def discover_url(self, url: str, source: str, metadata: Optional[dict] = None) -> bool:
         """
@@ -991,6 +993,66 @@ class CrawlLedger:
     def cleanup(self, days: int = 30) -> int:
         """Cleanup old failed entries."""
         return self.backend.cleanup_old_entries(days)
+
+    def acquire_source_lock(self, source: str, timeout: int = 30) -> FileLock:
+        """
+        Acquire exclusive lock for a source before starting pipeline run.
+
+        This prevents concurrent runs of the same source from causing:
+        - Duplicate URL processing (waste API costs)
+        - Conflicting SQLite writes (database corruption risk)
+        - Duplicate file creation (data integrity issues)
+
+        Args:
+            source: Source identifier (wikipedia, bbc, tiktok, etc.)
+            timeout: Lock timeout in seconds (default: 30)
+
+        Returns:
+            FileLock instance (to be used in context manager)
+
+        Raises:
+            RuntimeError: If lock cannot be acquired (another run is active)
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> lock = ledger.acquire_source_lock("wikipedia")
+            >>> with lock:
+            ...     # Run pipeline
+            ...     pass
+        """
+        return self.lock_manager.acquire_lock(source, timeout)
+
+    def release_source_lock(self, source: str):
+        """
+        Release lock for a source after pipeline run completes.
+
+        Args:
+            source: Source identifier
+        """
+        self.lock_manager.release_lock(source)
+
+    def is_source_locked(self, source: str) -> bool:
+        """
+        Check if another run is active for this source.
+
+        Args:
+            source: Source identifier
+
+        Returns:
+            True if source is locked by another process, False otherwise
+        """
+        return self.lock_manager.is_locked(source)
+
+    def cleanup_stale_locks(self, max_age_hours: int = 24):
+        """
+        Clean up stale lock files older than max_age_hours.
+
+        Safety mechanism for crashed runs that didn't release locks.
+
+        Args:
+            max_age_hours: Maximum age of lock files in hours (default: 24)
+        """
+        self.lock_manager.cleanup_stale_locks(max_age_hours)
 
     def close(self) -> None:
         """Close ledger connection."""
