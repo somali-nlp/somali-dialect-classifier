@@ -8,6 +8,7 @@ venv/
 venv-somali/
 env/
 ENV/
+*.bak
 
 # Jupyter
 .ipynb_checkpoints/
@@ -23,13 +24,13 @@ data/processed/       # Exclude processed data files
 data/raw/             # Exclude raw data files
 data/ledger/          # Exclude crawl ledger database
 data/analysis/        # Exclude analysis artifacts
-# Keep metrics and reports for dashboard (small files)
-# data/metrics/ - JSON metrics files
-# data/reports/ - Quality reports (markdown)
+data/metrics/         # Exclude metrics (regenerate via pipelines)
+data/reports/         # Exclude reports (regenerate via pipelines)
 *.pkl
 *.h5
 *.parquet
 *.jsonl              # Exclude large JSONL data files
+*.db                 # Exclude database files
 
 # Dashboard cache
 dashboard/data/       # Exclude dashboard cache files
@@ -62,6 +63,17 @@ logs/*
 
 # Development artifacts (archived planning documents)
 .archive/
+.backups/
+
+# Testing and coverage artifacts
+.coverage
+coverage.json
+test_*.py  # Temporary test files at root level
+
+# Internal deployment and operational documents (archive before committing)
+*_DEPLOYMENT_SUCCESS.md
+*_SUCCESS.md
+POSTGRES_DEPLOYMENT_SUCCESS.md
 
 # GitHub Pages build artifacts
 _site/
