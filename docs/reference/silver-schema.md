@@ -2,13 +2,41 @@
 
 ## Overview
 
-The silver dataset uses a standardized Parquet schema for all data sources. Version 2.1 adds a `register` field for linguistic formality classification, building on version 2.0's `domain` and `embedding` fields.
+The silver dataset uses a standardized Parquet schema for all data sources with formal schema versioning starting at v1.0. Every record includes `schema_version` and `run_id` fields for tracking provenance and enabling schema evolution.
 
-## Schema Version
+## Schema Versioning System
 
-**Current Version**: 2.1
+**Status**: Production (v1.0)
+**Implementation**: Pydantic-based validation with migration framework
+**Introduced**: 2025-11-11
+
+### Key Features
+
+- **Versioned schemas** with Pydantic validation models
+- **Automatic validation** during pipeline processing
+- **Migration framework** for future schema evolution
+- **Provenance tracking** via `run_id` field linking to logs and metrics
+
+### Version History
+
+| Version | Date | Status | Changes | Breaking |
+|---------|------|--------|---------|----------|
+| 1.0 | 2025-11-11 | Production | Initial versioned schema with `schema_version` and `run_id` fields | N/A (initial) |
+
+**Note**: Prior to v1.0, the pipeline used unversioned schemas (referred to as pipeline v2.0 and v2.1). Starting with schema v1.0, all records explicitly track their schema version.
+
+### Future Planned Versions
+
+| Version | Planned Date | Proposed Changes | Breaking |
+|---------|--------------|------------------|----------|
+| 1.1 | Q1 2026 | Add `confidence_scores` field (optional quality metrics) | No |
+| 2.0 | Q2 2026 | Add `dialect_label` and `dialect_confidence` fields (required) | Yes |
+
+## Current Schema Version: 1.0
+
 **Format**: Apache Parquet
-**Backward Compatible**: Yes (can read v1.0 and v2.0 files)
+**Validation**: Pydantic v2
+**Pipeline Version**: 2.1.0
 
 ## Full Schema
 
@@ -46,6 +74,10 @@ pa.schema([
 
     # New in v2.1
     ("register", pa.string()),              # Linguistic register (formal, informal, colloquial)
+
+    # New in schema v1.0 (provenance fields)
+    ("schema_version", pa.string()),        # Schema version (e.g., "1.0")
+    ("run_id", pa.string()),                # Run identifier for provenance tracking
 ])
 ```
 
