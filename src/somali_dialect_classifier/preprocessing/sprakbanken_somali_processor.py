@@ -196,18 +196,15 @@ class SprakbankenSomaliProcessor(BasePipeline):
         self.config = config
         self.sprakbanken_config = config.scraping.sprakbanken
 
-        # Determine source name (always "Sprakbanken-Somali" for consistency)
+        # Determine source name (use "sprakbanken" for consistency with allowed sources)
         # Corpus ID will be stored in source_id field for querying
-        source_name = "Sprakbanken-Somali"
+        source_name = "sprakbanken"
 
         # Initialize deduplication BEFORE BasePipeline (which generates run_id)
-        # PHASE 3: Enable LSH persistence for cross-run near-duplicate detection
-        from pathlib import Path as PathLib
         dedup_config = DedupConfig(
             hash_fields=["text"],
             enable_minhash=True,
-            similarity_threshold=0.85,
-            storage_path=PathLib("data/ledger/lsh_index_sprakbanken.pkl")  # PHASE 3
+            similarity_threshold=0.85
         )
         self.dedup = DedupEngine(dedup_config)
         self.ledger = get_ledger()
@@ -319,52 +316,131 @@ class SprakbankenSomaliProcessor(BasePipeline):
         """
         return self.dedup.hasher.compute_hash(text=text, url=url)
 
-    def _get_downloaded_corpus_ids(self) -> set[str]:
+    def _extract_corpus_id_from_url(self, url: str) -> Optional[str]:
         """
-        Query ledger for corpus IDs that have been downloaded.
+        Extract corpus ID from Språkbanken URL.
 
-        PHASE 1: Discovery-Stage Deduplication helper.
+        Supports multiple URL formats:
+        - Korp: https://spraakbanken.gu.se/korp/?mode=somali#?corpus=CORPUS_ID
+        - Download: https://spraakbanken.gu.se/lb/resurser/meningsmangder/CORPUS_ID.xml.bz2
+
+        Args:
+            url: Språkbanken URL
 
         Returns:
-            Set of corpus IDs already in ledger
+            Corpus ID string, or None if not found
+        """
+        import re
+
+        # Try Korp URL format
+        match = re.search(r'corpus=([a-z0-9-]+)', url)
+        if match:
+            return match.group(1)
+
+        # Try download URL format
+        match = re.search(r'/meningsmangder/([a-z0-9-]+)\.xml\.bz2', url)
+        if match:
+            return match.group(1)
+
+        return None
+
+    def _get_processed_corpus_ids(self) -> set[str]:
+        """
+        Get set of already-processed corpus IDs from ledger.
+
+        Enables incremental processing by identifying which corpora have
+        already been successfully processed and can be skipped.
+
+        Returns:
+            Set of corpus IDs that have been processed
         """
         if not hasattr(self, 'ledger') or self.ledger is None:
             return set()
 
         try:
-            import re
-
             # Get all processed URLs for this source
-            from .crawl_ledger import CrawlState
-
-            # Query ledger for processed URLs
-            processed_records = self.ledger.get_urls_by_state(
-                source=self.source,
-                state=CrawlState.PROCESSED
-            )
+            processed_records = self.ledger.get_processed_urls(source=self.source, limit=None)
 
             corpus_ids = set()
-            # Extract corpus IDs from Korp URLs
-            # Format: https://spraakbanken.gu.se/korp/?mode=somali#?corpus=CORPUS_ID
             for record in processed_records:
                 url = record.get('url', '')
-                match = re.search(r'corpus=([a-z0-9-]+)', url)
-                if match:
-                    corpus_ids.add(match.group(1))
-
-            # Also check download URLs
-            # Format: https://spraakbanken.gu.se/lb/resurser/meningsmangder/CORPUS_ID.xml.bz2
-            for record in processed_records:
-                url = record.get('url', '')
-                match = re.search(r'/meningsmangder/([a-z0-9-]+)\.xml\.bz2', url)
-                if match:
-                    corpus_ids.add(match.group(1))
+                corpus_id = self._extract_corpus_id_from_url(url)
+                if corpus_id:
+                    corpus_ids.add(corpus_id)
 
             return corpus_ids
 
         except Exception as e:
-            self.logger.warning(f"Failed to query ledger for corpus IDs: {e}")
+            self.logger.warning(f"Failed to query ledger for processed corpus IDs: {e}")
             return set()
+
+    def _get_downloaded_corpus_ids(self) -> set[str]:
+        """
+        Query ledger for corpus IDs that have been downloaded.
+
+        DEPRECATED: Use _get_processed_corpus_ids() instead.
+
+        Returns:
+            Set of corpus IDs already in ledger
+        """
+        # Delegate to new method for consistency
+        return self._get_processed_corpus_ids()
+
+    def _filter_new_corpora(
+        self, corpus_urls: list[str]
+    ) -> tuple[list[str], dict[str, Any]]:
+        """
+        Filter corpus URLs to only unprocessed ones.
+
+        Implements incremental processing by comparing requested corpora
+        with the list of already-processed corpora in the ledger.
+
+        Args:
+            corpus_urls: List of corpus download URLs
+
+        Returns:
+            Tuple of (filtered_urls, stats_dict)
+
+        Stats include:
+            - total: Total corpora requested
+            - new: New corpora to download
+            - skipped: Corpora skipped (already processed)
+            - processed_corpus_ids: List of corpus IDs already processed
+        """
+        processed_ids = self._get_processed_corpus_ids()
+
+        if not processed_ids:
+            self.logger.info("First run detected - processing all corpora")
+            return corpus_urls, {
+                "total": len(corpus_urls),
+                "new": len(corpus_urls),
+                "skipped": 0,
+                "processed_corpus_ids": [],
+            }
+
+        self.logger.info(f"Already processed: {processed_ids}")
+
+        new_urls = []
+        for url in corpus_urls:
+            corpus_id = self._extract_corpus_id_from_url(url)
+            if corpus_id and corpus_id not in processed_ids:
+                new_urls.append(url)
+            elif not corpus_id:
+                # Can't determine ID - process to be safe (fail-safe approach)
+                new_urls.append(url)
+
+        stats = {
+            "total": len(corpus_urls),
+            "new": len(new_urls),
+            "skipped": len(corpus_urls) - len(new_urls),
+            "processed_corpus_ids": list(processed_ids),
+        }
+
+        self.logger.info(
+            f"Filtered {stats['skipped']} already-processed corpora, {stats['new']} new corpora"
+        )
+
+        return new_urls, stats
 
     def download(self) -> Path:
         """
@@ -393,34 +469,44 @@ class SprakbankenSomaliProcessor(BasePipeline):
                 self.logger.info(f"Corpora already downloaded: {self.manifest_file}")
                 return self.manifest_file
 
-        # PHASE 1: Discovery-Stage Deduplication
-        # Filter out already-downloaded corpora based on ledger state
-        downloaded_corpus_ids = self._get_downloaded_corpus_ids()
-        corpora_to_download = [
-            c for c in self.corpora_to_process
-            if c not in downloaded_corpus_ids
+        # PHASE 1: Incremental Processing - Filter out already-processed corpora
+        self.logger.info("=" * 60)
+        self.logger.info("PHASE 1: Incremental Corpus Filtering")
+        self.logger.info("=" * 60)
+
+        # Build full download URLs for filtering
+        corpus_urls = [
+            f"https://spraakbanken.gu.se/lb/resurser/meningsmangder/{corpus_id}.xml.bz2"
+            for corpus_id in self.corpora_to_process
         ]
 
-        if downloaded_corpus_ids:
-            skipped_count = len(self.corpora_to_process) - len(corpora_to_download)
-            self.logger.info(
-                f"PHASE 1 Dedup: Skipping {skipped_count} already-downloaded corpora "
-                f"(found {len(downloaded_corpus_ids)} corpus IDs in ledger)"
-            )
-            if hasattr(self, 'metrics') and self.metrics is not None:
-                self.metrics.increment("corpora_skipped_discovery_dedup", skipped_count)
+        # Filter to only new corpora
+        new_corpus_urls, filter_stats = self._filter_new_corpora(corpus_urls)
 
-        # If ALL corpora already downloaded, skip everything
-        if not corpora_to_download:
-            self.logger.info(f"DISCOVERY DEDUP: All {len(self.corpora_to_process)} corpora already processed, skipping ALL work")
+        # Track incremental filtering metrics
+        self.metrics.add_custom_metric("incremental_filtering", filter_stats)
+
+        # If ALL corpora already processed, skip everything
+        if not new_corpus_urls:
+            self.logger.info(
+                f"Incremental processing: All {len(self.corpora_to_process)} corpora "
+                f"already processed, skipping download and extraction"
+            )
             return None  # Signal to run() to skip extraction and processing
 
         self.logger.info("=" * 60)
-        self.logger.info("PHASE 1: Downloading Språkbanken Corpora")
+        self.logger.info("PHASE 2: Downloading New Corpora")
         self.logger.info("=" * 60)
-        self.logger.info(f"Corpora requested: {len(self.corpora_to_process)}")
-        self.logger.info(f"Corpora to download (new): {len(corpora_to_download)}")
-        self.logger.info(f"Corpora skipped (already downloaded): {len(downloaded_corpus_ids)}")
+        self.logger.info(f"Corpora requested: {filter_stats['total']}")
+        self.logger.info(f"Corpora to download (new): {filter_stats['new']}")
+        self.logger.info(f"Corpora skipped (already processed): {filter_stats['skipped']}")
+
+        # Extract corpus IDs from filtered URLs for download
+        corpora_to_download = []
+        for url in new_corpus_urls:
+            corpus_id = self._extract_corpus_id_from_url(url)
+            if corpus_id:
+                corpora_to_download.append(corpus_id)
 
         manifest = {
             "corpora_ids": self.corpora_to_process,
@@ -522,20 +608,11 @@ class SprakbankenSomaliProcessor(BasePipeline):
             return self.staging_file
 
         self.logger.info("=" * 60)
-        self.logger.info("PHASE 2: Extracting Text from XML Corpora")
+        self.logger.info("PHASE 3: Extracting Text from XML Corpora")
         self.logger.info("=" * 60)
-
-        # PHASE 5: Incremental Processing - Get already-processed corpus IDs
-        processed_corpus_ids = set() if self.force else self._get_downloaded_corpus_ids()
-
-        if processed_corpus_ids:
-            self.logger.info(
-                f"Incremental mode: skipping {len(processed_corpus_ids)} already-processed corpora"
-            )
 
         total_texts = 0
         total_sentences = 0
-        corpus_files_skipped_unchanged = 0
 
         # Track extraction timing
         with Timer() as timer:
@@ -547,12 +624,6 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
                     if not corpus_file.exists():
                         self.logger.warning(f"Corpus file not found: {corpus_file}")
-                        continue
-
-                    # PHASE 5: Skip already-processed corpora
-                    if corpus_id in processed_corpus_ids:
-                        self.logger.info(f"Skipping {corpus_id} (already processed)")
-                        corpus_files_skipped_unchanged += 1
                         continue
 
                     self.logger.info(f"Extracting {corpus_id}...")
@@ -578,20 +649,8 @@ class SprakbankenSomaliProcessor(BasePipeline):
         # Record total extraction timing (use process_duration for extraction phase)
         self.metrics.record_process_duration(timer.get_elapsed_ms())
 
-        # Track skipped corpora metric
-        if corpus_files_skipped_unchanged > 0:
-            self.metrics.increment("corpus_files_skipped_unchanged", corpus_files_skipped_unchanged)
-
         self.logger.info("=" * 60)
         self.logger.info(f"Extraction complete: {total_texts} texts, {total_sentences} sentences")
-        if corpus_files_skipped_unchanged > 0:
-            total_corpora = len(manifest["corpora"])
-            corpora_processed = total_corpora - corpus_files_skipped_unchanged
-            skip_rate = (corpus_files_skipped_unchanged / total_corpora * 100) if total_corpora > 0 else 0
-            self.logger.info(
-                f"Incremental processing: {corpus_files_skipped_unchanged} corpora skipped (already processed), "
-                f"{corpora_processed} corpora extracted ({skip_rate:.1f}% reduction)"
-            )
         self.logger.info(f"Staging file: {self.staging_file}")
         self.logger.info("=" * 60)
 

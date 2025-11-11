@@ -986,6 +986,66 @@ class CrawlLedger:
         urls = [r["url"] for r in discovered] + [r["url"] for r in fetched]
         return urls
 
+    def get_last_processing_time(self, source: str) -> Optional[datetime]:
+        """
+        Get timestamp of last successful processing for a source.
+
+        This enables incremental processing by allowing pipelines to filter
+        records based on when they were last processed.
+
+        Args:
+            source: Source identifier (wikipedia, bbc, etc.)
+
+        Returns:
+            datetime of last successful processing, or None if never processed
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> last_time = ledger.get_last_processing_time("wikipedia")
+            >>> if last_time:
+            ...     # Only process records newer than last_time
+            ...     pass
+        """
+        query = """
+            SELECT MAX(updated_at) as last_processing_time
+            FROM crawl_ledger
+            WHERE source = ? AND state = ?
+        """
+
+        result = self.backend.connection.execute(
+            query, (source, CrawlState.PROCESSED.value)
+        ).fetchone()
+
+        if result and result["last_processing_time"]:
+            # Parse ISO format timestamp
+            return datetime.fromisoformat(
+                result["last_processing_time"].replace("Z", "+00:00")
+            )
+
+        return None
+
+    def get_processed_urls(
+        self, source: str, limit: Optional[int] = None
+    ) -> list[dict[str, Any]]:
+        """
+        Get all processed URLs for a source.
+
+        Used for incremental processing to identify already-processed resources.
+
+        Args:
+            source: Source identifier
+            limit: Maximum number of URLs to return (None = all)
+
+        Returns:
+            List of URL records with metadata
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> processed = ledger.get_processed_urls("sprakbanken")
+            >>> corpus_ids = {extract_corpus_id(r['url']) for r in processed}
+        """
+        return self.backend.get_urls_by_state(source, CrawlState.PROCESSED, limit)
+
     def get_statistics(self, source: Optional[str] = None) -> dict[str, Any]:
         """Get ledger statistics."""
         return self.backend.get_statistics(source)
