@@ -9,7 +9,7 @@ import bz2
 import re
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -80,6 +80,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.page_pattern = re.compile(r"<page>.*?</page>", re.DOTALL)
         self.title_pattern = re.compile(r"<title>(.*?)</title>")
         self.text_pattern = re.compile(r"<text[^>]*>(.*?)</text>", re.DOTALL)
+        self.timestamp_pattern = re.compile(r"<timestamp>(.*?)</timestamp>")
         self.skip_prefixes = (
             "Special:",
             "Template:",
@@ -254,98 +255,103 @@ class WikipediaSomaliProcessor(BasePipeline):
         if self.staging_file.exists() and self.force:
             self.logger.info(f"Force re-extracting: removing existing file {self.staging_file}")
             self.staging_file.unlink()
+
         self.logger.info("Extracting text from XML dump...")
+
+        # PHASE 1: Collect all articles with metadata (for incremental filtering)
+        self.logger.info("Phase 1: Parsing XML and collecting article metadata...")
+        raw_articles = []
         buffer = ""
-        page_count = 0
         buffer_size_threshold = BUFFER_MAX_SIZE_MB * 1024 * 1024
+
+        with bz2.open(self.dump_file, "rt", encoding="utf-8") as fin:
+            while True:
+                chunk = fin.read(BUFFER_CHUNK_SIZE_MB * 1024 * 1024)
+                if not chunk:
+                    # Process remaining buffer
+                    if buffer:
+                        pages = self.page_pattern.findall(buffer)
+                        for page in pages:
+                            article = self._parse_article_metadata(page)
+                            if article:
+                                raw_articles.append(article)
+                    break
+
+                buffer += chunk
+
+                # Process complete pages from buffer
+                pages = self.page_pattern.findall(buffer)
+                if pages:
+                    for page in pages:
+                        article = self._parse_article_metadata(page)
+                        if article:
+                            raw_articles.append(article)
+
+                    # Remove processed pages from buffer
+                    buffer = self.page_pattern.sub("", buffer, count=len(pages))
+
+                # Safety check: if buffer exceeds threshold, warn and truncate oldest data
+                if len(buffer) > buffer_size_threshold:
+                    self.logger.warning(
+                        f"Buffer size exceeded {BUFFER_MAX_SIZE_MB}MB. "
+                        f"Truncating to prevent memory issues. Some malformed pages may be skipped."
+                    )
+                    # Keep only the last chunk to maintain page boundary context
+                    buffer = buffer[-(BUFFER_TRUNCATE_SIZE_MB * 1024 * 1024) :]
+
+        self.logger.info(f"Collected {len(raw_articles)} articles from XML dump")
+
+        # PHASE 2: Incremental filtering (skip unchanged articles)
+        self.logger.info("Phase 2: Filtering articles based on last processing time...")
+        articles_to_process, filter_stats = self._filter_new_articles(raw_articles)
+
+        # Track incremental filtering metrics
+        self.metrics.add_custom_metric("incremental_filtering", filter_stats)
+
+        # PHASE 3: Process and write filtered articles
+        self.logger.info(f"Phase 3: Processing {len(articles_to_process)} articles...")
+        page_count = 0
 
         # Track extraction timing
         with Timer() as timer:
-            with (
-                bz2.open(self.dump_file, "rt", encoding="utf-8") as fin,
-                open(self.staging_file, "w", encoding="utf-8") as fout,
-            ):
-                while True:
-                    chunk = fin.read(BUFFER_CHUNK_SIZE_MB * 1024 * 1024)
-                    if not chunk:
-                        # Process remaining buffer
-                        if buffer:
-                            pages = self.page_pattern.findall(buffer)
-                            for page in pages:
-                                title_match = self.title_pattern.search(page)
-                                text_match = self.text_pattern.search(page)
-                                if title_match and text_match:
-                                    title = title_match.group(1)
-                                    text = text_match.group(1)
-                                    if not any(
-                                        title.startswith(prefix) for prefix in self.skip_prefixes
-                                    ):
-                                        fout.write(f"{self.page_marker_prefix} {title}\n{text}\n\n")
-                                        page_count += 1
-                        break
+            with open(self.staging_file, "w", encoding="utf-8") as fout:
+                for article in articles_to_process:
+                    title = article["title"]
+                    text = article["text"]
+                    page_url = article["url"]
 
-                    buffer += chunk
+                    # Track URL discovery
+                    self.ledger.discover_url(
+                        page_url, "wikipedia", metadata={"title": title, "timestamp": article.get("timestamp")}
+                    )
 
-                    # Process complete pages from buffer
-                    pages = self.page_pattern.findall(buffer)
-                    if pages:
-                        for page in pages:
-                            title_match = self.title_pattern.search(page)
-                            text_match = self.text_pattern.search(page)
-                            if title_match and text_match:
-                                title = title_match.group(1)
-                                text = text_match.group(1)
-                                if not any(
-                                    title.startswith(prefix) for prefix in self.skip_prefixes
-                                ):
-                                    # Build URL for this page
-                                    page_url = self._title_to_url(title)
+                    # Compute hash and check for duplicates
+                    text_hash = self._compute_text_hash(text, page_url)
 
-                                    # Track URL discovery
-                                    self.ledger.discover_url(
-                                        page_url, "wikipedia", metadata={"title": title}
-                                    )
-
-                                    # Compute hash and check for duplicates
-                                    text_hash = self._compute_text_hash(text, page_url)
-
-                                    # Check if exact duplicate
-                                    if not self.dedup.is_duplicate_hash(text_hash):
-                                        # Not a duplicate - write and record
-                                        fout.write(f"{self.page_marker_prefix} {title}\n{text}\n\n")
-                                        page_count += 1
-                                        self.metrics.record_text_length(len(text))
-                                        # Store hash→URL mapping for future duplicate detection
-                                        self.dedup.add_known_hash(text_hash, page_url)
-                                    else:
-                                        # Duplicate found - get canonical URL
-                                        canonical_url = self.dedup.get_canonical_url(text_hash)
-                                        self.logger.debug(
-                                            f"Duplicate page detected: {title} matches {canonical_url}"
-                                        )
-                                        self.ledger.mark_duplicate(
-                                            page_url,
-                                            canonical_url
-                                            or page_url,  # Fallback to self if not found
-                                        )
-                                        self.metrics.increment("urls_deduplicated")
-
-                        # Remove processed pages from buffer
-                        buffer = self.page_pattern.sub("", buffer, count=len(pages))
-
-                        if page_count % LOG_FREQUENCY_PAGES == 0:
-                            self.logger.info(f"Extracted {page_count} pages so far...")
-                            # Track metrics during extraction
-                            self.metrics.increment("records_extracted", LOG_FREQUENCY_PAGES)
-
-                    # Safety check: if buffer exceeds threshold, warn and truncate oldest data
-                    if len(buffer) > buffer_size_threshold:
-                        self.logger.warning(
-                            f"Buffer size exceeded {BUFFER_MAX_SIZE_MB}MB. "
-                            f"Truncating to prevent memory issues. Some malformed pages may be skipped."
+                    # Check if exact duplicate
+                    if not self.dedup.is_duplicate_hash(text_hash):
+                        # Not a duplicate - write and record
+                        fout.write(f"{self.page_marker_prefix} {title}\n{text}\n\n")
+                        page_count += 1
+                        self.metrics.record_text_length(len(text))
+                        # Store hash→URL mapping for future duplicate detection
+                        self.dedup.add_known_hash(text_hash, page_url)
+                    else:
+                        # Duplicate found - get canonical URL
+                        canonical_url = self.dedup.get_canonical_url(text_hash)
+                        self.logger.debug(
+                            f"Duplicate page detected: {title} matches {canonical_url}"
                         )
-                        # Keep only the last chunk to maintain page boundary context
-                        buffer = buffer[-(BUFFER_TRUNCATE_SIZE_MB * 1024 * 1024) :]
+                        self.ledger.mark_duplicate(
+                            page_url,
+                            canonical_url or page_url,  # Fallback to self if not found
+                        )
+                        self.metrics.increment("urls_deduplicated")
+
+                    if page_count % LOG_FREQUENCY_PAGES == 0:
+                        self.logger.info(f"Extracted {page_count} pages so far...")
+                        # Track metrics during extraction
+                        self.metrics.increment("records_extracted", LOG_FREQUENCY_PAGES)
 
         # Record extraction timing (use process_duration for extraction phase)
         self.metrics.record_process_duration(timer.get_elapsed_ms())
@@ -473,3 +479,121 @@ class WikipediaSomaliProcessor(BasePipeline):
             else f"https://{self.current_code.replace('wiki', '')}.wikipedia.org/wiki/"
         )
         return base + title.replace(" ", "_")
+
+    def _parse_article_metadata(self, page_xml: str) -> Optional[dict[str, Any]]:
+        """
+        Parse article metadata from page XML.
+
+        Extracts title, text, timestamp for incremental filtering.
+
+        Args:
+            page_xml: Raw XML string for a single page
+
+        Returns:
+            Dictionary with article metadata, or None if parsing fails
+        """
+        title_match = self.title_pattern.search(page_xml)
+        text_match = self.text_pattern.search(page_xml)
+        timestamp_match = self.timestamp_pattern.search(page_xml)
+
+        if not (title_match and text_match):
+            return None
+
+        title = title_match.group(1)
+
+        # Skip namespace pages
+        if any(title.startswith(prefix) for prefix in self.skip_prefixes):
+            return None
+
+        text = text_match.group(1)
+        timestamp = timestamp_match.group(1) if timestamp_match else None
+
+        return {
+            "title": title,
+            "text": text,
+            "url": self._title_to_url(title),
+            "timestamp": timestamp,
+        }
+
+    def _get_last_processing_time(self) -> Optional["datetime"]:
+        """
+        Get last successful processing time from ledger.
+
+        Returns:
+            datetime of last processing, or None if first run
+        """
+        from datetime import datetime
+
+        try:
+            return self.ledger.get_last_processing_time(self.source)
+        except Exception as e:
+            self.logger.warning(f"Failed to get last processing time: {e}")
+            return None
+
+    def _filter_new_articles(
+        self, articles: list[dict[str, Any]]
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        """
+        Filter articles to only those newer than last processing.
+
+        Implements incremental processing by comparing article timestamps
+        with the last successful processing time from the ledger.
+
+        Args:
+            articles: List of extracted articles with metadata
+
+        Returns:
+            Tuple of (filtered_articles, stats_dict)
+
+        Stats include:
+            - total: Total articles examined
+            - new: New articles to process
+            - skipped: Articles skipped (unchanged)
+            - last_processing_time: Last processing timestamp (if available)
+        """
+        from datetime import datetime
+
+        last_time = self._get_last_processing_time()
+
+        if last_time is None:
+            self.logger.info("First run detected - processing all articles")
+            return articles, {
+                "total": len(articles),
+                "new": len(articles),
+                "skipped": 0,
+                "last_processing_time": None,
+            }
+
+        self.logger.info(f"Filtering articles newer than {last_time.isoformat()}")
+
+        new_articles = []
+        for article in articles:
+            # Parse article timestamp from metadata
+            article_time_str = article.get("timestamp")
+            if not article_time_str:
+                # No timestamp - process to be safe (fail-safe approach)
+                new_articles.append(article)
+                continue
+
+            try:
+                # Parse ISO 8601 timestamp (Wikipedia format: 2015-08-03T06:50:15Z)
+                article_time = datetime.fromisoformat(article_time_str.replace("Z", "+00:00"))
+                if article_time > last_time:
+                    new_articles.append(article)
+            except (ValueError, AttributeError) as e:
+                # Invalid timestamp - process to be safe
+                self.logger.warning(f"Invalid timestamp format: {article_time_str}, error: {e}")
+                new_articles.append(article)
+
+        stats = {
+            "total": len(articles),
+            "new": len(new_articles),
+            "skipped": len(articles) - len(new_articles),
+            "last_processing_time": last_time.isoformat() if last_time else None,
+        }
+
+        self.logger.info(
+            f"Filtered {stats['skipped']} unchanged articles, {stats['new']} new articles"
+        )
+
+        return new_articles, stats

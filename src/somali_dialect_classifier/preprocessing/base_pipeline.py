@@ -571,3 +571,36 @@ class BasePipeline(DataProcessor, ABC):
                 self.logger.debug(f"Cleaned up old raw file: {old_file.name}")
             except Exception as e:
                 self.logger.warning(f"Failed to delete {old_file.name}: {e}")
+
+    def _compute_file_checksum(self, filepath: Path, algorithm: str = 'sha256') -> str:
+        """
+        Compute cryptographic checksum of a file.
+
+        Used for file-level deduplication to detect if a dump has already been processed.
+        Reads file in chunks for memory efficiency with large files.
+
+        Args:
+            filepath: Path to file to checksum
+            algorithm: Hash algorithm ('sha256', 'md5', etc.). Default: 'sha256'
+
+        Returns:
+            Hex digest of file checksum
+
+        Example:
+            checksum = processor._compute_file_checksum(Path("dump.xml.bz2"))
+            # Returns: "a3f5b8c9d2e1f0..."
+        """
+        import hashlib
+
+        # Create hasher instance based on algorithm
+        try:
+            hasher = hashlib.new(algorithm)
+        except ValueError:
+            raise ValueError(f"Unsupported hash algorithm: {algorithm}")
+
+        # Read file in 4KB chunks for memory efficiency
+        with open(filepath, 'rb') as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hasher.update(chunk)
+
+        return hasher.hexdigest()

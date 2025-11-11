@@ -10,7 +10,9 @@ Integrated with crawl ledger for state tracking.
 
 import hashlib
 import logging
+import pickle
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 try:
@@ -41,6 +43,9 @@ class DedupConfig:
     shingle_size: int = 3  # Word n-grams
     similarity_threshold: float = 0.85  # Jaccard similarity
     seed: int = 42
+
+    # LSH persistence settings
+    storage_path: Optional[Path] = None  # Path to save/load LSH index
 
     def __post_init__(self):
         """Set defaults."""
@@ -132,6 +137,7 @@ class MinHashDeduplicator:
         shingle_size: int = 3,
         similarity_threshold: float = 0.85,
         seed: int = 42,
+        storage_path: Optional[Path] = None,
     ):
         """
         Initialize MinHash deduplicator.
@@ -141,6 +147,7 @@ class MinHashDeduplicator:
             shingle_size: Word n-gram size for shingling
             similarity_threshold: Jaccard similarity threshold
             seed: Random seed for reproducibility
+            storage_path: Optional path to save/load LSH index for persistence
         """
         if not DATASKETCH_AVAILABLE:
             raise ImportError(
@@ -152,12 +159,17 @@ class MinHashDeduplicator:
         self.shingle_size = shingle_size
         self.similarity_threshold = similarity_threshold
         self.seed = seed
+        self.storage_path = storage_path
 
         # Initialize LSH index
         self.lsh = MinHashLSH(threshold=similarity_threshold, num_perm=num_permutations)
 
         # Track inserted documents
         self.document_hashes = {}  # url -> minhash_signature
+
+        # Try to load existing index if storage_path is provided
+        if storage_path and storage_path.exists():
+            self._load_lsh_index()
 
     def _create_shingles(self, text: str) -> set[str]:
         """
@@ -318,6 +330,72 @@ class MinHashDeduplicator:
             return similar[0]  # Return most similar
         return None
 
+    def _save_lsh_index(self) -> None:
+        """
+        Save LSH index to disk for reuse across runs.
+
+        Saves:
+        - LSH index
+        - Document hashes mapping
+        - Configuration parameters
+        """
+        if not self.storage_path:
+            logger.warning("No storage_path configured, skipping LSH index save")
+            return
+
+        try:
+            # Ensure parent directory exists
+            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Package data for persistence
+            index_data = {
+                'lsh': self.lsh,
+                'document_hashes': self.document_hashes,
+                'num_permutations': self.num_permutations,
+                'shingle_size': self.shingle_size,
+                'similarity_threshold': self.similarity_threshold,
+                'seed': self.seed,
+            }
+
+            # Serialize to disk
+            with open(self.storage_path, 'wb') as f:
+                pickle.dump(index_data, f)
+
+            logger.info(f"Saved LSH index to {self.storage_path} ({len(self.document_hashes)} documents)")
+
+        except Exception as e:
+            logger.error(f"Failed to save LSH index: {e}")
+
+    def _load_lsh_index(self) -> bool:
+        """
+        Load LSH index from disk.
+
+        Returns:
+            True if load was successful, False otherwise
+        """
+        if not self.storage_path or not self.storage_path.exists():
+            logger.debug("No LSH index found at storage path")
+            return False
+
+        try:
+            with open(self.storage_path, 'rb') as f:
+                index_data = pickle.load(f)
+
+            # Restore state
+            self.lsh = index_data['lsh']
+            self.document_hashes = index_data['document_hashes']
+            self.num_permutations = index_data['num_permutations']
+            self.shingle_size = index_data['shingle_size']
+            self.similarity_threshold = index_data['similarity_threshold']
+            self.seed = index_data['seed']
+
+            logger.info(f"Loaded LSH index from {self.storage_path} ({len(self.document_hashes)} documents)")
+            return True
+
+        except Exception as e:
+            logger.warning(f"Failed to load LSH index: {e}")
+            return False
+
 
 class DedupEngine:
     """
@@ -348,6 +426,7 @@ class DedupEngine:
                 shingle_size=self.config.shingle_size,
                 similarity_threshold=self.config.similarity_threshold,
                 seed=self.config.seed,
+                storage_path=self.config.storage_path,
             )
         elif self.config.enable_minhash and not DATASKETCH_AVAILABLE:
             logger.warning(

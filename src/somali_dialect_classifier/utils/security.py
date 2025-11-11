@@ -48,6 +48,8 @@ def sanitize_source_name(source: str) -> str:
         ValueError: Invalid source
         >>> sanitize_source_name("bbc/../../etc")
         ValueError: Invalid source
+        >>> sanitize_source_name("HuggingFace-Somali_c4-so")
+        'huggingface-somali_c4-so'
     """
     if not source:
         raise ValueError("Source name cannot be empty")
@@ -59,14 +61,23 @@ def sanitize_source_name(source: str) -> str:
     # Normalize to lowercase for comparison
     sanitized_lower = sanitized.lower()
 
-    # Whitelist validation - only allow known sources
-    if sanitized_lower not in ALLOWED_SOURCES:
-        raise ValueError(
-            f"Invalid source: {source}. "
-            f"Allowed sources: {', '.join(sorted(ALLOWED_SOURCES))}"
-        )
+    # Check if exact match in whitelist
+    if sanitized_lower in ALLOWED_SOURCES:
+        return sanitized_lower
 
-    return sanitized_lower
+    # Special handling for HuggingFace sources with dataset suffixes
+    # Format: huggingface-somali_<dataset>-<config> or huggingface_<dataset>
+    if sanitized_lower.startswith('huggingface'):
+        # Allow alphanumeric, hyphens, and underscores only
+        if re.match(r'^huggingface[-_a-z0-9]+$', sanitized_lower):
+            return sanitized_lower
+
+    # If not in whitelist and not a valid HuggingFace source, reject
+    raise ValueError(
+        f"Invalid source: {source}. "
+        f"Allowed sources: {', '.join(sorted(ALLOWED_SOURCES))} "
+        f"(HuggingFace sources with dataset suffixes are also allowed)"
+    )
 
 
 def mask_secret(secret: Optional[str], visible_chars: int = 4, min_length: int = 8) -> str:

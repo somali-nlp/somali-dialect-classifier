@@ -146,7 +146,6 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             hash_fields=["text", "url"],
             enable_minhash=True,
             similarity_threshold=0.85,
-            storage_path=PathLib("data/ledger/lsh_index_huggingface.pkl")  # PHASE 3
         )
         self.dedup = DedupEngine(dedup_config)
         self.ledger = get_ledger()
