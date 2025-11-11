@@ -1,0 +1,109 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+.mailmap
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.manifest
+*.spec
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Testing
+tests/
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.json
+htmlcov/
+.tox/
+.nox/
+test-results/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation (not needed in container)
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+.pre-commit-config.yaml
+
+# Data (mount as volumes instead)
+data/
+logs/
+backups/
+
+# Development
+.env
+*.bak
+tiktok_apify_test/
+
+# Node.js (for dashboard development, not needed in pipeline container)
+node_modules/
+package.json
+package-lock.json
+playwright.config.js
+
+# Archives
+.archive/
+.backups/
+.claude/
+
+# Jupyter
+notebooks/
+*.ipynb
+.ipynb_checkpoints/
+
+# Schemas (if not needed at runtime)
+schemas/
+
+# Test outputs
+test-run-*.log
+tiktok-test-*.log
+
+# Cache
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# Site/dashboard build
+_site/
+dashboard/
+
+# Playwright
+.playwright-mcp/
