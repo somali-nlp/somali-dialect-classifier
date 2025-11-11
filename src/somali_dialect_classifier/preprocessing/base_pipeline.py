@@ -97,7 +97,15 @@ class BasePipeline(DataProcessor, ABC):
             batch_size: Optional batch size for incremental silver writes
             force: Force reprocessing even if output exists (default: False)
         """
-        self.source = source
+        # SECURITY FIX: Sanitize source name to prevent path traversal attacks
+        from ..utils.security import sanitize_source_name
+
+        try:
+            safe_source = sanitize_source_name(source)
+        except ValueError as e:
+            raise ValueError(f"Invalid source name: {e}")
+
+        self.source = safe_source  # Use sanitized source
         self.log_frequency = log_frequency
         self.batch_size = batch_size
         self.force = force
@@ -105,11 +113,11 @@ class BasePipeline(DataProcessor, ABC):
         # Generate unique run_id for this pipeline execution
         from ..utils.logging_utils import StructuredLogger, generate_run_id
 
-        self.run_id = generate_run_id(source)
+        self.run_id = generate_run_id(safe_source)
 
         # Initialize structured logger with file output
         log_file = Path("logs") / f"{self.run_id}.log"
-        structured_logger = StructuredLogger(name=source, log_file=log_file, json_format=True)
+        structured_logger = StructuredLogger(name=safe_source, log_file=log_file, json_format=True)
         self.logger = structured_logger.get_logger()  # Get actual logger instance
 
         # Timestamp for partitioning
@@ -118,15 +126,15 @@ class BasePipeline(DataProcessor, ABC):
         # Load config for directory paths
         config = get_config()
 
-        # Consistent directory structure using config paths
+        # Consistent directory structure using config paths (with sanitized source)
         self.raw_dir = (
-            config.data.raw_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
+            config.data.raw_dir / f"source={safe_source}" / f"date_accessed={self.date_accessed}"
         )
         self.staging_dir = (
-            config.data.staging_dir / f"source={source}" / f"date_accessed={self.date_accessed}"
+            config.data.staging_dir / f"source={safe_source}" / f"date_accessed={self.date_accessed}"
         )
         self.processed_dir = (
-            config.data.processed_dir / f"source={source}" / f"date_processed={self.date_accessed}"
+            config.data.processed_dir / f"source={safe_source}" / f"date_processed={self.date_accessed}"
         )
 
         # Initialize shared utilities
@@ -395,6 +403,32 @@ class BasePipeline(DataProcessor, ABC):
                     register=self._get_register(),  # v2.1: Linguistic register
                     source_id=source_id,  # Source-specific identifier
                 )
+
+                # Add schema versioning fields (NEW in schema v1.0)
+                from ..schema import CURRENT_SCHEMA_VERSION
+                record["schema_version"] = CURRENT_SCHEMA_VERSION
+                record["run_id"] = self.run_id
+
+                # Validate record against schema before adding
+                from ..schema import SchemaValidator
+                validator = SchemaValidator()
+                is_valid, errors = validator.validate_record(record)
+
+                if not is_valid:
+                    # Log validation errors
+                    self.logger.warning(
+                        f"Record validation failed for '{raw_record.title[:50]}...': {errors}"
+                    )
+                    records_filtered += 1
+                    filter_stats["schema_validation_failed"] += 1
+
+                    # Record filter reason in metrics if available
+                    if hasattr(self, "metrics") and self.metrics is not None:
+                        self.metrics.record_filter_reason("schema_validation_failed")
+
+                    # Skip invalid record
+                    continue
+
                 records.append(record)
                 records_processed += 1
 

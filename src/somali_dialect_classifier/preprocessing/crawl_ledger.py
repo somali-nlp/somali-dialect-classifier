@@ -17,12 +17,15 @@ import json
 import logging
 import sqlite3
 import threading
+import time
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
+
+from filelock import FileLock, Timeout
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,126 @@ class CrawlState(Enum):
     FAILED = "failed"
     SKIPPED = "skipped"
     DUPLICATE = "duplicate"
+
+
+class LockManager:
+    """
+    Manages file-based locks for pipeline runs.
+
+    Prevents concurrent runs for the same source from interfering with each other.
+    Uses file-based locking which is:
+    - Free (no external service needed)
+    - Cross-process (works across multiple runs)
+    - Simple (no Redis, ZooKeeper, etc.)
+    - Portable (works on all OS)
+    - Industry-standard (used by Git, npm, pip)
+    """
+
+    def __init__(self, lock_dir: Path = Path(".locks")):
+        """
+        Initialize lock manager.
+
+        Args:
+            lock_dir: Directory to store lock files (default: .locks/)
+        """
+        self.lock_dir = lock_dir
+        self.lock_dir.mkdir(parents=True, exist_ok=True)
+        self._active_locks: dict[str, FileLock] = {}
+
+    def get_lock(self, source: str, timeout: int = 30) -> FileLock:
+        """
+        Get a file lock for a specific source.
+
+        Args:
+            source: Source identifier (wikipedia, bbc, etc.)
+            timeout: Lock timeout in seconds (default: 30)
+
+        Returns:
+            FileLock instance
+        """
+        lock_file = self.lock_dir / f"{source}.lock"
+        lock = FileLock(lock_file, timeout=timeout)
+        return lock
+
+    def acquire_lock(self, source: str, timeout: int = 30) -> FileLock:
+        """
+        Acquire a lock for a source.
+
+        Args:
+            source: Source identifier
+            timeout: Lock timeout in seconds
+
+        Returns:
+            Acquired FileLock
+
+        Raises:
+            RuntimeError: If lock cannot be acquired within timeout
+        """
+        lock = self.get_lock(source, timeout)
+
+        try:
+            lock.acquire(timeout=timeout)
+            logger.info(f"Acquired lock for source: {source}")
+            self._active_locks[source] = lock
+            return lock
+        except Timeout:
+            logger.error(f"Failed to acquire lock for {source} (timeout={timeout}s)")
+            logger.error(f"Another run for {source} is likely still active")
+            raise RuntimeError(
+                f"Cannot start run for {source}: another run is already active. "
+                f"If the previous run crashed, manually delete .locks/{source}.lock"
+            )
+
+    def release_lock(self, source: str):
+        """Release a lock for a source."""
+        if source in self._active_locks:
+            lock = self._active_locks[source]
+            if lock.is_locked:
+                lock.release()
+                logger.info(f"Released lock for source: {source}")
+            del self._active_locks[source]
+
+    def is_locked(self, source: str) -> bool:
+        """
+        Check if a source is currently locked.
+
+        Args:
+            source: Source identifier
+
+        Returns:
+            True if locked by another process, False otherwise
+        """
+        lock_file = self.lock_dir / f"{source}.lock"
+        if not lock_file.exists():
+            return False
+
+        # Try to acquire lock with 0 timeout to test
+        lock = FileLock(lock_file, timeout=0)
+        try:
+            lock.acquire(timeout=0.1)
+            lock.release()  # Not locked, release immediately
+            return False
+        except Timeout:
+            return True  # Locked by another process
+
+    def cleanup_stale_locks(self, max_age_hours: int = 24):
+        """
+        Remove stale lock files older than max_age_hours.
+
+        This is a safety mechanism for crashed runs that didn't release locks.
+
+        Args:
+            max_age_hours: Maximum age of lock files in hours (default: 24)
+        """
+        current_time = time.time()
+
+        for lock_file in self.lock_dir.glob("*.lock"):
+            file_age_hours = (current_time - lock_file.stat().st_mtime) / 3600
+            if file_age_hours > max_age_hours:
+                logger.warning(
+                    f"Removing stale lock file: {lock_file} (age: {file_age_hours:.1f}h)"
+                )
+                lock_file.unlink()
 
 
 class LedgerBackend(ABC):
@@ -497,34 +620,56 @@ class SQLiteLedger(LedgerBackend):
         """Get ledger statistics."""
         stats = {}
 
-        # Base query
-        source_filter = f"WHERE source = '{source}'" if source else ""
-
-        # Total URLs
-        result = self.connection.execute(
-            f"SELECT COUNT(*) as count FROM crawl_ledger {source_filter}"
-        ).fetchone()
+        # Total URLs (parameterized query - SECURITY FIX: prevents SQL injection)
+        if source:
+            result = self.connection.execute(
+                "SELECT COUNT(*) as count FROM crawl_ledger WHERE source = ?",
+                (source,)
+            ).fetchone()
+        else:
+            result = self.connection.execute(
+                "SELECT COUNT(*) as count FROM crawl_ledger"
+            ).fetchone()
         stats["total_urls"] = result["count"]
 
-        # URLs by state
-        state_query = f"""
-            SELECT state, COUNT(*) as count
-            FROM crawl_ledger {source_filter}
-            GROUP BY state
-        """
+        # URLs by state (parameterized query - SECURITY FIX: prevents SQL injection)
+        if source:
+            state_query = """
+                SELECT state, COUNT(*) as count
+                FROM crawl_ledger
+                WHERE source = ?
+                GROUP BY state
+            """
+            state_results = self.connection.execute(state_query, (source,))
+        else:
+            state_query = """
+                SELECT state, COUNT(*) as count
+                FROM crawl_ledger
+                GROUP BY state
+            """
+            state_results = self.connection.execute(state_query)
 
         state_counts = {}
-        for row in self.connection.execute(state_query):
+        for row in state_results:
             state_counts[row["state"]] = row["count"]
         stats["by_state"] = state_counts
 
-        # Duplicate statistics
-        result = self.connection.execute(f"""
-            SELECT
-                COUNT(DISTINCT text_hash) as unique_hashes,
-                COUNT(CASE WHEN text_hash IS NOT NULL THEN 1 END) as total_hashed
-            FROM crawl_ledger {source_filter}
-        """).fetchone()
+        # Duplicate statistics (parameterized query - SECURITY FIX: prevents SQL injection)
+        if source:
+            result = self.connection.execute("""
+                SELECT
+                    COUNT(DISTINCT text_hash) as unique_hashes,
+                    COUNT(CASE WHEN text_hash IS NOT NULL THEN 1 END) as total_hashed
+                FROM crawl_ledger
+                WHERE source = ?
+            """, (source,)).fetchone()
+        else:
+            result = self.connection.execute("""
+                SELECT
+                    COUNT(DISTINCT text_hash) as unique_hashes,
+                    COUNT(CASE WHEN text_hash IS NOT NULL THEN 1 END) as total_hashed
+                FROM crawl_ledger
+            """).fetchone()
 
         stats["unique_documents"] = result["unique_hashes"] or 0
         stats["total_hashed"] = result["total_hashed"] or 0
@@ -534,13 +679,19 @@ class SQLiteLedger(LedgerBackend):
         else:
             stats["dedup_rate"] = 0
 
-        # Error statistics
-        result = self.connection.execute(f"""
-            SELECT COUNT(*) as count
-            FROM crawl_ledger
-            {source_filter + " AND" if source_filter else "WHERE"}
-            state = 'failed' AND retry_count >= 3
-        """).fetchone()
+        # Error statistics (parameterized query - SECURITY FIX: prevents SQL injection)
+        if source:
+            result = self.connection.execute("""
+                SELECT COUNT(*) as count
+                FROM crawl_ledger
+                WHERE source = ? AND state = ? AND retry_count >= 3
+            """, (source, 'failed')).fetchone()
+        else:
+            result = self.connection.execute("""
+                SELECT COUNT(*) as count
+                FROM crawl_ledger
+                WHERE state = ? AND retry_count >= 3
+            """, ('failed',)).fetchone()
         stats["permanent_failures"] = result["count"]
 
         # RSS statistics (BBC only)
