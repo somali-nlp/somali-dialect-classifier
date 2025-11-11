@@ -951,8 +951,8 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         min_length = self.hf_config.min_length_threshold
         confidence = self.hf_config.langid_confidence_threshold
 
-        self.record_filters.append((min_length_filter, {"threshold": min_length}))
-        self.record_filters.append(
+        self.filter_engine.register_filter((min_length_filter, {"threshold": min_length}))
+        self.filter_engine.register_filter(
             (
                 langid_filter,
                 {

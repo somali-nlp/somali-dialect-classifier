@@ -585,8 +585,7 @@ netlify deploy --prod --dir=_site
 
 ## Related Documentation
 
-- [Dashboard User Guide](dashboard-user-guide.md)
-- [Dashboard Technical Guide](dashboard-technical.md)
+- [Dashboard Guide](../guides/dashboard.md)
 - [Troubleshooting Guide](../howto/troubleshooting.md)
 - [Deployment Operations](../operations/deployment.md)
 

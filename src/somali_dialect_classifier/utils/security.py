@@ -206,6 +206,56 @@ def sanitize_filename(filename: str) -> str:
     return sanitized
 
 
+def validate_file_path(file_path: str, base_dir: Optional[str] = None) -> bool:
+    """
+    Validate file path to prevent path traversal attacks.
+
+    Prevents access to files outside base directory using:
+    - Path normalization (resolve .., ., symlinks)
+    - Base directory containment check
+    - Null byte detection
+
+    Args:
+        file_path: User-provided file path
+        base_dir: Base directory to restrict access to (optional)
+
+    Returns:
+        True if path is safe, False otherwise
+
+    Examples:
+        >>> validate_file_path("data/raw/file.txt", base_dir="data")
+        True
+        >>> validate_file_path("../../../etc/passwd", base_dir="data")
+        False
+        >>> validate_file_path("data/raw/../../etc/passwd", base_dir="data")
+        False
+    """
+    from pathlib import Path
+
+    try:
+        # Remove null bytes (path traversal in some systems)
+        if '\0' in file_path:
+            return False
+
+        # Resolve to absolute path (resolves .., ., symlinks)
+        resolved_path = Path(file_path).resolve()
+
+        # If base_dir provided, ensure path is within base_dir
+        if base_dir:
+            base_path = Path(base_dir).resolve()
+            try:
+                # relative_to() raises ValueError if path is not relative to base
+                resolved_path.relative_to(base_path)
+            except ValueError:
+                # Path is outside base directory
+                return False
+
+        return True
+
+    except Exception:
+        return False
+
+
 def is_safe_url(url: str) -> bool:
     """
     Validate URL is safe for use in system.

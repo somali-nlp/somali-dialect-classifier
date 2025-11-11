@@ -51,6 +51,8 @@ High-level architecture and system design:
 Task-oriented guides for common workflows:
 
 - **[Processing Pipelines](howto/processing-pipelines.md)** - Quick-start guide comparing all five data sources
+- **[Orchestration](howto/orchestration.md)** - **⭐ Pipeline orchestration, refresh cadences, distributed locking, and smart scheduling**
+- **[Incremental Processing](howto/incremental-processing.md)** - **⭐ 90%+ efficiency with timestamp-based filtering and quarterly refresh strategy**
 - **[Deduplication Strategy](howto/deduplication.md)** - **⭐ Discovery-stage dedup, continuous streaming, and cross-run duplicate prevention**
 - **[Wikipedia Integration](howto/wikipedia-integration.md)** - Complete guide to Wikipedia dumps, XML parsing, namespace filtering
 - **[BBC Integration](howto/bbc-integration.md)** - Ethical web scraping, topic enrichment, rate limiting
@@ -72,18 +74,21 @@ Technical specifications and API reference:
 - **[Metrics Schema](reference/metrics-schema.md)** - Metrics schema specification and contract
 - **[Silver Schema](reference/silver-schema.md)** - Silver dataset schema specification
 - **[Filters Reference](reference/filters.md)** - Built-in filter documentation
-- **[Text Cleaning](reference/text-cleaning.md)** - Cleaning pipeline reference (coming soon)
+- **[API Changelog](reference/api-changelog.md)** - Version history and migration guides
 
 ### ⚙️ Operations - Deployment & MLOps
 
 Production deployment and operations:
 
 - **[Deployment](operations/deployment.md)** - Production deployment guide
+- **[PostgreSQL Deployment](operations/postgres-deployment.md)** - PostgreSQL setup for 10x concurrent scale
+- **[PostgreSQL Setup](operations/postgres-setup.md)** - PostgreSQL configuration and migration
+- **[Docker Deployment](operations/docker-deployment.md)** - Docker-based deployment
+- **[Backup & Restore](operations/backup-restore.md)** - Data backup and disaster recovery
 - **[Testing](operations/testing.md)** - Testing strategies and patterns
 - **[Dashboard Maintenance](operations/dashboard-maintenance.md)** - Dashboard maintenance and troubleshooting
 - **[CI/CD Dashboard](operations/cicd-dashboard.md)** - Continuous integration and deployment for dashboard
 - **[CI/CD Quick Reference](operations/cicd-quick-reference.md)** - Quick reference for dashboard operations and workflows
-- **[MLOps Playbook](../operations/mlops-playbook.md)** - MLflow, monitoring (coming soon)
 
 ### 🗺️ Project - Roadmap & Plans
 

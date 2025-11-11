@@ -27,11 +27,10 @@ from pathlib import Path
 from typing import Any, Optional
 
 import requests
-from requests.adapters import HTTPAdapter
 from tqdm import tqdm
-from urllib3.util.retry import Retry
 
 from ..config import get_config
+from ..utils.http import HTTPSessionFactory
 from ..utils.logging_utils import Timer, set_context
 from ..utils.metrics import MetricsCollector, PipelineType, QualityReporter
 from .base_pipeline import BasePipeline, RawRecord
@@ -242,12 +241,12 @@ class SprakbankenSomaliProcessor(BasePipeline):
         from .filters import langid_filter, min_length_filter
 
         # Minimum length threshold (from config)
-        self.record_filters.append(
+        self.filter_engine.register_filter(
             (min_length_filter, {"threshold": self.sprakbanken_config.min_length_threshold})
         )
 
         # Language filter with relaxed threshold (from config)
-        self.record_filters.append(
+        self.filter_engine.register_filter(
             (
                 langid_filter,
                 {
@@ -570,9 +569,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         self.logger.info("=" * 60)
 
         # Export metrics
-        metrics_path = Path("data/metrics") / f"{self.run_id}_discovery.json"
-        metrics_path.parent.mkdir(parents=True, exist_ok=True)
-        self.metrics.export_json(metrics_path)
+        self._export_stage_metrics("discovery")
 
         return self.manifest_file
 
@@ -655,17 +652,8 @@ class SprakbankenSomaliProcessor(BasePipeline):
         self.logger.info("=" * 60)
 
         # Export metrics and generate extraction quality report
-        metrics_path = Path("data/metrics") / f"{self.run_id}_extraction.json"
-        metrics_path.parent.mkdir(parents=True, exist_ok=True)
-        self.metrics.export_json(metrics_path)
-
-        # Generate extraction quality report (shows extraction phase only)
-        report_path = Path("data/reports") / f"{self.run_id}_extraction_quality_report.md"
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        QualityReporter(self.metrics).generate_markdown_report(report_path)
-
-        self.logger.info(f"Metrics exported: {metrics_path}")
-        self.logger.info(f"Extraction quality report: {report_path}")
+        self._export_stage_metrics("extraction")
+        self._generate_quality_report("extraction")
 
         return self.staging_file
 
@@ -996,17 +984,12 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
     def _get_http_session(self) -> requests.Session:
         """Create HTTP session with retry logic."""
-        session = requests.Session()
-        retries = Retry(
-            total=5,
+        return HTTPSessionFactory.create_session(
+            max_retries=5,
             backoff_factor=0.5,
             status_forcelist=[429, 500, 502, 503, 504],
             allowed_methods=["HEAD", "GET", "OPTIONS"],
         )
-        adapter = HTTPAdapter(max_retries=retries)
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
-        return session
 
 
 def list_available_corpora() -> list[str]:

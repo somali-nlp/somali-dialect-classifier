@@ -347,10 +347,10 @@ def _filter_new_records(self, records: list[dict]) -> tuple[list[dict], dict]:
 
 ## Related Documentation
 
-- [Ledger System](../reference/ledger.md) - Persistent state tracking
+- [Crawl Ledger](../reference/api.md#crawl-ledger) - Persistent state tracking
 - [Metrics Collection](../reference/metrics.md) - Performance tracking
 - [Pipeline Architecture](../overview/architecture.md) - Overall design
-- [Deduplication](../reference/deduplication.md) - Duplicate detection
+- [Deduplication](deduplication.md) - Duplicate detection
 
 ## Summary
 

@@ -1176,11 +1176,11 @@ tail -f /var/log/somali-nlp/pipeline.log | grep ERROR
 
 ## See Also
 
-- [Configuration Guide](CONFIGURATION.md) - Environment variables and settings
-- [API Reference](API_REFERENCE.md) - Programmatic APIs
-- [Architecture Documentation](ARCHITECTURE.md) - System design
-- [Data Pipeline](DATA_PIPELINE.md) - ETL pipeline details
-- [Testing Guide](TESTING.md) - Testing strategies
+- [Configuration Guide](../howto/configuration.md) - Environment variables and settings
+- [API Reference](../reference/api.md) - Programmatic APIs
+- [Architecture Documentation](../overview/architecture.md) - System design
+- [Data Pipeline](../overview/data-pipeline-architecture.md) - ETL pipeline details
+- [Testing Guide](testing.md) - Testing strategies
 
 ---
 

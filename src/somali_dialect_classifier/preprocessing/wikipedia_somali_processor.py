@@ -12,11 +12,10 @@ from pathlib import Path
 from typing import Any, Optional
 
 import requests
-from requests.adapters import HTTPAdapter
 from tqdm import tqdm
-from urllib3.util.retry import Retry
 
 from ..config import get_config
+from ..utils.http import HTTPSessionFactory
 from ..utils.logging_utils import Timer, set_context
 from ..utils.metrics import MetricsCollector, PipelineType, QualityReporter
 from .base_pipeline import BasePipeline, RawRecord
@@ -53,7 +52,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.metrics = None  # Will be initialized in download()
 
         # Initialize BasePipeline with source name (this generates run_id and StructuredLogger)
-        super().__init__(source="Wikipedia-Somali", force=force)
+        super().__init__(source="wikipedia-somali", force=force)
 
         # Note: StructuredLogger is now initialized in BasePipeline
         # Use self.logger for all logging (it's now a structured logger with JSON output)
@@ -100,11 +99,11 @@ class WikipediaSomaliProcessor(BasePipeline):
         from .filters import langid_filter, min_length_filter
 
         # Minimum length threshold for articles
-        self.record_filters.append((min_length_filter, {"threshold": 50}))
+        self.filter_engine.register_filter((min_length_filter, {"threshold": 50}))
 
         # Language filter (Somali only with relaxed confidence threshold)
         # Threshold lowered to 0.3 due to heuristic-based detection
-        self.record_filters.append(
+        self.filter_engine.register_filter(
             (langid_filter, {"allowed_langs": {"so"}, "confidence_threshold": 0.3})
         )
 
@@ -166,7 +165,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.raw_dir.mkdir(parents=True, exist_ok=True)
 
         # Set context using run_id from base_pipeline
-        set_context(run_id=self.run_id, source="Wikipedia-Somali", phase="download")
+        set_context(run_id=self.run_id, source="wikipedia-somali", phase="download")
 
         # Initialize metrics with run_id from base_pipeline
         self.metrics = MetricsCollector(
@@ -226,9 +225,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.logger.info(f"Download completed: {self.dump_file}")
 
         # Export metrics
-        metrics_path = Path("data/metrics") / f"{self.run_id}_discovery.json"
-        metrics_path.parent.mkdir(parents=True, exist_ok=True)
-        self.metrics.export_json(metrics_path)
+        self._export_stage_metrics("discovery")
 
         return self.dump_file
 
@@ -239,7 +236,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.staging_dir.mkdir(parents=True, exist_ok=True)
 
         # Set context for extraction phase using run_id from base_pipeline
-        set_context(run_id=self.run_id, source="Wikipedia-Somali", phase="extract")
+        set_context(run_id=self.run_id, source="wikipedia-somali", phase="extract")
 
         # Resume or create metrics with run_id from base_pipeline
         if self.metrics is None:
@@ -364,17 +361,8 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.logger.info(f"Extraction completed: {page_count} pages -> {self.staging_file}")
 
         # Export metrics and generate extraction report
-        metrics_path = Path("data/metrics") / f"{self.run_id}_extraction.json"
-        metrics_path.parent.mkdir(parents=True, exist_ok=True)
-        self.metrics.export_json(metrics_path)
-
-        # Generate extraction quality report (shows extraction phase only)
-        report_path = Path("data/reports") / f"{self.run_id}_extraction_quality_report.md"
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        QualityReporter(self.metrics).generate_markdown_report(report_path)
-
-        self.logger.info(f"Metrics exported: {metrics_path}")
-        self.logger.info(f"Extraction quality report: {report_path}")
+        self._export_stage_metrics("extraction")
+        self._generate_quality_report("extraction")
 
         return self.staging_file
 
@@ -423,17 +411,12 @@ class WikipediaSomaliProcessor(BasePipeline):
 
     def _get_http_session(self) -> requests.Session:
         """Create a requests session with retry policy for robustness."""
-        session = requests.Session()
-        retries = Retry(
-            total=5,
+        return HTTPSessionFactory.create_session(
+            max_retries=5,
             backoff_factor=0.5,
             status_forcelist=[429, 500, 502, 503, 504],
             allowed_methods=["HEAD", "GET", "OPTIONS"],
         )
-        adapter = HTTPAdapter(max_retries=retries)
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
-        return session
 
     def _resolve_dump_url(self, session: requests.Session) -> tuple[str, str]:
         """

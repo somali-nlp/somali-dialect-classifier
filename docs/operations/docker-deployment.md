@@ -591,4 +591,4 @@ See `.github/workflows/` for automated deployment examples.
 
 - [Backup and Restore Guide](./backup-restore.md)
 - [General Deployment Guide](./deployment.md)
-- [Monitoring Guide](./monitoring.md) (if available)
+- [Monitoring and Observability](deployment.md#monitoring-and-alerting)

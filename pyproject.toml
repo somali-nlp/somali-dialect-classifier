@@ -22,6 +22,8 @@ dependencies = [
   "psycopg2-binary>=2.9.9",  # PostgreSQL driver for production scale
   "sqlalchemy>=2.0.23",  # Connection pooling and ORM capabilities
   "filelock>=3.13.1",  # File-based locking for concurrent access
+  "aiohttp>=3.9",  # Async HTTP for 3-5x faster web scraping (P3.5)
+  "aiodns>=3.1",  # Async DNS resolution for aiohttp performance (P3.5)
 ]
 
 [project.optional-dependencies]

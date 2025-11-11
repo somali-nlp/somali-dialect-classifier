@@ -76,7 +76,7 @@ class TikTokSomaliProcessor(BasePipeline):
         self.metrics = None  # Will be initialized in download()
 
         # Initialize BasePipeline (generates run_id and logger)
-        super().__init__(source="TikTok-Somali", log_frequency=50, force=force)
+        super().__init__(source="tiktok", log_frequency=50, force=force)
 
         # File paths (TikTok-specific naming)
         self.video_urls_file = self.raw_dir / f"tiktok-somali_{self.run_id}_raw_video-urls.json"
@@ -176,12 +176,12 @@ class TikTokSomaliProcessor(BasePipeline):
         self.raw_dir.mkdir(parents=True, exist_ok=True)
 
         # Set context
-        set_context(run_id=self.run_id, source="TikTok-Somali", phase="discovery")
+        set_context(run_id=self.run_id, source="tiktok", phase="discovery")
 
         # Initialize metrics collector
         # Using STREAM_PROCESSING as TikTok Apify acts like an API stream
         self.metrics = MetricsCollector(
-            self.run_id, "TikTok-Somali", pipeline_type=PipelineType.STREAM_PROCESSING
+            self.run_id, "tiktok", pipeline_type=PipelineType.STREAM_PROCESSING
         )
 
         # Initialize Apify client
@@ -265,7 +265,7 @@ class TikTokSomaliProcessor(BasePipeline):
             self.video_urls = data["video_urls"]
 
         # Set context for extraction phase
-        set_context(run_id=self.run_id, source="TikTok-Somali", phase="extraction")
+        set_context(run_id=self.run_id, source="tiktok", phase="extraction")
 
         self.logger.info("")
         self.logger.info("=" * 60)
