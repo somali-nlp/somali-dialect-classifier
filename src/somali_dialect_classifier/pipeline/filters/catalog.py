@@ -65,6 +65,12 @@ FILTER_CATALOG: dict[str, tuple[str, str, str]] = {
         "Wikipedia pages from excluded namespaces (e.g., Talk, User, Template)",
         "namespace",
     ),
+    # Schema validation filters
+    "schema_validation_failed": (
+        "Schema validation failed",
+        "Record failed schema validation checks (missing fields, invalid types, etc.)",
+        "schema",
+    ),
     # Placeholder filters for future enhancements
     "profanity_filter": (
         "Profanity detected",
@@ -154,7 +160,7 @@ def get_filter_category(filter_key: str) -> str:
     Get category for a filter key.
 
     Categories: 'length', 'content_quality', 'language', 'dialect',
-                'namespace', 'deduplication', 'encoding'
+                'namespace', 'deduplication', 'encoding', 'schema'
 
     Args:
         filter_key: Filter identifier

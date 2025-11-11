@@ -1,0 +1,27 @@
+{
+  "corpora_ids": [
+    "somali-1993-94",
+    "somali-as-2016"
+  ],
+  "downloaded_at": "2025-11-02T07:11:04.269575+00:00",
+  "run_id": "20251102_071104_sprakbanken-somali_e6ab1bc9",
+  "corpora": [
+    {
+      "id": "somali-1993-94",
+      "file": "somali-1993-94.xml.bz2",
+      "url": "https://spraakbanken.gu.se/lb/resurser/meningsmangder/somali-1993-94.xml.bz2",
+      "size": 19918,
+      "domain": "general",
+      "period": "1993-1994"
+    },
+    {
+      "id": "somali-as-2016",
+      "file": "somali-as-2016.xml.bz2",
+      "url": "https://spraakbanken.gu.se/lb/resurser/meningsmangder/somali-as-2016.xml.bz2",
+      "size": 112165,
+      "domain": "general",
+      "period": "2016",
+      "region": "Somalia"
+    }
+  ]
+}

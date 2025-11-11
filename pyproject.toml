@@ -19,6 +19,9 @@ dependencies = [
   "feedparser>=6.0",  # RSS feed parsing for BBC scraping
   "datasketch>=1.6",  # MinHash LSH for near-duplicate detection
   "apify-client==1.7.1",  # Apify API client for TikTok scraping
+  "psycopg2-binary>=2.9.9",  # PostgreSQL driver for production scale
+  "sqlalchemy>=2.0.23",  # Connection pooling and ORM capabilities
+  "filelock>=3.13.1",  # File-based locking for concurrent access
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,12 @@
+{
+  "run_id": "QEG1Lc67r8FNVnvJu",
+  "started_at": "2025-11-10T15:30:18.932128+00:00",
+  "status": "SUCCEEDED",
+  "dataset_id": "GrMTSb32HLT1FfApf",
+  "completed_at": "2025-11-10T15:32:52.393875+00:00",
+  "stats": {
+    "items_count": 0,
+    "requests_count": 0,
+    "compute_units": 0.15783555555555556
+  }
+}

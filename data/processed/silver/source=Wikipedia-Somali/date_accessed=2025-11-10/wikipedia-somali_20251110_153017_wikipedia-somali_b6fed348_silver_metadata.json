@@ -1,0 +1,21 @@
+{
+  "run_id": "20251110_153017_wikipedia-somali_b6fed348",
+  "source": "Wikipedia-Somali",
+  "pipeline_version": "2.1.0",
+  "date_accessed": "2025-11-10",
+  "date_processed": "2025-11-10T15:30:37.711387+00:00",
+  "total_records": 9960,
+  "total_partitions": 1,
+  "schema_version": "2.1",
+  "checksums": {
+    "part-0000": {
+      "sha256": "fe3dd08e9e559aebe8385856ecb23321dc6af6baea56a5bb430c47bf6df132bb",
+      "size_bytes": 15957682,
+      "record_count": 9960
+    }
+  },
+  "statistics": {
+    "total_size_bytes": 15957682,
+    "avg_record_size_bytes": 1602.176907630522
+  }
+}

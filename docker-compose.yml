@@ -117,6 +117,38 @@ services:
     networks:
       - somali-nlp-network
 
+  # PostgreSQL service for production scale
+  postgres:
+    image: postgres:16-alpine
+    container_name: somali-nlp-postgres
+
+    profiles:
+      - prod
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-somali_nlp}
+      POSTGRES_USER: ${POSTGRES_USER:-somali}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-somali_dev_password}
+      POSTGRES_HOST_AUTH_METHOD: ${POSTGRES_AUTH_METHOD:-md5}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U somali -d somali_nlp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - somali-nlp-network
+
+    restart: unless-stopped
+
 # Named volumes for production data persistence
 volumes:
   data-volume:
@@ -124,6 +156,8 @@ volumes:
   logs-volume:
     driver: local
   dev-cache:
+    driver: local
+  postgres_data:
     driver: local
 
 # Network for container communication

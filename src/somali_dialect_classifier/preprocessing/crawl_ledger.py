@@ -11,10 +11,12 @@ Features:
 - RSS feed throttling for ethical scraping
 - Migration versioning system
 - Thread-safe operations
+- Backend selection (SQLite for dev, PostgreSQL for production)
 """
 
 import json
 import logging
+import os
 import sqlite3
 import threading
 import time
@@ -737,85 +739,6 @@ class SQLiteLedger(LedgerBackend):
             delattr(self._local, "conn")
 
 
-class PostgresLedger(LedgerBackend):
-    """
-    PostgreSQL implementation of crawl ledger.
-
-    For production deployments at scale.
-    Requires psycopg2 or asyncpg.
-    """
-
-    def __init__(self, connection_string: str):
-        """
-        Initialize PostgreSQL ledger.
-
-        Args:
-            connection_string: PostgreSQL connection string
-        """
-        raise NotImplementedError(
-            "PostgreSQL backend is a skeleton for future implementation. "
-            "Use SQLiteLedger for current production."
-        )
-
-    def initialize_schema(self, schema_version: int = 1) -> None:
-        """Initialize database schema."""
-        # Implementation would be similar to SQLite but with PostgreSQL syntax
-        # - Use JSONB for metadata field
-        # - Use proper timestamp types
-        # - Add partitioning by source/date for scale
-        pass
-
-    def upsert_url(self, url: str, source: str, state: CrawlState, **kwargs) -> None:
-        """Insert or update URL record."""
-        # Use PostgreSQL UPSERT (INSERT ... ON CONFLICT)
-        pass
-
-    def get_url_state(self, url: str) -> Optional[dict[str, Any]]:
-        """Get current state for URL."""
-        pass
-
-    def get_urls_by_state(
-        self, source: str, state: CrawlState, limit: Optional[int] = None
-    ) -> list[dict[str, Any]]:
-        """Get URLs in specific state."""
-        pass
-
-    def mark_url_state(
-        self, url: str, state: CrawlState, error_message: Optional[str] = None
-    ) -> None:
-        """Update URL state."""
-        pass
-
-    def check_duplicate_by_hash(self, text_hash: str) -> Optional[str]:
-        """Check if text hash already exists."""
-        pass
-
-    def check_near_duplicate_by_minhash(
-        self, minhash_signature: str, threshold: float = 0.85
-    ) -> Optional[list[tuple[str, float]]]:
-        """Check for near-duplicates using MinHash."""
-        # Could use PostgreSQL's pg_trgm extension for similarity
-        pass
-
-    def get_last_rss_fetch(self, feed_url: str) -> Optional[datetime]:
-        """Get last RSS feed fetch time."""
-        pass
-
-    def record_rss_fetch(self, feed_url: str, items_found: int) -> None:
-        """Record RSS feed fetch."""
-        pass
-
-    def get_statistics(self, source: Optional[str] = None) -> dict[str, Any]:
-        """Get ledger statistics."""
-        pass
-
-    def cleanup_old_entries(self, days: int = 30) -> int:
-        """Remove entries older than specified days."""
-        pass
-
-    def close(self) -> None:
-        """Close database connection."""
-        pass
 
 
 class CrawlLedger:
@@ -824,27 +747,84 @@ class CrawlLedger:
 
     Wraps backend implementation and provides convenience methods.
     Includes distributed locking to prevent race conditions in concurrent runs.
+
+    Supports multiple backends:
+    - SQLite (default for dev, single-threaded, file-based)
+    - PostgreSQL (production scale, concurrent writes, row-level locking)
     """
 
-    def __init__(self, backend: Optional[LedgerBackend] = None, db_path: Optional[Path] = None):
+    def __init__(
+        self,
+        backend: Optional[LedgerBackend] = None,
+        db_path: Optional[Path] = None,
+        backend_type: Optional[str] = None,
+        **backend_kwargs,
+    ):
         """
-        Initialize crawl ledger.
+        Initialize crawl ledger with auto-detected or explicit backend.
 
         Args:
-            backend: Backend implementation (None = SQLite default)
+            backend: Explicit backend implementation (overrides backend_type)
             db_path: Path for SQLite database (None = default location)
+            backend_type: Backend type ('sqlite' or 'postgres', None = auto-detect from env)
+            **backend_kwargs: Additional arguments for backend initialization
+
+        Environment Variables:
+            SDC_LEDGER_BACKEND: Backend selection (sqlite, postgres)
+            SDC_LEDGER_SQLITE_PATH: SQLite database path
+            POSTGRES_HOST: PostgreSQL host
+            POSTGRES_PORT: PostgreSQL port
+            POSTGRES_DB: PostgreSQL database name
+            POSTGRES_USER: PostgreSQL user
+            POSTGRES_PASSWORD: PostgreSQL password
         """
         if backend:
+            # Explicit backend provided
             self.backend = backend
+            self.backend_type = "custom"
         else:
-            # Default to SQLite
-            if db_path is None:
-                from ..config import get_config
+            # Auto-detect or explicit backend type
+            if backend_type is None:
+                backend_type = os.getenv("SDC_LEDGER_BACKEND", "sqlite")
 
-                config = get_config()
-                db_path = config.data.raw_dir.parent / "ledger" / "crawl_ledger.db"
+            self.backend_type = backend_type
 
-            self.backend = SQLiteLedger(db_path)
+            if backend_type == "sqlite":
+                # SQLite backend (default for dev)
+                if db_path is None:
+                    db_path_env = os.getenv("SDC_LEDGER_SQLITE_PATH")
+                    if db_path_env:
+                        db_path = Path(db_path_env)
+                    else:
+                        from ..config import get_config
+
+                        config = get_config()
+                        db_path = config.data.raw_dir.parent / "ledger" / "crawl_ledger.db"
+
+                self.backend = SQLiteLedger(db_path)
+                logger.info(f"Using SQLite backend: {db_path}")
+
+            elif backend_type == "postgres":
+                # PostgreSQL backend (production scale)
+                from ..database.postgres_ledger import PostgresLedger
+
+                host = backend_kwargs.get("host", os.getenv("POSTGRES_HOST", "localhost"))
+                port = backend_kwargs.get("port", int(os.getenv("POSTGRES_PORT", "5432")))
+                database = backend_kwargs.get("database", os.getenv("POSTGRES_DB", "somali_nlp"))
+                user = backend_kwargs.get("user", os.getenv("POSTGRES_USER", "somali"))
+                password = backend_kwargs.get(
+                    "password", os.getenv("POSTGRES_PASSWORD", "somali_dev_password")
+                )
+
+                self.backend = PostgresLedger(
+                    host=host, port=port, database=database, user=user, password=password
+                )
+                logger.info(f"Using PostgreSQL backend: {host}:{port}/{database}")
+
+            else:
+                raise ValueError(
+                    f"Unknown backend type: {backend_type}. Use 'sqlite' or 'postgres'"
+                )
 
         self.logger = logging.getLogger(__name__)
         self.lock_manager = LockManager()

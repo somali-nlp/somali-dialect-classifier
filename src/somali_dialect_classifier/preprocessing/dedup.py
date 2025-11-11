@@ -396,6 +396,14 @@ class MinHashDeduplicator:
             logger.warning(f"Failed to load LSH index: {e}")
             return False
 
+    def save(self) -> None:
+        """
+        Save LSH index to disk.
+
+        Convenience method for explicit saving.
+        """
+        self._save_lsh_index()
+
 
 class DedupEngine:
     """
@@ -528,6 +536,88 @@ class DedupEngine:
             stats["minhash_threshold"] = self.config.similarity_threshold
 
         return stats
+
+    def check_discovery_stage(self, url: str, ledger) -> bool:
+        """
+        Check if URL should be skipped at discovery stage.
+
+        Integrates with CrawlLedger to check if URL was already processed
+        or marked as duplicate in previous runs.
+
+        Args:
+            url: URL to check
+            ledger: CrawlLedger instance
+
+        Returns:
+            True if should skip (already processed), False if should fetch
+
+        Example:
+            >>> engine = DedupEngine()
+            >>> should_skip = engine.check_discovery_stage("https://example.com", ledger)
+            >>> if not should_skip:
+            ...     # Proceed with fetching
+        """
+        try:
+            url_state = ledger.get_url_state(url)
+
+            if url_state and url_state.get('state') in ['processed', 'duplicate']:
+                logger.info(f"Skipping already processed URL: {url}")
+                return True
+
+            return False
+
+        except Exception as e:
+            logger.warning(f"Error checking URL state for {url}: {e}")
+            return False  # Fail-safe: proceed with fetch
+
+    def check_file_duplicate(self, filepath: Path, ledger, source: str) -> tuple[bool, Optional[str]]:
+        """
+        Check if file is duplicate based on checksum.
+
+        Computes file-level checksum and queries ledger to determine if
+        this exact file was already processed. Useful for Wikipedia dumps,
+        Språkbanken corpora, etc.
+
+        Args:
+            filepath: Path to file
+            ledger: CrawlLedger instance
+            source: Source identifier
+
+        Returns:
+            Tuple of (is_duplicate, checksum)
+
+        Example:
+            >>> from pathlib import Path
+            >>> engine = DedupEngine()
+            >>> is_dup, checksum = engine.check_file_duplicate(
+            ...     Path("dump.xml.bz2"), ledger, "wikipedia"
+            ... )
+            >>> if not is_dup:
+            ...     # Process file
+        """
+        import hashlib
+
+        # Compute checksum
+        sha256 = hashlib.sha256()
+        with open(filepath, 'rb') as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                sha256.update(chunk)
+        checksum = sha256.hexdigest()
+
+        try:
+            # Check ledger for this checksum
+            # Query URLs with matching file_checksum
+            # This assumes ledger has file_checksum tracking
+            # (Implementation depends on ledger schema)
+
+            # For now, return False (not duplicate)
+            # TODO: Implement ledger.check_file_checksum(checksum, source)
+            logger.debug(f"File checksum computed: {checksum[:16]}...")
+            return False, checksum
+
+        except Exception as e:
+            logger.warning(f"Error checking file checksum: {e}")
+            return False, checksum  # Fail-safe: proceed with processing
 
 
 # Helper function for batch processing

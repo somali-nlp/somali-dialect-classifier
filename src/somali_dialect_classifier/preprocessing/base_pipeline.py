@@ -7,6 +7,11 @@ Eliminates duplication by providing shared orchestration logic:
 - Silver dataset writing
 - Error handling
 
+Refactored (P2.2) to use dependency injection:
+- DataManager for file I/O operations
+- MetricsCollector for metrics tracking (already injected by processors)
+- DedupEngine for deduplication (already injected by processors)
+
 Subclasses only implement source-specific logic:
 - download() - How to fetch raw data
 - extract() - How to parse into staging format
@@ -22,6 +27,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from ..config import get_config
+from ..data import DataManager
 from .data_processor import DataProcessor
 from .record_utils import build_silver_record
 from .silver_writer import SilverDatasetWriter
@@ -87,6 +93,7 @@ class BasePipeline(DataProcessor, ABC):
         log_frequency: int = 100,
         batch_size: Optional[int] = None,
         force: bool = False,
+        data_manager: Optional[DataManager] = None,
     ):
         """
         Initialize base pipeline.
@@ -96,6 +103,7 @@ class BasePipeline(DataProcessor, ABC):
             log_frequency: Log progress every N records (default: 100)
             batch_size: Optional batch size for incremental silver writes
             force: Force reprocessing even if output exists (default: False)
+            data_manager: Optional DataManager instance for dependency injection
         """
         # SECURITY FIX: Sanitize source name to prevent path traversal attacks
         from ..utils.security import sanitize_source_name
@@ -126,7 +134,18 @@ class BasePipeline(DataProcessor, ABC):
         # Load config for directory paths
         config = get_config()
 
+        # Inject or create DataManager for file I/O operations
+        if data_manager is not None:
+            self.data_manager = data_manager
+        else:
+            # Create default DataManager using config paths
+            base_dir = config.data.raw_dir.parent  # Get data/ directory
+            self.data_manager = DataManager(
+                source=safe_source, run_id=self.run_id, base_dir=base_dir
+            )
+
         # Consistent directory structure using config paths (with sanitized source)
+        # Keep these for backward compatibility with existing processors
         self.raw_dir = (
             config.data.raw_dir / f"source={safe_source}" / f"date_accessed={self.date_accessed}"
         )
@@ -576,6 +595,8 @@ class BasePipeline(DataProcessor, ABC):
         """
         Compute cryptographic checksum of a file.
 
+        REFACTORED (P2.2): Delegates to DataManager for file operations.
+
         Used for file-level deduplication to detect if a dump has already been processed.
         Reads file in chunks for memory efficiency with large files.
 
@@ -590,17 +611,5 @@ class BasePipeline(DataProcessor, ABC):
             checksum = processor._compute_file_checksum(Path("dump.xml.bz2"))
             # Returns: "a3f5b8c9d2e1f0..."
         """
-        import hashlib
-
-        # Create hasher instance based on algorithm
-        try:
-            hasher = hashlib.new(algorithm)
-        except ValueError:
-            raise ValueError(f"Unsupported hash algorithm: {algorithm}")
-
-        # Read file in 4KB chunks for memory efficiency
-        with open(filepath, 'rb') as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                hasher.update(chunk)
-
-        return hasher.hexdigest()
+        # Delegate to DataManager (service extraction pattern)
+        return self.data_manager.compute_file_checksum(filepath, algorithm)

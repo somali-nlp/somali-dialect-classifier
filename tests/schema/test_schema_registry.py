@@ -137,7 +137,8 @@ class TestSchemaV1_0Validation:
         for register in valid_registers:
             valid_record["register"] = register
             record = SchemaV1_0(**valid_record)
-            assert record.register == register
+            # Use linguistic_register to access the field
+            assert record.linguistic_register == register
 
     def test_invalid_language_rejected(self, valid_record):
         """Test invalid language code is rejected."""
@@ -156,7 +157,8 @@ class TestSchemaV1_0Validation:
     def test_negative_tokens_rejected(self, valid_record):
         """Test negative token count is rejected."""
         valid_record["tokens"] = -1
-        with pytest.raises(ValidationError, match="tokens cannot be negative"):
+        # Updated regex to match Pydantic v2 error message
+        with pytest.raises(ValidationError, match="greater than or equal to 0"):
             SchemaV1_0(**valid_record)
 
     def test_excessive_tokens_rejected(self, valid_record):
@@ -207,13 +209,15 @@ class TestSchemaV1_0Validation:
     def test_extra_fields_rejected(self, valid_record):
         """Test extra fields are rejected (strict validation)."""
         valid_record["extra_field"] = "not allowed"
-        with pytest.raises(ValidationError, match="extra fields not permitted"):
+        # Updated regex to match Pydantic v2 error message
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
             SchemaV1_0(**valid_record)
 
     def test_missing_required_field_rejected(self, valid_record):
         """Test missing required field is rejected."""
         del valid_record["text"]
-        with pytest.raises(ValidationError, match="field required"):
+        # Updated regex to match Pydantic v2 error message
+        with pytest.raises(ValidationError, match="Field required"):
             SchemaV1_0(**valid_record)
 
     def test_schema_version_defaults_to_1_0(self, valid_record):
