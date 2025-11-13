@@ -246,6 +246,40 @@ class LedgerBackend(ABC):
         pass
 
     @abstractmethod
+    def get_daily_quota_usage(self, source: str, date: Optional[str] = None) -> dict[str, Any]:
+        """Get daily quota usage for a source."""
+        pass
+
+    @abstractmethod
+    def increment_daily_quota(
+        self,
+        source: str,
+        count: int = 1,
+        quota_limit: Optional[int] = None,
+        date: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Increment daily quota counter."""
+        pass
+
+    @abstractmethod
+    def mark_quota_hit(
+        self,
+        source: str,
+        items_remaining: int,
+        quota_limit: int,
+        date: Optional[str] = None,
+    ) -> None:
+        """Mark that daily quota has been reached."""
+        pass
+
+    @abstractmethod
+    def check_quota_available(
+        self, source: str, quota_limit: Optional[int] = None, date: Optional[str] = None
+    ) -> tuple[bool, int]:
+        """Check if quota is still available."""
+        pass
+
+    @abstractmethod
     def close(self) -> None:
         """Close database connection."""
         pass
@@ -385,6 +419,20 @@ class SQLiteLedger(LedgerBackend):
             )
         """)
 
+        # Daily quota tracking table for rate limiting
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS daily_quotas (
+                date TEXT NOT NULL,
+                source TEXT NOT NULL,
+                records_ingested INTEGER DEFAULT 0,
+                quota_limit INTEGER,
+                quota_hit BOOLEAN DEFAULT 0,
+                items_remaining INTEGER,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (date, source)
+            )
+        """)
+
         # Create indexes for performance
         conn.execute("CREATE INDEX IF NOT EXISTS idx_source_state ON crawl_ledger(source, state)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_text_hash ON crawl_ledger(text_hash)")
@@ -392,6 +440,7 @@ class SQLiteLedger(LedgerBackend):
         conn.execute("CREATE INDEX IF NOT EXISTS idx_silver_id ON crawl_ledger(silver_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_discovered_at ON crawl_ledger(discovered_at)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_updated_at ON crawl_ledger(updated_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_quota_date ON daily_quotas(date, source)")
 
     def upsert_url(
         self,
@@ -731,6 +780,148 @@ class SQLiteLedger(LedgerBackend):
             )
 
             return result.rowcount
+
+    def get_daily_quota_usage(self, source: str, date: Optional[str] = None) -> dict[str, Any]:
+        """
+        Get daily quota usage for a source on a specific date.
+
+        Args:
+            source: Source identifier (bbc, huggingface, sprakbanken)
+            date: Date string in YYYY-MM-DD format (None = today UTC)
+
+        Returns:
+            Dictionary with quota usage stats
+        """
+        if date is None:
+            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        result = self.connection.execute(
+            """
+            SELECT records_ingested, quota_limit, quota_hit, items_remaining
+            FROM daily_quotas
+            WHERE date = ? AND source = ?
+            """,
+            (date, source),
+        ).fetchone()
+
+        if result:
+            return {
+                "date": date,
+                "source": source,
+                "records_ingested": result["records_ingested"],
+                "quota_limit": result["quota_limit"],
+                "quota_hit": bool(result["quota_hit"]),
+                "items_remaining": result["items_remaining"],
+            }
+        return {
+            "date": date,
+            "source": source,
+            "records_ingested": 0,
+            "quota_limit": None,
+            "quota_hit": False,
+            "items_remaining": None,
+        }
+
+    def increment_daily_quota(
+        self,
+        source: str,
+        count: int = 1,
+        quota_limit: Optional[int] = None,
+        date: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Increment daily quota counter for a source.
+
+        Args:
+            source: Source identifier
+            count: Number of records to add (default: 1)
+            quota_limit: Daily quota limit (None = unlimited)
+            date: Date string in YYYY-MM-DD format (None = today UTC)
+
+        Returns:
+            Updated quota usage stats
+        """
+        if date is None:
+            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        now = datetime.now(timezone.utc)
+
+        with self.transaction() as conn:
+            # Upsert quota record
+            conn.execute(
+                """
+                INSERT INTO daily_quotas (date, source, records_ingested, quota_limit, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(date, source) DO UPDATE SET
+                    records_ingested = records_ingested + excluded.records_ingested,
+                    quota_limit = COALESCE(excluded.quota_limit, quota_limit),
+                    updated_at = excluded.updated_at
+                """,
+                (date, source, count, quota_limit, now.isoformat()),
+            )
+
+        # Return updated stats
+        return self.get_daily_quota_usage(source, date)
+
+    def mark_quota_hit(
+        self,
+        source: str,
+        items_remaining: int,
+        quota_limit: int,
+        date: Optional[str] = None,
+    ) -> None:
+        """
+        Mark that daily quota has been reached for a source.
+
+        Args:
+            source: Source identifier
+            items_remaining: Number of items not processed due to quota
+            quota_limit: Quota limit that was hit
+            date: Date string in YYYY-MM-DD format (None = today UTC)
+        """
+        if date is None:
+            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        now = datetime.now(timezone.utc)
+
+        with self.transaction() as conn:
+            conn.execute(
+                """
+                UPDATE daily_quotas SET
+                    quota_hit = 1,
+                    items_remaining = ?,
+                    quota_limit = ?,
+                    updated_at = ?
+                WHERE date = ? AND source = ?
+                """,
+                (items_remaining, quota_limit, now.isoformat(), date, source),
+            )
+
+    def check_quota_available(
+        self, source: str, quota_limit: Optional[int] = None, date: Optional[str] = None
+    ) -> tuple[bool, int]:
+        """
+        Check if quota is still available for a source.
+
+        Args:
+            source: Source identifier
+            quota_limit: Daily quota limit (None = unlimited)
+            date: Date string in YYYY-MM-DD format (None = today UTC)
+
+        Returns:
+            Tuple of (has_quota: bool, remaining: int)
+        """
+        if quota_limit is None:
+            return True, -1  # Unlimited
+
+        if date is None:
+            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        usage = self.get_daily_quota_usage(source, date)
+        used = usage["records_ingested"]
+        remaining = quota_limit - used
+
+        return remaining > 0, max(0, remaining)
 
     def close(self) -> None:
         """Close database connection."""
@@ -1093,6 +1284,96 @@ class CrawlLedger:
             max_age_hours: Maximum age of lock files in hours (default: 24)
         """
         self.lock_manager.cleanup_stale_locks(max_age_hours)
+
+    # Quota tracking methods
+    def get_daily_quota_usage(self, source: str, date: Optional[str] = None) -> dict[str, Any]:
+        """
+        Get daily quota usage for a source.
+
+        Args:
+            source: Source identifier (bbc, huggingface, sprakbanken)
+            date: Date string in YYYY-MM-DD format (None = today UTC)
+
+        Returns:
+            Dictionary with quota usage stats
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> usage = ledger.get_daily_quota_usage("bbc")
+            >>> print(f"Used {usage['records_ingested']} of {usage['quota_limit']}")
+        """
+        return self.backend.get_daily_quota_usage(source, date)
+
+    def increment_daily_quota(
+        self,
+        source: str,
+        count: int = 1,
+        quota_limit: Optional[int] = None,
+        date: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Increment daily quota counter for a source.
+
+        Args:
+            source: Source identifier
+            count: Number of records to add (default: 1)
+            quota_limit: Daily quota limit (None = unlimited)
+            date: Date string in YYYY-MM-DD format (None = today UTC)
+
+        Returns:
+            Updated quota usage stats
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> usage = ledger.increment_daily_quota("bbc", count=10, quota_limit=350)
+            >>> print(f"Quota: {usage['records_ingested']}/{usage['quota_limit']}")
+        """
+        return self.backend.increment_daily_quota(source, count, quota_limit, date)
+
+    def mark_quota_hit(
+        self,
+        source: str,
+        items_remaining: int,
+        quota_limit: int,
+        date: Optional[str] = None,
+    ) -> None:
+        """
+        Mark that daily quota has been reached for a source.
+
+        Args:
+            source: Source identifier
+            items_remaining: Number of items not processed due to quota
+            quota_limit: Quota limit that was hit
+            date: Date string in YYYY-MM-DD format (None = today UTC)
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> ledger.mark_quota_hit("bbc", items_remaining=127, quota_limit=350)
+        """
+        self.backend.mark_quota_hit(source, items_remaining, quota_limit, date)
+
+    def check_quota_available(
+        self, source: str, quota_limit: Optional[int] = None, date: Optional[str] = None
+    ) -> tuple[bool, int]:
+        """
+        Check if quota is still available for a source.
+
+        Args:
+            source: Source identifier
+            quota_limit: Daily quota limit (None = unlimited)
+            date: Date string in YYYY-MM-DD format (None = today UTC)
+
+        Returns:
+            Tuple of (has_quota: bool, remaining: int)
+            remaining is -1 if unlimited
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> has_quota, remaining = ledger.check_quota_available("bbc", quota_limit=350)
+            >>> if not has_quota:
+            ...     print("Daily quota reached!")
+        """
+        return self.backend.check_quota_available(source, quota_limit, date)
 
     def close(self) -> None:
         """Close ledger connection."""
