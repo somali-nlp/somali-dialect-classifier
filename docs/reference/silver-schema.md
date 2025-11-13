@@ -32,6 +32,50 @@ The silver dataset uses a standardized Parquet schema for all data sources with 
 | 1.1 | Q1 2026 | Add `confidence_scores` field (optional quality metrics) | No |
 | 2.0 | Q2 2026 | Add `dialect_label` and `dialect_confidence` fields (required) | Yes |
 
+##  Schema Version Fields Clarification
+
+**IMPORTANT**: The schema uses two distinct version fields that serve different purposes:
+
+### Record `schema_version` Field
+
+- **Location**: `schema_version` column in Parquet records
+- **Purpose**: Tracks the schema version of the **data record itself**
+- **Current Value**: `"1.0"`
+- **Scope**: Record-level field
+- **Example**:
+  ```python
+  {
+    "id": "abc123...",
+    "text": "Sample text",
+    "schema_version": "1.0",  # <-- Record schema version
+    "run_id": "20251113_143045"
+  }
+  ```
+
+### Sidecar `sidecar_format_version` Field
+
+- **Location**: `sidecar_format_version` field in metadata JSON sidecar files
+- **Purpose**: Tracks the schema version of the **sidecar file format**
+- **Current Value**: `"1.0"`
+- **Scope**: Sidecar file-level field
+- **Example**:
+  ```json
+  {
+    "run_id": "20251113_143045",
+    "source": "Wikipedia-Somali",
+    "sidecar_format_version": "1.0",  // <-- Sidecar schema version
+    "total_records": 50000,
+    "checksums": {...}
+  }
+  ```
+
+**Why Two Version Fields?**
+- **Separation of concerns**: Record schema evolution is independent of sidecar format evolution
+- **Prevents collision**: Both can evolve independently without version conflicts
+- **Clarity**: Makes it explicit which schema (data vs. metadata) is being referenced
+
+**Migration Note**: These fields were disambiguated in Phase B (2025-11-13) to prevent schema version collisions.
+
 ## Current Schema Version: 1.0
 
 **Format**: Apache Parquet
@@ -112,12 +156,50 @@ pa.schema([
 - **Description**: Human-readable source identifier
 - **Format**: `Source-Language[_variant]`
 - **Examples**:
-  - `"Wikipedia-Somali"`
-  - `"BBC-Somali"`
-  - `"Sprakbanken-Somali"` (consistent across all 23 corpora)
-  - `"HuggingFace-Somali_c4-so"`
+  - `"Wikipedia-Somali"` - Wikipedia encyclopedia
+  - `"BBC-Somali"` - BBC Somali news service
+  - `"Sprakbanken-Somali"` - Språkbanken corpora (consistent across all 23 corpora)
+  - `"HuggingFace-Somali_c4-so"` - HuggingFace MC4 dataset
+  - `"TikTok-Somali"` - TikTok comments (social media)
 - **Purpose**: Distinguishes data origin, enables source-level filtering
 - **Note**: For Språkbanken, the corpus ID is stored in `source_id` field for easy querying
+
+### Source Naming Policy
+
+**All sources must follow these standardized naming conventions** (enforced in Phase A, 2025-11-13):
+
+| Source | `source` Field Value | `source_type` Value | Notes |
+|--------|---------------------|---------------------|-------|
+| **Wikipedia** | `"Wikipedia-Somali"` | `"wiki"` | No prefix, consistent case |
+| **BBC Somali** | `"BBC-Somali"` | `"news"` | Uppercase "BBC", hyphen separator |
+| **Språkbanken** | `"Sprakbanken-Somali"` | `"corpus"` | Use "Sprakbanken", not "sprakbanken" |
+| **HuggingFace** | `"HuggingFace-Somali_*"` | `"web"` | **MUST use prefix** `"HuggingFace-Somali"` |
+| **TikTok** | `"TikTok-Somali"` | `"social"` | **NOT** `"social_media"` |
+
+**HuggingFace Prefix Requirement**:
+- **MANDATORY**: All HuggingFace datasets must use the prefix `"HuggingFace-Somali"`
+- **Examples**:
+  - ✅ `"HuggingFace-Somali_mc4-so"` - Correct
+  - ✅ `"HuggingFace-Somali_opus"` - Correct
+  - ❌ `"HuggingFace_mc4-so"` - WRONG (missing "Somali")
+  - ❌ `"mc4-so"` - WRONG (missing prefix)
+  - ❌ `"hf-mc4-so"` - WRONG (use full "HuggingFace-Somali")
+
+**TikTok `source_type` Clarification**:
+- **MUST use**: `"social"` (not `"social_media"`)
+- **Rationale**: Consistent with existing source type taxonomy
+- **Example**: `{"source": "TikTok-Somali", "source_type": "social"}`
+
+**Validation**:
+- Source names are validated during silver dataset writing
+- Incorrect names will raise `ValueError` with helpful error message
+- Fixed in Phase A (2025-11-13) to ensure consistency
+
+**Why This Matters**:
+- Enables reliable filtering and aggregation
+- Prevents duplicate entries with variant names
+- Ensures dashboard and analytics work correctly
+- Maintains data lineage clarity
 
 #### `source_type` (string, required)
 - **Description**: Category of source
@@ -782,6 +864,157 @@ For existing v1.0 and v2.0 silver datasets:
 - BBC sources → `"formal"`
 - HuggingFace sources → `"formal"` (for web/corpus), `"informal"` (for social media)
 - Språkbanken sources → `"formal"`
+
+## Complete Record Examples by Source
+
+Below are complete silver record examples for all 5 data sources, highlighting the correct `source` and `source_type` field values:
+
+### Example 1: Wikipedia
+
+```python
+{
+    "id": "a1b2c3d4e5f6...",
+    "text": "Soomaaliya waa waddan ku yaal Geeska Afrika...",
+    "title": "Soomaaliya",
+    "source": "Wikipedia-Somali",  # Correct naming
+    "source_type": "wiki",
+    "url": "https://so.wikipedia.org/wiki/Soomaaliya",
+    "source_id": None,
+    "date_published": None,
+    "date_accessed": "2025-11-13",
+    "language": "so",
+    "license": "CC-BY-SA-3.0",
+    "topic": None,
+    "tokens": 850,
+    "text_hash": "abc123...",
+    "pipeline_version": "2.1.0",
+    "source_metadata": '{"wiki_code": "sowiki", "dump_url": "..."}',
+    "domain": "encyclopedia",
+    "embedding": None,
+    "register": "formal",
+    "schema_version": "1.0",
+    "run_id": "20251113_143045"
+}
+```
+
+### Example 2: BBC Somali
+
+```python
+{
+    "id": "def456789...",
+    "text": "Madaxweynaha Soomaaliya ayaa maanta...",
+    "title": "Madaxweynaha oo magaalada booqday",
+    "source": "BBC-Somali",  # Correct naming
+    "source_type": "news",
+    "url": "https://www.bbc.com/somali/articles/c123xyz",
+    "source_id": None,
+    "date_published": "2025-11-12",
+    "date_accessed": "2025-11-13",
+    "language": "so",
+    "license": "BBC Terms of Use",
+    "topic": "politics",
+    "tokens": 450,
+    "text_hash": "def456...",
+    "pipeline_version": "2.1.0",
+    "source_metadata": '{"category": "news", "scraped_at": "2025-11-13T10:30:00Z"}',
+    "domain": "news",
+    "embedding": None,
+    "register": "formal",
+    "schema_version": "1.0",
+    "run_id": "20251113_150230"
+}
+```
+
+### Example 3: Språkbanken
+
+```python
+{
+    "id": "ghi789abc...",
+    "text": "Cilmiga taarikhda ayaa ah...",
+    "title": "Cilmi: Historical science",
+    "source": "Sprakbanken-Somali",  # Correct naming (note: "Sprakbanken", not "sprakbanken")
+    "source_type": "corpus",
+    "url": "https://spraakbanken.gu.se/korp/?corpus=somali-cilmi",
+    "source_id": "cilmi",  # Corpus ID for filtering
+    "date_published": None,
+    "date_accessed": "2025-11-13",
+    "language": "so",
+    "license": "CC BY 4.0",
+    "topic": "science",
+    "tokens": 1200,
+    "text_hash": "ghi789...",
+    "pipeline_version": "2.1.0",
+    "source_metadata": '{"repository": "Språkbanken", "corpus_id": "cilmi", "domain": "science"}',
+    "domain": "science",
+    "embedding": None,
+    "register": "formal",
+    "schema_version": "1.0",
+    "run_id": "20251113_160000"
+}
+```
+
+### Example 4: HuggingFace (MC4)
+
+```python
+{
+    "id": "jkl012def...",
+    "text": "Wadanka Soomaaliya wuxuu ku yaalaa bariga Afrika...",
+    "title": "Web document about Somalia",
+    "source": "HuggingFace-Somali_mc4-so",  # MUST use prefix "HuggingFace-Somali"
+    "source_type": "web",
+    "url": "hf://allenai/c4/so",
+    "source_id": None,
+    "date_published": None,
+    "date_accessed": "2025-11-13",
+    "language": "so",
+    "license": "ODC-BY-1.0",
+    "topic": None,
+    "tokens": 680,
+    "text_hash": "jkl012...",
+    "pipeline_version": "2.1.0",
+    "source_metadata": '{"dataset": "allenai/c4", "config": "so", "split": "train"}',
+    "domain": "web",
+    "embedding": None,
+    "register": "formal",
+    "schema_version": "1.0",
+    "run_id": "20251113_153000"
+}
+```
+
+### Example 5: TikTok
+
+```python
+{
+    "id": "mno345ghi...",
+    "text": "Waan ku faraxsanahay in aan arko dadka wanaagsan...",
+    "title": "Comment on TikTok video",
+    "source": "TikTok-Somali",  # Correct naming
+    "source_type": "social",  # MUST be "social", NOT "social_media"
+    "url": "https://www.tiktok.com/@user/video/123456789",
+    "source_id": None,
+    "date_published": "2025-11-12T15:30:00Z",
+    "date_accessed": "2025-11-13",
+    "language": "so",
+    "license": "TikTok Terms of Service",
+    "topic": None,
+    "tokens": 85,
+    "text_hash": "mno345...",
+    "pipeline_version": "2.1.0",
+    "source_metadata": '{"comment_id": "987654321", "video_url": "..."}',
+    "domain": "social_media",
+    "embedding": None,
+    "register": "informal",
+    "schema_version": "1.0",
+    "run_id": "20251113_170000"
+}
+```
+
+**Key Observations**:
+- **Wikipedia**: `source_type="wiki"`, no `source_id`
+- **BBC**: `source_type="news"`, includes `date_published` and `topic`
+- **Språkbanken**: `source_type="corpus"`, uses `source_id` for corpus filtering
+- **HuggingFace**: **MUST use prefix** `"HuggingFace-Somali_*"`, `source_type="web"`
+- **TikTok**: `source_type="social"` (**NOT** `"social_media"`), shorter text, `register="informal"`
 
 ## Partitioning
 

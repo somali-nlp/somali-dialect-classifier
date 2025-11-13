@@ -222,9 +222,10 @@ The primary bottleneck is BBC's server processing time (~45-55s per article), no
 
 1. **min_length_filter** (threshold=50)
 2. **langid_filter** (confidence=0.5)
-3. **dialect_heuristic_filter** (enrich_only=True) - Adds topic metadata:
+3. **topic_lexicon_enrichment_filter** (enrich_only=True) - Adds topic metadata:
    - Sports articles: `{"primary_dialect": "sports", "dialect_markers": {"sports": 3}}`
    - Politics articles: `{"primary_dialect": "politics", ...}`
+   - Note: Field names use "dialect" for backward compatibility, but actually represent topics
 
 ### Topic Lexicons
 
@@ -965,6 +966,58 @@ python scripts/export_filter_catalog.py
 # Output: dashboard/data/filter_catalog.json
 ```
 
+### Filter Registration
+
+**IMPORTANT:** Filters must be registered using the correct signature pattern. The `FilterEngine.register_filter()` method expects separate parameters, not tuples.
+
+**Correct Pattern:**
+```python
+from somali_dialect_classifier.preprocessing.filters import (
+    min_length_filter,
+    langid_filter,
+    topic_lexicon_enrichment_filter
+)
+
+class BBCSomaliProcessor(BasePipeline):
+    def _register_filters(self):
+        """Register filters with correct signature."""
+        # CORRECT: Pass function and kwargs separately
+        self.filter_engine.register_filter(
+            min_length_filter,
+            {"threshold": 50}
+        )
+
+        self.filter_engine.register_filter(
+            langid_filter,
+            {"allowed_langs": {"so"}, "confidence_threshold": 0.5}
+        )
+
+        self.filter_engine.register_filter(
+            topic_lexicon_enrichment_filter,
+            {"ruleset": topic_lexicons, "enrich_only": True}
+        )
+```
+
+**Incorrect Pattern (DO NOT USE):**
+```python
+# WRONG: Do not pass tuples
+self.filter_engine.register_filter((min_length_filter, {"threshold": 50}))
+
+# WRONG: Do not unpack tuples in for loop
+filters = [
+    (min_length_filter, {"threshold": 50}),
+    (langid_filter, {"allowed_langs": {"so"}})
+]
+for filter_spec in filters:
+    self.filter_engine.register_filter(filter_spec)  # WRONG!
+```
+
+**Why This Matters:**
+- Incorrect registration causes filters to fail silently
+- Metrics will show incorrect filter statistics
+- Records that should be filtered may pass through
+- Fixed in Phase A of Stage 1 implementation (2025-11-13)
+
 ### Adding New Filters
 
 To add a new filter and have it tracked in telemetry:
@@ -990,10 +1043,14 @@ def apply_my_new_filter(text):
     return text
 ```
 
-**Step 3:** Add to processor pipeline
+**Step 3:** Register filter in processor
 ```python
-# Ensure the filter is called during quality validation phase
-text = self.apply_my_new_filter(text)
+def _register_filters(self):
+    # CORRECT: Separate parameters
+    self.filter_engine.register_filter(
+        my_new_filter,
+        {"param1": value1, "param2": value2}
+    )
 ```
 
 **Step 4:** Update dashboard labels
@@ -1019,7 +1076,7 @@ const FILTER_REASON_LABELS = {
       "filter_breakdown": {
         "min_length_filter": 45,
         "langid_filter": 15,
-        "dialect_heuristic_filter": 10
+        "topic_lexicon_enrichment_filter": 10
       }
     }
   }

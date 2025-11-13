@@ -26,7 +26,7 @@ Filters are stateless functions that validate and enrich records during pipeline
 - [Built-in Filters](#built-in-filters)
   - [min_length_filter](#min_length_filter)
   - [langid_filter](#langid_filter)
-  - [dialect_heuristic_filter](#dialect_heuristic_filter)
+  - [topic_lexicon_enrichment_filter](#topic_lexicon_enrichment_filter)
   - [namespace_filter](#namespace_filter)
   - [custom_filter](#custom_filter)
 - [Convenience Constructors](#convenience-constructors)
@@ -263,14 +263,16 @@ The filter recognizes 120+ common Somali words including:
 
 ---
 
-### dialect_heuristic_filter
+### topic_lexicon_enrichment_filter
 
-Enriches metadata with dialect markers based on lexicon matching.
+Enriches metadata with topic markers based on lexicon matching. Previously named `dialect_heuristic_filter` (renamed in Phase B, 2025-11-13).
+
+**Important**: This filter performs **topic classification**, not dialect detection. It uses lexicon-based matching to identify subject matter (sports, politics, economy, etc.). The metadata field names include "dialect" for backward compatibility, but semantically represent topics.
 
 #### Signature
 
 ```python
-def dialect_heuristic_filter(
+def topic_lexicon_enrichment_filter(
     cleaned_text: str,
     ruleset: Dict[str, List[str]],
     enrich_only: bool = True
@@ -309,7 +311,7 @@ def dialect_heuristic_filter(
 ##### Basic Topic Enrichment
 
 ```python
-from somali_dialect_classifier.preprocessing.filters import dialect_heuristic_filter
+from somali_dialect_classifier.preprocessing.filters import topic_lexicon_enrichment_filter
 
 # Define topic ruleset
 topics = {
@@ -320,7 +322,7 @@ topics = {
 
 # Sports article
 sports_text = "Ciyaaryahan kubadda cagta ayaa gool dhalay xilli koowaad"
-passes, meta = dialect_heuristic_filter(sports_text, topics)
+passes, meta = topic_lexicon_enrichment_filter(sports_text, topics)
 
 assert passes == True  # Always passes in enrich_only mode
 assert meta["primary_dialect"] == "sports"
@@ -329,12 +331,12 @@ assert meta["total_dialect_markers"] >= 2
 
 # Political article
 politics_text = "Dowladda waxay sheegtay in xubnaha baarlamaanka ay..."
-passes, meta = dialect_heuristic_filter(politics_text, topics)
+passes, meta = topic_lexicon_enrichment_filter(politics_text, topics)
 assert meta["primary_dialect"] == "politics"
 
 # Mixed content
 mixed_text = "Madaxweynaha wuxuu daawatay ciyaartii kubadda"
-passes, meta = dialect_heuristic_filter(mixed_text, topics)
+passes, meta = topic_lexicon_enrichment_filter(mixed_text, topics)
 # primary_dialect will be whichever has more markers
 ```
 
@@ -342,7 +344,7 @@ passes, meta = dialect_heuristic_filter(mixed_text, topics)
 
 ```python
 # Require at least one marker
-passes, meta = dialect_heuristic_filter(
+passes, meta = topic_lexicon_enrichment_filter(
     "Generic text with no markers",
     ruleset=topics,
     enrich_only=False
@@ -362,7 +364,7 @@ dialects = {
 }
 
 text = "Magaalada Kismaayo oo ku taalo Jubbada Hoose"
-passes, meta = dialect_heuristic_filter(text, dialects)
+passes, meta = topic_lexicon_enrichment_filter(text, dialects)
 assert meta["primary_dialect"] == "southern"
 ```
 
@@ -700,7 +702,7 @@ def create_news_filters(
 **Filters Included**:
 1. `min_length_filter` (threshold=min_length)
 2. `langid_filter` (allowed_langs={"so"}, confidence=0.5)
-3. `dialect_heuristic_filter` (if ruleset provided, enrich_only=True)
+3. `topic_lexicon_enrichment_filter` (if ruleset provided, enrich_only=True)
 
 **Example**:
 ```python
@@ -743,22 +745,33 @@ from somali_dialect_classifier.preprocessing.base_pipeline import BasePipeline
 from somali_dialect_classifier.preprocessing.filters import (
     min_length_filter,
     langid_filter,
-    dialect_heuristic_filter
+    topic_lexicon_enrichment_filter
 )
 
 class BBCSomaliProcessor(BasePipeline):
     def _register_filters(self):
+        """Register filters with correct signature."""
         topics = {
             "sports": ["kubadda", "ciyaaraha"],
             "politics": ["dowladda", "madaxweyne"],
             "culture": ["suugaan", "dhaqan"]
         }
 
-        return [
-            (min_length_filter, {"threshold": 100}),
-            (langid_filter, {"allowed_langs": {"so"}, "confidence_threshold": 0.6}),
-            (dialect_heuristic_filter, {"ruleset": topics, "enrich_only": True})
-        ]
+        # CORRECT: Pass function and kwargs separately
+        self.filter_engine.register_filter(
+            min_length_filter,
+            {"threshold": 100}
+        )
+
+        self.filter_engine.register_filter(
+            langid_filter,
+            {"allowed_langs": {"so"}, "confidence_threshold": 0.6}
+        )
+
+        self.filter_engine.register_filter(
+            topic_lexicon_enrichment_filter,
+            {"ruleset": topics, "enrich_only": True}
+        )
 ```
 
 ### Filter Statistics

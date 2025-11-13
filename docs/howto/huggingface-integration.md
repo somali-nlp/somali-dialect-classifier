@@ -165,6 +165,42 @@ The HuggingFace processor follows a three-phase pipeline:
 
 ---
 
+## Source Naming Requirements
+
+**CRITICAL**: All HuggingFace datasets **MUST** use the source prefix `"HuggingFace-Somali"` (enforced in Phase A, 2025-11-13).
+
+### Correct Naming Pattern
+
+```python
+# CORRECT: Use full prefix "HuggingFace-Somali"
+source = "HuggingFace-Somali_mc4-so"  # ✅
+source = "HuggingFace-Somali_opus"    # ✅
+source = "HuggingFace-Somali_oscar"   # ✅
+
+# WRONG: Missing or incomplete prefix
+source = "mc4-so"                      # ❌ Missing prefix
+source = "HuggingFace_mc4-so"          # ❌ Missing "-Somali"
+source = "hf-mc4-so"                   # ❌ Use full "HuggingFace-Somali"
+```
+
+### Why This Matters
+
+- **Namespace clarity**: Distinguishes HuggingFace datasets from other web sources
+- **Schema compliance**: Ensures silver schema validation passes
+- **Filtering accuracy**: Enables reliable source-level filtering in analytics
+- **Data lineage**: Makes it explicit that data originates from HuggingFace Hub
+
+### Enforcement
+
+- Source names are validated during silver dataset writing
+- Incorrect names will raise `ValueError` with helpful error message
+- All existing code uses the correct prefix
+
+**Example validation error**:
+```
+ValueError: HuggingFace source must use prefix "HuggingFace-Somali", got "mc4-so"
+```
+
 ## Configuration
 
 ### Environment Variables
@@ -176,6 +212,9 @@ SDC_SCRAPING__HUGGINGFACE__MAX_RECORDS=100000
 SDC_SCRAPING__HUGGINGFACE__MIN_LENGTH_THRESHOLD=100
 SDC_SCRAPING__HUGGINGFACE__LANGID_CONFIDENCE_THRESHOLD=0.3
 SDC_SCRAPING__HUGGINGFACE__RESUME_ENABLED=true
+
+# Daily quota (enforced in Phase C, 2025-11-13)
+SDC_ORCHESTRATION__QUOTA_LIMITS__HUGGINGFACE=10000
 ```
 
 ### Configuration Options
@@ -187,6 +226,54 @@ SDC_SCRAPING__HUGGINGFACE__RESUME_ENABLED=true
 | `MIN_LENGTH_THRESHOLD` | 100 | Minimum text length for quality filter (chars) |
 | `LANGID_CONFIDENCE_THRESHOLD` | 0.3 | Language detection confidence (0-1) |
 | `RESUME_ENABLED` | true | Enable resume from last offset on failure |
+
+### Daily Quota System (New in Phase C)
+
+**Default Quota**: 10,000 records/day
+
+The orchestrator enforces a daily quota to prevent excessive processing:
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| Daily Limit | 10,000 records | Hard stop when quota reached |
+| Quota Reset | Midnight UTC | Resets every day |
+| Behavior | Stop processing | Remaining items carried to next run |
+| Override | Environment variable | Configurable via `SDC_ORCHESTRATION__QUOTA_LIMITS__HUGGINGFACE` |
+
+**How Quota Works**:
+1. Orchestrator checks records processed today
+2. If quota reached, processing stops immediately
+3. `items_remaining` metric shows skipped records
+4. Next day, processing resumes from last offset
+
+**Example with quota**:
+```bash
+# Set custom daily quota
+export SDC_ORCHESTRATION__QUOTA_LIMITS__HUGGINGFACE=5000
+
+# Run orchestrator
+somali-orchestrate --pipeline huggingface
+
+# Output:
+# [INFO] HuggingFace: Processed 5,000 records (quota reached)
+# [INFO] HuggingFace: 95,000 items remaining for next run
+```
+
+**Quota Metrics**:
+```json
+{
+  "quota_hit": true,
+  "quota_limit": 10000,
+  "quota_used": 10000,
+  "items_remaining": 90000
+}
+```
+
+**Disabling Quota** (not recommended):
+```bash
+# Set very high limit
+export SDC_ORCHESTRATION__QUOTA_LIMITS__HUGGINGFACE=999999
+```
 
 ---
 

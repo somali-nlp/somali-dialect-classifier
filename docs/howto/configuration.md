@@ -215,6 +215,133 @@ SDC_LOGGING__LOG_DIR=/var/log/somali-dialect-classifier
 SDC_LOGGING__FORMAT="%(asctime)s - %(message)s"
 ```
 
+### OrchestrationConfig (New in Phase B)
+
+Controls pipeline orchestration behavior including refresh cadences and daily quotas.
+
+**Fields**:
+
+```python
+class OrchestrationConfig(BaseSettings):
+    initial_collection_days: int = 7          # Days all sources run daily
+    default_cadence_days: int = 7             # Default refresh interval
+    cadence_days: Dict[str, int] = {          # Per-source cadences
+        "wikipedia": 7,
+        "bbc": 1,
+        "huggingface": 30,
+        "sprakbanken": 90,
+        "tiktok": 7
+    }
+    quota_limits: Dict[str, int] = {          # Per-source daily quotas
+        "bbc": 350,
+        "huggingface": 10000,
+        "sprakbanken": 10,
+        "wikipedia": 0,  # Unlimited
+        "tiktok": 0      # Manual scheduling
+    }
+```
+
+**Field Descriptions**:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `initial_collection_days` | `int` | `7` | Duration of initial collection phase (all sources run daily) |
+| `default_cadence_days` | `int` | `7` | Default refresh interval if source not in `cadence_days` |
+| `cadence_days` | `Dict[str, int]` | See above | Per-source refresh intervals (days) |
+| `quota_limits` | `Dict[str, int]` | See above | Per-source daily processing quotas (0 = unlimited) |
+
+**Validation Rules**:
+
+- `initial_collection_days`: Must be between 1-30 days
+- `cadence_days` values: Must be between 1-365 days
+- `quota_limits` values: Must be >= 0 (0 means unlimited)
+
+**Environment Variables**:
+
+```bash
+# Initial collection phase
+SDC_ORCHESTRATION__INITIAL_COLLECTION_DAYS=7
+
+# Default cadence
+SDC_ORCHESTRATION__DEFAULT_CADENCE_DAYS=7
+
+# Per-source cadences
+SDC_ORCHESTRATION__CADENCE_DAYS__WIKIPEDIA=7
+SDC_ORCHESTRATION__CADENCE_DAYS__BBC=1
+SDC_ORCHESTRATION__CADENCE_DAYS__HUGGINGFACE=30
+SDC_ORCHESTRATION__CADENCE_DAYS__SPRAKBANKEN=90
+SDC_ORCHESTRATION__CADENCE_DAYS__TIKTOK=7
+
+# Per-source quotas (Phase C feature)
+SDC_ORCHESTRATION__QUOTA_LIMITS__BBC=350
+SDC_ORCHESTRATION__QUOTA_LIMITS__HUGGINGFACE=10000
+SDC_ORCHESTRATION__QUOTA_LIMITS__SPRAKBANKEN=10
+SDC_ORCHESTRATION__QUOTA_LIMITS__WIKIPEDIA=0
+SDC_ORCHESTRATION__QUOTA_LIMITS__TIKTOK=0
+```
+
+**Cadence Guidelines**:
+
+| Source | Recommended Cadence | Rationale |
+|--------|---------------------|-----------|
+| BBC | 1 day | Daily news updates |
+| Wikipedia | 7 days | Weekly content changes |
+| TikTok | 3 days | Active social media |
+| HuggingFace | 30 days | Static dataset snapshots |
+| Språkbanken | 90 days | Static academic corpora |
+
+**Quota Guidelines**:
+
+| Source | Recommended Quota | Rationale |
+|--------|------------------|-----------|
+| BBC | 350 articles | Ethical web scraping |
+| HuggingFace | 10,000 records | Manage processing time |
+| Språkbanken | 10 corpora | Static collection |
+| Wikipedia | 0 (unlimited) | File-based, efficient |
+| TikTok | 0 (manual) | Controlled externally |
+
+**Usage Example**:
+
+```python
+from somali_dialect_classifier.config import get_config
+
+config = get_config()
+
+# Access cadences
+print(f"BBC cadence: {config.orchestration.cadence_days['bbc']} days")
+print(f"Wikipedia cadence: {config.orchestration.cadence_days['wikipedia']} days")
+
+# Access quotas
+print(f"BBC daily quota: {config.orchestration.quota_limits['bbc']} articles")
+print(f"HuggingFace daily quota: {config.orchestration.quota_limits['huggingface']} records")
+
+# Get cadence for specific source (with fallback to default)
+def get_cadence(source: str) -> int:
+    return config.orchestration.cadence_days.get(
+        source,
+        config.orchestration.default_cadence_days
+    )
+
+print(f"BBC runs every {get_cadence('bbc')} day(s)")
+```
+
+**Override Example** (.env file):
+
+```bash
+# Increase BBC daily quota
+SDC_ORCHESTRATION__QUOTA_LIMITS__BBC=500
+
+# Run Wikipedia more frequently
+SDC_ORCHESTRATION__CADENCE_DAYS__WIKIPEDIA=3
+
+# Extend initial collection phase
+SDC_ORCHESTRATION__INITIAL_COLLECTION_DAYS=14
+```
+
+**See Also**:
+- [Orchestration Guide](orchestration.md) - Full orchestration documentation
+- [Daily Quotas Documentation](orchestration.md#daily-quotas-new-in-phase-c) - Quota enforcement details
+
 ## Programmatic Access
 
 ### Basic Usage

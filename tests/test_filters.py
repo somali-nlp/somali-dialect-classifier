@@ -325,7 +325,8 @@ class TestConvenienceConstructors:
         filters = create_news_filters(dialect_ruleset=ruleset)
 
         assert len(filters) >= 3
-        assert any("dialect" in f[0].__name__ for f in filters)
+        # Filter renamed from dialect_heuristic_filter to topic_lexicon_enrichment_filter in Phase A
+        assert any("topic_lexicon" in f[0].__name__ or "enrichment" in f[0].__name__ for f in filters)
 
     def test_create_hf_filters(self):
         """Test HuggingFace filter chain creation."""

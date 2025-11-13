@@ -17,6 +17,7 @@ ALLOWED_SOURCES = {
     'bbc',
     'bbc-somali',
     'sprakbanken',
+    'sprakbanken-somali',  # Added to match actual processor source name
     'tiktok',
     'huggingface',
     'wikipedia-somali'

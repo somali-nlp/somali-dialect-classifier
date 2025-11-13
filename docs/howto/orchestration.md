@@ -187,7 +187,86 @@ POSTGRES_PORT=5432
 POSTGRES_DB=somali_nlp
 POSTGRES_USER=somali
 POSTGRES_PASSWORD=secure_password_here
+
+# Daily quotas per source (enforced in Phase C, 2025-11-13)
+SDC_ORCHESTRATION__QUOTA_LIMITS__BBC=350
+SDC_ORCHESTRATION__QUOTA_LIMITS__HUGGINGFACE=10000
+SDC_ORCHESTRATION__QUOTA_LIMITS__SPRAKBANKEN=10
+SDC_ORCHESTRATION__QUOTA_LIMITS__WIKIPEDIA=0          # Unlimited (file-based)
+SDC_ORCHESTRATION__QUOTA_LIMITS__TIKTOK=0            # Manual scheduling
 ```
+
+### Daily Quotas (New in Phase C)
+
+The orchestrator enforces daily quotas to prevent excessive API usage and manage processing load:
+
+| Source | Daily Limit | Enforcement | Rationale |
+|--------|-------------|-------------|-----------|
+| **BBC** | 350 articles | Hard stop at quota | Ethical web scraping, prevent server overload |
+| **HuggingFace** | 10,000 records | Hard stop at quota | Manage processing time (100k+ dataset) |
+| **Språkbanken** | 10 corpora | Hard stop at quota | Static collection, rare updates |
+| **TikTok** | Manual scheduling | No automatic quota | Requires manual URL input, controlled externally |
+| **Wikipedia** | Unlimited | No quota | File-based download, efficient processing |
+
+**How Quotas Work:**
+
+1. **Quota Check**: Before processing, orchestrator checks today's record count
+2. **Hard Stop**: Processing stops immediately when quota is reached
+3. **Daily Reset**: Quotas reset at midnight UTC
+4. **Carry Forward**: Remaining items processed in next run (if within cadence)
+5. **Metrics**: `quota_hit`, `quota_limit`, `quota_used`, and `items_remaining` tracked
+
+**Example with Quota:**
+
+```bash
+# BBC quota example (350 articles/day)
+somali-orchestrate --pipeline bbc
+
+# Output:
+# [INFO] BBC: Starting processing...
+# [INFO] BBC: Discovered 500 articles
+# [INFO] BBC: Processing articles...
+# [INFO] BBC: Processed 350 articles (quota reached)
+# [WARN] BBC: 150 articles remaining for next run
+# [INFO] BBC: Quota metrics: {"quota_hit": true, "quota_limit": 350, "quota_used": 350, "items_remaining": 150}
+```
+
+**Quota Metrics Schema:**
+
+```json
+{
+  "quota_hit": true,           // Whether quota was reached
+  "quota_limit": 350,          // Configured daily limit
+  "quota_used": 350,           // Records processed today
+  "items_remaining": 150       // Records skipped due to quota
+}
+```
+
+**Overriding Quotas:**
+
+```bash
+# Increase BBC quota to 500
+export SDC_ORCHESTRATION__QUOTA_LIMITS__BBC=500
+
+# Disable quota (set very high limit)
+export SDC_ORCHESTRATION__QUOTA_LIMITS__BBC=999999
+
+# Programmatic override
+config.orchestration.quota_limits["bbc"] = 500
+```
+
+**Quota Best Practices:**
+
+1. **Don't disable quotas** unless necessary (prevents runaway processing)
+2. **Monitor quota hits** - if frequently hitting quota, consider increasing limit
+3. **Align with cadences** - daily quotas should match source update frequency
+4. **Review `items_remaining`** - large values indicate quota may be too low
+
+**Special Cases:**
+
+- **Wikipedia**: No quota (file-based, efficient download)
+- **TikTok**: Manual scheduling only (no automatic daily runs)
+- **Språkbanken**: Static collection (10 corpora/day more than sufficient)
 
 ### Programmatic Configuration
 
@@ -204,6 +283,17 @@ print(f"Initial collection: {config.orchestration.initial_collection_days} days"
 # Get cadence for specific source
 bbc_cadence = config.orchestration.get_cadence("bbc")
 print(f"BBC runs every {bbc_cadence} day(s)")
+
+# Check daily quotas (new in Phase C)
+print(f"BBC daily quota: {config.orchestration.quota_limits.get('bbc', 0)} articles")
+print(f"HuggingFace daily quota: {config.orchestration.quota_limits.get('huggingface', 0)} records")
+print(f"Språkbanken daily quota: {config.orchestration.quota_limits.get('sprakbanken', 0)} corpora")
+
+# Access OrchestrationConfig structure
+print(f"Initial collection days: {config.orchestration.initial_collection_days}")
+print(f"Default cadence: {config.orchestration.default_cadence_days} days")
+print(f"Cadence days dict: {config.orchestration.cadence_days}")
+print(f"Quota limits dict: {config.orchestration.quota_limits}")
 ```
 
 ## Common Commands

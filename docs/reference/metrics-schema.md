@@ -190,8 +190,47 @@ Tracks filter application and quality control:
 Tracks final output metrics:
 
 - `records_written` (int, ≥0): Records written to silver dataset
-- `bytes_downloaded` (int, ≥0): Total bytes downloaded
+- `bytes_downloaded` (int, ≥0): Total bytes downloaded (see policy below)
 - `total_chars` (int, ≥0): Total characters in all records
+
+**bytes_downloaded Policy** (Clarified in Phase B, 2025-11-13):
+
+The `bytes_downloaded` metric has different meanings depending on the source type:
+
+| Source | Value | Meaning |
+|--------|-------|---------|
+| **Wikipedia** | Actual bytes | Tracks file download size (accurate) |
+| **BBC** | 0 | Not tracked (web scraping, no meaningful byte count) |
+| **HuggingFace** | 0 | Not tracked (streaming dataset, no file download) |
+| **Språkbanken** | 0 | Not tracked (API-based access, no file download) |
+| **TikTok** | 0 | Not tracked (API-based comments, no file download) |
+
+**Why 0 for non-file sources?**
+- `0` explicitly means "not tracked", not "zero bytes downloaded"
+- File-based sources (Wikipedia) can accurately measure bytes
+- Web scraping and API sources have no meaningful byte metric (HTML overhead, API responses, etc.)
+- Recommendation: Future enhancement could use `null` instead of `0` for clarity
+
+**Example**:
+```json
+{
+  "source": "BBC-Somali",
+  "volume": {
+    "records_written": 100,
+    "bytes_downloaded": 0,       // Not tracked (web scraping)
+    "total_chars": 125000
+  }
+}
+
+{
+  "source": "Wikipedia-Somali",
+  "volume": {
+    "records_written": 5000,
+    "bytes_downloaded": 125000000,  // Actual file size (125 MB)
+    "total_chars": 3500000
+  }
+}
+```
 
 ## Statistics Section
 
@@ -519,11 +558,22 @@ The `filter_breakdown` field within the Quality layer tracks how many records we
 {
   "min_length_filter": 45,
   "langid_filter": 15,
-  "dialect_heuristic_filter": 10,
+  "topic_lexicon_enrichment_filter": 10,
   "emoji_only_comment": 8,
   "empty_after_cleaning": 3
 }
 ```
+
+**IMPORTANT:** The filter_breakdown field must accurately represent filter rejections:
+- **Must be present** when filters are applied and records are rejected
+- **May be empty** `{}` only when no filters applied OR all records pass filters
+- **Never omit** filter keys that rejected records (causes inaccurate metrics)
+
+**Common Errors:**
+- ❌ Missing filter_breakdown when filters ran
+- ❌ Incomplete filter_breakdown (missing filters that rejected records)
+- ❌ Using `null` instead of `{}` for empty breakdown
+- ✅ Complete filter_breakdown with all active filter keys
 
 ### Filter Keys and Labels
 
@@ -538,8 +588,14 @@ The catalog maps filter keys to human-readable labels:
 | `empty_after_cleaning` | Empty after cleaning | content | Text must contain non-whitespace after cleanup |
 | `emoji_only_comment` | Emoji-only comment | content | Removes comments with only emojis (TikTok) |
 | `text_too_short_after_cleanup` | Very short text (<3 chars) | length | Removes very short text (TikTok) |
-| `dialect_heuristic_filter` | Dialect heuristics | dialect | Enriches with dialect markers (not strictly filtering) |
+| `topic_lexicon_enrichment_filter` | Topic lexicon enrichment | enrichment | Enriches with topic markers (not filtering, see Phase B) |
 | `namespace_filter` | Wikipedia namespace exclusion | content | Skips non-article pages (Wikipedia) |
+
+**Note on topic_lexicon_enrichment_filter:**
+- Previously named `dialect_heuristic_filter` (renamed in Phase B, 2025-11-13)
+- Performs **topic classification**, not dialect detection
+- Typically used with `enrich_only=True` (does not reject records)
+- May appear in filter_breakdown with count=0 if no rejections occurred
 
 See [Filter Catalog Reference](filters.md) for the complete list.
 
@@ -571,7 +627,7 @@ assert records_passed_filters == records_received - total_rejected
 "filter_breakdown": {
   "min_length_filter": 45,
   "langid_filter": 15,
-  "dialect_heuristic_filter": 10
+  "topic_lexicon_enrichment_filter": 10
 }
 ```
 
