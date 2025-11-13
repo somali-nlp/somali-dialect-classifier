@@ -363,10 +363,20 @@ class VolumeMetrics:
     Layer 4: Data volume metrics.
 
     Tracks the amount of data processed, downloaded, and written.
+
+    bytes_downloaded Policy (per-source):
+    - Wikipedia: Tracks actual HTTP download bytes (XML dumps)
+    - BBC: Set to 0 (scraping, byte tracking not implemented)
+    - TikTok: Set to 0 (API-based, bytes not tracked)
+    - HuggingFace: Set to 0 (streaming dataset, bytes not tracked)
+    - Språkbanken: Set to 0 (corpus processing, bytes not tracked)
+
+    Note: bytes_downloaded=0 indicates "not tracked" rather than "zero bytes".
+    Future enhancement: Change schema to Optional[int] to distinguish tracked vs untracked.
     """
 
     records_written: int = 0
-    bytes_downloaded: int = 0
+    bytes_downloaded: int = 0  # 0 = not tracked for most sources (see docstring)
     total_chars: int = 0
 
     @property

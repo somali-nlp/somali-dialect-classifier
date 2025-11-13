@@ -55,10 +55,16 @@ FILTER_CATALOG: dict[str, tuple[str, str, str]] = {
         "language",
     ),
     # Domain-specific filters
+    "topic_lexicon_enrichment_filter": (
+        "Topic Lexicon Enrichment",
+        "Enriches records with topic/domain markers (sports, politics, economy) based on lexicon matching",
+        "enrichment",
+    ),
+    # DEPRECATED: Use topic_lexicon_enrichment_filter instead
     "dialect_heuristic_filter": (
-        "Dialect heuristics",
-        "Text failed dialect-specific heuristic checks",
-        "dialect",
+        "Topic Lexicon Enrichment (deprecated)",
+        "DEPRECATED: This is actually topic enrichment, not dialect detection. Use topic_lexicon_enrichment_filter",
+        "enrichment",
     ),
     "namespace_filter": (
         "Wikipedia namespace exclusion",
@@ -159,7 +165,7 @@ def get_filter_category(filter_key: str) -> str:
     """
     Get category for a filter key.
 
-    Categories: 'length', 'content_quality', 'language', 'dialect',
+    Categories: 'length', 'content_quality', 'language', 'enrichment',
                 'namespace', 'deduplication', 'encoding', 'schema'
 
     Args:

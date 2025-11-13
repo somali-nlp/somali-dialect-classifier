@@ -303,34 +303,36 @@ def langid_filter(
     return passes, metadata_updates
 
 
-def dialect_heuristic_filter(
+def topic_lexicon_enrichment_filter(
     cleaned_text: str, ruleset: dict[str, list[str]], enrich_only: bool = True
 ) -> tuple[bool, dict[str, Any]]:
     """
-    Apply dialect heuristics and optionally enrich metadata.
+    Enrich records with topic markers based on lexicon matching.
 
-    Scans text for dialect markers from lexicon lists. Can either filter
-    records or simply enrich metadata for downstream dialect scoring.
+    Scans text for topic/domain markers from lexicon lists (e.g., sports,
+    politics, economy). Primarily used for metadata enrichment rather than
+    filtering. Can be used for dialect markers but is NOT a dialect detector.
 
     Args:
         cleaned_text: Cleaned text content
-        ruleset: Dict mapping dialect names to lists of marker words
-                 Example: {"northern": ["xamar", "muqdisho"], "southern": ["kismayo"]}
+        ruleset: Dict mapping topic/category names to lists of marker words
+                 Example: {"sports": ["kubadda", "kooxda"], "politics": ["xukuumad", "madaxweyne"]}
         enrich_only: If True, always pass but add metadata (default: True)
-                     If False, reject if no dialect markers found
+                     If False, reject if no markers found
 
     Returns:
         (passes, metadata_updates)
         - passes: True if markers found OR enrich_only=True
         - metadata_updates: {"dialect_markers": {...}, "primary_dialect": str}
+                            Note: Field names preserved for backward compatibility
 
     Example:
-        >>> ruleset = {"northern": ["waxaan"], "southern": ["waan"]}
-        >>> passes, meta = dialect_heuristic_filter("Waxaan arkay", ruleset)
+        >>> ruleset = {"sports": ["kubadda"], "politics": ["xukuumad"]}
+        >>> passes, meta = topic_lexicon_enrichment_filter("Kubadda waa ciyaartoy", ruleset)
         >>> passes
         True
-        >>> meta["primary_dialect"]
-        'northern'
+        >>> meta["primary_dialect"]  # Legacy field name, actually primary_topic
+        'sports'
     """
     if not ruleset:
         # No ruleset provided, pass through
@@ -506,7 +508,7 @@ def create_news_filters(
 
     if dialect_ruleset:
         filters.append(
-            (dialect_heuristic_filter, {"ruleset": dialect_ruleset, "enrich_only": True})
+            (topic_lexicon_enrichment_filter, {"ruleset": dialect_ruleset, "enrich_only": True})
         )
 
     return filters
@@ -532,3 +534,9 @@ def create_hf_filters(
         (min_length_filter, {"threshold": min_length}),
         (langid_filter, {"allowed_langs": allowed_langs, "confidence_threshold": 0.5}),
     ]
+
+
+# Backward compatibility alias (deprecated)
+# DEPRECATED: Use topic_lexicon_enrichment_filter instead
+# This alias will be removed in a future version
+dialect_heuristic_filter = topic_lexicon_enrichment_filter

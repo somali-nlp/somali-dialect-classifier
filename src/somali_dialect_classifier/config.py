@@ -239,6 +239,120 @@ if PYDANTIC_AVAILABLE:
         )
         batch_size: int = Field(default=1000, description="Items per batch when fetching dataset")
 
+    class OrchestrationConfig(BaseSettings):
+        """
+        Orchestration and scheduling configuration.
+
+        Controls the initial collection phase duration and per-source
+        refresh cadences for the 6-day ingestion pipeline.
+
+        Environment Variables:
+            SDC_ORCHESTRATION__INITIAL_COLLECTION_DAYS: Days for initial collection phase (1-30)
+            SDC_ORCHESTRATION__DEFAULT_CADENCE_DAYS: Default refresh cadence (1-365)
+            SDC_ORCHESTRATION__CADENCE_DAYS__<SOURCE>: Per-source cadence override
+            SDC_ORCHESTRATION__QUOTA_LIMITS__<SOURCE>: Daily quota per source (records/day)
+
+        Examples:
+            >>> config = OrchestrationConfig()
+            >>> config.initial_collection_days
+            7
+            >>> config.get_cadence("wikipedia")
+            7
+            >>> config.get_cadence("huggingface")
+            30
+            >>> config.get_quota("bbc")
+            350
+        """
+
+        model_config = SettingsConfigDict(
+            env_prefix="SDC_ORCHESTRATION__",
+            env_file=".env",
+            env_file_encoding="utf-8",
+            extra="ignore"
+        )
+
+        # Initial collection phase
+        initial_collection_days: int = Field(
+            default=7,
+            description="Days to collect all sources daily before switching to cadence-based refresh",
+            ge=1,
+            le=30
+        )
+
+        # Default fallback cadence
+        default_cadence_days: int = Field(
+            default=7,
+            description="Default refresh cadence in days for sources not explicitly configured",
+            ge=1,
+            le=365
+        )
+
+        # Per-source refresh cadences
+        cadence_days: dict[str, int] = Field(
+            default_factory=lambda: {
+                "wikipedia": 7,      # Weekly - content changes moderately
+                "bbc": 7,           # Weekly - news refresh
+                "huggingface": 30,  # Monthly - large static dataset
+                "sprakbanken": 90,  # Quarterly - academic corpus
+                "tiktok": 7         # Weekly - manual scheduling
+            },
+            description="Per-source refresh cadence in days"
+        )
+
+        # Per-source daily quotas
+        quota_limits: dict[str, int] = Field(
+            default_factory=lambda: {
+                "bbc": 350,         # 350 articles/day - respects rate limits
+                "huggingface": 10000,  # 10k records/day - large dataset throttling
+                "sprakbanken": 10   # 10 corpora/day - academic corpus pacing
+                # wikipedia: No quota (file-based, efficient)
+                # tiktok: Manual scheduling with cost gating (no automatic quota)
+            },
+            description="Daily quota limits per source (None = unlimited)"
+        )
+
+        def get_cadence(self, source: str) -> int:
+            """
+            Get refresh cadence for a specific source.
+
+            Args:
+                source: Data source name (e.g., 'wikipedia', 'bbc')
+
+            Returns:
+                Cadence in days for the source, or default_cadence_days if not configured
+
+            Examples:
+                >>> config = OrchestrationConfig()
+                >>> config.get_cadence("wikipedia")
+                7
+                >>> config.get_cadence("unknown_source")
+                7
+            """
+            # Normalize source name to lowercase for case-insensitive lookup
+            source_normalized = source.lower().strip()
+            return self.cadence_days.get(source_normalized, self.default_cadence_days)
+
+        def get_quota(self, source: str) -> Optional[int]:
+            """
+            Get daily quota limit for a specific source.
+
+            Args:
+                source: Data source name (e.g., 'bbc', 'huggingface')
+
+            Returns:
+                Daily quota limit (records/day), or None if unlimited
+
+            Examples:
+                >>> config = OrchestrationConfig()
+                >>> config.get_quota("bbc")
+                350
+                >>> config.get_quota("wikipedia")
+                None
+            """
+            # Normalize source name to lowercase for case-insensitive lookup
+            source_normalized = source.lower().strip()
+            return self.quota_limits.get(source_normalized)
+
     class ScrapingConfig(BaseSettings):
         """Scraping configuration."""
 
@@ -278,6 +392,7 @@ if PYDANTIC_AVAILABLE:
         data: DataConfig = Field(default_factory=DataConfig)
         scraping: ScrapingConfig = Field(default_factory=ScrapingConfig)
         logging: LoggingConfig = Field(default_factory=LoggingConfig)
+        orchestration: OrchestrationConfig = Field(default_factory=OrchestrationConfig)
 
 
 # Fallback dataclass-based configuration (if pydantic not available)
@@ -362,6 +477,43 @@ else:
         sprakbanken: SprakbankenScrapingConfig = field(default_factory=SprakbankenScrapingConfig)
 
     @dataclass
+    class OrchestrationConfig:
+        """
+        Orchestration and scheduling configuration.
+
+        Fallback implementation when Pydantic is unavailable.
+        """
+
+        initial_collection_days: int = 7
+        default_cadence_days: int = 7
+        cadence_days: dict[str, int] = field(
+            default_factory=lambda: {
+                "wikipedia": 7,
+                "bbc": 7,
+                "huggingface": 30,
+                "sprakbanken": 90,
+                "tiktok": 7
+            }
+        )
+        quota_limits: dict[str, int] = field(
+            default_factory=lambda: {
+                "bbc": 350,
+                "huggingface": 10000,
+                "sprakbanken": 10
+            }
+        )
+
+        def get_cadence(self, source: str) -> int:
+            """Get refresh cadence for a specific source."""
+            source_normalized = source.lower().strip()
+            return self.cadence_days.get(source_normalized, self.default_cadence_days)
+
+        def get_quota(self, source: str) -> Optional[int]:
+            """Get daily quota limit for a specific source."""
+            source_normalized = source.lower().strip()
+            return self.quota_limits.get(source_normalized)
+
+    @dataclass
     class LoggingConfig:
         """Logging configuration."""
 
@@ -376,6 +528,7 @@ else:
         data: DataConfig = field(default_factory=DataConfig)
         scraping: ScrapingConfig = field(default_factory=ScrapingConfig)
         logging: LoggingConfig = field(default_factory=LoggingConfig)
+        orchestration: OrchestrationConfig = field(default_factory=OrchestrationConfig)
 
 
 # Singleton instance

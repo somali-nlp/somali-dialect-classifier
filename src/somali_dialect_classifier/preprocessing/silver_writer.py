@@ -508,7 +508,7 @@ class SilverDatasetWriter:
                 "date_processed": datetime.now(timezone.utc).isoformat(),
                 "total_records": len(records),
                 "total_partitions": 1,
-                "schema_version": "2.1",
+                "sidecar_format_version": "2.1",  # Renamed from schema_version to avoid collision with record field
                 "checksums": partition_info,
                 "statistics": {
                     "total_size_bytes": total_size,
