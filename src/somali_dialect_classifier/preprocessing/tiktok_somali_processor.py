@@ -124,7 +124,7 @@ class TikTokSomaliProcessor(BasePipeline):
 
     def _get_source_type(self) -> str:
         """Return source type for silver records."""
-        return "social_media"
+        return "social"
 
     def _get_license(self) -> str:
         """Return license information for silver records."""

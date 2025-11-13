@@ -951,15 +951,13 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         min_length = self.hf_config.min_length_threshold
         confidence = self.hf_config.langid_confidence_threshold
 
-        self.filter_engine.register_filter((min_length_filter, {"threshold": min_length}))
+        self.filter_engine.register_filter(min_length_filter, {"threshold": min_length})
         self.filter_engine.register_filter(
-            (
-                langid_filter,
-                {
-                    "allowed_langs": {"so"},
-                    "confidence_threshold": confidence,
-                },
-            )
+            langid_filter,
+            {
+                "allowed_langs": {"so"},
+                "confidence_threshold": confidence,
+            },
         )
 
     def _get_source_type(self) -> str:

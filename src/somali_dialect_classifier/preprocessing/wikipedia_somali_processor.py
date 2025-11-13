@@ -99,12 +99,12 @@ class WikipediaSomaliProcessor(BasePipeline):
         from .filters import langid_filter, min_length_filter
 
         # Minimum length threshold for articles
-        self.filter_engine.register_filter((min_length_filter, {"threshold": 50}))
+        self.filter_engine.register_filter(min_length_filter, {"threshold": 50})
 
         # Language filter (Somali only with relaxed confidence threshold)
         # Threshold lowered to 0.3 due to heuristic-based detection
         self.filter_engine.register_filter(
-            (langid_filter, {"allowed_langs": {"so"}, "confidence_threshold": 0.3})
+            langid_filter, {"allowed_langs": {"so"}, "confidence_threshold": 0.3}
         )
 
     def _create_cleaner(self) -> TextCleaningPipeline:

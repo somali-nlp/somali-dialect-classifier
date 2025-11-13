@@ -113,12 +113,12 @@ class BBCSomaliProcessor(BasePipeline):
         from .filters import dialect_heuristic_filter, langid_filter, min_length_filter
 
         # Minimum length threshold for articles
-        self.filter_engine.register_filter((min_length_filter, {"threshold": 50}))
+        self.filter_engine.register_filter(min_length_filter, {"threshold": 50})
 
         # Language filter (Somali only with relaxed confidence threshold)
         # Threshold lowered to 0.3 due to heuristic-based detection
         self.filter_engine.register_filter(
-            (langid_filter, {"allowed_langs": {"so"}, "confidence_threshold": 0.3})
+            langid_filter, {"allowed_langs": {"so"}, "confidence_threshold": 0.3}
         )
 
         # Dialect/topic heuristics for enrichment
@@ -130,13 +130,11 @@ class BBCSomaliProcessor(BasePipeline):
         }
 
         self.filter_engine.register_filter(
-            (
-                dialect_heuristic_filter,
-                {
-                    "ruleset": topic_lexicons,
-                    "enrich_only": True,  # Don't filter, just enrich metadata
-                },
-            )
+            dialect_heuristic_filter,
+            {
+                "ruleset": topic_lexicons,
+                "enrich_only": True,  # Don't filter, just enrich metadata
+            },
         )
 
     def _create_cleaner(self) -> TextCleaningPipeline:

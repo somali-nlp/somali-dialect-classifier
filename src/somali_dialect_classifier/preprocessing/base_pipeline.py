@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from ..config import get_config
 from ..data import DataManager
 from ..pipeline.filter_engine import FilterEngine
 from ..schema.validation_service import ValidationService

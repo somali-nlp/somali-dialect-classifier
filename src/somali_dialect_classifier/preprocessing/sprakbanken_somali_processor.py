@@ -195,9 +195,9 @@ class SprakbankenSomaliProcessor(BasePipeline):
         self.config = config
         self.sprakbanken_config = config.scraping.sprakbanken
 
-        # Determine source name (use "sprakbanken" for consistency with allowed sources)
+        # Determine source name (use "sprakbanken-somali" for consistency with allowed sources)
         # Corpus ID will be stored in source_id field for querying
-        source_name = "sprakbanken"
+        source_name = "sprakbanken-somali"
 
         # Initialize deduplication BEFORE BasePipeline (which generates run_id)
         dedup_config = DedupConfig(
@@ -242,18 +242,16 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
         # Minimum length threshold (from config)
         self.filter_engine.register_filter(
-            (min_length_filter, {"threshold": self.sprakbanken_config.min_length_threshold})
+            min_length_filter, {"threshold": self.sprakbanken_config.min_length_threshold}
         )
 
         # Language filter with relaxed threshold (from config)
         self.filter_engine.register_filter(
-            (
-                langid_filter,
-                {
-                    "allowed_langs": {"so"},
-                    "confidence_threshold": self.sprakbanken_config.langid_confidence_threshold,
-                },
-            )
+            langid_filter,
+            {
+                "allowed_langs": {"so"},
+                "confidence_threshold": self.sprakbanken_config.langid_confidence_threshold,
+            },
         )
 
     def _create_cleaner(self) -> TextCleaningPipeline:
