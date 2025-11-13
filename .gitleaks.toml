@@ -1,0 +1,241 @@
+# Gitleaks Configuration for Somali Dialect Classifier
+# Reference: https://github.com/gitleaks/gitleaks
+
+title = "Gitleaks Configuration for Somali NLP Project"
+
+[extend]
+# Use default gitleaks rules as baseline
+useDefault = true
+
+# ============================================================================
+# Custom Rules for Project-Specific Secrets
+# ============================================================================
+
+[[rules]]
+id = "apify-api-token"
+description = "Detected Apify API token"
+regex = '''(apify_api_[A-Za-z0-9]{40})'''
+keywords = ["apify_api_"]
+secretGroup = 1
+entropy = 3.5
+
+[[rules]]
+id = "postgres-password-in-config"
+description = "PostgreSQL password in configuration files"
+regex = '''(?i)(postgres_password|postgresql_password|db_password)\s*[=:]\s*['"]?([^'"\s\n]{8,})['"]?'''
+keywords = ["POSTGRES_PASSWORD", "postgresql_password", "db_password"]
+secretGroup = 2
+entropy = 3.0
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API key pattern"
+regex = '''(?i)(api_key|apikey|api-key)\s*[=:]\s*['"]?([A-Za-z0-9_\-]{20,})['"]?'''
+keywords = ["api_key", "apikey", "API_KEY"]
+secretGroup = 2
+entropy = 3.5
+
+[[rules]]
+id = "private-key-file"
+description = "Private key file detected"
+regex = '''-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----'''
+keywords = ["BEGIN PRIVATE KEY", "BEGIN RSA PRIVATE KEY"]
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key ID"
+regex = '''(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}'''
+keywords = ["AKIA", "ASIA", "AGPA"]
+entropy = 3.5
+
+[[rules]]
+id = "aws-secret-key"
+description = "AWS Secret Access Key"
+regex = '''(?i)aws_secret_access_key\s*[=:]\s*['"]?([A-Za-z0-9/+=]{40})['"]?'''
+keywords = ["aws_secret_access_key"]
+secretGroup = 1
+entropy = 4.0
+
+[[rules]]
+id = "github-token"
+description = "GitHub Personal Access Token"
+regex = '''ghp_[A-Za-z0-9]{36}'''
+keywords = ["ghp_"]
+entropy = 3.5
+
+[[rules]]
+id = "huggingface-token"
+description = "HuggingFace API token"
+regex = '''hf_[A-Za-z0-9]{34}'''
+keywords = ["hf_"]
+entropy = 3.5
+
+[[rules]]
+id = "jwt-token"
+description = "JSON Web Token (JWT)"
+regex = '''eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'''
+keywords = ["eyJ"]
+entropy = 4.0
+
+# ============================================================================
+# Allowlist Configuration
+# ============================================================================
+
+[allowlist]
+description = "Global allowlist for false positives"
+
+# Exclude common false positive paths
+paths = [
+  '''.env\.example$''',                    # Environment template files
+  '''.env\.template$''',
+  '''.env\.sample$''',
+  '''\.gitleaks\.toml$''',                 # This configuration file
+  '''^\.archive/''',                       # Archived test files (not in git)
+  '''^\.claude/''',                        # Claude reports (not in git)
+  '''^data/''',                            # Data directories (not in git) - prevents scanning large datasets
+  '''^logs/''',                            # Log files (not in git)
+  '''^models/''',                          # Model files (not in git)
+  '''^\.vscode/''',                        # IDE config (not in git)
+  '''^\.idea/''',                          # IDE config (not in git)
+  '''^node_modules/''',                    # Dependencies (not in git)
+  '''^venv.*''',                           # Virtual environments (not in git)
+  '''^\.locks/''',                         # Lock files (not in git)
+  '''test_fixtures/''',                    # Test fixture data
+  '''tests/fixtures/''',
+  '''^docs/''',                            # Documentation files
+  '''\.example\.''',                       # Any .example. files
+  '''package-lock\.json$''',               # NPM lock file
+  '''poetry\.lock$''',                     # Poetry lock file
+  '''yarn\.lock$''',                       # Yarn lock file
+  '''\.db$''',                             # Database files (not in git)
+  '''\.pkl$''',                            # Pickle files (not in git)
+  '''\.h5$''',                             # HDF5 files (not in git)
+  '''\.parquet$''',                        # Parquet files (not in git)
+  '''\.jsonl$''',                          # JSONL data files (not in git)
+]
+
+# Exclude files by regex patterns
+regexes = [
+  '''placeholder''',                       # Placeholder values
+  '''your_.*_here''',                      # Template patterns
+  '''example_.*''',
+  '''dummy_.*''',
+  '''test_.*_token''',
+  '''fake_.*''',
+  '''REVOKED_TEST_TOKEN''',                # Explicitly revoked tokens
+  '''change_me_in_production''',           # Placeholder password
+  '''your_apify_api_token_here''',         # Template value from .env.example
+]
+
+# Stopwords to reduce false positives
+stopwords = [
+  '''example''',
+  '''placeholder''',
+  '''sample''',
+  '''template''',
+  '''test''',
+  '''dummy''',
+  '''fake''',
+  '''your_.*_here''',
+  '''REPLACEME''',
+  '''CHANGEME''',
+]
+
+# ============================================================================
+# Entropy Detection Configuration
+# ============================================================================
+
+# Minimum entropy threshold for detection (scale: 0-8)
+# Lower = more false positives, Higher = might miss some secrets
+# Default: 3.5 is balanced for most projects
+# entropyThreshold = 3.5
+
+# ============================================================================
+# File Extensions to Scan
+# ============================================================================
+
+# Gitleaks scans all files by default, but these are common secret locations
+# .env files - covered by paths allowlist for .example files
+# .yaml, .yml - configuration files
+# .json - configuration and data files
+# .py - Python source code
+# .sh - Shell scripts
+# .txt - Text files may contain secrets
+# .md - Documentation (usually safe, but scan anyway)
+
+# ============================================================================
+# Notes and Best Practices
+# ============================================================================
+
+# 1. Template Files:
+#    - .env.example, .env.template should contain ONLY placeholder values
+#    - Use patterns like: your_api_key_here, REPLACE_WITH_YOUR_TOKEN
+#    - Ensure these are in paths allowlist
+
+# 2. Test Fixtures:
+#    - Use obviously fake tokens: "test_token_12345"
+#    - Ensure test fixture directories are in paths allowlist
+#    - Consider using stopwords to exclude test patterns
+
+# 3. Documentation:
+#    - Redact real secrets in docs: "apify_api_XXX***XXX"
+#    - Use placeholder patterns that match stopwords
+#    - Include docs/ in paths allowlist if needed
+
+# 4. Archived Files:
+#    - .archive/ directory is NOT in git (per .gitignore)
+#    - Included in paths allowlist for local scanning
+#    - Rotate any real tokens before archiving
+
+# 5. CI/CD Configuration:
+#    - Use GitHub Secrets for CI/CD tokens
+#    - Never hardcode secrets in workflow files
+#    - Reference secrets via: ${{ secrets.SECRET_NAME }}
+
+# 6. False Positives:
+#    - Add specific patterns to regexes allowlist
+#    - Use stopwords for common false positive keywords
+#    - Document exceptions in this file
+
+# 7. Entropy Tuning:
+#    - Default entropy: 3.5 (balanced)
+#    - Increase for fewer false positives (but might miss some secrets)
+#    - Decrease for maximum sensitivity (more false positives)
+
+# 8. Regular Maintenance:
+#    - Review and update allowlist quarterly
+#    - Test with: gitleaks detect --source . --verbose
+#    - Remove obsolete patterns from allowlist
+#    - Update rules for new secret types
+
+# ============================================================================
+# Testing This Configuration
+# ============================================================================
+
+# Local testing:
+#   gitleaks detect --source . --verbose --config .gitleaks.toml
+#
+# Test specific file:
+#   gitleaks detect --source . --verbose --config .gitleaks.toml --log-opts="-1 --all -- path/to/file"
+#
+# Scan git history:
+#   gitleaks detect --source . --verbose --config .gitleaks.toml --log-opts="--all"
+#
+# Ignore allowlist (test raw detection):
+#   gitleaks detect --source . --verbose --config .gitleaks.toml --no-git
+#
+# Generate baseline (for existing secrets):
+#   gitleaks detect --source . --verbose --config .gitleaks.toml --baseline-path .gitleaks-baseline.json
+#
+# Scan against baseline:
+#   gitleaks detect --source . --verbose --config .gitleaks.toml --baseline-path .gitleaks-baseline.json
+
+# ============================================================================
+# Version History
+# ============================================================================
+
+# v1.0.0 - 2025-11-13
+# - Initial configuration for Somali Dialect Classifier project
+# - Custom rules for Apify, PostgreSQL, AWS, GitHub, HuggingFace tokens
+# - Allowlist configured for .env.example, test fixtures, archived files
+# - Entropy thresholds balanced for production use
