@@ -213,18 +213,15 @@ class TestCLIOutput:
         wiki_processor = WikipediaSomaliProcessor()
         bbc_processor = BBCSomaliProcessor()
 
-        # Both should have loggers with consistent naming (either module-style or source-style)
-        # Logger names can be module-based (base_pipeline, somali_dialect_classifier)
-        # or source-based (Wikipedia-Somali, BBC-Somali) from StructuredLogger
+        # After data processor/data manager refactoring, loggers use source-based naming
+        # Logger names should match the source name (lowercase with hyphens)
         assert (
-            "base_pipeline" in wiki_processor.logger.name
-            or "somali_dialect_classifier" in wiki_processor.logger.name
-            or "Wikipedia" in wiki_processor.logger.name
+            "wikipedia" in wiki_processor.logger.name.lower()
+            or "wikipedia-somali" in wiki_processor.logger.name.lower()
         )
         assert (
-            "base_pipeline" in bbc_processor.logger.name
-            or "somali_dialect_classifier" in bbc_processor.logger.name
-            or "BBC" in bbc_processor.logger.name
+            "bbc" in bbc_processor.logger.name.lower()
+            or "bbc-somali" in bbc_processor.logger.name.lower()
         )
 
 
