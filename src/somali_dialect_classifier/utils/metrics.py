@@ -940,6 +940,19 @@ class MetricsCollector:
         self.duplicate_count = 0
         self.near_duplicate_count = 0
 
+        # Custom metrics storage
+        self.custom_metrics = {}
+
+    def add_custom_metric(self, name: str, value: Any):
+        """
+        Add a custom metric with arbitrary structure.
+
+        Args:
+            name: Metric name
+            value: Metric value (can be dict, list, int, str, etc.)
+        """
+        self.custom_metrics[name] = value
+
     def increment(self, metric: str, value: int = 1):
         """Increment a counter metric."""
         self.counters[metric] += value
@@ -1242,6 +1255,10 @@ class MetricsCollector:
 
         # Add legacy metrics for backward compatibility
         metrics_data["legacy_metrics"] = {"snapshot": snapshot.to_dict(), "statistics": stats}
+
+        # Add custom metrics if any
+        if self.custom_metrics:
+            metrics_data["custom_metrics"] = self.custom_metrics
 
         # Write to file
         with open(output_path, "w") as f:

@@ -313,11 +313,7 @@ class BasePipeline(DataProcessor, ABC):
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         metrics_path = config.data.metrics_dir / f"{timestamp}_{self.source}_{self.run_id}_{stage}.json"
 
-        self.metrics.export_json(
-            output_file=metrics_path,
-            source=self.source,
-            stage=stage
-        )
+        self.metrics.export_json(output_path=metrics_path)
 
         self.logger.info(f"Exported {stage} metrics: {metrics_path}")
 

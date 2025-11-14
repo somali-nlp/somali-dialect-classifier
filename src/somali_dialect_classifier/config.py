@@ -65,6 +65,12 @@ if PYDANTIC_AVAILABLE:
         processed_dir: Path = Field(
             default=Path("data/processed"), description="Directory for processed text files"
         )
+        metrics_dir: Path = Field(
+            default=Path("data/metrics"), description="Directory for metrics and telemetry files"
+        )
+        reports_dir: Path = Field(
+            default=Path("data/reports"), description="Directory for quality reports and summaries"
+        )
 
         # Retention policy
         raw_retention_days: Optional[int] = Field(
