@@ -57,8 +57,9 @@ logs/*
 .locks/
 *.lock
 
-# Secrets
-.env
+# Secrets - ignore ALL .env variants to prevent secret exposure
+.env*
+!.env.example
 *.key
 
 # Development artifacts (archived planning documents)

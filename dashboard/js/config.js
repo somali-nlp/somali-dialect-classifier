@@ -73,6 +73,18 @@ export const Config = {
         '../data/pipeline_observations.json',
         '/data/pipeline_observations.json'
     ],
+    QUOTA_STATUS_PATHS: [
+        'data/quota_status.json',
+        './data/quota_status.json',
+        '../data/quota_status.json',
+        '/data/quota_status.json'
+    ],
+    MANIFEST_ANALYTICS_PATHS: [
+        'data/manifest_analytics.json',
+        './data/manifest_analytics.json',
+        '../data/manifest_analytics.json',
+        '/data/manifest_analytics.json'
+    ],
 
     /**
      * Network settings

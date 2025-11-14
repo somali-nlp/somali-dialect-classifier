@@ -69,6 +69,8 @@ import { FilterManager } from './features/filter-manager.js';
 import { ExportManager } from './features/export-manager.js';
 import { SankeyChart, RidgePlot, BulletChart } from './features/advanced-charts.js';
 import { ComparisonMode } from './features/comparison-mode.js';
+import { initQuotaStatus } from './features/quota-status.js';
+import { initManifestAnalytics } from './features/manifest-analytics.js';
 
 // Import utility modules
 import { Logger } from './utils/logger.js';
@@ -185,6 +187,17 @@ async function init() {
             populateQualityBriefings();
         } catch (error) {
             Logger.warn('Non-critical: Enhanced features failed to initialize', error);
+        }
+
+        // Initialize quota and manifest features
+        try {
+            await Promise.all([
+                initQuotaStatus(),
+                initManifestAnalytics()
+            ]);
+            Logger.info('Quota and manifest features initialized');
+        } catch (error) {
+            Logger.warn('Non-critical: Quota/manifest features failed to initialize', error);
         }
 
         // Animate counts (after stats are updated)

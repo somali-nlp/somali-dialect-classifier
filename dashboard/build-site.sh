@@ -111,6 +111,33 @@ if [ -d "data/reports" ]; then
     cp -r data/reports _site/data/ 2>/dev/null || true
 fi
 
+# Export quota and manifest data for dashboard
+if [ -f "scripts/export_quota_dashboard_data.py" ]; then
+    echo "Exporting quota and manifest data..."
+    python3 scripts/export_quota_dashboard_data.py \
+        --ledger data/crawl_ledger.db \
+        --manifests data/manifests \
+        --output-dir dashboard/data \
+        --quota-days 30
+
+    if [ $? -eq 0 ]; then
+        echo "✓ Dashboard data exported successfully"
+        # Copy exported files to _site/data
+        if [ -f "dashboard/data/quota_status.json" ]; then
+            cp dashboard/data/quota_status.json _site/data/
+            echo "✓ Copied quota_status.json"
+        fi
+        if [ -f "dashboard/data/manifest_analytics.json" ]; then
+            cp dashboard/data/manifest_analytics.json _site/data/
+            echo "✓ Copied manifest_analytics.json"
+        fi
+    else
+        echo "⚠ Warning: Failed to export dashboard data"
+    fi
+else
+    echo "⚠ Warning: scripts/export_quota_dashboard_data.py not found"
+fi
+
 # Generate advanced visualization data (Sankey flow, text distributions)
 # Note: This script expects _site/data to exist and will create the files there
 if [ -f "scripts/generate_advanced_viz_data.py" ]; then

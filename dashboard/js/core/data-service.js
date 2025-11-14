@@ -659,3 +659,19 @@ function normalizePipelineObservations(data) {
         entries
     };
 }
+
+/**
+ * Fetch quota status data.
+ * @returns {Promise<Object>} Quota status with daily usage and summary
+ */
+export async function getQuotaStatus() {
+    return fetchWithFallback(Config.QUOTA_STATUS_PATHS);
+}
+
+/**
+ * Fetch manifest analytics data.
+ * @returns {Promise<Object>} Manifest analytics with per-source totals and recent runs
+ */
+export async function getManifestAnalytics() {
+    return fetchWithFallback(Config.MANIFEST_ANALYTICS_PATHS);
+}

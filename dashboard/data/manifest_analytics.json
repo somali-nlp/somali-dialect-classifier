@@ -1,0 +1,71 @@
+{
+  "export_timestamp": "2025-11-14T06:00:53.244670Z",
+  "manifest_count": 5,
+  "summary": {
+    "total_records_ingested": 7830,
+    "total_runs": 5,
+    "quota_hit_runs": 5
+  },
+  "per_source_totals": {
+    "wikipedia": {
+      "runs": 5,
+      "total_records": 6170,
+      "quota_hits": 0
+    },
+    "bbc": {
+      "runs": 5,
+      "total_records": 1610,
+      "quota_hits": 3
+    },
+    "sprakbanken": {
+      "runs": 5,
+      "total_records": 50,
+      "quota_hits": 5
+    }
+  },
+  "recent_manifests": [
+    {
+      "run_id": "run_20251110_054425_004",
+      "timestamp": "2025-11-10T05:44:25.722967Z",
+      "total_records": 1594,
+      "sources_with_quota_hit": [
+        "bbc",
+        "sprakbanken"
+      ]
+    },
+    {
+      "run_id": "run_20251111_054425_003",
+      "timestamp": "2025-11-11T05:44:25.722839Z",
+      "total_records": 1524,
+      "sources_with_quota_hit": [
+        "sprakbanken"
+      ]
+    },
+    {
+      "run_id": "run_20251112_054425_002",
+      "timestamp": "2025-11-12T05:44:25.722697Z",
+      "total_records": 1594,
+      "sources_with_quota_hit": [
+        "bbc",
+        "sprakbanken"
+      ]
+    },
+    {
+      "run_id": "run_20251113_054425_001",
+      "timestamp": "2025-11-13T05:44:25.722528Z",
+      "total_records": 1524,
+      "sources_with_quota_hit": [
+        "sprakbanken"
+      ]
+    },
+    {
+      "run_id": "run_20251114_054425_000",
+      "timestamp": "2025-11-14T05:44:25.722289Z",
+      "total_records": 1594,
+      "sources_with_quota_hit": [
+        "bbc",
+        "sprakbanken"
+      ]
+    }
+  ]
+}

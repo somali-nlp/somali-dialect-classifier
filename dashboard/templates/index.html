@@ -25,6 +25,10 @@
     <!-- Main Stylesheet -->
     <link rel="stylesheet" href="css/main.css">
 
+    <!-- Component Stylesheets -->
+    <link rel="stylesheet" href="css/components/quota.css">
+    <link rel="stylesheet" href="css/components/manifest.css">
+
     <!-- Advanced Features CSS -->
     <link rel="stylesheet" href="advanced-features.css">
 
@@ -1284,6 +1288,29 @@
                 <span>View on GitHub</span>
                 <span>→</span>
             </a>
+        </div>
+    </section>
+
+    <!-- Quota Status Section -->
+    <section id="quota-section" class="dashboard-section" style="padding: 3rem 0; background: var(--gray-50);">
+        <div class="container">
+            <header class="section-header" style="margin-bottom: 2rem;">
+                <h2 class="section-title">Quota Status</h2>
+                <p class="section-description" style="color: var(--gray-600); margin-top: 0.5rem;">Daily quota usage and limits per source</p>
+            </header>
+            <div id="quota-cards" class="quota-container"></div>
+        </div>
+    </section>
+
+    <!-- Manifest Analytics Section -->
+    <section id="manifest-section" class="dashboard-section" style="padding: 3rem 0; background: var(--tableau-bg-white);">
+        <div class="container">
+            <header class="section-header" style="margin-bottom: 2rem;">
+                <h2 class="section-title">Ingestion Runs</h2>
+                <p class="section-description" style="color: var(--gray-600); margin-top: 0.5rem;">Recent orchestration run history and statistics</p>
+            </header>
+            <div id="manifest-summary"></div>
+            <div id="manifest-table"></div>
         </div>
     </section>
 

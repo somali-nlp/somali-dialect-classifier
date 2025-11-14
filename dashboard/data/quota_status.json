@@ -1,0 +1,214 @@
+{
+  "export_timestamp": "2025-11-14T06:00:53.243675Z",
+  "summary": {
+    "total_quota_hits": 7,
+    "sources_with_quotas": [
+      "bbc",
+      "huggingface",
+      "sprakbanken"
+    ],
+    "reporting_period_days": 30
+  },
+  "daily_usage": [
+    {
+      "date": "2025-11-14",
+      "source": "bbc",
+      "records_ingested": 280,
+      "quota_limit": 350,
+      "items_remaining": 70,
+      "quota_hit": false,
+      "usage_percent": 80.0
+    },
+    {
+      "date": "2025-11-14",
+      "source": "huggingface",
+      "records_ingested": 8500,
+      "quota_limit": 10000,
+      "items_remaining": 1500,
+      "quota_hit": false,
+      "usage_percent": 85.0
+    },
+    {
+      "date": "2025-11-14",
+      "source": "sprakbanken",
+      "records_ingested": 10,
+      "quota_limit": 10,
+      "items_remaining": 0,
+      "quota_hit": true,
+      "usage_percent": 100.0
+    },
+    {
+      "date": "2025-11-13",
+      "source": "bbc",
+      "records_ingested": 290,
+      "quota_limit": 350,
+      "items_remaining": 60,
+      "quota_hit": false,
+      "usage_percent": 82.9
+    },
+    {
+      "date": "2025-11-13",
+      "source": "huggingface",
+      "records_ingested": 8700,
+      "quota_limit": 10000,
+      "items_remaining": 1300,
+      "quota_hit": false,
+      "usage_percent": 87.0
+    },
+    {
+      "date": "2025-11-13",
+      "source": "sprakbanken",
+      "records_ingested": 10,
+      "quota_limit": 10,
+      "items_remaining": 0,
+      "quota_hit": true,
+      "usage_percent": 100.0
+    },
+    {
+      "date": "2025-11-12",
+      "source": "bbc",
+      "records_ingested": 300,
+      "quota_limit": 350,
+      "items_remaining": 50,
+      "quota_hit": false,
+      "usage_percent": 85.7
+    },
+    {
+      "date": "2025-11-12",
+      "source": "huggingface",
+      "records_ingested": 8900,
+      "quota_limit": 10000,
+      "items_remaining": 1100,
+      "quota_hit": false,
+      "usage_percent": 89.0
+    },
+    {
+      "date": "2025-11-12",
+      "source": "sprakbanken",
+      "records_ingested": 10,
+      "quota_limit": 10,
+      "items_remaining": 0,
+      "quota_hit": true,
+      "usage_percent": 100.0
+    },
+    {
+      "date": "2025-11-11",
+      "source": "bbc",
+      "records_ingested": 310,
+      "quota_limit": 350,
+      "items_remaining": 40,
+      "quota_hit": false,
+      "usage_percent": 88.6
+    },
+    {
+      "date": "2025-11-11",
+      "source": "huggingface",
+      "records_ingested": 9100,
+      "quota_limit": 10000,
+      "items_remaining": 900,
+      "quota_hit": false,
+      "usage_percent": 91.0
+    },
+    {
+      "date": "2025-11-11",
+      "source": "sprakbanken",
+      "records_ingested": 10,
+      "quota_limit": 10,
+      "items_remaining": 0,
+      "quota_hit": true,
+      "usage_percent": 100.0
+    },
+    {
+      "date": "2025-11-10",
+      "source": "bbc",
+      "records_ingested": 320,
+      "quota_limit": 350,
+      "items_remaining": 30,
+      "quota_hit": false,
+      "usage_percent": 91.4
+    },
+    {
+      "date": "2025-11-10",
+      "source": "huggingface",
+      "records_ingested": 9300,
+      "quota_limit": 10000,
+      "items_remaining": 700,
+      "quota_hit": false,
+      "usage_percent": 93.0
+    },
+    {
+      "date": "2025-11-10",
+      "source": "sprakbanken",
+      "records_ingested": 10,
+      "quota_limit": 10,
+      "items_remaining": 0,
+      "quota_hit": true,
+      "usage_percent": 100.0
+    },
+    {
+      "date": "2025-11-09",
+      "source": "bbc",
+      "records_ingested": 330,
+      "quota_limit": 350,
+      "items_remaining": 20,
+      "quota_hit": false,
+      "usage_percent": 94.3
+    },
+    {
+      "date": "2025-11-09",
+      "source": "huggingface",
+      "records_ingested": 9500,
+      "quota_limit": 10000,
+      "items_remaining": 500,
+      "quota_hit": false,
+      "usage_percent": 95.0
+    },
+    {
+      "date": "2025-11-09",
+      "source": "sprakbanken",
+      "records_ingested": 10,
+      "quota_limit": 10,
+      "items_remaining": 0,
+      "quota_hit": true,
+      "usage_percent": 100.0
+    },
+    {
+      "date": "2025-11-08",
+      "source": "bbc",
+      "records_ingested": 340,
+      "quota_limit": 350,
+      "items_remaining": 10,
+      "quota_hit": false,
+      "usage_percent": 97.1
+    },
+    {
+      "date": "2025-11-08",
+      "source": "huggingface",
+      "records_ingested": 9700,
+      "quota_limit": 10000,
+      "items_remaining": 300,
+      "quota_hit": false,
+      "usage_percent": 97.0
+    },
+    {
+      "date": "2025-11-08",
+      "source": "sprakbanken",
+      "records_ingested": 10,
+      "quota_limit": 10,
+      "items_remaining": 0,
+      "quota_hit": true,
+      "usage_percent": 100.0
+    }
+  ],
+  "quota_hits_by_source": {
+    "sprakbanken": [
+      "2025-11-14",
+      "2025-11-13",
+      "2025-11-12",
+      "2025-11-11",
+      "2025-11-10",
+      "2025-11-09",
+      "2025-11-08"
+    ]
+  }
+}
