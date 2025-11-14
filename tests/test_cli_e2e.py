@@ -153,8 +153,8 @@ class TestCLIDataDirectories:
 
         processor = WikipediaSomaliProcessor()
 
-        # Check that directory paths include partitioning
-        assert "source=Wikipedia-Somali" in str(processor.raw_dir)
+        # Check that directory paths include partitioning (source name is lowercase)
+        assert "source=wikipedia-somali" in str(processor.raw_dir)
         assert "date_accessed=" in str(processor.raw_dir)
 
     def test_bbc_creates_partitioned_directories(self, cli_env):
@@ -164,7 +164,7 @@ class TestCLIDataDirectories:
         processor = BBCSomaliProcessor()
 
         # Check that directory paths include partitioning
-        assert "source=BBC-Somali" in str(processor.raw_dir)
+        assert "source=bbc-somali" in str(processor.raw_dir)
         assert "date_accessed=" in str(processor.raw_dir)
 
 
