@@ -705,6 +705,8 @@ repos:
         always_run: true
 ```
 
+**Secret Scanning**: For pre-commit hooks that scan for secrets (API keys, passwords, tokens), see [Secret Scanning Guide](../howto/secret-scanning.md).
+
 ### Test Quality Gates
 
 **Pull Request Requirements**:

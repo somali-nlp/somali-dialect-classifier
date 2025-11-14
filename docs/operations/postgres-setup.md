@@ -31,7 +31,7 @@ export POSTGRES_HOST=localhost
 export POSTGRES_PORT=5432
 export POSTGRES_DB=somali_nlp
 export POSTGRES_USER=somali
-export POSTGRES_PASSWORD=your_secure_password
+export POSTGRES_PASSWORD="<your_secure_password>"
 ```
 
 3. **Run pipeline:**
@@ -69,7 +69,7 @@ POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_DB=somali_nlp
 POSTGRES_USER=somali
-POSTGRES_PASSWORD=secure_password
+POSTGRES_PASSWORD="<secure_password>"
 POSTGRES_AUTH_METHOD=md5
 
 # SQLite fallback (if backend=sqlite)

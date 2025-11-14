@@ -186,7 +186,7 @@ POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_DB=somali_nlp
 POSTGRES_USER=somali
-POSTGRES_PASSWORD=secure_password_here
+POSTGRES_PASSWORD="<secure_password_here>"
 
 # Daily quotas per source (enforced in Phase C, 2025-11-13)
 SDC_ORCHESTRATION__QUOTA_LIMITS__BBC=350

@@ -137,7 +137,7 @@ POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_DB=somali_nlp
 POSTGRES_USER=somali
-POSTGRES_PASSWORD=YOUR_SECURE_PASSWORD_HERE  # Change this!
+POSTGRES_PASSWORD="<YOUR_SECURE_PASSWORD_HERE>"  # Set your actual password
 POSTGRES_AUTH_METHOD=md5
 
 # SQLite fallback (for rollback if needed)

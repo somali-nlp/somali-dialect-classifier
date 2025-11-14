@@ -666,7 +666,7 @@ print(config.scraping.bbc.max_articles)
    export POSTGRES_HOST=localhost
    export POSTGRES_DB=somali_nlp
    export POSTGRES_USER=somali
-   export POSTGRES_PASSWORD=secure_password
+   export POSTGRES_PASSWORD="<secure_password>"
    ```
 
 4. Migrate data:

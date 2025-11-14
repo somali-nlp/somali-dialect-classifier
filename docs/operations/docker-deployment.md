@@ -301,9 +301,13 @@ docker exec somali-dialect-pipeline-prod \
 docker exec somali-dialect-pipeline-prod \
   ls -lah /app/data
 
-# 3. Check ledger database
-docker exec somali-dialect-pipeline-prod \
-  sqlite3 /app/data/ledger/crawl_ledger.db "SELECT COUNT(*) FROM urls;"
+# 3. Check ledger database (PostgreSQL in production)
+docker exec somali-nlp-postgres \
+  psql -U somali -d somali_nlp -c "SELECT COUNT(*), state FROM crawl_ledger GROUP BY state;"
+
+# For SQLite (development mode only):
+# docker exec somali-dialect-pipeline-prod \
+#   sqlite3 /app/data/ledger/crawl_ledger.db "SELECT COUNT(*) FROM urls;"
 
 # 4. Check logs
 docker exec somali-dialect-pipeline-prod \

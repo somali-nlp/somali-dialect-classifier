@@ -61,6 +61,7 @@ Task-oriented guides for common workflows:
 - **[TikTok Integration](howto/tiktok-integration.md)** - Social media comments scraping via Apify API
 - **[Understanding Filter Statistics](howto/understanding-filter-statistics.md)** - Understanding quality filter impact and optimization
 - **[Custom Filters](howto/custom-filters.md)** - Writing and registering quality filters
+- **[Secret Scanning](howto/secret-scanning.md)** - Gitleaks setup, pre-commit hooks, and preventing secret leaks
 - **[Configuration](howto/configuration.md)** - Environment setup and config management
 - **[Troubleshooting](howto/troubleshooting.md)** - Common issues and solutions
 
