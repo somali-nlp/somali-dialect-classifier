@@ -49,15 +49,12 @@ class MigrationManager:
         key = (migration.from_version, migration.to_version)
         if key in self.migrations:
             logger.warning(
-                f"Overwriting existing migration {migration.from_version} → "
-                f"{migration.to_version}"
+                f"Overwriting existing migration {migration.from_version} → {migration.to_version}"
             )
         self.migrations[key] = migration
         logger.debug(f"Registered migration: {migration.get_description()}")
 
-    def get_migration(
-        self, from_version: str, to_version: str
-    ) -> Optional[SchemaMigration]:
+    def get_migration(self, from_version: str, to_version: str) -> Optional[SchemaMigration]:
         """
         Get direct migration between versions.
 
@@ -70,9 +67,7 @@ class MigrationManager:
         """
         return self.migrations.get((from_version, to_version))
 
-    def get_migration_path(
-        self, from_version: str, to_version: str
-    ) -> list[SchemaMigration]:
+    def get_migration_path(self, from_version: str, to_version: str) -> list[SchemaMigration]:
         """
         Get sequence of migrations needed to go from one version to another.
 
@@ -148,8 +143,7 @@ class MigrationManager:
         migrations = self.get_migration_path(from_version, to_version)
 
         logger.info(
-            f"Migrating DataFrame: v{from_version} → v{to_version} "
-            f"({len(migrations)} step(s))"
+            f"Migrating DataFrame: v{from_version} → v{to_version} ({len(migrations)} step(s))"
         )
 
         # Apply migrations in sequence
@@ -190,10 +184,7 @@ class MigrationManager:
         Returns:
             List of tuples (from_version, to_version, is_breaking)
         """
-        return [
-            (m.from_version, m.to_version, m.is_breaking)
-            for m in self.migrations.values()
-        ]
+        return [(m.from_version, m.to_version, m.is_breaking) for m in self.migrations.values()]
 
     def get_available_versions(self) -> set[str]:
         """

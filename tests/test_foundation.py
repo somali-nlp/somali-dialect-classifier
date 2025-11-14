@@ -206,7 +206,9 @@ class TestDeduplication:
         assert similar_url3 is None
         assert hash3 != hash1
 
-    @pytest.mark.skip(reason="MinHash similarity threshold behavior requires tuning - test data too similar")
+    @pytest.mark.skip(
+        reason="MinHash similarity threshold behavior requires tuning - test data too similar"
+    )
     def test_near_duplicate_detection(self):
         """Test near-duplicate detection with MinHash."""
         import importlib.util

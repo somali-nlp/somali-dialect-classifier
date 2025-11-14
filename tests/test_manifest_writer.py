@@ -43,7 +43,7 @@ def sample_sources():
             "records_skipped": 8726,
             "partitions": ["2025-11-13"],
             "quota_hit": False,
-            "processing_time_seconds": 45.2
+            "processing_time_seconds": 45.2,
         },
         "bbc": {
             "status": "quota_reached",
@@ -53,14 +53,15 @@ def sample_sources():
             "quota_hit": True,
             "quota_limit": 350,
             "items_remaining": 127,
-            "processing_time_seconds": 180.5
-        }
+            "processing_time_seconds": 180.5,
+        },
     }
 
 
 # =============================================================================
 # CRUD Operations Tests (4 tests)
 # =============================================================================
+
 
 def test_create_manifest_valid_structure(writer, sample_sources):
     """Verify create_manifest generates valid JSON schema."""
@@ -147,6 +148,7 @@ def test_list_manifests_returns_sorted(writer, sample_sources):
 # Validation Tests (3 tests)
 # =============================================================================
 
+
 def test_manifest_schema_validation(writer, sample_sources):
     """Verify manifest schema validation enforces required fields."""
     manifest = writer.create_manifest("run_123", sample_sources)
@@ -184,6 +186,7 @@ def test_manifest_version_compatibility(writer, sample_sources):
 # Cleanup Tests (2 tests)
 # =============================================================================
 
+
 def test_cleanup_old_manifests_90_days(writer, sample_sources):
     """Verify manifests older than 90 days are deleted."""
     # Create old manifest (100 days ago)
@@ -195,7 +198,9 @@ def test_cleanup_old_manifests_90_days(writer, sample_sources):
     # Create recent manifest (30 days ago)
     recent_run_id = "run_recent"
     recent_timestamp = datetime.now(timezone.utc) - timedelta(days=30)
-    recent_manifest = writer.create_manifest(recent_run_id, sample_sources, timestamp=recent_timestamp)
+    recent_manifest = writer.create_manifest(
+        recent_run_id, sample_sources, timestamp=recent_timestamp
+    )
     recent_path = writer.write_manifest(recent_manifest)
 
     # Run cleanup with 90-day retention
@@ -231,6 +236,7 @@ def test_cleanup_preserves_recent(writer, sample_sources):
 # Analytics Tests (3 tests)
 # =============================================================================
 
+
 def test_get_quota_hit_sources(writer):
     """Verify get_sources_with_quota_hits tracks quota hits correctly."""
     # Create manifests with quota hits
@@ -243,7 +249,7 @@ def test_get_quota_hit_sources(writer):
             "quota_hit": True,
             "quota_limit": 350,
             "items_remaining": 100,
-            "processing_time_seconds": 180.0
+            "processing_time_seconds": 180.0,
         },
         "wikipedia": {
             "status": "completed",
@@ -251,8 +257,8 @@ def test_get_quota_hit_sources(writer):
             "records_skipped": 0,
             "partitions": ["2025-11-13"],
             "quota_hit": False,
-            "processing_time_seconds": 50.0
-        }
+            "processing_time_seconds": 50.0,
+        },
     }
 
     # Create 3 manifests with BBC quota hits
@@ -317,6 +323,7 @@ def test_filter_manifests_by_date_range(writer, sample_sources):
 # =============================================================================
 # Additional Helper Tests
 # =============================================================================
+
 
 def test_get_manifest_for_run(writer, sample_sources):
     """Verify get_manifest_for_run retrieves specific manifest."""

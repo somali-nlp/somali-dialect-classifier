@@ -280,6 +280,16 @@ class LedgerBackend(ABC):
         pass
 
     @abstractmethod
+    def get_last_successful_run(self, source: str) -> Optional[datetime]:
+        """Get timestamp of last successful pipeline run for source."""
+        pass
+
+    @abstractmethod
+    def get_first_successful_run(self, source: str) -> Optional[datetime]:
+        """Get timestamp of first successful pipeline run for source."""
+        pass
+
+    @abstractmethod
     def close(self) -> None:
         """Close database connection."""
         pass
@@ -674,8 +684,7 @@ class SQLiteLedger(LedgerBackend):
         # Total URLs (parameterized query - SECURITY FIX: prevents SQL injection)
         if source:
             result = self.connection.execute(
-                "SELECT COUNT(*) as count FROM crawl_ledger WHERE source = ?",
-                (source,)
+                "SELECT COUNT(*) as count FROM crawl_ledger WHERE source = ?", (source,)
             ).fetchone()
         else:
             result = self.connection.execute(
@@ -707,13 +716,16 @@ class SQLiteLedger(LedgerBackend):
 
         # Duplicate statistics (parameterized query - SECURITY FIX: prevents SQL injection)
         if source:
-            result = self.connection.execute("""
+            result = self.connection.execute(
+                """
                 SELECT
                     COUNT(DISTINCT text_hash) as unique_hashes,
                     COUNT(CASE WHEN text_hash IS NOT NULL THEN 1 END) as total_hashed
                 FROM crawl_ledger
                 WHERE source = ?
-            """, (source,)).fetchone()
+            """,
+                (source,),
+            ).fetchone()
         else:
             result = self.connection.execute("""
                 SELECT
@@ -732,17 +744,23 @@ class SQLiteLedger(LedgerBackend):
 
         # Error statistics (parameterized query - SECURITY FIX: prevents SQL injection)
         if source:
-            result = self.connection.execute("""
+            result = self.connection.execute(
+                """
                 SELECT COUNT(*) as count
                 FROM crawl_ledger
                 WHERE source = ? AND state = ? AND retry_count >= 3
-            """, (source, 'failed')).fetchone()
+            """,
+                (source, "failed"),
+            ).fetchone()
         else:
-            result = self.connection.execute("""
+            result = self.connection.execute(
+                """
                 SELECT COUNT(*) as count
                 FROM crawl_ledger
                 WHERE state = ? AND retry_count >= 3
-            """, ('failed',)).fetchone()
+            """,
+                ("failed",),
+            ).fetchone()
         stats["permanent_failures"] = result["count"]
 
         # RSS statistics (BBC only)
@@ -923,13 +941,55 @@ class SQLiteLedger(LedgerBackend):
 
         return remaining > 0, max(0, remaining)
 
+    def get_last_successful_run(self, source: str) -> Optional[datetime]:
+        """
+        Get timestamp of last successful pipeline run.
+
+        Args:
+            source: Data source identifier
+
+        Returns:
+            Datetime of last successful run, or None if never run
+        """
+        query = """
+            SELECT MAX(updated_at) as last_run_time
+            FROM crawl_ledger
+            WHERE source = ? AND state = ?
+        """
+
+        result = self.connection.execute(query, (source, CrawlState.PROCESSED.value)).fetchone()
+
+        if result and result["last_run_time"]:
+            return datetime.fromisoformat(result["last_run_time"].replace("Z", "+00:00"))
+        return None
+
+    def get_first_successful_run(self, source: str) -> Optional[datetime]:
+        """
+        Get timestamp of first successful pipeline run.
+
+        Args:
+            source: Data source identifier
+
+        Returns:
+            Datetime of first successful run, or None if never run
+        """
+        query = """
+            SELECT MIN(updated_at) as first_run_time
+            FROM crawl_ledger
+            WHERE source = ? AND state = ?
+        """
+
+        result = self.connection.execute(query, (source, CrawlState.PROCESSED.value)).fetchone()
+
+        if result and result["first_run_time"]:
+            return datetime.fromisoformat(result["first_run_time"].replace("Z", "+00:00"))
+        return None
+
     def close(self) -> None:
         """Close database connection."""
         if hasattr(self._local, "conn"):
             self._local.conn.close()
             delattr(self._local, "conn")
-
-
 
 
 class CrawlLedger:
@@ -1189,15 +1249,11 @@ class CrawlLedger:
 
         if result and result["last_processing_time"]:
             # Parse ISO format timestamp
-            return datetime.fromisoformat(
-                result["last_processing_time"].replace("Z", "+00:00")
-            )
+            return datetime.fromisoformat(result["last_processing_time"].replace("Z", "+00:00"))
 
         return None
 
-    def get_processed_urls(
-        self, source: str, limit: Optional[int] = None
-    ) -> list[dict[str, Any]]:
+    def get_processed_urls(self, source: str, limit: Optional[int] = None) -> list[dict[str, Any]]:
         """
         Get all processed URLs for a source.
 
@@ -1374,6 +1430,42 @@ class CrawlLedger:
             ...     print("Daily quota reached!")
         """
         return self.backend.check_quota_available(source, quota_limit, date)
+
+    def get_last_successful_run(self, source: str) -> Optional[datetime]:
+        """
+        Get timestamp of last successful pipeline run.
+
+        Args:
+            source: Data source identifier
+
+        Returns:
+            Datetime of last successful run, or None if never run
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> last_run = ledger.get_last_successful_run("wikipedia")
+            >>> if last_run:
+            ...     print(f"Last run: {last_run.isoformat()}")
+        """
+        return self.backend.get_last_successful_run(source)
+
+    def get_first_successful_run(self, source: str) -> Optional[datetime]:
+        """
+        Get timestamp of first successful pipeline run.
+
+        Args:
+            source: Data source identifier
+
+        Returns:
+            Datetime of first successful run, or None if never run
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> first_run = ledger.get_first_successful_run("wikipedia")
+            >>> if first_run:
+            ...     print(f"First run: {first_run.isoformat()}")
+        """
+        return self.backend.get_first_successful_run(source)
 
     def close(self) -> None:
         """Close ledger connection."""

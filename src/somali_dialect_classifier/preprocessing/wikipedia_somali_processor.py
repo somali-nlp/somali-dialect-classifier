@@ -299,15 +299,19 @@ class WikipediaSomaliProcessor(BasePipeline):
 
         self.logger.info(f"Collected {len(raw_articles)} articles from XML dump")
 
-        # PHASE 2: Incremental filtering (skip unchanged articles)
-        self.logger.info("Phase 2: Filtering articles based on last processing time...")
-        articles_to_process, filter_stats = self._filter_new_articles(raw_articles)
+        # PHASE 2: Discovery-stage deduplication (skip already-processed articles)
+        self.logger.info("Phase 2: Discovery-stage deduplication...")
+        articles_after_dedup = self._filter_already_processed(raw_articles)
+
+        # PHASE 3: Incremental filtering (skip unchanged articles)
+        self.logger.info("Phase 3: Filtering articles based on last processing time...")
+        articles_to_process, filter_stats = self._filter_new_articles(articles_after_dedup)
 
         # Track incremental filtering metrics
         self.metrics.add_custom_metric("incremental_filtering", filter_stats)
 
-        # PHASE 3: Process and write filtered articles
-        self.logger.info(f"Phase 3: Processing {len(articles_to_process)} articles...")
+        # PHASE 4: Process and write filtered articles
+        self.logger.info(f"Phase 4: Processing {len(articles_to_process)} articles...")
         page_count = 0
 
         # Track extraction timing
@@ -320,7 +324,9 @@ class WikipediaSomaliProcessor(BasePipeline):
 
                     # Track URL discovery
                     self.ledger.discover_url(
-                        page_url, "wikipedia", metadata={"title": title, "timestamp": article.get("timestamp")}
+                        page_url,
+                        "wikipedia",
+                        metadata={"title": title, "timestamp": article.get("timestamp")},
                     )
 
                     # Compute hash and check for duplicates
@@ -498,6 +504,59 @@ class WikipediaSomaliProcessor(BasePipeline):
             "url": self._title_to_url(title),
             "timestamp": timestamp,
         }
+
+    def _filter_already_processed(self, articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """
+        Filter out articles already processed in ledger.
+
+        Implements discovery-stage deduplication by querying the ledger
+        for already-processed URLs and excluding them from this run.
+
+        Args:
+            articles: List of article dicts with 'url' field
+
+        Returns:
+            Filtered list containing only new articles
+        """
+        processed_urls = set()
+
+        try:
+            # Query ledger for all processed Wikipedia URLs
+            processed_records = self.ledger.get_processed_urls(
+                source="wikipedia",
+                limit=None,  # Get all records
+            )
+            processed_urls = {r["url"] for r in processed_records if "url" in r}
+            self.logger.info(f"Loaded {len(processed_urls)} already-processed Wikipedia articles")
+        except Exception as e:
+            self.logger.warning(
+                f"Failed to load processed URLs from ledger: {e}. Proceeding without deduplication."
+            )
+            # Continue without deduplication on error (graceful degradation)
+
+        # Filter articles
+        new_articles = []
+        skipped_count = 0
+
+        for article in articles:
+            url = article.get("url")
+            if not url:
+                self.logger.warning("Article missing URL, skipping")
+                continue
+
+            if url in processed_urls:
+                skipped_count += 1
+                self.metrics.increment("records_skipped_discovery_dedup")
+                continue
+
+            new_articles.append(article)
+
+        self.logger.info(
+            f"Discovery deduplication: {len(articles)} total → "
+            f"{len(new_articles)} new, {skipped_count} already processed"
+        )
+
+        return new_articles
 
     def _get_last_processing_time(self) -> Optional["datetime"]:
         """

@@ -365,7 +365,9 @@ class PostgresLedger(LedgerBackend):
         Note: This is a placeholder for exact signature match.
         Real implementation would compute Jaccard similarity.
         """
-        query = "SELECT url, minhash_signature FROM crawl_ledger WHERE minhash_signature IS NOT NULL"
+        query = (
+            "SELECT url, minhash_signature FROM crawl_ledger WHERE minhash_signature IS NOT NULL"
+        )
 
         with self._get_connection() as conn:
             with conn.cursor() as cur:

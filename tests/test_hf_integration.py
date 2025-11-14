@@ -18,8 +18,10 @@ except ImportError:
 
 # Skip ALL tests in this module - HuggingFace processor features not fully implemented
 pytestmark = [
-    pytest.mark.skip(reason="HuggingFace processor features not fully implemented - requires backend engineer"),
-    pytest.mark.skipif(not DATASETS_AVAILABLE, reason="datasets library not installed")
+    pytest.mark.skip(
+        reason="HuggingFace processor features not fully implemented - requires backend engineer"
+    ),
+    pytest.mark.skipif(not DATASETS_AVAILABLE, reason="datasets library not installed"),
 ]
 
 from somali_dialect_classifier.preprocessing.huggingface_somali_processor import (

@@ -192,14 +192,23 @@ def run_wikipedia_task(force: bool = False) -> dict[str, Any]:
     ledger = CrawlLedger()
     if ledger.is_source_locked("wikipedia"):
         logger.warning("Wikipedia pipeline already running, skipping")
-        return {"source": "Wikipedia-Somali", "status": "skipped", "reason": "concurrent_run_active"}
+        return {
+            "source": "Wikipedia-Somali",
+            "status": "skipped",
+            "reason": "concurrent_run_active",
+        }
 
     # Acquire lock before pipeline starts
     try:
         ledger.acquire_source_lock("wikipedia", timeout=30)
     except RuntimeError as e:
         logger.error(f"Failed to acquire lock: {e}")
-        return {"source": "Wikipedia-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
+        return {
+            "source": "Wikipedia-Somali",
+            "status": "failed",
+            "reason": "lock_timeout",
+            "error": str(e),
+        }
 
     try:
         # Run pipeline with lock held
@@ -256,7 +265,12 @@ def run_bbc_task(max_articles: Optional[int] = None, force: bool = False) -> dic
         ledger.acquire_source_lock("bbc", timeout=30)
     except RuntimeError as e:
         logger.error(f"Failed to acquire lock: {e}")
-        return {"source": "BBC-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
+        return {
+            "source": "BBC-Somali",
+            "status": "failed",
+            "reason": "lock_timeout",
+            "error": str(e),
+        }
 
     try:
         # Run pipeline with lock held
@@ -313,14 +327,23 @@ def run_huggingface_task(
     ledger = CrawlLedger()
     if ledger.is_source_locked("huggingface"):
         logger.warning("HuggingFace pipeline already running, skipping")
-        return {"source": "HuggingFace-Somali", "status": "skipped", "reason": "concurrent_run_active"}
+        return {
+            "source": "HuggingFace-Somali",
+            "status": "skipped",
+            "reason": "concurrent_run_active",
+        }
 
     # Acquire lock before pipeline starts
     try:
         ledger.acquire_source_lock("huggingface", timeout=30)
     except RuntimeError as e:
         logger.error(f"Failed to acquire lock: {e}")
-        return {"source": "HuggingFace-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
+        return {
+            "source": "HuggingFace-Somali",
+            "status": "failed",
+            "reason": "lock_timeout",
+            "error": str(e),
+        }
 
     try:
         # Run pipeline with lock held
@@ -378,14 +401,23 @@ def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> dict[st
     ledger = CrawlLedger()
     if ledger.is_source_locked("sprakbanken"):
         logger.warning("Språkbanken pipeline already running, skipping")
-        return {"source": "Sprakbanken-Somali", "status": "skipped", "reason": "concurrent_run_active"}
+        return {
+            "source": "Sprakbanken-Somali",
+            "status": "skipped",
+            "reason": "concurrent_run_active",
+        }
 
     # Acquire lock before pipeline starts
     try:
         ledger.acquire_source_lock("sprakbanken", timeout=30)
     except RuntimeError as e:
         logger.error(f"Failed to acquire lock: {e}")
-        return {"source": "Sprakbanken-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
+        return {
+            "source": "Sprakbanken-Somali",
+            "status": "failed",
+            "reason": "lock_timeout",
+            "error": str(e),
+        }
 
     try:
         # Run pipeline with lock held
@@ -449,7 +481,12 @@ def run_tiktok_task(
         ledger.acquire_source_lock("tiktok", timeout=30)
     except RuntimeError as e:
         logger.error(f"Failed to acquire lock: {e}")
-        return {"source": "TikTok-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
+        return {
+            "source": "TikTok-Somali",
+            "status": "failed",
+            "reason": "lock_timeout",
+            "error": str(e),
+        }
 
     try:
         # Run pipeline with lock held
@@ -709,7 +746,9 @@ def run_all_pipelines(
             should_run, reason = should_run_source("sprakbanken")
             if should_run:
                 logger.info(f"✅ Running Språkbanken: {reason}")
-                results.append(run_sprakbanken_task.submit(corpus_id=sprakbanken_corpus, force=force))
+                results.append(
+                    run_sprakbanken_task.submit(corpus_id=sprakbanken_corpus, force=force)
+                )
             else:
                 logger.info(f"⏭️  Skipping Språkbanken: {reason}")
                 skipped_sources.append(("Sprakbanken-Somali", reason))
@@ -833,7 +872,7 @@ def run_all_pipelines(
             "records_skipped": result.get("statistics", {}).get("skipped", 0),
             "partitions": [datetime.now(timezone.utc).strftime("%Y-%m-%d")],
             "quota_hit": result.get("quota_hit", False),
-            "processing_time_seconds": result.get("processing_time", 0.0)
+            "processing_time_seconds": result.get("processing_time", 0.0),
         }
 
         # Add quota info if quota was hit
@@ -844,9 +883,7 @@ def run_all_pipelines(
     # Generate and write manifest
     try:
         manifest = manifest_writer.create_manifest(
-            run_id=run_id,
-            sources=manifest_sources,
-            timestamp=run_start_time
+            run_id=run_id, sources=manifest_sources, timestamp=run_start_time
         )
         manifest_path = manifest_writer.write_manifest(manifest)
         logger.info(f"📝 Ingestion manifest written: {manifest_path}")

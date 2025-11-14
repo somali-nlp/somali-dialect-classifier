@@ -1,0 +1,14 @@
+{
+  "links": [
+    "https://www.bbc.com/somali/articles/c1j8nrwk672o",
+    "https://www.bbc.com/somali/articles/c4n4z1en37lo",
+    "https://www.bbc.com/somali/articles/ckkrxrvr977o",
+    "https://www.bbc.com/somali/articles/c5y775e4w3ro",
+    "https://www.bbc.com/somali/articles/cx2yl8kxee9o"
+  ],
+  "total_discovered": 173,
+  "total_to_scrape": 5,
+  "discovered_at": "2025-11-10",
+  "max_articles_limit": 5,
+  "run_id": "20251110_155041_bbc-somali_049e4699"
+}

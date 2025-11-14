@@ -66,10 +66,7 @@ class TestDiscoveryStageDeduplication:
 
         # Mark as processed with hash
         temp_ledger.mark_processed(
-            url=url,
-            text_hash="abc123",
-            silver_id="test-id-001",
-            source=source
+            url=url, text_hash="abc123", silver_id="test-id-001", source=source
         )
 
         # Verify URL is marked as processed
@@ -89,10 +86,7 @@ class TestDiscoveryStageDeduplication:
             temp_ledger.discover_url(url, source)
             temp_ledger.mark_fetched(url, http_status=200)
             temp_ledger.mark_processed(
-                url=url,
-                text_hash=f"hash{i}",
-                silver_id=f"id-{i}",
-                source=source
+                url=url, text_hash=f"hash{i}", silver_id=f"id-{i}", source=source
             )
 
         # Second run: all URLs should be skipped
@@ -107,12 +101,7 @@ class TestDiscoveryStageDeduplication:
         # Mark as processed
         temp_ledger.discover_url(url, source)
         temp_ledger.mark_fetched(url, http_status=200)
-        temp_ledger.mark_processed(
-            url=url,
-            text_hash="abc123",
-            silver_id="test-id",
-            source=source
-        )
+        temp_ledger.mark_processed(url=url, text_hash="abc123", silver_id="test-id", source=source)
 
         # Without force, should be skipped
         assert temp_ledger.should_fetch_url(url, force=False) is False
@@ -142,10 +131,7 @@ class TestHuggingFaceContinuousStreaming:
     def test_checkpoint_creation_on_max_records(self, temp_work_dir):
         """Test that checkpoint is saved when stopped at max_records."""
         processor = HuggingFaceSomaliProcessor(
-            dataset_name="test/dataset",
-            text_field="text",
-            url_field="url",
-            max_records=100
+            dataset_name="test/dataset", text_field="text", url_field="url", max_records=100
         )
 
         # Simulate checkpoint save
@@ -154,12 +140,12 @@ class TestHuggingFaceContinuousStreaming:
         checkpoint_file = checkpoint_dir / ".checkpoint"
 
         checkpoint_data = {
-            'last_index': 100,
-            'timestamp': '2025-11-10T12:00:00Z',
-            'processed_count': 95
+            "last_index": 100,
+            "timestamp": "2025-11-10T12:00:00Z",
+            "processed_count": 95,
         }
 
-        with open(checkpoint_file, 'w') as f:
+        with open(checkpoint_file, "w") as f:
             json.dump(checkpoint_data, f)
 
         # Verify checkpoint exists
@@ -168,16 +154,13 @@ class TestHuggingFaceContinuousStreaming:
         with open(checkpoint_file) as f:
             loaded = json.load(f)
 
-        assert loaded['last_index'] == 100
-        assert loaded['processed_count'] == 95
+        assert loaded["last_index"] == 100
+        assert loaded["processed_count"] == 95
 
     def test_no_extraction_complete_marker_on_max_records(self, temp_work_dir):
         """Test that .extraction_complete marker is NOT created when stopped at max_records."""
         processor = HuggingFaceSomaliProcessor(
-            dataset_name="test/dataset",
-            text_field="text",
-            url_field="url",
-            max_records=100
+            dataset_name="test/dataset", text_field="text", url_field="url", max_records=100
         )
 
         staging_dir = temp_work_dir / "data" / "staging" / f"source={processor.source}"
@@ -185,8 +168,8 @@ class TestHuggingFaceContinuousStreaming:
 
         # Create checkpoint (simulating stopped at limit)
         checkpoint_file = staging_dir / ".checkpoint"
-        with open(checkpoint_file, 'w') as f:
-            json.dump({'last_index': 100, 'completed': False}, f)
+        with open(checkpoint_file, "w") as f:
+            json.dump({"last_index": 100, "completed": False}, f)
 
         # Verify .extraction_complete marker does NOT exist
         marker = staging_dir / ".extraction_complete"
@@ -235,7 +218,7 @@ class TestLSHPersistence:
             hash_fields=["text", "url"],
             enable_minhash=True,
             similarity_threshold=0.85,
-            storage_path=lsh_path
+            storage_path=lsh_path,
         )
 
         dedup1 = DedupEngine(config)
@@ -264,7 +247,7 @@ class TestLSHPersistence:
                 hash_fields=["text", "url"],
                 enable_minhash=True,
                 similarity_threshold=0.85,
-                storage_path=lsh_path
+                storage_path=lsh_path,
             )
 
             dedup2 = DedupEngine(config2)
@@ -303,10 +286,7 @@ class TestJSONLReplayDeduplication:
         ledger.discover_url(url, "test-source")
         ledger.mark_fetched(url, http_status=200)
         ledger.mark_processed(
-            url=url,
-            text_hash="hash123",
-            silver_id="id-001",
-            source="test-source"
+            url=url, text_hash="hash123", silver_id="id-001", source="test-source"
         )
 
         # Create JSONL staging file with the same URL
@@ -316,7 +296,7 @@ class TestJSONLReplayDeduplication:
         staging_file = staging_dir / "date_accessed=2025-11-10" / "test_batch.jsonl"
         staging_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(staging_file, 'w') as f:
+        with open(staging_file, "w") as f:
             json.dump({"text": "Test content", "url": url, "title": "Test"}, f)
 
         # Verify ledger contains processed URL
@@ -337,7 +317,9 @@ class TestProcessorMetrics:
     NOTE: The metrics module doesn't exist yet. This test is skipped until implemented.
     """
 
-    @pytest.mark.skip(reason="Module somali_dialect_classifier.preprocessing.metrics not implemented")
+    @pytest.mark.skip(
+        reason="Module somali_dialect_classifier.preprocessing.metrics not implemented"
+    )
     def test_discovery_dedup_metric_incremented(self):
         """Test that records_skipped_discovery_dedup metric is incremented."""
         from somali_dialect_classifier.preprocessing.metrics import ProcessingMetrics
@@ -357,7 +339,6 @@ class TestSprakbankenXMLTokenFix:
     def test_token_element_extraction(self):
         """Test that <token> elements are correctly extracted (not <w> elements)."""
         import xml.etree.ElementTree as ET
-
 
         # Create sample sentence with <token> elements
         sentence_xml = """

@@ -151,9 +151,7 @@ class TestHTTPSessionIntegration:
 
     def test_session_retry_on_500_error(self):
         """Test that session retries on 500 errors."""
-        session = HTTPSessionFactory.create_session(
-            max_retries=3, status_forcelist=[500, 502, 503]
-        )
+        session = HTTPSessionFactory.create_session(max_retries=3, status_forcelist=[500, 502, 503])
 
         # httpbin.org provides a /status/500 endpoint that returns 500
         # The session should retry and eventually fail

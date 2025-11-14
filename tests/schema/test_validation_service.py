@@ -43,7 +43,7 @@ class TestValidationService:
             "domain": "encyclopedia",
             "register": "formal",
             "schema_version": "1.0",
-            "run_id": "test_run_123"
+            "run_id": "test_run_123",
         }
         is_valid, errors = service.validate_record(valid_record)
         assert is_valid is True
@@ -70,7 +70,7 @@ class TestValidationService:
             "domain": "test",
             "register": "invalid_register",  # Invalid register
             "schema_version": "1.0",
-            "run_id": "test_run"
+            "run_id": "test_run",
         }
         is_valid, errors = service.validate_record(invalid_record)
         assert is_valid is False
@@ -97,7 +97,7 @@ class TestValidationService:
             "domain": "test",
             "register": "formal",
             "schema_version": "1.0",
-            "run_id": "test_run"
+            "run_id": "test_run",
         }
         errors = service.get_validation_errors(invalid_record)
         assert isinstance(errors, list)
@@ -125,7 +125,7 @@ class TestValidationService:
             "domain": "test",
             "register": "formal",
             "schema_version": "1.0",
-            "run_id": "test_run"
+            "run_id": "test_run",
         }
         service.validate_record(invalid_record)
         service.validate_record(invalid_record)
@@ -151,7 +151,7 @@ class TestValidationService:
             "domain": "test",
             "register": "formal",
             "schema_version": "1.0",
-            "run_id": "test_run"
+            "run_id": "test_run",
         }
         service.validate_record(invalid_record)
         assert service.get_failure_count() > 0

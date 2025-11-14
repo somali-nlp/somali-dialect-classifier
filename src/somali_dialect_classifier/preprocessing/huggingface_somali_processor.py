@@ -356,7 +356,9 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         has_quota, remaining = self.ledger.check_quota_available("huggingface", quota_limit)
 
         if not has_quota:
-            self.logger.warning(f"Daily quota already reached for HuggingFace: {quota_limit} records")
+            self.logger.warning(
+                f"Daily quota already reached for HuggingFace: {quota_limit} records"
+            )
             self.metrics.increment("quota_hit")
             return staging_dir
 
@@ -384,7 +386,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         # Load set of already-processed URLs from ledger to skip in stream
         # This prevents re-downloading the same records on subsequent runs
         processed_urls = set()
-        if not self.force and hasattr(self, 'ledger') and self.ledger is not None:
+        if not self.force and hasattr(self, "ledger") and self.ledger is not None:
             try:
                 processed_urls = self._get_processed_urls()
                 self.logger.info(
@@ -398,7 +400,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         checkpoint = None if self.force else self._load_checkpoint()
         start_offset = 0
         if checkpoint:
-            start_offset = checkpoint.get('last_index', 0)
+            start_offset = checkpoint.get("last_index", 0)
             self.logger.info(f"Resuming from checkpoint: offset={start_offset}")
         else:
             # Fallback to manifest-based offset
@@ -455,7 +457,11 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
                 # Check max_records limit (with quota enforcement)
                 if effective_max_records and total_processed >= effective_max_records:
-                    reason = "quota limit" if quota_limit and effective_max_records == remaining else "max_records limit"
+                    reason = (
+                        "quota limit"
+                        if quota_limit and effective_max_records == remaining
+                        else "max_records limit"
+                    )
                     self.logger.info(f"Reached {reason}: {effective_max_records}")
                     stopped_at_limit = True
                     break
@@ -514,9 +520,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 # Increment quota counter
                 if quota_limit is not None:
                     self.ledger.increment_daily_quota(
-                        source="huggingface",
-                        count=1,
-                        quota_limit=quota_limit
+                        source="huggingface", count=1, quota_limit=quota_limit
                     )
 
                 current_offset = i + 1
@@ -524,12 +528,16 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
                 # PHASE 5: Save checkpoint every 1000 records
                 if total_processed % 1000 == 0:
-                    self._save_checkpoint({
-                        'last_index': current_offset,
-                        'timestamp': datetime.now(timezone.utc).isoformat(),
-                        'processed_count': total_processed
-                    })
-                    self.metrics.increment("records_skipped_checkpoint")  # Track checkpoint frequency
+                    self._save_checkpoint(
+                        {
+                            "last_index": current_offset,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "processed_count": total_processed,
+                        }
+                    )
+                    self.metrics.increment(
+                        "records_skipped_checkpoint"
+                    )  # Track checkpoint frequency
 
                 # Write batch when full
                 if len(batch) >= self.streaming_batch_size:
@@ -594,7 +602,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                     self.ledger.mark_quota_hit(
                         source="huggingface",
                         items_remaining=-1,  # Unknown for infinite dataset streams
-                        quota_limit=quota_limit
+                        quota_limit=quota_limit,
                     )
                     self.logger.info(
                         f"Quota hit: {quota_limit} records processed, "
@@ -602,15 +610,19 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                     )
                     self.metrics.increment("quota_hit")
                 else:
-                    self.logger.info(f"Stopped at max_records limit - more data available to stream from offset {current_offset}")
+                    self.logger.info(
+                        f"Stopped at max_records limit - more data available to stream from offset {current_offset}"
+                    )
 
             # PHASE 5: Save final checkpoint and clean up
-            self._save_checkpoint({
-                'last_index': current_offset,
-                'timestamp': datetime.now(timezone.utc).isoformat(),
-                'processed_count': total_processed,
-                'completed': True
-            })
+            self._save_checkpoint(
+                {
+                    "last_index": current_offset,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "processed_count": total_processed,
+                    "completed": True,
+                }
+            )
             self.logger.info(f"Final checkpoint saved at offset {current_offset}")
 
             # Update manifest with final audit counts
@@ -729,7 +741,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
         # PHASE 1: Load already-processed URLs for cross-run deduplication
         processed_urls = set()
-        if not self.force and hasattr(self, 'ledger') and self.ledger is not None:
+        if not self.force and hasattr(self, "ledger") and self.ledger is not None:
             try:
                 processed_urls = self._get_processed_urls()
                 self.logger.info(
@@ -1115,7 +1127,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         Returns:
             Set of URLs already in PROCESSED state in the ledger
         """
-        if not hasattr(self, 'ledger') or self.ledger is None:
+        if not hasattr(self, "ledger") or self.ledger is None:
             return set()
 
         try:
@@ -1143,9 +1155,11 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         checkpoint_file = self.raw_dir / "checkpoint.json"
         if checkpoint_file.exists():
             try:
-                with open(checkpoint_file, encoding='utf-8') as f:
+                with open(checkpoint_file, encoding="utf-8") as f:
                     checkpoint = json.load(f)
-                    self.logger.info(f"Loaded checkpoint: last_index={checkpoint.get('last_index', 0)}")
+                    self.logger.info(
+                        f"Loaded checkpoint: last_index={checkpoint.get('last_index', 0)}"
+                    )
                     return checkpoint
             except Exception as e:
                 self.logger.warning(f"Failed to load checkpoint: {e}")
@@ -1164,7 +1178,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         checkpoint_file = self.raw_dir / "checkpoint.json"
         try:
             checkpoint_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(checkpoint_file, 'w', encoding='utf-8') as f:
+            with open(checkpoint_file, "w", encoding="utf-8") as f:
                 json.dump(checkpoint, f, indent=2, ensure_ascii=False)
             self.logger.debug(f"Checkpoint saved: index={checkpoint['last_index']}")
         except Exception as e:

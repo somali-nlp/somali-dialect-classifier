@@ -1,0 +1,51 @@
+{
+  "manifest_version": "1.0",
+  "run_id": "run_20251114_054425_000",
+  "timestamp": "2025-11-14T05:44:25.722289Z",
+  "orchestrator_version": "1.1.0",
+  "sources": {
+    "wikipedia": {
+      "status": "completed",
+      "records_ingested": 1234,
+      "records_skipped": 8726,
+      "partitions": [
+        "2025-11-14"
+      ],
+      "quota_hit": false,
+      "processing_time_seconds": 45.2
+    },
+    "bbc": {
+      "status": "quota_reached",
+      "records_ingested": 350,
+      "records_skipped": 0,
+      "partitions": [
+        "2025-11-14"
+      ],
+      "quota_hit": true,
+      "quota_limit": 350,
+      "items_remaining": 127,
+      "processing_time_seconds": 180.5
+    },
+    "sprakbanken": {
+      "status": "quota_reached",
+      "records_ingested": 10,
+      "records_skipped": 0,
+      "partitions": [
+        "2025-11-14"
+      ],
+      "quota_hit": true,
+      "quota_limit": 10,
+      "items_remaining": 0,
+      "processing_time_seconds": 5.3
+    }
+  },
+  "totals": {
+    "total_records": 1594,
+    "total_partitions": 1,
+    "total_processing_time_seconds": 231.0,
+    "sources_with_quota_hit": [
+      "bbc",
+      "sprakbanken"
+    ]
+  }
+}

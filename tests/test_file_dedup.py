@@ -32,8 +32,8 @@ class TestFileChecksumComputation:
         test_file.write_bytes(b"Hello World")
 
         # Compute checksum twice with sha256
-        checksum1 = processor._compute_file_checksum(test_file, algorithm='sha256')
-        checksum2 = processor._compute_file_checksum(test_file, algorithm='sha256')
+        checksum1 = processor._compute_file_checksum(test_file, algorithm="sha256")
+        checksum2 = processor._compute_file_checksum(test_file, algorithm="sha256")
 
         assert checksum1 == checksum2, "Checksum should be deterministic"
         assert len(checksum1) == 64, "SHA256 hex digest should be 64 characters"
@@ -53,8 +53,8 @@ class TestFileChecksumComputation:
         file2.write_bytes(b"Content B")
 
         # Compute checksums
-        checksum1 = processor._compute_file_checksum(file1, algorithm='sha256')
-        checksum2 = processor._compute_file_checksum(file2, algorithm='sha256')
+        checksum1 = processor._compute_file_checksum(file1, algorithm="sha256")
+        checksum2 = processor._compute_file_checksum(file2, algorithm="sha256")
 
         assert checksum1 != checksum2, "Different content should have different checksums"
 
@@ -72,10 +72,11 @@ class TestFileChecksumComputation:
         test_file.write_bytes(test_content)
 
         # Compute checksum with sha256
-        checksum = processor._compute_file_checksum(test_file, algorithm='sha256')
+        checksum = processor._compute_file_checksum(test_file, algorithm="sha256")
 
         # Verify against expected hash
         import hashlib
+
         expected = hashlib.sha256(test_content).hexdigest()
         assert checksum == expected, "Chunked reading should produce same checksum"
         assert len(checksum) == 64, "SHA256 hex digest should be 64 characters"
@@ -124,11 +125,15 @@ class TestDumpAlreadyProcessedCheck:
         partition_dir.mkdir(parents=True)
 
         # Create Parquet file
-        parquet_file = partition_dir / "wikipedia-somali_20251101_120000_abc123_silver_part-0000.parquet"
+        parquet_file = (
+            partition_dir / "wikipedia-somali_20251101_120000_abc123_silver_part-0000.parquet"
+        )
         parquet_file.write_bytes(b"mock parquet data")
 
         # Create metadata with source_file and checksum
-        metadata_file = partition_dir / "wikipedia-somali_20251101_120000_abc123_silver_metadata.json"
+        metadata_file = (
+            partition_dir / "wikipedia-somali_20251101_120000_abc123_silver_metadata.json"
+        )
 
         # Create test dump
         test_dump = tmp_path / "raw" / "sowiki-latest.xml.bz2"
@@ -137,7 +142,7 @@ class TestDumpAlreadyProcessedCheck:
 
         # Compute checksum
         processor = WikipediaSomaliProcessor()
-        checksum = processor._compute_file_checksum(test_dump, algorithm='sha256')
+        checksum = processor._compute_file_checksum(test_dump, algorithm="sha256")
 
         metadata = {
             "run_id": "20251101_120000_abc123",
@@ -174,11 +179,15 @@ class TestDumpAlreadyProcessedCheck:
         partition_dir.mkdir(parents=True)
 
         # Create Parquet file
-        parquet_file = partition_dir / "wikipedia-somali_20251101_120000_abc123_silver_part-0000.parquet"
+        parquet_file = (
+            partition_dir / "wikipedia-somali_20251101_120000_abc123_silver_part-0000.parquet"
+        )
         parquet_file.write_bytes(b"mock parquet data")
 
         # Create metadata with OLD checksum
-        metadata_file = partition_dir / "wikipedia-somali_20251101_120000_abc123_silver_metadata.json"
+        metadata_file = (
+            partition_dir / "wikipedia-somali_20251101_120000_abc123_silver_metadata.json"
+        )
         metadata = {
             "run_id": "20251101_120000_abc123",
             "source": "Wikipedia-Somali",
@@ -210,7 +219,9 @@ class TestMetadataValidation:
     These tests document the expected behavior if such functionality is added.
     """
 
-    @pytest.mark.skip(reason="Method _validate_metadata_file not implemented in SilverDatasetWriter")
+    @pytest.mark.skip(
+        reason="Method _validate_metadata_file not implemented in SilverDatasetWriter"
+    )
     def test_validate_complete_metadata(self, tmp_path):
         """Verify valid metadata passes validation."""
         from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
@@ -232,7 +243,9 @@ class TestMetadataValidation:
         is_valid = writer._validate_metadata_file(metadata_file)
         assert is_valid is True, "Valid metadata should pass validation"
 
-    @pytest.mark.skip(reason="Method _validate_metadata_file not implemented in SilverDatasetWriter")
+    @pytest.mark.skip(
+        reason="Method _validate_metadata_file not implemented in SilverDatasetWriter"
+    )
     def test_validate_missing_fields(self, tmp_path):
         """Verify incomplete metadata fails validation."""
         from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
@@ -251,7 +264,9 @@ class TestMetadataValidation:
         is_valid = writer._validate_metadata_file(metadata_file)
         assert is_valid is False, "Incomplete metadata should fail validation"
 
-    @pytest.mark.skip(reason="Method _validate_metadata_file not implemented in SilverDatasetWriter")
+    @pytest.mark.skip(
+        reason="Method _validate_metadata_file not implemented in SilverDatasetWriter"
+    )
     def test_validate_corrupted_json(self, tmp_path):
         """Verify corrupted JSON fails validation."""
         from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
@@ -275,7 +290,9 @@ class TestSprakbankenBatchSignature:
     These tests document the expected behavior if such functionality is added.
     """
 
-    @pytest.mark.skip(reason="Method _compute_batch_signature not implemented in SprakbankenSomaliProcessor")
+    @pytest.mark.skip(
+        reason="Method _compute_batch_signature not implemented in SprakbankenSomaliProcessor"
+    )
     def test_batch_signature_deterministic(self, tmp_path):
         """Verify batch signature is deterministic."""
         from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import (
@@ -298,7 +315,9 @@ class TestSprakbankenBatchSignature:
         assert sig1 == sig2, "Batch signature should be deterministic"
         assert len(sig1) == 64, "SHA256 hex digest should be 64 characters"
 
-    @pytest.mark.skip(reason="Method _compute_batch_signature not implemented in SprakbankenSomaliProcessor")
+    @pytest.mark.skip(
+        reason="Method _compute_batch_signature not implemented in SprakbankenSomaliProcessor"
+    )
     def test_batch_signature_order_independent(self, tmp_path):
         """Verify batch signature is independent of file order."""
         from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import (
@@ -378,6 +397,7 @@ class TestConcurrentRunCoordination:
         # Make it old (modify mtime to 2 hours ago)
         old_time = time.time() - (3600 * 2)  # 2 hours ago
         import os
+
         os.utime(lock_file, (old_time, old_time))
 
         # Verify age

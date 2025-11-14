@@ -18,6 +18,7 @@ Performance Optimizations:
 - Batch operations to reduce I/O overhead
 - Memory-mapped file support for files >100MB
 """
+
 import hashlib
 import json
 import logging
@@ -357,9 +358,7 @@ class DataManager:
         else:
             raise ValueError(f"Unknown format: {format}")
 
-    def read_from_silver(
-        self, filename: str, partition_by_source: bool = True
-    ) -> "pd.DataFrame":
+    def read_from_silver(self, filename: str, partition_by_source: bool = True) -> "pd.DataFrame":
         """
         Read DataFrame from silver layer.
 
@@ -469,7 +468,7 @@ class DataManager:
             >>> for chunk in manager.read_large_file_optimized(Path("large.txt")):
             ...     process(chunk)
         """
-        with open(filepath, encoding='utf-8', buffering=buffer_size) as f:
+        with open(filepath, encoding="utf-8", buffering=buffer_size) as f:
             while True:
                 chunk = f.read(chunk_size)
                 if not chunk:
@@ -493,7 +492,7 @@ class DataManager:
             >>> for record in manager.read_jsonl_optimized(Path("data.jsonl")):
             ...     process(record)
         """
-        with open(filepath, encoding='utf-8', buffering=buffer_size) as f:
+        with open(filepath, encoding="utf-8", buffering=buffer_size) as f:
             for line in f:
                 if line.strip():
                     yield json.loads(line)
@@ -522,11 +521,11 @@ class DataManager:
         """
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(filepath, 'w', encoding='utf-8', buffering=buffer_size) as f:
+        with open(filepath, "w", encoding="utf-8", buffering=buffer_size) as f:
             for i in range(0, len(records), batch_size):
-                batch = records[i:i + batch_size]
+                batch = records[i : i + batch_size]
                 for record in batch:
-                    f.write(json.dumps(record, ensure_ascii=False) + '\n')
+                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
                 # Flush only after each batch, not every record
                 f.flush()
 
@@ -560,9 +559,9 @@ class DataManager:
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
         count = 0
-        with open(filepath, 'w', encoding='utf-8', buffering=buffer_size) as f:
+        with open(filepath, "w", encoding="utf-8", buffering=buffer_size) as f:
             for record in records:
-                f.write(json.dumps(record, ensure_ascii=False) + '\n')
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
                 count += 1
 
                 # Periodic flush
@@ -589,7 +588,7 @@ class DataManager:
             >>> data = manager.read_mmap_large_file(Path("huge_dump.xml"))
             >>> # Process without loading entire file into Python memory
         """
-        with open(filepath, 'r+b') as f:
+        with open(filepath, "r+b") as f:
             with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmapped:
                 return mmapped.read()
 
@@ -617,7 +616,7 @@ class DataManager:
 
         hasher = hashlib.new(algorithm)
 
-        with open(filepath, 'rb', buffering=chunk_size * 16) as f:
+        with open(filepath, "rb", buffering=chunk_size * 16) as f:
             while True:
                 chunk = f.read(chunk_size)
                 if not chunk:
@@ -626,9 +625,7 @@ class DataManager:
 
         return hasher.hexdigest()
 
-    def read_text_optimized(
-        self, filepath: Path, buffer_size: int = 819200
-    ) -> str:
+    def read_text_optimized(self, filepath: Path, buffer_size: int = 819200) -> str:
         """
         Read entire text file with optimized buffering.
 
@@ -642,12 +639,10 @@ class DataManager:
         Example:
             >>> text = manager.read_text_optimized(Path("article.txt"))
         """
-        with open(filepath, encoding='utf-8', buffering=buffer_size) as f:
+        with open(filepath, encoding="utf-8", buffering=buffer_size) as f:
             return f.read()
 
-    def write_text_optimized(
-        self, text: str, filepath: Path, buffer_size: int = 819200
-    ) -> None:
+    def write_text_optimized(self, text: str, filepath: Path, buffer_size: int = 819200) -> None:
         """
         Write text file with optimized buffering.
 
@@ -661,7 +656,7 @@ class DataManager:
         """
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(filepath, 'w', encoding='utf-8', buffering=buffer_size) as f:
+        with open(filepath, "w", encoding="utf-8", buffering=buffer_size) as f:
             f.write(text)
 
         self.logger.info(f"Wrote text to {filepath} (optimized)")

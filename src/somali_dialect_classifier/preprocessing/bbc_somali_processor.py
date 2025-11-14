@@ -26,6 +26,7 @@ from urllib3.exceptions import ProtocolError
 
 try:
     import aiohttp
+
     AIOHTTP_AVAILABLE = True
 except ImportError:
     AIOHTTP_AVAILABLE = False
@@ -383,7 +384,9 @@ class BBCSomaliProcessor(BasePipeline):
                 self.logger.error(f"Unexpected error fetching {url}: {e}")
                 return {"url": url, "error": str(e), "status": None}
 
-    async def _fetch_all_articles_async(self, urls: list[str], max_concurrent: int = 10) -> list[dict]:
+    async def _fetch_all_articles_async(
+        self, urls: list[str], max_concurrent: int = 10
+    ) -> list[dict]:
         """
         Fetch multiple articles concurrently using async HTTP.
 
@@ -590,8 +593,8 @@ class BBCSomaliProcessor(BasePipeline):
                     continue
 
                 # Process duplicates
-                is_dup, dup_type, similar_url, text_hash, minhash_sig = (
-                    self.dedup.process_document(article["text"], url)
+                is_dup, dup_type, similar_url, text_hash, minhash_sig = self.dedup.process_document(
+                    article["text"], url
                 )
 
                 if is_dup:
@@ -630,9 +633,7 @@ class BBCSomaliProcessor(BasePipeline):
                 # Increment quota counter
                 if quota_limit is not None:
                     self.ledger.increment_daily_quota(
-                        source="bbc",
-                        count=1,
-                        quota_limit=quota_limit
+                        source="bbc", count=1, quota_limit=quota_limit
                     )
 
                 # Save incrementally
@@ -652,9 +653,7 @@ class BBCSomaliProcessor(BasePipeline):
             if len(links) < total_links:
                 items_remaining = total_links - len(links)
                 self.ledger.mark_quota_hit(
-                    source="bbc",
-                    items_remaining=items_remaining,
-                    quota_limit=quota_limit
+                    source="bbc", items_remaining=items_remaining, quota_limit=quota_limit
                 )
                 self.logger.info(
                     f"Quota hit: {quota_limit} articles processed, "
@@ -670,7 +669,9 @@ class BBCSomaliProcessor(BasePipeline):
         self.logger.info(
             f"Extraction complete: {articles_count}/{total_attempted} articles extracted"
         )
-        self.logger.info(f"Failed: {failed_count} articles ({failed_count / total_attempted * 100:.1f}%)")
+        self.logger.info(
+            f"Failed: {failed_count} articles ({failed_count / total_attempted * 100:.1f}%)"
+        )
         self.logger.info(f"Success rate: {success_rate:.1f}%")
         self.logger.info("=" * 60)
 
@@ -841,9 +842,7 @@ class BBCSomaliProcessor(BasePipeline):
                                 # Increment quota counter
                                 if quota_limit is not None:
                                     self.ledger.increment_daily_quota(
-                                        source="bbc",
-                                        count=1,
-                                        quota_limit=quota_limit
+                                        source="bbc", count=1, quota_limit=quota_limit
                                     )
 
                                 # Save incrementally (resilience against failures)
@@ -950,9 +949,7 @@ class BBCSomaliProcessor(BasePipeline):
             if len(links) < total_links:
                 items_remaining = total_links - len(links)
                 self.ledger.mark_quota_hit(
-                    source="bbc",
-                    items_remaining=items_remaining,
-                    quota_limit=quota_limit
+                    source="bbc", items_remaining=items_remaining, quota_limit=quota_limit
                 )
                 self.logger.info(
                     f"Quota hit: {quota_limit} articles processed, "

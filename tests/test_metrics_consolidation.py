@@ -12,7 +12,9 @@ Tests cover:
 import pytest
 
 # Skip all tests in this module - they require scripts module which has import issues
-pytestmark = pytest.mark.skip(reason="Scripts module import issues - requires pytest path configuration fix")
+pytestmark = pytest.mark.skip(
+    reason="Scripts module import issues - requires pytest path configuration fix"
+)
 
 import pytest
 from pydantic import ValidationError

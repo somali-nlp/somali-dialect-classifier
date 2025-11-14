@@ -59,7 +59,9 @@ class TestEnhancedSchema:
         assert record["domain"] is None
         assert record["embedding"] is None
 
-    @pytest.mark.skip(reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter")
+    @pytest.mark.skip(
+        reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter"
+    )
     def test_silver_writer_domain_inference(self, tmp_path):
         """Test that SilverWriter can infer domain from source."""
         writer = SilverDatasetWriter(base_dir=tmp_path)
@@ -97,7 +99,9 @@ class TestEnhancedSchema:
         assert len(df) == 1
         assert df.iloc[0]["domain"] == "news"
 
-    @pytest.mark.skip(reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter")
+    @pytest.mark.skip(
+        reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter"
+    )
     def test_silver_writer_domain_validation(self, tmp_path):
         """Test that invalid domains are replaced with 'general'."""
         writer = SilverDatasetWriter(base_dir=tmp_path)
@@ -134,7 +138,9 @@ class TestEnhancedSchema:
 
         assert df.iloc[0]["domain"] == "general"
 
-    @pytest.mark.skip(reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter")
+    @pytest.mark.skip(
+        reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter"
+    )
     def test_backward_compatibility_reading(self, tmp_path):
         """Test reading legacy silver data without domain field."""
         # Create legacy data without domain/embedding fields
@@ -178,7 +184,9 @@ class TestEnhancedSchema:
         assert df.iloc[0]["domain"] == "general"
         assert pd.isna(df.iloc[0]["embedding"])
 
-    @pytest.mark.skip(reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter")
+    @pytest.mark.skip(
+        reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter"
+    )
     def test_domain_statistics(self, tmp_path):
         """Test domain statistics collection."""
         writer = SilverDatasetWriter(base_dir=tmp_path)
@@ -217,7 +225,9 @@ class TestEnhancedSchema:
         assert stats["news"] == 3
         assert stats["literature"] == 2
 
-    @pytest.mark.skip(reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter")
+    @pytest.mark.skip(
+        reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter"
+    )
     def test_embedding_field_json_serialization(self, tmp_path):
         """Test that embedding field can handle JSON serialization."""
         writer = SilverDatasetWriter(base_dir=tmp_path)

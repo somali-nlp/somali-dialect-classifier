@@ -74,9 +74,7 @@ class SchemaV1_0(BaseModel):
     # Processing metadata
     text_hash: str = Field(..., description="SHA256 hash of text (for deduplication)")
     pipeline_version: str = Field(..., description="Processing pipeline version")
-    source_metadata: str = Field(
-        default="{}", description="Source-specific metadata (JSON string)"
-    )
+    source_metadata: str = Field(default="{}", description="Source-specific metadata (JSON string)")
 
     # Domain and embedding (part of v1.0 schema)
     domain: str = Field(..., description="Content domain (news, encyclopedia, literature, etc.)")
@@ -86,9 +84,7 @@ class SchemaV1_0(BaseModel):
 
     # Register (part of v1.0 schema)
     linguistic_register: str = Field(
-        ...,
-        alias="register",
-        description="Linguistic register (formal, informal, colloquial)"
+        ..., alias="register", description="Linguistic register (formal, informal, colloquial)"
     )
 
     # Provenance (NEW in schema v1.0)
@@ -211,9 +207,7 @@ def get_schema(version: str) -> type[BaseModel]:
     """
     if version not in SCHEMA_REGISTRY:
         available = list(SCHEMA_REGISTRY.keys())
-        raise ValueError(
-            f"Unknown schema version: {version}. Available versions: {available}"
-        )
+        raise ValueError(f"Unknown schema version: {version}. Available versions: {available}")
     return SCHEMA_REGISTRY[version]
 
 

@@ -147,17 +147,23 @@ class TestWikipediaIncrementalProcessing:
             {
                 "title": "OldArticle",
                 "text": "Old content",
-                "timestamp": (last_processing_time - timedelta(days=1)).isoformat().replace("+00:00", "Z"),
+                "timestamp": (last_processing_time - timedelta(days=1))
+                .isoformat()
+                .replace("+00:00", "Z"),
             },
             {
                 "title": "RecentArticle",
                 "text": "Recent content",
-                "timestamp": (last_processing_time + timedelta(hours=1)).isoformat().replace("+00:00", "Z"),
+                "timestamp": (last_processing_time + timedelta(hours=1))
+                .isoformat()
+                .replace("+00:00", "Z"),
             },
             {
                 "title": "NewArticle",
                 "text": "New content",
-                "timestamp": (last_processing_time + timedelta(hours=2)).isoformat().replace("+00:00", "Z"),
+                "timestamp": (last_processing_time + timedelta(hours=2))
+                .isoformat()
+                .replace("+00:00", "Z"),
             },
         ]
 
@@ -355,7 +361,11 @@ class TestIncrementalProcessingMetrics:
                 "text": "Content",
                 "timestamp": past.isoformat().replace("+00:00", "Z"),
             },
-            {"title": "New", "text": "Content", "timestamp": now.isoformat().replace("+00:00", "Z")},
+            {
+                "title": "New",
+                "text": "Content",
+                "timestamp": now.isoformat().replace("+00:00", "Z"),
+            },
         ]
 
         filtered, stats = mock_wikipedia_processor._filter_new_articles(articles)
@@ -411,7 +421,6 @@ class TestFailSafeBehavior:
         """Test that when ledger fails, all articles are processed."""
         # Set ledger to None to simulate failure
         mock_wikipedia_processor.ledger = None
-
 
         # Should not raise error, should process all
         last_time = mock_wikipedia_processor._get_last_processing_time()

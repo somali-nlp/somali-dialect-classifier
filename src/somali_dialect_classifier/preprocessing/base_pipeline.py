@@ -63,17 +63,15 @@ class BasePipeline(DataProcessor, ABC):
         self.record_builder = PipelineSetup.create_record_builder(
             self.source, self.date_accessed, self.run_id, record_builder
         )
-        self.validation_service = PipelineSetup.create_validation_service(
-            validation_service
-        )
+        self.validation_service = PipelineSetup.create_validation_service(validation_service)
 
         # Register filters (subclass hook)
         if filter_engine is None:
             self._register_filters()
 
         # Directory structure (backward compatibility)
-        self.raw_dir, self.staging_dir, self.processed_dir = (
-            PipelineSetup.get_directory_paths(self.source, self.date_accessed)
+        self.raw_dir, self.staging_dir, self.processed_dir = PipelineSetup.get_directory_paths(
+            self.source, self.date_accessed
         )
 
         # Shared utilities
@@ -88,34 +86,42 @@ class BasePipeline(DataProcessor, ABC):
     def _register_filters(self) -> None:
         """Register quality filters with self.filter_engine. Subclasses override to add filters."""
         pass
+
     @abstractmethod
     def _extract_records(self) -> Iterator[RawRecord]:
         """Extract records from staging format. Yield RawRecord objects."""
         pass
+
     @abstractmethod
     def _create_cleaner(self) -> TextCleaningPipeline:
         """Create text cleaner instance (e.g., create_html_cleaner, create_wiki_cleaner)."""
         pass
+
     @abstractmethod
     def _get_source_type(self) -> str:
         """Return source type (wiki, news, social, corpus, web)."""
         pass
+
     @abstractmethod
     def _get_license(self) -> str:
         """Return license (e.g., CC-BY-SA-3.0, ODC-BY-1.0)."""
         pass
+
     @abstractmethod
     def _get_language(self) -> str:
         """Return ISO 639-1 language code (default: so)."""
         return "so"
+
     @abstractmethod
     def _get_source_metadata(self) -> dict[str, Any]:
         """Return source-specific metadata dict."""
         pass
+
     @abstractmethod
     def _get_domain(self) -> str:
         """Return content domain (news, encyclopedia, web, etc.)."""
         pass
+
     @abstractmethod
     def _get_register(self) -> str:
         """Return linguistic register (formal, informal, colloquial)."""
@@ -128,7 +134,9 @@ class BasePipeline(DataProcessor, ABC):
         self.processed_dir.mkdir(parents=True, exist_ok=True)
         if self.processed_file.exists():
             if not self.force:
-                self.logger.info(f"Processed file exists: {self.processed_file}. Use force=True to reprocess")
+                self.logger.info(
+                    f"Processed file exists: {self.processed_file}. Use force=True to reprocess"
+                )
                 return self.processed_file
             self.logger.info(f"Force reprocessing: removing {self.processed_file}")
             self.processed_file.unlink()
@@ -257,8 +265,10 @@ class BasePipeline(DataProcessor, ABC):
         if records:
             self.logger.info(f"Writing batch of {len(records)} records...")
             silver_path = self.silver_writer.write(
-                records=records, source=self.source,
-                date_accessed=self.date_accessed, run_id=self.run_id
+                records=records,
+                source=self.source,
+                date_accessed=self.date_accessed,
+                run_id=self.run_id,
             )
             if silver_path:
                 self.silver_path = silver_path
@@ -284,7 +294,7 @@ class BasePipeline(DataProcessor, ABC):
         raw_files = sorted(
             [f for f in self.raw_dir.iterdir() if f.is_file()],
             key=lambda p: p.stat().st_mtime,
-            reverse=True
+            reverse=True,
         )
 
         for old_file in raw_files[keep_n:]:
@@ -294,7 +304,7 @@ class BasePipeline(DataProcessor, ABC):
             except Exception as e:
                 self.logger.warning(f"Failed to delete {old_file.name}: {e}")
 
-    def _compute_file_checksum(self, filepath: Path, algorithm: str = 'sha256') -> str:
+    def _compute_file_checksum(self, filepath: Path, algorithm: str = "sha256") -> str:
         """Compute file checksum (delegates to DataManager). P2.2 refactoring."""
         return self.data_manager.compute_file_checksum(filepath, algorithm)
 
@@ -309,9 +319,12 @@ class BasePipeline(DataProcessor, ABC):
             return
 
         from ..config import get_config
+
         config = get_config()
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        metrics_path = config.data.metrics_dir / f"{timestamp}_{self.source}_{self.run_id}_{stage}.json"
+        metrics_path = (
+            config.data.metrics_dir / f"{timestamp}_{self.source}_{self.run_id}_{stage}.json"
+        )
 
         self.metrics.export_json(output_path=metrics_path)
 
@@ -332,7 +345,10 @@ class BasePipeline(DataProcessor, ABC):
 
         config = get_config()
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        report_path = config.data.reports_dir / f"{timestamp}_{self.source}_{self.run_id}_{stage}_quality_report.md"
+        report_path = (
+            config.data.reports_dir
+            / f"{timestamp}_{self.source}_{self.run_id}_{stage}_quality_report.md"
+        )
 
         QualityReporter(self.metrics).generate_markdown_report(report_path)
 

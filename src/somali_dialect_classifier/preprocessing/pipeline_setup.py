@@ -59,9 +59,7 @@ class PipelineSetup:
             Logger instance
         """
         log_file = Path("logs") / f"{run_id}.log"
-        structured_logger = StructuredLogger(
-            name=source, log_file=log_file, json_format=True
-        )
+        structured_logger = StructuredLogger(name=source, log_file=log_file, json_format=True)
         return structured_logger.get_logger()
 
     @staticmethod
@@ -165,20 +163,12 @@ class PipelineSetup:
         """
         config = get_config()
 
-        raw_dir = (
-            config.data.raw_dir
-            / f"source={source}"
-            / f"date_accessed={date_accessed}"
-        )
+        raw_dir = config.data.raw_dir / f"source={source}" / f"date_accessed={date_accessed}"
         staging_dir = (
-            config.data.staging_dir
-            / f"source={source}"
-            / f"date_accessed={date_accessed}"
+            config.data.staging_dir / f"source={source}" / f"date_accessed={date_accessed}"
         )
         processed_dir = (
-            config.data.processed_dir
-            / f"source={source}"
-            / f"date_processed={date_accessed}"
+            config.data.processed_dir / f"source={source}" / f"date_processed={date_accessed}"
         )
 
         return raw_dir, staging_dir, processed_dir

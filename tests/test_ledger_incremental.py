@@ -46,7 +46,9 @@ class TestGetLastProcessingTime:
         # Process a URL
         url = "https://example.com/test"
         ledger.discover_url(url, "test-source")
-        ledger.mark_processed(url=url, text_hash="hash123", silver_id="silver_001", source="test-source")
+        ledger.mark_processed(
+            url=url, text_hash="hash123", silver_id="silver_001", source="test-source"
+        )
 
         result = ledger.get_last_processing_time("test-source")
 
@@ -68,6 +70,7 @@ class TestGetLastProcessingTime:
 
         # Wait a bit and process second URL
         import time
+
         time.sleep(0.1)
 
         url2 = "https://example.com/test2"
@@ -90,7 +93,9 @@ class TestGetLastProcessingTime:
         ledger.mark_failed("https://example.com/failed", "Error occurred")
 
         ledger.discover_url("https://example.com/duplicate", source)
-        ledger.mark_duplicate("https://example.com/duplicate", "https://example.com/original", source=source)
+        ledger.mark_duplicate(
+            "https://example.com/duplicate", "https://example.com/original", source=source
+        )
 
         # No processed URLs yet
         result = ledger.get_last_processing_time(source)
@@ -109,12 +114,16 @@ class TestGetLastProcessingTime:
         # Process URL for source A
         url_a = "https://example.com/source-a"
         ledger.discover_url(url_a, "source-a")
-        ledger.mark_processed(url=url_a, text_hash="hash_a", silver_id="silver_a", source="source-a")
+        ledger.mark_processed(
+            url=url_a, text_hash="hash_a", silver_id="silver_a", source="source-a"
+        )
 
         # Process URL for source B
         url_b = "https://example.com/source-b"
         ledger.discover_url(url_b, "source-b")
-        ledger.mark_processed(url=url_b, text_hash="hash_b", silver_id="silver_b", source="source-b")
+        ledger.mark_processed(
+            url=url_b, text_hash="hash_b", silver_id="silver_b", source="source-b"
+        )
 
         # Each source should have its own timestamp
         time_a = ledger.get_last_processing_time("source-a")
@@ -148,11 +157,15 @@ class TestGetProcessedUrls:
 
         url_processed1 = "https://example.com/processed1"
         ledger.discover_url(url_processed1, source)
-        ledger.mark_processed(url=url_processed1, text_hash="hash1", silver_id="silver1", source=source)
+        ledger.mark_processed(
+            url=url_processed1, text_hash="hash1", silver_id="silver1", source=source
+        )
 
         url_processed2 = "https://example.com/processed2"
         ledger.discover_url(url_processed2, source)
-        ledger.mark_processed(url=url_processed2, text_hash="hash2", silver_id="silver2", source=source)
+        ledger.mark_processed(
+            url=url_processed2, text_hash="hash2", silver_id="silver2", source=source
+        )
 
         result = ledger.get_processed_urls(source)
 
@@ -172,7 +185,9 @@ class TestGetProcessedUrls:
         for i in range(10):
             url = f"https://example.com/test{i}"
             ledger.discover_url(url, source)
-            ledger.mark_processed(url=url, text_hash=f"hash{i}", silver_id=f"silver{i}", source=source)
+            ledger.mark_processed(
+                url=url, text_hash=f"hash{i}", silver_id=f"silver{i}", source=source
+            )
 
         # Request only 5
         result = ledger.get_processed_urls(source, limit=5)
@@ -210,13 +225,17 @@ class TestGetProcessedUrls:
         for i in range(3):
             url = f"https://example.com/source-a/{i}"
             ledger.discover_url(url, "source-a")
-            ledger.mark_processed(url=url, text_hash=f"hash_a{i}", silver_id=f"silver_a{i}", source="source-a")
+            ledger.mark_processed(
+                url=url, text_hash=f"hash_a{i}", silver_id=f"silver_a{i}", source="source-a"
+            )
 
         # Add URLs for source B
         for i in range(5):
             url = f"https://example.com/source-b/{i}"
             ledger.discover_url(url, "source-b")
-            ledger.mark_processed(url=url, text_hash=f"hash_b{i}", silver_id=f"silver_b{i}", source="source-b")
+            ledger.mark_processed(
+                url=url, text_hash=f"hash_b{i}", silver_id=f"silver_b{i}", source="source-b"
+            )
 
         # Query each source
         result_a = ledger.get_processed_urls("source-a")
@@ -248,7 +267,9 @@ class TestIncrementalProcessingWorkflow:
         for i in range(1000):
             url = f"https://so.wikipedia.org/wiki/Article{i}"
             ledger.discover_url(url, source)
-            ledger.mark_processed(url=url, text_hash=f"hash{i}", silver_id=f"silver{i}", source=source)
+            ledger.mark_processed(
+                url=url, text_hash=f"hash{i}", silver_id=f"silver{i}", source=source
+            )
 
         # Get last processing time (should match initial run)
         last_time = ledger.get_last_processing_time(source)
@@ -257,13 +278,16 @@ class TestIncrementalProcessingWorkflow:
 
         # Quarterly refresh (3 months later): Only 10 new articles
         import time
+
         time.sleep(0.1)  # Simulate time passing
 
         datetime.now(timezone.utc)
         for i in range(1000, 1010):
             url = f"https://so.wikipedia.org/wiki/Article{i}"
             ledger.discover_url(url, source)
-            ledger.mark_processed(url=url, text_hash=f"hash{i}", silver_id=f"silver{i}", source=source)
+            ledger.mark_processed(
+                url=url, text_hash=f"hash{i}", silver_id=f"silver{i}", source=source
+            )
 
         # Get updated last processing time
         new_last_time = ledger.get_last_processing_time(source)
@@ -288,19 +312,27 @@ class TestIncrementalProcessingWorkflow:
         for corpus_id in corpora_initial:
             url = f"https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}"
             ledger.discover_url(url, source)
-            ledger.mark_processed(url=url, text_hash=f"{corpus_id}_hash", silver_id=f"silver_{corpus_id}", source=source)
+            ledger.mark_processed(
+                url=url,
+                text_hash=f"{corpus_id}_hash",
+                silver_id=f"silver_{corpus_id}",
+                source=source,
+            )
 
         initial_count = len(ledger.get_processed_urls(source))
         assert initial_count == 3
 
         # Second run: Add 1 new corpus
         import time
+
         time.sleep(0.1)
 
         new_corpus = "somali-haatuf-news-2002"
         url = f"https://spraakbanken.gu.se/korp/?mode=somali#?corpus={new_corpus}"
         ledger.discover_url(url, source)
-        ledger.mark_processed(url=url, text_hash=f"{new_corpus}_hash", silver_id=f"silver_{new_corpus}", source=source)
+        ledger.mark_processed(
+            url=url, text_hash=f"{new_corpus}_hash", silver_id=f"silver_{new_corpus}", source=source
+        )
 
         final_count = len(ledger.get_processed_urls(source))
         assert final_count == 4

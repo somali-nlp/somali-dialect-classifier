@@ -79,9 +79,7 @@ class SchemaMigration(ABC):
         Raises:
             ValueError: If DataFrame cannot be migrated
         """
-        logger.info(
-            f"Migrating {len(df)} records from v{self.from_version} to v{self.to_version}"
-        )
+        logger.info(f"Migrating {len(df)} records from v{self.from_version} to v{self.to_version}")
 
         # Check source schema version
         if "schema_version" in df.columns:
@@ -93,8 +91,7 @@ class SchemaMigration(ABC):
                 )
             elif versions[0] != self.from_version:
                 raise ValueError(
-                    f"Cannot migrate: expected v{self.from_version}, "
-                    f"got v{versions[0]}"
+                    f"Cannot migrate: expected v{self.from_version}, got v{versions[0]}"
                 )
 
         migrated_records = []
@@ -105,9 +102,7 @@ class SchemaMigration(ABC):
                 migrated = self.migrate_record(row.to_dict())
                 migrated_records.append(migrated)
             except Exception as e:
-                logger.error(
-                    f"Failed to migrate record at index {idx}: {e}"
-                )
+                logger.error(f"Failed to migrate record at index {idx}: {e}")
                 failed_count += 1
                 # Optionally: skip or fail fast based on strategy
                 # For now, we skip failed records
@@ -120,9 +115,7 @@ class SchemaMigration(ABC):
 
         return pd.DataFrame(migrated_records)
 
-    def validate_migration(
-        self, original_df: pd.DataFrame, migrated_df: pd.DataFrame
-    ) -> bool:
+    def validate_migration(self, original_df: pd.DataFrame, migrated_df: pd.DataFrame) -> bool:
         """
         Validate migration was successful.
 

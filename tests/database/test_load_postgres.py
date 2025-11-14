@@ -200,7 +200,7 @@ class TestQueryPerformance:
         query_duration = time.time() - query_start
 
         print("\nBulk operations:")
-        print(f"  Insert: 1000 URLs in {insert_duration:.2f}s ({1000/insert_duration:.1f} ops/s)")
+        print(f"  Insert: 1000 URLs in {insert_duration:.2f}s ({1000 / insert_duration:.1f} ops/s)")
         print(f"  Query: {len(results)} URLs in {query_duration:.2f}s")
 
         # Performance checks
@@ -256,10 +256,15 @@ class TestStressScenarios:
         # Rapid transitions: discovered -> fetched -> processed
         states = [
             (CrawlState.DISCOVERED, lambda: ledger.discover_url(url, source="stress")),
-            (CrawlState.FETCHED, lambda: ledger.mark_fetched(url, http_status=200, source="stress")),
+            (
+                CrawlState.FETCHED,
+                lambda: ledger.mark_fetched(url, http_status=200, source="stress"),
+            ),
             (
                 CrawlState.PROCESSED,
-                lambda: ledger.mark_processed(url, text_hash="hash", silver_id="s1", source="stress"),
+                lambda: ledger.mark_processed(
+                    url, text_hash="hash", silver_id="s1", source="stress"
+                ),
             ),
         ]
 

@@ -114,15 +114,11 @@ class SchemaValidator:
             # Log first few validation errors for debugging
             for _i, result in enumerate(validation_results[:5]):
                 if not result["valid"]:
-                    logger.debug(
-                        f"Record {result['index']} validation errors: {result['errors']}"
-                    )
+                    logger.debug(f"Record {result['index']} validation errors: {result['errors']}")
 
         return all_valid, df
 
-    def add_schema_version(
-        self, df: pd.DataFrame, version: Optional[str] = None
-    ) -> pd.DataFrame:
+    def add_schema_version(self, df: pd.DataFrame, version: Optional[str] = None) -> pd.DataFrame:
         """
         Add schema_version field to all records in DataFrame.
 
@@ -173,9 +169,7 @@ class SchemaValidator:
             >>> print(f"Validation rate: {report['validation_rate']:.1f}%")
         """
         if "_validation_valid" not in df.columns or "_validation_errors" not in df.columns:
-            raise ValueError(
-                "DataFrame must be validated first using validate_dataframe()"
-            )
+            raise ValueError("DataFrame must be validated first using validate_dataframe()")
 
         total_records = len(df)
         valid_records = df["_validation_valid"].sum()

@@ -57,9 +57,7 @@ class FilterEngine:
         self.filters.append((filter_func, kwargs or {}))
 
     def apply_filters(
-        self,
-        cleaned_text: str,
-        record_title: str = ""
+        self, cleaned_text: str, record_title: str = ""
     ) -> tuple[bool, Optional[str], dict[str, Any]]:
         """
         Apply all registered filters to cleaned text.
@@ -92,9 +90,7 @@ class FilterEngine:
 
                     # Debug log for filter rejections
                     if record_title:
-                        logger.debug(
-                            f"Record '{record_title[:50]}...' filtered by {filter_name}"
-                        )
+                        logger.debug(f"Record '{record_title[:50]}...' filtered by {filter_name}")
 
                     return False, filter_name, filter_metadata
 

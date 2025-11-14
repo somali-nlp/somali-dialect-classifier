@@ -8,7 +8,9 @@ from datetime import datetime
 import pytest
 
 # Skip tests requiring external metrics data
-pytestmark = pytest.mark.skip(reason="Requires external metrics data files - not available in test environment")
+pytestmark = pytest.mark.skip(
+    reason="Requires external metrics data files - not available in test environment"
+)
 
 from somali_dialect_classifier.deployment import (
     DashboardDeployer,

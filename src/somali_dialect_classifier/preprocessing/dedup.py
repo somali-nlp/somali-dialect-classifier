@@ -71,8 +71,7 @@ class ShardedLSH:
 
         # Create separate LSH index for each shard
         self.shards = {
-            i: MinHashLSH(threshold=threshold, num_perm=num_perm)
-            for i in range(num_shards)
+            i: MinHashLSH(threshold=threshold, num_perm=num_perm) for i in range(num_shards)
         }
 
         logger.info(f"Initialized ShardedLSH with {num_shards} shards")
@@ -129,17 +128,20 @@ class ShardedLSH:
 
         for shard_id, lsh in self.shards.items():
             shard_path = directory / f"lsh_shard_{shard_id:03d}.pkl"
-            with open(shard_path, 'wb') as f:
+            with open(shard_path, "wb") as f:
                 pickle.dump(lsh, f)
 
         # Save metadata
         metadata_path = directory / "sharded_lsh_metadata.json"
-        with open(metadata_path, 'w') as f:
-            json.dump({
-                'num_shards': self.num_shards,
-                'threshold': self.threshold,
-                'num_perm': self.num_perm,
-            }, f)
+        with open(metadata_path, "w") as f:
+            json.dump(
+                {
+                    "num_shards": self.num_shards,
+                    "threshold": self.threshold,
+                    "num_perm": self.num_perm,
+                },
+                f,
+            )
 
         logger.info(f"Saved {self.num_shards} LSH shards to {directory}")
 
@@ -162,16 +164,16 @@ class ShardedLSH:
         if metadata_path.exists():
             with open(metadata_path) as f:
                 metadata = json.load(f)
-                self.num_shards = metadata['num_shards']
-                self.threshold = metadata['threshold']
-                self.num_perm = metadata['num_perm']
+                self.num_shards = metadata["num_shards"]
+                self.threshold = metadata["threshold"]
+                self.num_perm = metadata["num_perm"]
 
         # Load shards
         loaded_count = 0
         for shard_id in range(self.num_shards):
             shard_path = directory / f"lsh_shard_{shard_id:03d}.pkl"
             if shard_path.exists():
-                with open(shard_path, 'rb') as f:
+                with open(shard_path, "rb") as f:
                     self.shards[shard_id] = pickle.load(f)
                     loaded_count += 1
 
@@ -179,9 +181,7 @@ class ShardedLSH:
             logger.info(f"Loaded {loaded_count} LSH shards from {directory}")
             return True
         else:
-            logger.warning(
-                f"Only loaded {loaded_count}/{self.num_shards} shards from {directory}"
-            )
+            logger.warning(f"Only loaded {loaded_count}/{self.num_shards} shards from {directory}")
             return False
 
     def get_shard_stats(self) -> dict[int, int]:
@@ -347,9 +347,7 @@ class MinHashDeduplicator:
         # Initialize LSH index (sharded or monolithic)
         if enable_sharding and num_shards > 1:
             self.lsh = ShardedLSH(
-                num_shards=num_shards,
-                threshold=similarity_threshold,
-                num_perm=num_permutations
+                num_shards=num_shards, threshold=similarity_threshold, num_perm=num_permutations
             )
             self.is_sharded = True
             logger.info(f"Using ShardedLSH with {num_shards} shards for 2-3x performance")
@@ -549,16 +547,16 @@ class MinHashDeduplicator:
 
                 # Save metadata separately
                 metadata = {
-                    'is_sharded': True,
-                    'num_shards': self.num_shards,
-                    'document_hashes': self.document_hashes,
-                    'num_permutations': self.num_permutations,
-                    'shingle_size': self.shingle_size,
-                    'similarity_threshold': self.similarity_threshold,
-                    'seed': self.seed,
-                    'shard_dir': str(shard_dir),
+                    "is_sharded": True,
+                    "num_shards": self.num_shards,
+                    "document_hashes": self.document_hashes,
+                    "num_permutations": self.num_permutations,
+                    "shingle_size": self.shingle_size,
+                    "similarity_threshold": self.similarity_threshold,
+                    "seed": self.seed,
+                    "shard_dir": str(shard_dir),
                 }
-                with open(self.storage_path, 'wb') as f:
+                with open(self.storage_path, "wb") as f:
                     pickle.dump(metadata, f)
 
                 logger.info(
@@ -567,15 +565,15 @@ class MinHashDeduplicator:
             else:
                 # Original monolithic save
                 index_data = {
-                    'is_sharded': False,
-                    'lsh': self.lsh,
-                    'document_hashes': self.document_hashes,
-                    'num_permutations': self.num_permutations,
-                    'shingle_size': self.shingle_size,
-                    'similarity_threshold': self.similarity_threshold,
-                    'seed': self.seed,
+                    "is_sharded": False,
+                    "lsh": self.lsh,
+                    "document_hashes": self.document_hashes,
+                    "num_permutations": self.num_permutations,
+                    "shingle_size": self.shingle_size,
+                    "similarity_threshold": self.similarity_threshold,
+                    "seed": self.seed,
                 }
-                with open(self.storage_path, 'wb') as f:
+                with open(self.storage_path, "wb") as f:
                     pickle.dump(index_data, f)
 
                 logger.info(
@@ -597,34 +595,34 @@ class MinHashDeduplicator:
             return False
 
         try:
-            with open(self.storage_path, 'rb') as f:
+            with open(self.storage_path, "rb") as f:
                 index_data = pickle.load(f)
 
             # Check if this is a sharded index
-            is_sharded = index_data.get('is_sharded', False)
+            is_sharded = index_data.get("is_sharded", False)
 
             if is_sharded:
                 # Load sharded LSH
-                shard_dir = Path(index_data['shard_dir'])
-                self.num_shards = index_data['num_shards']
+                shard_dir = Path(index_data["shard_dir"])
+                self.num_shards = index_data["num_shards"]
                 self.is_sharded = True
 
                 # Create new ShardedLSH and load from disk
                 self.lsh = ShardedLSH(
                     num_shards=self.num_shards,
-                    threshold=index_data['similarity_threshold'],
-                    num_perm=index_data['num_permutations']
+                    threshold=index_data["similarity_threshold"],
+                    num_perm=index_data["num_permutations"],
                 )
                 if not self.lsh.load(shard_dir):
                     logger.warning("Failed to load all shards")
                     return False
 
                 # Restore other state
-                self.document_hashes = index_data['document_hashes']
-                self.num_permutations = index_data['num_permutations']
-                self.shingle_size = index_data['shingle_size']
-                self.similarity_threshold = index_data['similarity_threshold']
-                self.seed = index_data['seed']
+                self.document_hashes = index_data["document_hashes"]
+                self.num_permutations = index_data["num_permutations"]
+                self.shingle_size = index_data["shingle_size"]
+                self.similarity_threshold = index_data["similarity_threshold"]
+                self.seed = index_data["seed"]
 
                 logger.info(
                     f"Loaded ShardedLSH index from {shard_dir} ({len(self.document_hashes)} documents)"
@@ -632,12 +630,12 @@ class MinHashDeduplicator:
                 return True
             else:
                 # Load monolithic LSH
-                self.lsh = index_data['lsh']
-                self.document_hashes = index_data['document_hashes']
-                self.num_permutations = index_data['num_permutations']
-                self.shingle_size = index_data['shingle_size']
-                self.similarity_threshold = index_data['similarity_threshold']
-                self.seed = index_data['seed']
+                self.lsh = index_data["lsh"]
+                self.document_hashes = index_data["document_hashes"]
+                self.num_permutations = index_data["num_permutations"]
+                self.shingle_size = index_data["shingle_size"]
+                self.similarity_threshold = index_data["similarity_threshold"]
+                self.seed = index_data["seed"]
                 self.is_sharded = False
 
                 logger.info(
@@ -815,7 +813,7 @@ class DedupEngine:
         try:
             url_state = ledger.get_url_state(url)
 
-            if url_state and url_state.get('state') in ['processed', 'duplicate']:
+            if url_state and url_state.get("state") in ["processed", "duplicate"]:
                 logger.info(f"Skipping already processed URL: {url}")
                 return True
 
@@ -825,7 +823,9 @@ class DedupEngine:
             logger.warning(f"Error checking URL state for {url}: {e}")
             return False  # Fail-safe: proceed with fetch
 
-    def check_file_duplicate(self, filepath: Path, ledger, source: str) -> tuple[bool, Optional[str]]:
+    def check_file_duplicate(
+        self, filepath: Path, ledger, source: str
+    ) -> tuple[bool, Optional[str]]:
         """
         Check if file is duplicate based on checksum.
 
@@ -854,7 +854,7 @@ class DedupEngine:
 
         # Compute checksum
         sha256 = hashlib.sha256()
-        with open(filepath, 'rb') as f:
+        with open(filepath, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
                 sha256.update(chunk)
         checksum = sha256.hexdigest()

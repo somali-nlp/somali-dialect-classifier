@@ -201,9 +201,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
         # Initialize deduplication BEFORE BasePipeline (which generates run_id)
         dedup_config = DedupConfig(
-            hash_fields=["text"],
-            enable_minhash=True,
-            similarity_threshold=0.85
+            hash_fields=["text"], enable_minhash=True, similarity_threshold=0.85
         )
         self.dedup = DedupEngine(dedup_config)
         self.ledger = get_ledger()
@@ -330,12 +328,12 @@ class SprakbankenSomaliProcessor(BasePipeline):
         import re
 
         # Try Korp URL format
-        match = re.search(r'corpus=([a-z0-9-]+)', url)
+        match = re.search(r"corpus=([a-z0-9-]+)", url)
         if match:
             return match.group(1)
 
         # Try download URL format
-        match = re.search(r'/meningsmangder/([a-z0-9-]+)\.xml\.bz2', url)
+        match = re.search(r"/meningsmangder/([a-z0-9-]+)\.xml\.bz2", url)
         if match:
             return match.group(1)
 
@@ -351,7 +349,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         Returns:
             Set of corpus IDs that have been processed
         """
-        if not hasattr(self, 'ledger') or self.ledger is None:
+        if not hasattr(self, "ledger") or self.ledger is None:
             return set()
 
         try:
@@ -360,7 +358,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
             corpus_ids = set()
             for record in processed_records:
-                url = record.get('url', '')
+                url = record.get("url", "")
                 corpus_id = self._extract_corpus_id_from_url(url)
                 if corpus_id:
                     corpus_ids.add(corpus_id)
@@ -383,9 +381,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         # Delegate to new method for consistency
         return self._get_processed_corpus_ids()
 
-    def _filter_new_corpora(
-        self, corpus_urls: list[str]
-    ) -> tuple[list[str], dict[str, Any]]:
+    def _filter_new_corpora(self, corpus_urls: list[str]) -> tuple[list[str], dict[str, Any]]:
         """
         Filter corpus URLs to only unprocessed ones.
 
@@ -603,7 +599,9 @@ class SprakbankenSomaliProcessor(BasePipeline):
             )
 
         if not has_quota:
-            self.logger.warning(f"Daily quota already reached for Språkbanken: {quota_limit} corpora")
+            self.logger.warning(
+                f"Daily quota already reached for Språkbanken: {quota_limit} corpora"
+            )
             self.metrics.increment("quota_hit")
             return self.staging_file
 
@@ -616,7 +614,9 @@ class SprakbankenSomaliProcessor(BasePipeline):
             )
             corpora_to_process = corpora_to_process[:remaining]
         else:
-            self.logger.info(f"Processing {len(corpora_to_process)} corpora (quota: {quota_limit or 'unlimited'})")
+            self.logger.info(
+                f"Processing {len(corpora_to_process)} corpora (quota: {quota_limit or 'unlimited'})"
+            )
 
         if self.staging_file.exists() and not self.force:
             self.logger.info(f"Staging file already exists: {self.staging_file}")
@@ -657,9 +657,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
                     # Increment quota counter (per corpus)
                     if quota_limit is not None:
                         self.ledger.increment_daily_quota(
-                            source="sprakbanken",
-                            count=1,
-                            quota_limit=quota_limit
+                            source="sprakbanken", count=1, quota_limit=quota_limit
                         )
 
                     total_texts += texts_count
@@ -678,9 +676,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
             if len(corpora_to_process) < total_corpora:
                 items_remaining = total_corpora - len(corpora_to_process)
                 self.ledger.mark_quota_hit(
-                    source="sprakbanken",
-                    items_remaining=items_remaining,
-                    quota_limit=quota_limit
+                    source="sprakbanken", items_remaining=items_remaining, quota_limit=quota_limit
                 )
                 self.logger.info(
                     f"Quota hit: {quota_limit} corpora processed, "
@@ -738,19 +734,12 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
                     if pages:
                         # Single-text with pages: Treat each page as a document
-                        self.logger.info(
-                            f"  Detected single-text corpus with {len(pages)} pages"
-                        )
+                        self.logger.info(f"  Detected single-text corpus with {len(pages)} pages")
                         text_metadata = self._extract_text_metadata(text_elems[0])
 
                         for page_index, page in enumerate(pages, start=1):
                             result = self._process_page_as_document(
-                                page,
-                                corpus_id,
-                                page_index,
-                                text_metadata,
-                                corpus_info,
-                                out_file
+                                page, corpus_id, page_index, text_metadata, corpus_info, out_file
                             )
                             if result:
                                 texts_count += 1
@@ -758,28 +747,18 @@ class SprakbankenSomaliProcessor(BasePipeline):
                     else:
                         # Single-text without pages: Process as one document
                         result = self._process_text_element(
-                            text_elems[0],
-                            corpus_id,
-                            1,
-                            corpus_info,
-                            out_file
+                            text_elems[0], corpus_id, 1, corpus_info, out_file
                         )
                         if result:
                             texts_count += 1
                             sentences_count += result
                 else:
                     # Multi-text corpus: Process each text as a document
-                    self.logger.info(
-                        f"  Detected multi-text corpus with {len(text_elems)} texts"
-                    )
+                    self.logger.info(f"  Detected multi-text corpus with {len(text_elems)} texts")
 
                     for text_index, text_elem in enumerate(text_elems, start=1):
                         result = self._process_text_element(
-                            text_elem,
-                            corpus_id,
-                            text_index,
-                            corpus_info,
-                            out_file
+                            text_elem, corpus_id, text_index, corpus_info, out_file
                         )
                         if result:
                             texts_count += 1
@@ -797,7 +776,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         page_index: int,
         text_metadata: dict[str, Any],
         corpus_info: dict[str, Any],
-        out_file
+        out_file,
     ) -> Optional[int]:
         """
         Process a single page element as an individual document.
@@ -836,8 +815,8 @@ class SprakbankenSomaliProcessor(BasePipeline):
         text_content = " ".join(sentences)
 
         # Process duplicates with combined exact and near-duplicate detection
-        is_dup, dup_type, similar_url, text_hash, minhash_sig = (
-            self.dedup.process_document(text_content, url)
+        is_dup, dup_type, similar_url, text_hash, minhash_sig = self.dedup.process_document(
+            text_content, url
         )
 
         if not is_dup:
@@ -883,7 +862,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         corpus_id: str,
         text_index: int,
         corpus_info: dict[str, Any],
-        out_file
+        out_file,
     ) -> Optional[int]:
         """
         Process a single text element as an individual document.
@@ -917,17 +896,15 @@ class SprakbankenSomaliProcessor(BasePipeline):
         text_content = " ".join(sentences)
 
         # Process duplicates with combined exact and near-duplicate detection
-        is_dup, dup_type, similar_url, text_hash, minhash_sig = (
-            self.dedup.process_document(text_content, url)
+        is_dup, dup_type, similar_url, text_hash, minhash_sig = self.dedup.process_document(
+            text_content, url
         )
 
         if not is_dup:
             # Create record for this text
             record = {
                 "corpus_id": corpus_id,
-                "title": text_metadata.get(
-                    "title", f"{corpus_id}_text_{text_index}"
-                ),
+                "title": text_metadata.get("title", f"{corpus_id}_text_{text_index}"),
                 "text": text_content,
                 "text_hash": text_hash,
                 "minhash_signature": minhash_sig,

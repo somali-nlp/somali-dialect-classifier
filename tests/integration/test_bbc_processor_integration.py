@@ -91,11 +91,7 @@ class TestBBCProcessorInitialization:
 
     def test_processor_initializes_with_custom_params(self):
         """Test processor initializes with custom parameters."""
-        processor = BBCSomaliProcessor(
-            max_articles=50,
-            delay_range=(2, 5),
-            force=True
-        )
+        processor = BBCSomaliProcessor(max_articles=50, delay_range=(2, 5), force=True)
 
         assert processor.max_articles == 50
         assert processor.delay_range == (2, 5)
@@ -107,7 +103,7 @@ class TestBBCProcessorInitialization:
 
         assert processor.dedup is not None
         # Check for correct method name
-        assert hasattr(processor.dedup, 'is_duplicate_hash')
+        assert hasattr(processor.dedup, "is_duplicate_hash")
 
     def test_processor_has_rate_limiter(self):
         """Test processor initializes rate limiter."""
@@ -115,13 +111,13 @@ class TestBBCProcessorInitialization:
 
         assert processor.rate_limiter is not None
         # Check for correct method name
-        assert hasattr(processor.rate_limiter, 'wait')
+        assert hasattr(processor.rate_limiter, "wait")
 
 
 class TestBBCRSSFeedParsing:
     """Test RSS feed discovery and parsing."""
 
-    @patch('requests.Session.get')
+    @patch("requests.Session.get")
     def test_scrape_rss_feeds_success(self, mock_get, sample_rss_feed):
         """Test RSS feed scraping extracts article links."""
         mock_response = Mock()
@@ -136,7 +132,7 @@ class TestBBCRSSFeedParsing:
         # Instead test that it returns a list
         assert isinstance(links, list)
 
-    @patch('requests.Session.get')
+    @patch("requests.Session.get")
     def test_scrape_rss_feeds_handles_errors(self, mock_get):
         """Test RSS feed scraping handles network errors gracefully."""
         mock_get.side_effect = requests.exceptions.RequestException("Network error")
@@ -178,29 +174,25 @@ class TestBBCArticleScraping:
             </html>
             """,
             status=200,
-            headers={'Content-Type': 'text/html; charset=utf-8'}
+            headers={"Content-Type": "text/html; charset=utf-8"},
         )
 
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
         # Initialize minimal metrics to avoid NoneType errors
         from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+
         processor.metrics = MetricsCollector(
-            run_id=processor.run_id,
-            source="bbc-somali",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id=processor.run_id, source="bbc-somali", pipeline_type=PipelineType.WEB_SCRAPING
         )
-        article = processor._scrape_article(
-            session,
-            "https://www.bbc.com/somali/articles/test"
-        )
+        article = processor._scrape_article(session, "https://www.bbc.com/somali/articles/test")
 
         assert article is not None
-        assert 'title' in article
-        assert 'text' in article
-        assert 'url' in article
-        assert len(article['text']) > 0
-        assert 'Magaalada Muqdisho' in article['title']
+        assert "title" in article
+        assert "text" in article
+        assert "url" in article
+        assert len(article["text"]) > 0
+        assert "Magaalada Muqdisho" in article["title"]
 
     @responses.activate
     def test_scrape_article_handles_404(self):
@@ -210,25 +202,21 @@ class TestBBCArticleScraping:
             responses.GET,
             "https://www.bbc.com/somali/articles/nonexistent",
             status=404,
-            body="Not Found"
+            body="Not Found",
         )
 
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
         # Initialize minimal metrics
         from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+
         processor.metrics = MetricsCollector(
-            run_id=processor.run_id,
-            source="bbc-somali",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id=processor.run_id, source="bbc-somali", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         # Should raise HTTPError on 404
         with pytest.raises(requests.exceptions.HTTPError):
-            processor._scrape_article(
-                session,
-                "https://www.bbc.com/somali/articles/nonexistent"
-            )
+            processor._scrape_article(session, "https://www.bbc.com/somali/articles/nonexistent")
 
     def test_scrape_article_respects_rate_limiting(self):
         """Test article scraping has rate limiter configured."""
@@ -239,7 +227,7 @@ class TestBBCArticleScraping:
         assert processor.delay_range == (0.1, 0.2)
 
         # Verify processor has wait method (used for rate limiting)
-        assert hasattr(processor.rate_limiter, 'wait')
+        assert hasattr(processor.rate_limiter, "wait")
 
 
 class TestBBCHomepageScraping:
@@ -263,7 +251,7 @@ class TestBBCHomepageScraping:
             </html>
             """,
             status=200,
-            headers={'Content-Type': 'text/html'}
+            headers={"Content-Type": "text/html"},
         )
 
         processor = BBCSomaliProcessor()
@@ -289,7 +277,7 @@ class TestBBCHomepageScraping:
         """
 
         processor = BBCSomaliProcessor()
-        soup = BeautifulSoup(sample_html, 'html.parser')
+        soup = BeautifulSoup(sample_html, "html.parser")
         sections = processor._discover_topic_sections(soup)
 
         assert isinstance(sections, list)
@@ -306,8 +294,8 @@ class TestBBCDeduplication:
 
         # Test that ledger exists and has required methods
         assert processor.ledger is not None
-        assert hasattr(processor.ledger, 'mark_processed')
-        assert hasattr(processor.ledger, 'get_processed_urls')
+        assert hasattr(processor.ledger, "mark_processed")
+        assert hasattr(processor.ledger, "get_processed_urls")
 
     def test_dedup_engine_detects_duplicates(self):
         """Test dedup engine detects duplicate content."""
@@ -359,10 +347,9 @@ class TestBBCMetricsCollection:
         processor = BBCSomaliProcessor()
         # Initialize metrics
         from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+
         processor.metrics = MetricsCollector(
-            run_id=processor.run_id,
-            source="bbc-somali",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id=processor.run_id, source="bbc-somali", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         assert processor.metrics is not None
@@ -379,25 +366,21 @@ class TestBBCErrorHandling:
         responses.add(
             responses.GET,
             "https://www.bbc.com/somali/articles/test",
-            body=requests.exceptions.Timeout("Connection timed out")
+            body=requests.exceptions.Timeout("Connection timed out"),
         )
 
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
         # Initialize minimal metrics
         from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+
         processor.metrics = MetricsCollector(
-            run_id=processor.run_id,
-            source="bbc-somali",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id=processor.run_id, source="bbc-somali", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         # Should handle timeout gracefully
         try:
-            article = processor._scrape_article(
-                session,
-                "https://www.bbc.com/somali/articles/test"
-            )
+            article = processor._scrape_article(session, "https://www.bbc.com/somali/articles/test")
             # Should return None on timeout
             assert article is None
         except requests.exceptions.Timeout:
@@ -411,25 +394,21 @@ class TestBBCErrorHandling:
         responses.add(
             responses.GET,
             "https://www.bbc.com/somali/articles/test",
-            body=requests.exceptions.ConnectionError("Connection refused")
+            body=requests.exceptions.ConnectionError("Connection refused"),
         )
 
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
         # Initialize minimal metrics
         from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+
         processor.metrics = MetricsCollector(
-            run_id=processor.run_id,
-            source="bbc-somali",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id=processor.run_id, source="bbc-somali", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
         # Should handle connection error gracefully
         try:
-            article = processor._scrape_article(
-                session,
-                "https://www.bbc.com/somali/articles/test"
-            )
+            article = processor._scrape_article(session, "https://www.bbc.com/somali/articles/test")
             # Should return None on connection error
             assert article is None
         except requests.exceptions.ConnectionError:
@@ -445,22 +424,18 @@ class TestBBCErrorHandling:
             "https://www.bbc.com/somali/articles/test",
             body="<html><body>Incomplete HTML",
             status=200,
-            headers={'Content-Type': 'text/html'}
+            headers={"Content-Type": "text/html"},
         )
 
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
         # Initialize minimal metrics
         from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+
         processor.metrics = MetricsCollector(
-            run_id=processor.run_id,
-            source="bbc-somali",
-            pipeline_type=PipelineType.WEB_SCRAPING
+            run_id=processor.run_id, source="bbc-somali", pipeline_type=PipelineType.WEB_SCRAPING
         )
-        article = processor._scrape_article(
-            session,
-            "https://www.bbc.com/somali/articles/test"
-        )
+        article = processor._scrape_article(session, "https://www.bbc.com/somali/articles/test")
 
         # Should handle malformed HTML gracefully
         # May return None or empty article depending on implementation
@@ -477,7 +452,7 @@ class TestBBCTextCleaning:
 
         assert cleaner is not None
         # Check for correct method name
-        assert hasattr(cleaner, 'clean')
+        assert hasattr(cleaner, "clean")
 
     def test_html_cleaner_removes_tags(self):
         """Test HTML cleaner removes HTML tags."""
@@ -554,7 +529,7 @@ class TestBBCHTTPSession:
 
         assert isinstance(session, requests.Session)
         # Check that session has retry adapter
-        assert 'http://' in session.adapters or 'https://' in session.adapters
+        assert "http://" in session.adapters or "https://" in session.adapters
 
     def test_session_has_custom_headers(self):
         """Test HTTP session uses custom headers."""

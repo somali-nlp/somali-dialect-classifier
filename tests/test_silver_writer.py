@@ -18,7 +18,9 @@ from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetW
 class TestSilverDatasetWriter:
     """Test silver dataset writing and schema enforcement."""
 
-    @pytest.mark.skip(reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter")
+    @pytest.mark.skip(
+        reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter"
+    )
     def test_write_enforces_schema(self):
         """Verify that schema is enforced and prevents drift."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -71,7 +73,9 @@ class TestSilverDatasetWriter:
             # Verify source_metadata is a string (JSON), not struct
             assert str(table.schema.field("source_metadata").type) == "string"
 
-    @pytest.mark.skip(reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter")
+    @pytest.mark.skip(
+        reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter"
+    )
     def test_metadata_json_serialization(self):
         """Verify source_metadata is properly JSON-serialized."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -112,7 +116,9 @@ class TestSilverDatasetWriter:
             assert deserialized["dump_url"] == "https://dumps.wikimedia.org/..."
             assert deserialized["nested"]["key"] == "value"
 
-    @pytest.mark.skip(reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter")
+    @pytest.mark.skip(
+        reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter"
+    )
     def test_multiple_sources_no_schema_drift(self):
         """
         Verify different sources with different metadata don't cause drift.
@@ -180,7 +186,9 @@ class TestSilverDatasetWriter:
             # This would fail without JSON serialization - PyArrow would
             # infer different struct schemas for different metadata keys
 
-    @pytest.mark.skip(reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter")
+    @pytest.mark.skip(
+        reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter"
+    )
     def test_read_back_after_write(self):
         """Test round-trip: write → read → verify."""
         with tempfile.TemporaryDirectory() as tmpdir:

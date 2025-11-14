@@ -474,8 +474,7 @@ class TestSetupLogging:
         assert logger is not None
         # Should use JSON format in production
         json_handlers = [
-            h for h in logger.logger.handlers
-            if isinstance(h.formatter, StructuredFormatter)
+            h for h in logger.logger.handlers if isinstance(h.formatter, StructuredFormatter)
         ]
         assert len(json_handlers) > 0
 

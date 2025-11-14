@@ -43,7 +43,9 @@ class TestSQLInjectionPrevention:
         stats = ledger.get_statistics(source=malicious_source)
 
         # Should return 0 results (no source matches malicious string)
-        assert stats["total_urls"] == 0, "SQL injection prevention failed: malicious query returned data"
+        assert stats["total_urls"] == 0, (
+            "SQL injection prevention failed: malicious query returned data"
+        )
 
         # Valid source should work
         valid_stats = ledger.get_statistics(source="test-source")
@@ -378,9 +380,7 @@ class TestSecurityIntegration:
 
         for attempt in injection_attempts:
             stats = ledger.backend.get_statistics(source=attempt)
-            assert (
-                stats["total_urls"] == 0
-            ), f"SQL injection not prevented for: {attempt}"
+            assert stats["total_urls"] == 0, f"SQL injection not prevented for: {attempt}"
 
         # Valid queries should still work
         bbc_stats = ledger.backend.get_statistics(source="bbc")

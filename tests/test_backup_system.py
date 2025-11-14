@@ -41,12 +41,8 @@ def sample_data(temp_dirs):
     ledger_path = data_dir / "ledger" / "crawl_ledger.db"
     conn = sqlite3.connect(str(ledger_path))
     cursor = conn.cursor()
-    cursor.execute(
-        "CREATE TABLE urls (id INTEGER PRIMARY KEY, url TEXT, status TEXT)"
-    )
-    cursor.execute(
-        "INSERT INTO urls (url, status) VALUES ('https://example.com', 'processed')"
-    )
+    cursor.execute("CREATE TABLE urls (id INTEGER PRIMARY KEY, url TEXT, status TEXT)")
+    cursor.execute("INSERT INTO urls (url, status) VALUES ('https://example.com', 'processed')")
     conn.commit()
     conn.close()
 
@@ -69,9 +65,7 @@ def test_backup_creation(sample_data):
     """Test backup creation."""
     from scripts.backup_system import BackupSystem
 
-    backup_system = BackupSystem(
-        source_dir=sample_data["data"], backup_dir=sample_data["backup"]
-    )
+    backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
 
     # Create backup
     backup_path = backup_system.create_backup()
@@ -104,9 +98,7 @@ def test_backup_checksums(sample_data):
     """Test backup checksum calculation."""
     from scripts.backup_system import BackupSystem
 
-    backup_system = BackupSystem(
-        source_dir=sample_data["data"], backup_dir=sample_data["backup"]
-    )
+    backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
 
     backup_path = backup_system.create_backup()
 
@@ -162,9 +154,7 @@ def test_list_backups(sample_data):
     """Test listing available backups."""
     from scripts.backup_system import BackupSystem
 
-    backup_system = BackupSystem(
-        source_dir=sample_data["data"], backup_dir=sample_data["backup"]
-    )
+    backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
 
     # Create backups
     backup1 = backup_system.create_backup()
@@ -174,7 +164,7 @@ def test_list_backups(sample_data):
 
     # Verify we have at least 1 backup
     assert len(backups) >= 1
-    assert backup1.name in [b['name'] for b in backups]
+    assert backup1.name in [b["name"] for b in backups]
 
     # Verify backup information
     for backup in backups:
@@ -192,9 +182,7 @@ def test_restore_basic(sample_data):
     from scripts.restore_system import RestoreSystem
 
     # Create backup
-    backup_system = BackupSystem(
-        source_dir=sample_data["data"], backup_dir=sample_data["backup"]
-    )
+    backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
     backup_path = backup_system.create_backup()
 
     # Clear data directory to simulate data loss
@@ -202,13 +190,9 @@ def test_restore_basic(sample_data):
     sample_data["data"].mkdir()
 
     # Restore
-    restore_system = RestoreSystem(
-        backup_dir=sample_data["backup"], target_dir=sample_data["data"]
-    )
+    restore_system = RestoreSystem(backup_dir=sample_data["backup"], target_dir=sample_data["data"])
 
-    success = restore_system.restore(
-        backup_name=backup_path.name, skip_safety_backup=True
-    )
+    success = restore_system.restore(backup_name=backup_path.name, skip_safety_backup=True)
 
     assert success
 
@@ -225,9 +209,7 @@ def test_restore_verification(sample_data):
     from scripts.restore_system import RestoreSystem
 
     # Create backup
-    backup_system = BackupSystem(
-        source_dir=sample_data["data"], backup_dir=sample_data["backup"]
-    )
+    backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
     backup_path = backup_system.create_backup()
 
     # Corrupt a file in the backup
@@ -251,9 +233,7 @@ def test_restore_dry_run(sample_data):
     from scripts.restore_system import RestoreSystem
 
     # Create backup
-    backup_system = BackupSystem(
-        source_dir=sample_data["data"], backup_dir=sample_data["backup"]
-    )
+    backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
     backup_path = backup_system.create_backup()
 
     # Clear data directory
@@ -261,9 +241,7 @@ def test_restore_dry_run(sample_data):
     sample_data["data"].mkdir()
 
     # Dry-run restore
-    restore_system = RestoreSystem(
-        backup_dir=sample_data["backup"], target_dir=sample_data["data"]
-    )
+    restore_system = RestoreSystem(backup_dir=sample_data["backup"], target_dir=sample_data["data"])
 
     success = restore_system.restore(
         backup_name=backup_path.name, dry_run=True, skip_safety_backup=True
@@ -282,19 +260,15 @@ def test_restore_list_backups(sample_data):
     from scripts.restore_system import RestoreSystem
 
     # Create backup
-    backup_system = BackupSystem(
-        source_dir=sample_data["data"], backup_dir=sample_data["backup"]
-    )
+    backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
     backup_system.create_backup()
 
     # List via restore system
-    restore_system = RestoreSystem(
-        backup_dir=sample_data["backup"], target_dir=sample_data["data"]
-    )
+    restore_system = RestoreSystem(backup_dir=sample_data["backup"], target_dir=sample_data["data"])
     backups = restore_system.list_backups()
 
     assert len(backups) >= 1
-    assert backups[0]['has_manifest']
+    assert backups[0]["has_manifest"]
     for backup in backups:
         assert backup["has_manifest"]
 
@@ -315,9 +289,7 @@ def test_backup_with_missing_directories(temp_dirs):
     conn.close()
 
     # Create backup (should not fail even with missing directories)
-    backup_system = BackupSystem(
-        source_dir=data_dir, backup_dir=temp_dirs["backup"]
-    )
+    backup_system = BackupSystem(source_dir=data_dir, backup_dir=temp_dirs["backup"])
 
     backup_path = backup_system.create_backup()
 

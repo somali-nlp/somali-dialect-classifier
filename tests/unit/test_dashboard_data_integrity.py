@@ -51,7 +51,9 @@ def test_text_distributions_are_non_empty():
         assert any(count > 0 for count in counts), f"Expected non-zero length counts for {source}"
 
 
-@pytest.mark.skip(reason="Dashboard metadata not generated in test environment - requires full pipeline run")
+@pytest.mark.skip(
+    reason="Dashboard metadata not generated in test environment - requires full pipeline run"
+)
 def test_dashboard_metadata_exposes_visualisation_flags():
     data = load_json("dashboard_metadata.json")
 

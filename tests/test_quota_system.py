@@ -55,6 +55,7 @@ def config():
 # Ledger Methods Tests (4 tests)
 # =============================================================================
 
+
 def test_check_quota_available_under_limit(ledger):
     """Verify check_quota_available returns True with correct remaining count."""
     # No quota used yet
@@ -111,6 +112,7 @@ def test_mark_quota_hit_records_remaining(ledger):
 # Config Methods Tests (2 tests)
 # =============================================================================
 
+
 def test_get_quota_returns_correct_limits(config):
     """Verify get_quota returns correct limits for each source."""
     assert config.orchestration.get_quota("bbc") == 350
@@ -127,6 +129,7 @@ def test_get_quota_returns_none_for_unlimited(config):
 # =============================================================================
 # Processor Integration Tests (4 tests)
 # =============================================================================
+
 
 def test_bbc_enforces_quota_350(ledger):
     """Verify BBC processor respects quota of 350 articles."""
@@ -185,6 +188,7 @@ def test_wikipedia_unlimited_no_quota(ledger):
 # Edge Cases Tests (5 tests)
 # =============================================================================
 
+
 def test_quota_resets_daily(ledger):
     """Verify quota resets on new day."""
     quota_limit = 350
@@ -197,7 +201,9 @@ def test_quota_resets_daily(ledger):
     assert has_quota_today is False
 
     # Check tomorrow's quota (should be fresh)
-    has_quota_tomorrow, remaining_tomorrow = ledger.check_quota_available("bbc", quota_limit, date=tomorrow)
+    has_quota_tomorrow, remaining_tomorrow = ledger.check_quota_available(
+        "bbc", quota_limit, date=tomorrow
+    )
     assert has_quota_tomorrow is True
     assert remaining_tomorrow == quota_limit
 

@@ -47,10 +47,7 @@ class ValidationService:
         self.validation_failures = 0
 
     def validate_record(
-        self,
-        record: dict[str, Any],
-        source: str = "",
-        metrics_collector: Optional[Any] = None
+        self, record: dict[str, Any], source: str = "", metrics_collector: Optional[Any] = None
     ) -> tuple[bool, list[str]]:
         """
         Validate record against schema.
@@ -79,9 +76,7 @@ class ValidationService:
             # Log validation errors with context
             if source:
                 title = record.get("title", "")[:50]
-                logger.warning(
-                    f"Record validation failed for '{title}...' from {source}: {errors}"
-                )
+                logger.warning(f"Record validation failed for '{title}...' from {source}: {errors}")
             else:
                 logger.warning(f"Record validation failed: {errors}")
 

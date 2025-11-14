@@ -19,7 +19,7 @@ class TestRecordBuilder:
             source="Test-Source",
             date_accessed="2025-01-01",
             run_id="test_run_123",
-            schema_version="1.0"
+            schema_version="1.0",
         )
         assert builder.source == "Test-Source"
         assert builder.date_accessed == "2025-01-01"
@@ -29,15 +29,13 @@ class TestRecordBuilder:
     def test_build_silver_record(self):
         """Test building a silver record."""
         builder = RecordBuilder(
-            source="Test-Source",
-            date_accessed="2025-01-01",
-            run_id="test_run_123"
+            source="Test-Source", date_accessed="2025-01-01", run_id="test_run_123"
         )
         raw_record = RawRecord(
             title="Test Title",
             text="Original raw text",
             url="https://example.com/test",
-            metadata={"category": "test", "date_published": "2025-01-01"}
+            metadata={"category": "test", "date_published": "2025-01-01"},
         )
         record = builder.build_silver_record(
             raw_record=raw_record,
@@ -46,7 +44,7 @@ class TestRecordBuilder:
             source_type="news",
             license_str="CC-BY-SA-3.0",
             domain="news",
-            register="formal"
+            register="formal",
         )
         # Verify core fields
         assert record["title"] == "Test Title"
@@ -69,15 +67,13 @@ class TestRecordBuilder:
     def test_metadata_merging(self):
         """Test that metadata from multiple sources is merged correctly."""
         builder = RecordBuilder(
-            source="Test-Source",
-            date_accessed="2025-01-01",
-            run_id="test_run_123"
+            source="Test-Source", date_accessed="2025-01-01", run_id="test_run_123"
         )
         raw_record = RawRecord(
             title="Test",
             text="Text",
             url="https://example.com",
-            metadata={"from_raw": "value1", "shared": "raw_value"}
+            metadata={"from_raw": "value1", "shared": "raw_value"},
         )
         source_metadata = {"from_source": "value2", "shared": "source_value"}
         filter_metadata = {"from_filter": "value3", "shared": "filter_value"}
@@ -89,10 +85,11 @@ class TestRecordBuilder:
             license_str="MIT",
             domain="general",
             register="informal",
-            source_metadata=source_metadata
+            source_metadata=source_metadata,
         )
         # Parse source_metadata JSON string
         import json
+
         merged = json.loads(record["source_metadata"])
         # Later values should override earlier ones
         assert merged["shared"] == "filter_value"
@@ -103,16 +100,14 @@ class TestRecordBuilder:
     def test_source_id_extraction(self):
         """Test that source_id is extracted from metadata."""
         builder = RecordBuilder(
-            source="Test-Source",
-            date_accessed="2025-01-01",
-            run_id="test_run_123"
+            source="Test-Source", date_accessed="2025-01-01", run_id="test_run_123"
         )
         # Test with corpus_id
         raw_record1 = RawRecord(
             title="Test",
             text="Text",
             url="https://example.com",
-            metadata={"corpus_id": "corpus_123"}
+            metadata={"corpus_id": "corpus_123"},
         )
         record1 = builder.build_silver_record(
             raw_record=raw_record1,
@@ -121,7 +116,7 @@ class TestRecordBuilder:
             source_type="corpus",
             license_str="MIT",
             domain="general",
-            register="formal"
+            register="formal",
         )
         assert record1["source_id"] == "corpus_123"
         # Test with source_id
@@ -129,7 +124,7 @@ class TestRecordBuilder:
             title="Test",
             text="Text",
             url="https://example.com",
-            metadata={"source_id": "source_456"}
+            metadata={"source_id": "source_456"},
         )
         record2 = builder.build_silver_record(
             raw_record=raw_record2,
@@ -138,23 +133,17 @@ class TestRecordBuilder:
             source_type="news",
             license_str="MIT",
             domain="news",
-            register="formal"
+            register="formal",
         )
         assert record2["source_id"] == "source_456"
 
     def test_add_metadata(self):
         """Test adding additional metadata to a record."""
         builder = RecordBuilder(
-            source="Test-Source",
-            date_accessed="2025-01-01",
-            run_id="test_run_123"
+            source="Test-Source", date_accessed="2025-01-01", run_id="test_run_123"
         )
         record = {"id": "test_id", "text": "test"}
-        updated = builder.add_metadata(
-            record,
-            processing_duration=1.5,
-            quality_score=0.95
-        )
+        updated = builder.add_metadata(record, processing_duration=1.5, quality_score=0.95)
         assert updated["processing_duration"] == 1.5
         assert updated["quality_score"] == 0.95
 

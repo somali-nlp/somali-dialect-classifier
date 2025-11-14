@@ -274,7 +274,7 @@ if PYDANTIC_AVAILABLE:
             env_prefix="SDC_ORCHESTRATION__",
             env_file=".env",
             env_file_encoding="utf-8",
-            extra="ignore"
+            extra="ignore",
         )
 
         # Initial collection phase
@@ -282,7 +282,7 @@ if PYDANTIC_AVAILABLE:
             default=7,
             description="Days to collect all sources daily before switching to cadence-based refresh",
             ge=1,
-            le=30
+            le=30,
         )
 
         # Default fallback cadence
@@ -290,31 +290,31 @@ if PYDANTIC_AVAILABLE:
             default=7,
             description="Default refresh cadence in days for sources not explicitly configured",
             ge=1,
-            le=365
+            le=365,
         )
 
         # Per-source refresh cadences
         cadence_days: dict[str, int] = Field(
             default_factory=lambda: {
-                "wikipedia": 7,      # Weekly - content changes moderately
-                "bbc": 7,           # Weekly - news refresh
+                "wikipedia": 7,  # Weekly - content changes moderately
+                "bbc": 7,  # Weekly - news refresh
                 "huggingface": 30,  # Monthly - large static dataset
                 "sprakbanken": 90,  # Quarterly - academic corpus
-                "tiktok": 7         # Weekly - manual scheduling
+                "tiktok": 7,  # Weekly - manual scheduling
             },
-            description="Per-source refresh cadence in days"
+            description="Per-source refresh cadence in days",
         )
 
         # Per-source daily quotas
         quota_limits: dict[str, int] = Field(
             default_factory=lambda: {
-                "bbc": 350,         # 350 articles/day - respects rate limits
+                "bbc": 350,  # 350 articles/day - respects rate limits
                 "huggingface": 10000,  # 10k records/day - large dataset throttling
-                "sprakbanken": 10   # 10 corpora/day - academic corpus pacing
+                "sprakbanken": 10,  # 10 corpora/day - academic corpus pacing
                 # wikipedia: No quota (file-based, efficient)
                 # tiktok: Manual scheduling with cost gating (no automatic quota)
             },
-            description="Daily quota limits per source (None = unlimited)"
+            description="Daily quota limits per source (None = unlimited)",
         )
 
         def get_cadence(self, source: str) -> int:
@@ -498,15 +498,11 @@ else:
                 "bbc": 7,
                 "huggingface": 30,
                 "sprakbanken": 90,
-                "tiktok": 7
+                "tiktok": 7,
             }
         )
         quota_limits: dict[str, int] = field(
-            default_factory=lambda: {
-                "bbc": 350,
-                "huggingface": 10000,
-                "sprakbanken": 10
-            }
+            default_factory=lambda: {"bbc": 350, "huggingface": 10000, "sprakbanken": 10}
         )
 
         def get_cadence(self, source: str) -> int:

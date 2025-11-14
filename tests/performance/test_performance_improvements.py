@@ -8,6 +8,7 @@ Tests verify 3-5x improvements across:
 
 Run with: pytest tests/performance/test_performance_improvements.py -v
 """
+
 import asyncio
 import json
 import time
@@ -243,18 +244,18 @@ class TestFileIOPerformance:
         # Standard write (small buffer)
         start_standard = time.time()
         output_standard.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_standard, 'w', encoding='utf-8', buffering=4096) as f:
+        with open(output_standard, "w", encoding="utf-8", buffering=4096) as f:
             for record in sample_records:
-                f.write(json.dumps(record, ensure_ascii=False) + '\n')
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
                 f.flush()  # Flush every record (slow)
         standard_time = time.time() - start_standard
 
         # Buffered write (large buffer, batch flush)
         start_buffered = time.time()
         output_buffered.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_buffered, 'w', encoding='utf-8', buffering=819200) as f:
+        with open(output_buffered, "w", encoding="utf-8", buffering=819200) as f:
             for i, record in enumerate(sample_records):
-                f.write(json.dumps(record, ensure_ascii=False) + '\n')
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
                 # Flush only every 100 records
                 if i % 100 == 0:
                     f.flush()
@@ -281,14 +282,14 @@ class TestFileIOPerformance:
         test_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Write test data
-        with open(test_file, 'w', encoding='utf-8') as f:
+        with open(test_file, "w", encoding="utf-8") as f:
             for record in sample_records:
-                f.write(json.dumps(record, ensure_ascii=False) + '\n')
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
         # Standard read (small buffer)
         start_standard = time.time()
         records_standard = []
-        with open(test_file, encoding='utf-8', buffering=4096) as f:
+        with open(test_file, encoding="utf-8", buffering=4096) as f:
             for line in f:
                 if line.strip():
                     records_standard.append(json.loads(line))
@@ -297,7 +298,7 @@ class TestFileIOPerformance:
         # Buffered read (large buffer)
         start_buffered = time.time()
         records_buffered = []
-        with open(test_file, encoding='utf-8', buffering=819200) as f:
+        with open(test_file, encoding="utf-8", buffering=819200) as f:
             for line in f:
                 if line.strip():
                     records_buffered.append(json.loads(line))
@@ -347,8 +348,8 @@ class TestFileIOPerformance:
         test_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Write 10MB of data
-        with open(test_file, 'wb') as f:
-            f.write(b'x' * (10 * 1024 * 1024))
+        with open(test_file, "wb") as f:
+            f.write(b"x" * (10 * 1024 * 1024))
 
         # Standard checksum (4KB chunks)
         start_standard = time.time()

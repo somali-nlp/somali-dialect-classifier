@@ -108,14 +108,10 @@ class ManifestWriter:
 
         # Calculate totals
         total_records = sum(s.get("records_ingested", 0) for s in sources.values())
-        total_partitions = len({
-            partition
-            for source in sources.values()
-            for partition in source.get("partitions", [])
-        })
-        total_processing_time = sum(
-            s.get("processing_time_seconds", 0) for s in sources.values()
+        total_partitions = len(
+            {partition for source in sources.values() for partition in source.get("partitions", [])}
         )
+        total_processing_time = sum(s.get("processing_time_seconds", 0) for s in sources.values())
         sources_with_quota_hit = [
             name for name, source in sources.items() if source.get("quota_hit", False)
         ]
@@ -243,9 +239,7 @@ class ManifestWriter:
                 # Read manifest to get timestamp
                 with open(manifest_path, encoding="utf-8") as f:
                     manifest = json.load(f)
-                    timestamp = datetime.fromisoformat(
-                        manifest["timestamp"].replace("Z", "+00:00")
-                    )
+                    timestamp = datetime.fromisoformat(manifest["timestamp"].replace("Z", "+00:00"))
 
                 # Apply filters
                 if start_date and timestamp < start_date:
@@ -291,9 +285,7 @@ class ManifestWriter:
             try:
                 with open(manifest_path, encoding="utf-8") as f:
                     manifest = json.load(f)
-                    timestamp = datetime.fromisoformat(
-                        manifest["timestamp"].replace("Z", "+00:00")
-                    )
+                    timestamp = datetime.fromisoformat(manifest["timestamp"].replace("Z", "+00:00"))
 
                 if timestamp < cutoff:
                     manifest_path.unlink()
@@ -333,9 +325,7 @@ class ManifestWriter:
             required_source_fields = ["status", "records_ingested"]
             for field in required_source_fields:
                 if field not in source_data:
-                    raise ValueError(
-                        f"Missing required field '{field}' for source '{source_name}'"
-                    )
+                    raise ValueError(f"Missing required field '{field}' for source '{source_name}'")
 
         # Validate totals structure
         required_totals = ["total_records", "total_partitions", "total_processing_time_seconds"]

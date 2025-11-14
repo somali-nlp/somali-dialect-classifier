@@ -16,7 +16,9 @@ import pyarrow.parquet as pq
 import pytest
 
 # Skip integration tests - require full pipeline with external data
-pytestmark = pytest.mark.skip(reason="Integration tests require full pipeline run with external data")
+pytestmark = pytest.mark.skip(
+    reason="Integration tests require full pipeline run with external data"
+)
 
 from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
     WikipediaSomaliProcessor,

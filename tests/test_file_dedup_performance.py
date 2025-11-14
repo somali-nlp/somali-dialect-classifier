@@ -36,7 +36,7 @@ class TestChecksumPerformance:
 
         # Benchmark with SHA256
         start = time.time()
-        checksum = processor._compute_file_checksum(test_file, algorithm='sha256')
+        checksum = processor._compute_file_checksum(test_file, algorithm="sha256")
         elapsed_ms = (time.time() - start) * 1000
 
         # Assertions
@@ -44,7 +44,7 @@ class TestChecksumPerformance:
         assert elapsed_ms < 200, f"5MB checksum took {elapsed_ms:.0f}ms, expected <200ms"
 
         # Log benchmark result
-        throughput = (5 / (elapsed_ms / 1000))  # MB/s
+        throughput = 5 / (elapsed_ms / 1000)  # MB/s
         print("\nChecksum Performance (5MB):")
         print(f"  Time: {elapsed_ms:.0f}ms")
         print(f"  Throughput: {throughput:.0f} MB/s")
@@ -73,17 +73,17 @@ class TestChecksumPerformance:
 
         # Benchmark with SHA256
         start = time.time()
-        checksum = processor._compute_file_checksum(dump_file, algorithm='sha256')
+        checksum = processor._compute_file_checksum(dump_file, algorithm="sha256")
         elapsed_ms = (time.time() - start) * 1000
 
         # Assertions
         assert len(checksum) == 64, "SHA256 hex digest should be 64 characters"
-        assert (
-            elapsed_ms < 500
-        ), f"{file_size_mb:.1f}MB checksum took {elapsed_ms:.0f}ms, expected <500ms"
+        assert elapsed_ms < 500, (
+            f"{file_size_mb:.1f}MB checksum took {elapsed_ms:.0f}ms, expected <500ms"
+        )
 
         # Log benchmark result
-        throughput = (file_size_mb / (elapsed_ms / 1000))
+        throughput = file_size_mb / (elapsed_ms / 1000)
         print(f"\nChecksum Performance ({file_size_mb:.1f}MB):")
         print(f"  Time: {elapsed_ms:.0f}ms")
         print(f"  Throughput: {throughput:.0f} MB/s")
@@ -115,17 +115,15 @@ class TestChecksumPerformance:
 
         # Benchmark with SHA256
         start = time.time()
-        checksum = processor._compute_file_checksum(test_file, algorithm='sha256')
+        checksum = processor._compute_file_checksum(test_file, algorithm="sha256")
         elapsed_s = time.time() - start
 
         # Assertions
         assert len(checksum) == 64, "SHA256 hex digest should be 64 characters"
-        assert (
-            elapsed_s < 5.0
-        ), f"100MB checksum took {elapsed_s:.1f}s, expected <5s on SSD"
+        assert elapsed_s < 5.0, f"100MB checksum took {elapsed_s:.1f}s, expected <5s on SSD"
 
         # Log benchmark result
-        throughput = (100 / elapsed_s)
+        throughput = 100 / elapsed_s
         print("\nChecksum Performance (100MB stress test):")
         print(f"  Time: {elapsed_s:.1f}s")
         print(f"  Throughput: {throughput:.0f} MB/s")
@@ -152,9 +150,7 @@ class TestChecksumPerformance:
         elapsed_ms = (time.time() - start) * 1000
 
         assert result is None, "Should return None for non-existent dump"
-        assert (
-            elapsed_ms < 100
-        ), f"Metadata search took {elapsed_ms:.0f}ms, expected <100ms"
+        assert elapsed_ms < 100, f"Metadata search took {elapsed_ms:.0f}ms, expected <100ms"
 
         print("\nMetadata Search Performance (empty):")
         print(f"  Time: {elapsed_ms:.0f}ms")

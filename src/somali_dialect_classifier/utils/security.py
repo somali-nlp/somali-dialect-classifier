@@ -12,14 +12,14 @@ from typing import Optional
 
 # Allowed source names (whitelist for path traversal protection)
 ALLOWED_SOURCES = {
-    'wikipedia',
-    'bbc',
-    'bbc-somali',
-    'sprakbanken',
-    'sprakbanken-somali',  # Added to match actual processor source name
-    'tiktok',
-    'huggingface',
-    'wikipedia-somali'
+    "wikipedia",
+    "bbc",
+    "bbc-somali",
+    "sprakbanken",
+    "sprakbanken-somali",  # Added to match actual processor source name
+    "tiktok",
+    "huggingface",
+    "wikipedia-somali",
 }
 
 
@@ -55,8 +55,8 @@ def sanitize_source_name(source: str) -> str:
         raise ValueError("Source name cannot be empty")
 
     # Remove path separators and parent directory references
-    sanitized = re.sub(r'[/\\]', '', source)
-    sanitized = sanitized.replace('..', '')
+    sanitized = re.sub(r"[/\\]", "", source)
+    sanitized = sanitized.replace("..", "")
 
     # Normalize to lowercase for comparison
     sanitized_lower = sanitized.lower()
@@ -67,9 +67,9 @@ def sanitize_source_name(source: str) -> str:
 
     # Special handling for HuggingFace sources with dataset suffixes
     # Format: huggingface-somali_<dataset>-<config> or huggingface_<dataset>
-    if sanitized_lower.startswith('huggingface'):
+    if sanitized_lower.startswith("huggingface"):
         # Allow alphanumeric, hyphens, and underscores only
-        if re.match(r'^huggingface[-_a-z0-9]+$', sanitized_lower):
+        if re.match(r"^huggingface[-_a-z0-9]+$", sanitized_lower):
             return sanitized_lower
 
     # If not in whitelist and not a valid HuggingFace source, reject
@@ -143,26 +143,25 @@ def validate_sql_parameter(param: str, param_name: str = "parameter") -> str:
 
     # Check for common SQL injection patterns
     dangerous_patterns = [
-        r"';",           # Statement terminator
-        r"--",           # Comment marker
-        r"/\*",          # Block comment start
-        r"\*/",          # Block comment end
-        r"xp_",          # Extended stored procedures
-        r"sp_",          # System stored procedures
-        r"EXEC\s",       # Execute command
-        r"EXECUTE\s",    # Execute command
-        r"DROP\s",       # Drop table/database
-        r"DELETE\s",     # Delete without WHERE (dangerous)
-        r"INSERT\s",     # Injection attempt
-        r"UPDATE\s",     # Update without WHERE (dangerous)
-        r"UNION\s",      # Union-based injection
+        r"';",  # Statement terminator
+        r"--",  # Comment marker
+        r"/\*",  # Block comment start
+        r"\*/",  # Block comment end
+        r"xp_",  # Extended stored procedures
+        r"sp_",  # System stored procedures
+        r"EXEC\s",  # Execute command
+        r"EXECUTE\s",  # Execute command
+        r"DROP\s",  # Drop table/database
+        r"DELETE\s",  # Delete without WHERE (dangerous)
+        r"INSERT\s",  # Injection attempt
+        r"UPDATE\s",  # Update without WHERE (dangerous)
+        r"UNION\s",  # Union-based injection
     ]
 
     for pattern in dangerous_patterns:
         if re.search(pattern, param, re.IGNORECASE):
             raise ValueError(
-                f"Invalid SQL parameter '{param_name}': "
-                f"contains potentially dangerous pattern"
+                f"Invalid SQL parameter '{param_name}': contains potentially dangerous pattern"
             )
 
     return param
@@ -192,13 +191,13 @@ def sanitize_filename(filename: str) -> str:
     basename = os.path.basename(filename)
 
     # Remove any remaining path separators
-    sanitized = re.sub(r'[/\\]', '', basename)
+    sanitized = re.sub(r"[/\\]", "", basename)
 
     # Remove parent directory references
-    sanitized = sanitized.replace('..', '')
+    sanitized = sanitized.replace("..", "")
 
     # Remove null bytes (path traversal in some systems)
-    sanitized = sanitized.replace('\0', '')
+    sanitized = sanitized.replace("\0", "")
 
     if not sanitized:
         raise ValueError("Invalid filename: results in empty string after sanitization")
@@ -234,7 +233,7 @@ def validate_file_path(file_path: str, base_dir: Optional[str] = None) -> bool:
 
     try:
         # Remove null bytes (path traversal in some systems)
-        if '\0' in file_path:
+        if "\0" in file_path:
             return False
 
         # Resolve to absolute path (resolves .., ., symlinks)
@@ -282,7 +281,7 @@ def is_safe_url(url: str) -> bool:
         parsed = urlparse(url)
 
         # Only allow http/https schemes
-        if parsed.scheme not in ('http', 'https'):
+        if parsed.scheme not in ("http", "https"):
             return False
 
         # Block localhost/loopback
@@ -292,23 +291,23 @@ def is_safe_url(url: str) -> bool:
 
         # Block localhost variations
         localhost_patterns = [
-            'localhost',
-            '127.0.0.1',
-            '0.0.0.0',
-            '::1',
+            "localhost",
+            "127.0.0.1",
+            "0.0.0.0",
+            "::1",
         ]
 
         if hostname.lower() in localhost_patterns:
             return False
 
         # Block private IP ranges (basic check)
-        if hostname.startswith('10.'):
+        if hostname.startswith("10."):
             return False
-        if hostname.startswith('192.168.'):
+        if hostname.startswith("192.168."):
             return False
-        if hostname.startswith('172.'):
+        if hostname.startswith("172."):
             # Check if in 172.16.0.0 - 172.31.255.255 range
-            parts = hostname.split('.')
+            parts = hostname.split(".")
             if len(parts) == 4:
                 try:
                     second_octet = int(parts[1])
