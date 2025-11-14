@@ -358,8 +358,32 @@ def main():
     print(f"\n[1/4] Scanning for quality reports in: {reports_dir}")
 
     if not reports_dir.exists():
-        print(f"Error: Reports directory not found: {reports_dir}", file=sys.stderr)
-        sys.exit(1)
+        print(f"Warning: Reports directory not found: {reports_dir}", file=sys.stderr)
+        print("Creating empty quality feed (expected in CI/CD environment)", file=sys.stderr)
+
+        # Create empty quality alerts and waivers
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        empty_alerts = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "alerts": [],
+            "total_alerts": 0
+        }
+
+        empty_waivers = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "waivers": [],
+            "total_waivers": 0
+        }
+
+        with open(output_dir / "quality_alerts.json", 'w', encoding='utf-8') as f:
+            json.dump(empty_alerts, f, indent=2)
+        with open(output_dir / "quality_waivers.json", 'w', encoding='utf-8') as f:
+            json.dump(empty_waivers, f, indent=2)
+
+        print("✓ Created empty quality_alerts.json")
+        print("✓ Created empty quality_waivers.json")
+        return
 
     report_files = sorted(reports_dir.glob("*_final_quality_report.md"))
 
