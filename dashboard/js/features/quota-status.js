@@ -44,18 +44,15 @@ function renderQuotaCards(quotaData) {
     // Get latest usage for each source
     const latestBySource = getLatestUsageBySource(quotaData.daily_usage || []);
 
-    if (Object.keys(latestBySource).length === 0) {
-        container.innerHTML = '<p class="chart-empty-state">No quota data available. Run the ingestion orchestrator to populate quota tracking.</p>';
-        return;
-    }
+    // Define all sources (even those without quotas)
+    const allSources = ['bbc', 'huggingface', 'sprakbanken', 'wikipedia', 'tiktok'];
 
-    // Render cards for each source
-    const cards = Object.entries(latestBySource)
-        .sort((a, b) => a[0].localeCompare(b[0])) // Sort by source name alphabetically
-        .map(([source, data]) => renderQuotaCard(source, data, quotaData.quota_hits_by_source || {}))
+    // Render cards for all sources
+    const cards = allSources
+        .map(source => renderQuotaCard(source, latestBySource[source], quotaData.quota_hits_by_source || {}))
         .join('');
 
-    container.innerHTML = cards;
+    container.innerHTML = cards || '<p class="chart-empty-state">No quota data available.</p>';
 }
 
 /**
@@ -82,12 +79,32 @@ function getLatestUsageBySource(dailyUsage) {
 /**
  * Render a single quota card for a source using roster-card pattern
  * @param {string} source - Source identifier (e.g., "bbc")
- * @param {Object} data - Latest usage data for the source
+ * @param {Object} data - Latest usage data for the source (null if no quota)
  * @param {Object} quotaHits - Map of source to array of quota hit dates
  * @returns {string} HTML string for the card
  */
 function renderQuotaCard(source, data, quotaHits) {
     const sourceName = normalizeSourceName(source);
+
+    // Handle sources without quotas
+    if (!data) {
+        let explanation = '';
+        if (source === 'wikipedia') {
+            explanation = 'Batch file processing · No rate limits';
+        } else if (source === 'tiktok') {
+            explanation = 'Apify API ingestion · Links provided, cost-based';
+        }
+
+        return `
+            <article class="roster-card">
+                <h3>${sourceName}</h3>
+                <p class="roster-value">—</p>
+                <p class="roster-caption">${explanation}</p>
+            </article>
+        `;
+    }
+
+    // Sources with quotas
     const quotaHitCount = (quotaHits[source] || []).length;
     const usagePercent = Math.round(data.usage_percent || 0);
 
