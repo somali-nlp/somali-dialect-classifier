@@ -26,6 +26,7 @@ data/ledger/          # Exclude crawl ledger database
 data/analysis/        # Exclude analysis artifacts
 data/metrics/         # Exclude metrics (regenerate via pipelines)
 data/reports/         # Exclude reports (regenerate via pipelines)
+data/manifests/       # Exclude run manifests (regenerate via pipelines)
 *.pkl
 *.h5
 *.parquet
