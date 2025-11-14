@@ -4,7 +4,7 @@
  */
 
 import { getQuotaStatus } from '../core/data-service.js';
-import Logger from '../utils/logger.js';
+import { Logger } from '../utils/logger.js';
 
 /**
  * Initialize quota status visualization.
@@ -80,7 +80,7 @@ function getLatestUsageBySource(dailyUsage) {
 }
 
 /**
- * Render a single quota card for a source
+ * Render a single quota card for a source using roster-card pattern
  * @param {string} source - Source identifier (e.g., "bbc")
  * @param {Object} data - Latest usage data for the source
  * @param {Object} quotaHits - Map of source to array of quota hit dates
@@ -99,7 +99,7 @@ function renderQuotaCard(source, data, quotaHits) {
         : '';
 
     return `
-        <div class="quota-card">
+        <article class="roster-card">
             <div class="quota-card-header">
                 <h3>${sourceName}</h3>
                 ${quotaHitBadge}
@@ -114,7 +114,7 @@ function renderQuotaCard(source, data, quotaHits) {
             <div class="quota-stats">
                 <p>Quota hits (30d): ${quotaHitCount}</p>
             </div>
-        </div>
+        </article>
     `;
 }
 

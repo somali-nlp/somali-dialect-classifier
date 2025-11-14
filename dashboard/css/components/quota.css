@@ -1,60 +1,16 @@
 /* ========================================
    QUOTA STATUS COMPONENT STYLES
    Tableau-inspired design for quota cards
+   Uses existing dashboard patterns
    ======================================== */
 
-/* Quota Cards Container */
-.quota-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1.5rem;
+/* Quota Section Spacing */
+.quota-status-section {
+    margin-top: 3rem;
 }
 
-/* Quota Card */
-.quota-card {
-    background: var(--tableau-bg-white);
-    border: 1px solid var(--tableau-gray-border);
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: var(--shadow-sm);
-    transition: box-shadow var(--transition-base);
-}
-
-.quota-card:hover {
-    box-shadow: var(--shadow-md);
-}
-
-/* Card Header */
-.quota-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.quota-card-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--tableau-text-primary);
-}
-
-/* Quota Hit Badge */
-.quota-hit-badge {
-    background: var(--error);
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-/* Usage Section */
-.quota-usage {
-    margin-bottom: 1rem;
-}
+/* Quota Cards - use existing source-roster-grid and roster-card */
+/* Grid layout handled by .source-roster-grid in layout.css */
 
 /* Progress Bar */
 .progress-bar {
@@ -87,6 +43,17 @@
     margin: 0.25rem 0 0 0;
 }
 
+/* Quota Hit Badge */
+.quota-hit-badge {
+    background: var(--error);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
 /* Quota Stats */
 .quota-stats {
     margin-top: 1rem;
@@ -100,12 +67,28 @@
     color: var(--tableau-text-secondary);
 }
 
+/* Card Header for Quota Cards */
+.quota-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.quota-card-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--tableau-text-primary);
+}
+
+/* Usage Section */
+.quota-usage {
+    margin-bottom: 1rem;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
-    .quota-container {
-        grid-template-columns: 1fr;
-    }
-
     .quota-card-header {
         flex-wrap: wrap;
         gap: 0.5rem;
@@ -114,13 +97,4 @@
     .quota-card-header h3 {
         font-size: 1.125rem;
     }
-}
-
-/* Empty State */
-.quota-container .chart-empty-state {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 3rem 2rem;
-    color: var(--gray-500);
-    font-size: 1rem;
 }

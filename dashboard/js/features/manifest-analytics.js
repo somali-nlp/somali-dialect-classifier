@@ -4,7 +4,7 @@
  */
 
 import { getManifestAnalytics } from '../core/data-service.js';
-import Logger from '../utils/logger.js';
+import { Logger } from '../utils/logger.js';
 
 /**
  * Initialize manifest analytics visualization.
@@ -16,7 +16,7 @@ export async function initManifestAnalytics() {
 
         if (!analytics) {
             Logger.warn('No manifest analytics data available');
-            renderErrorState('manifest-section', 'Manifest data is currently unavailable');
+            renderErrorState('manifest-summary', 'Manifest data is currently unavailable');
             return;
         }
 
@@ -27,12 +27,12 @@ export async function initManifestAnalytics() {
         });
     } catch (error) {
         Logger.error('Failed to initialize manifest analytics', error);
-        renderErrorState('manifest-section', 'Failed to load manifest analytics');
+        renderErrorState('manifest-summary', 'Failed to load manifest analytics');
     }
 }
 
 /**
- * Render manifest summary cards
+ * Render manifest summary cards using roster-card pattern
  * Shows aggregate statistics across all runs
  * @param {Object} analytics - Manifest analytics data
  */
@@ -49,20 +49,21 @@ function renderManifestSummary(analytics) {
     const quotaHitRuns = summary.quota_hit_runs || 0;
 
     container.innerHTML = `
-        <div class="summary-cards">
-            <div class="summary-card">
-                <h4>Total Runs</h4>
-                <p class="big-number">${totalRuns}</p>
-            </div>
-            <div class="summary-card">
-                <h4>Total Records</h4>
-                <p class="big-number">${formatNumber(totalRecords)}</p>
-            </div>
-            <div class="summary-card">
-                <h4>Quota Hit Runs</h4>
-                <p class="big-number">${quotaHitRuns}</p>
-            </div>
-        </div>
+        <article class="roster-card">
+            <h3>Total Runs</h3>
+            <p class="roster-value big-number">${totalRuns}</p>
+            <p class="roster-caption">Orchestration executions</p>
+        </article>
+        <article class="roster-card">
+            <h3>Total Records</h3>
+            <p class="roster-value big-number">${formatNumber(totalRecords)}</p>
+            <p class="roster-caption">Records ingested across all runs</p>
+        </article>
+        <article class="roster-card">
+            <h3>Quota Hit Runs</h3>
+            <p class="roster-value big-number">${quotaHitRuns}</p>
+            <p class="roster-caption">Runs with quota limits reached</p>
+        </article>
     `;
 }
 
@@ -72,36 +73,21 @@ function renderManifestSummary(analytics) {
  * @param {Object} analytics - Manifest analytics data
  */
 function renderManifestTable(analytics) {
-    const container = document.getElementById('manifest-table');
-    if (!container) {
-        Logger.warn('Manifest table container not found');
+    const tbody = document.getElementById('manifest-table-body');
+    if (!tbody) {
+        Logger.warn('Manifest table body not found');
         return;
     }
 
     const recentManifests = analytics.recent_manifests || [];
 
     if (recentManifests.length === 0) {
-        container.innerHTML = '<p class="chart-empty-state">No manifest runs available. Run the ingestion orchestrator to generate manifests.</p>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 3rem 2rem; color: var(--gray-500);">No manifest runs available. Run the ingestion orchestrator to generate manifests.</td></tr>';
         return;
     }
 
     const rows = recentManifests.map(manifest => renderTableRow(manifest)).join('');
-
-    container.innerHTML = `
-        <table class="manifest-history-table">
-            <thead>
-                <tr>
-                    <th>Run ID</th>
-                    <th>Timestamp</th>
-                    <th>Records</th>
-                    <th>Quota Hits</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${rows}
-            </tbody>
-        </table>
-    `;
+    tbody.innerHTML = rows;
 }
 
 /**
