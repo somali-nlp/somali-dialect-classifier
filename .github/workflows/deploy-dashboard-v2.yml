@@ -8,6 +8,7 @@ on:
       - 'data/metrics/**'
       - 'data/reports/**'
       - 'dashboard/**'
+      - 'scripts/**'
       - '.github/workflows/deploy-dashboard-v2.yml'
   workflow_dispatch:  # Allow manual trigger
 
