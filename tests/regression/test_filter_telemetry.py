@@ -49,7 +49,7 @@ def metrics_dir() -> Path:
 
 
 def load_processing_metrics(
-    metrics_dir: Path, pattern: str = "*_processing.json"
+    metrics_dir: Path, pattern: str = "*_processing.json", exclude_bad_fixtures: bool = True
 ) -> list[dict[str, Any]]:
     """
     Load all processing metrics matching pattern.
@@ -57,6 +57,7 @@ def load_processing_metrics(
     Args:
         metrics_dir: Directory containing metrics files
         pattern: Glob pattern for metrics files
+        exclude_bad_fixtures: If True, skip files starting with 'test_bad_' (default True)
 
     Returns:
         List of parsed metrics dictionaries
@@ -65,6 +66,10 @@ def load_processing_metrics(
     loaded = []
 
     for metrics_file in metrics_files:
+        # Skip intentionally bad fixtures used for meta-testing
+        if exclude_bad_fixtures and metrics_file.name.startswith("test_bad_"):
+            continue
+
         try:
             with metrics_file.open() as f:
                 data = json.load(f)

@@ -108,6 +108,8 @@ select = [
 ]
 ignore = [
   "E501",  # line too long (handled by formatter)
+  "N801",  # class name - allow version naming like SchemaV1_0
+  "E402",  # module level import not at top - allow in skipped tests
 ]
 
 [tool.ruff.format]
