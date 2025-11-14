@@ -184,10 +184,13 @@ class WikipediaSomaliProcessor(BasePipeline):
         )
 
         # LEVEL 1: DUMP-LEVEL DEDUPLICATION (HTTP Conditional Requests)
-        # Check if dump URL is in ledger (already fetched/processed before)
-        if not self.ledger.should_fetch_url(self.dump_url, force=self.force):
-            # Dump URL exists in ledger - check if it's changed using HTTP conditional request
-            self.logger.info("Dump URL found in ledger - checking for changes...")
+        # Check if dump URL exists in ledger with HTTP metadata (ETag/Last-Modified)
+        dump_state = self.ledger.backend.get_url_state(self.dump_url)
+        has_http_metadata = dump_state and (dump_state.get("etag") or dump_state.get("last_modified"))
+
+        if has_http_metadata and not self.force:
+            # Dump URL exists in ledger with HTTP metadata - check if it's changed
+            self.logger.info("Dump URL found in ledger - checking for changes with conditional request...")
 
             headers = self.ledger.get_conditional_headers(self.dump_url)
             self.logger.info(f"Conditional headers: {headers}")

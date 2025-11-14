@@ -1,7 +1,7 @@
 # Wikipedia-Somali Integration Guide
 
 **Status**: Production-ready
-**Last Updated**: 2025-10-19
+**Last Updated**: 2025-11-14
 
 This guide explains how to integrate and process Somali Wikipedia articles into your Somali Dialect Classifier pipeline.
 
@@ -163,34 +163,83 @@ wikisom-download  # Continues from last processed page
 
 ## Data Flow
 
-The Wikipedia processor follows a three-phase pipeline:
+The Wikipedia processor follows a multi-phase pipeline with **two-level discovery-stage deduplication**:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Phase 1: DOWNLOAD                                       │
-│ - Fetch latest XML dump from Wikimedia                 │
-│ - Save to raw directory                                │
-│ → Output: data/raw/.../sowiki-latest-pages-articles.xml.bz2 │
+│ Discovery Stage: Dump-Level Check                      │
+│ - Check if dump URL in ledger                         │
+│ - Make HEAD request with If-None-Match/If-Modified    │
+│ - If 304 Not Modified → EXIT (skip all below)         │
+│ - If 200 OK → Continue to download                    │
 └─────────────────────────────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────┐
-│ Phase 2: EXTRACT                                        │
+│ Phase 1: DOWNLOAD                                       │
+│ - Download dump with ETag/Last-Modified tracking      │
+│ - Mark dump URL as fetched with HTTP metadata         │
+│ → Output: data/raw/.../sowiki-latest.xml.bz2          │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│ Phase 2: PARSE                                          │
 │ - Parse MediaWiki XML with mwxml                       │
 │ - Extract main namespace articles (namespace=0)        │
-│ - Convert WikiMarkup to plain text                     │
-│ → Output: data/staging/.../wikisom_raw.txt            │
+│ - Collect article metadata (title, URL, timestamp)     │
 └─────────────────────────────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────┐
-│ Phase 3: PROCESS                                        │
+│ Discovery Stage: Article-Level Check                   │
+│ - Query ledger for processed article URLs             │
+│ - Filter out already-processed articles                │
+│ - If all articles processed → EXIT                    │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│ Phase 3: EXTRACT                                        │
+│ - Convert WikiMarkup to plain text (new articles only) │
+│ → Output: data/staging/.../extracted.txt              │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│ Phase 4: PROCESS                                        │
 │ - Apply text cleaning pipeline                         │
 │ - Execute quality filters                              │
 │ - Build silver records with metadata                   │
 │ → Output: data/processed/silver/.../part-0000.parquet │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### Discovery-Stage Deduplication (Two Levels)
+
+**Level 1: Dump-Level (HTTP Conditional Requests)**
+
+Checks if the Wikipedia dump file itself has changed using standard HTTP mechanisms.
+
+**Benefits:**
+- Saves bandwidth: No re-download if dump unchanged (~7.2MB)
+- Saves CPU: No parsing if dump unchanged (~44 seconds)
+- Uses HTTP standard: ETag and Last-Modified headers (RFC 7232)
+
+**Level 2: Article-Level (URL Filtering)**
+
+When a new dump is downloaded (changed ETag), filters out articles already processed from previous dumps.
+
+**Benefits:**
+- Processes only new articles (typically 0-100 per day)
+- Prevents duplicate silver records
+- Enables incremental processing of growing corpus
+
+**Expected Behavior:**
+
+- **Run 1 (First time):** No ledger entries → Download dump → Parse 15,507 articles → Process 9,960 articles
+- **Run 2 (Same dump):** HEAD request → **304 Not Modified** → Exit early (0 downloads, 0 processing)
+- **Run 3 (New dump, 10 new articles):** HEAD request → 200 OK → Download → Parse 15,517 → Filter to 10 new → Process 10
 
 ### Phase 1: Download
 
@@ -916,5 +965,5 @@ After processing Wikipedia data:
 
 ---
 
-**Last Updated**: 2025-10-20
+**Last Updated**: 2025-11-14
 **Maintainers**: Somali NLP Contributors

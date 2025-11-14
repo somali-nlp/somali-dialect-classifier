@@ -33,21 +33,55 @@ This guide focuses on **Phase 1** (discovery-stage) and **continuous streaming**
 
 #### Wikipedia
 
+Wikipedia implements **two-level discovery-stage deduplication**:
+
+**Level 1: Dump-Level Deduplication (HTTP Conditional Requests)**
+
 ```python
-# Wikipedia checks dump URL in ledger before downloading
-from somali_dialect_classifier.preprocessing.crawl_ledger import get_ledger
+# Check if dump URL should be fetched
+dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
 
-ledger = get_ledger()
+if not ledger.should_fetch_url(dump_url, force=False):
+    # Dump exists in ledger - check if it changed using HTTP conditional request
+    headers = ledger.get_conditional_headers(dump_url)
+    # headers = {"If-None-Match": "690684aa-e1fde6", "If-Modified-Since": "Sat, 01 Nov..."}
 
-# Check if dump URL already processed
-if ledger.should_fetch_url(dump_url, force=False):
-    # Download Wikipedia dump
-    download_dump(dump_url)
-else:
-    logger.info(f"Skipping already-processed dump: {dump_url}")
+    response = requests.head(dump_url, headers=headers)
+
+    if response.status_code == 304:  # Not Modified
+        logger.info(f"Dump unchanged (304) - skipping all processing")
+        return None  # Skip download, parse, and processing
+
+    # 200 OK - dump changed, proceed to download
+    logger.info(f"Dump changed (200) - downloading new version")
+
+# Download and mark with ETag/Last-Modified
+response = requests.get(dump_url)
+ledger.mark_fetched(dump_url, etag=response.headers['ETag'],
+                    last_modified=response.headers['Last-Modified'])
 ```
 
-**Result**: If Wikipedia dump already downloaded, entire extraction is skipped.
+**Level 2: Article-Level Deduplication (URL Filtering)**
+
+```python
+# After parsing dump, filter already-processed articles
+processed_records = ledger.get_processed_urls(source="wikipedia", limit=None)
+processed_urls = {r['url'] for r in processed_records if 'url' in r}
+logger.info(f"Found {len(processed_urls)} already-processed articles")
+
+new_articles = []
+for article in parsed_articles:
+    if article['url'] in processed_urls:
+        metrics.increment("articles_skipped_already_processed")
+        continue
+    new_articles.append(article)
+
+logger.info(f"Article filtering: {len(parsed_articles)} → {len(new_articles)} new")
+```
+
+**Result:**
+- Run 2 (same dump): HEAD request → 304 → Skip everything (~44s saved)
+- Run 3 (new dump, 10 new articles): HEAD → 200 → Download → Filter → Process only 10 articles
 
 #### BBC News
 
@@ -479,4 +513,4 @@ processor = HuggingFaceSomaliProcessor(
 
 ---
 
-**Last Updated**: 2025-11-10
+**Last Updated**: 2025-11-14
