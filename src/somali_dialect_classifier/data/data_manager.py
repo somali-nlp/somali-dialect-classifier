@@ -22,8 +22,9 @@ import hashlib
 import json
 import logging
 import mmap
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any
 
 try:
     import pandas as pd
@@ -117,8 +118,8 @@ class DataManager:
         # Create hasher instance based on algorithm
         try:
             hasher = hashlib.new(algorithm)
-        except ValueError:
-            raise ValueError(f"Unsupported hash algorithm: {algorithm}")
+        except ValueError as err:
+            raise ValueError(f"Unsupported hash algorithm: {algorithm}") from err
 
         # Read file in 4KB chunks for memory efficiency
         with open(filepath, "rb") as f:
@@ -294,19 +295,19 @@ class DataManager:
             raise FileNotFoundError(f"Raw file not found: {input_path}")
 
         if format == "json":
-            with open(input_path, "r", encoding="utf-8") as f:
+            with open(input_path, encoding="utf-8") as f:
                 return json.load(f)
 
         elif format == "jsonl":
             data = []
-            with open(input_path, "r", encoding="utf-8") as f:
+            with open(input_path, encoding="utf-8") as f:
                 for line in f:
                     if line.strip():
                         data.append(json.loads(line))
             return data
 
         elif format == "txt":
-            with open(input_path, "r", encoding="utf-8") as f:
+            with open(input_path, encoding="utf-8") as f:
                 return f.read()
 
         else:
@@ -339,18 +340,18 @@ class DataManager:
 
         if format == "jsonl":
             data = []
-            with open(input_path, "r", encoding="utf-8") as f:
+            with open(input_path, encoding="utf-8") as f:
                 for line in f:
                     if line.strip():
                         data.append(json.loads(line))
             return data
 
         elif format == "json":
-            with open(input_path, "r", encoding="utf-8") as f:
+            with open(input_path, encoding="utf-8") as f:
                 return json.load(f)
 
         elif format == "txt":
-            with open(input_path, "r", encoding="utf-8") as f:
+            with open(input_path, encoding="utf-8") as f:
                 return f.read()
 
         else:
@@ -425,7 +426,7 @@ class DataManager:
 
         return layer_path / f"source={self.source}"
 
-    def list_files(self, layer: str, pattern: str = "*") -> List[Path]:
+    def list_files(self, layer: str, pattern: str = "*") -> list[Path]:
         """
         List files in a layer directory.
 
@@ -468,7 +469,7 @@ class DataManager:
             >>> for chunk in manager.read_large_file_optimized(Path("large.txt")):
             ...     process(chunk)
         """
-        with open(filepath, 'r', encoding='utf-8', buffering=buffer_size) as f:
+        with open(filepath, encoding='utf-8', buffering=buffer_size) as f:
             while True:
                 chunk = f.read(chunk_size)
                 if not chunk:
@@ -477,7 +478,7 @@ class DataManager:
 
     def read_jsonl_optimized(
         self, filepath: Path, buffer_size: int = 819200
-    ) -> Iterator[Dict[str, Any]]:
+    ) -> Iterator[dict[str, Any]]:
         """
         Read JSONL file with optimized buffering.
 
@@ -492,14 +493,14 @@ class DataManager:
             >>> for record in manager.read_jsonl_optimized(Path("data.jsonl")):
             ...     process(record)
         """
-        with open(filepath, 'r', encoding='utf-8', buffering=buffer_size) as f:
+        with open(filepath, encoding='utf-8', buffering=buffer_size) as f:
             for line in f:
                 if line.strip():
                     yield json.loads(line)
 
     def write_batch_optimized(
         self,
-        records: List[Dict[str, Any]],
+        records: list[dict[str, Any]],
         filepath: Path,
         batch_size: int = 1000,
         buffer_size: int = 819200,
@@ -533,7 +534,7 @@ class DataManager:
 
     def write_jsonl_streaming(
         self,
-        records: Iterator[Dict[str, Any]],
+        records: Iterator[dict[str, Any]],
         filepath: Path,
         flush_interval: int = 100,
         buffer_size: int = 819200,
@@ -641,7 +642,7 @@ class DataManager:
         Example:
             >>> text = manager.read_text_optimized(Path("article.txt"))
         """
-        with open(filepath, 'r', encoding='utf-8', buffering=buffer_size) as f:
+        with open(filepath, encoding='utf-8', buffering=buffer_size) as f:
             return f.read()
 
     def write_text_optimized(

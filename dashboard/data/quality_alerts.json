@@ -5,8 +5,8 @@
       "severity": "medium",
       "message": "TikTok-Somali has 67% data waste from emoji-only filtering.",
       "source": "TikTok-Somali",
-      "timestamp": "2025-11-02T07:13:10.370204+00:00",
-      "report_url": "data/reports/20251102_071104_tiktok-somali_d400941e_final_quality_report.md",
+      "timestamp": "2025-11-10T15:32:53.499487+00:00",
+      "report_url": "data/reports/20251110_153017_tiktok-somali_400ef8d3_final_quality_report.md",
       "details": "**Stream connection failed.** Check API credentials, network connectivity, and rate limits.",
       "recommendation": "Apify scrapes all comments ($1.00/1K), but ~67% are emoji-only and filtered locally. Options: (1) Scale to more videos for better ROI (current cost: ~$3.03/1K linguistic comments), (2) Investigate Apify Comments Analyzer AI Agent for pre-filtering, or (3) Accept current ~33% yield as baseline. Economic inefficiency: This is a cost optimization issue, not technical failure."
     },
@@ -15,8 +15,8 @@
       "severity": "medium",
       "message": "Wikipedia-Somali quality pass rate at 64.2% is below the 70% threshold.",
       "source": "Wikipedia-Somali",
-      "timestamp": "2025-11-02T07:11:22.261588+00:00",
-      "report_url": "data/reports/20251102_071104_wikipedia-somali_8be7bd4d_final_quality_report.md",
+      "timestamp": "2025-11-10T15:30:37.713885+00:00",
+      "report_url": "data/reports/20251110_153017_wikipedia-somali_b6fed348_final_quality_report.md",
       "details": "Quality filter pass rate: 64.2%",
       "recommendation": "Review filter breakdown to identify primary rejection reasons. Consider adjusting filter thresholds or improving source data quality."
     },
@@ -25,12 +25,52 @@
       "severity": "low",
       "message": "Wikipedia-Somali experiencing slow fetch times.",
       "source": "Wikipedia-Somali",
-      "timestamp": "2025-11-02T07:11:22.261588+00:00",
-      "report_url": "data/reports/20251102_071104_wikipedia-somali_8be7bd4d_final_quality_report.md",
+      "timestamp": "2025-11-10T15:30:37.713885+00:00",
+      "report_url": "data/reports/20251110_153017_wikipedia-somali_b6fed348_final_quality_report.md",
       "details": "**Slow fetch times detected.** Consider implementing connection pooling, adjusting timeouts, or using concurrent requests.",
       "recommendation": "Implement connection pooling, adjust timeouts, or use concurrent requests. Consider adding caching layer for frequently accessed content."
+    },
+    {
+      "id": "alert-4",
+      "severity": "high",
+      "message": "Wikipedia-Somali quality pass rate at 0.0% is below the 70% threshold.",
+      "source": "Wikipedia-Somali",
+      "timestamp": "2025-11-11T06:59:11.565298+00:00",
+      "report_url": "data/reports/20251111_065906_wikipedia-somali_b1a064bd_final_quality_report.md",
+      "details": "Quality filter pass rate: 0.0%",
+      "recommendation": "Review filter policies immediately. High rejection rate may indicate data quality issues or overly strict filters. Analyze filter breakdown and adjust thresholds."
+    },
+    {
+      "id": "alert-5",
+      "severity": "medium",
+      "message": "Wikipedia-Somali quality pass rate at 64.2% is below the 70% threshold.",
+      "source": "Wikipedia-Somali",
+      "timestamp": "2025-11-11T07:39:32.751318+00:00",
+      "report_url": "data/reports/20251111_073926_wikipedia-somali_f5e85f6f_final_quality_report.md",
+      "details": "Quality filter pass rate: 64.2%",
+      "recommendation": "Review filter breakdown to identify primary rejection reasons. Consider adjusting filter thresholds or improving source data quality."
+    },
+    {
+      "id": "alert-6",
+      "severity": "medium",
+      "message": "Wikipedia-Somali quality pass rate at 64.2% is below the 70% threshold.",
+      "source": "Wikipedia-Somali",
+      "timestamp": "2025-11-11T07:39:57.757567+00:00",
+      "report_url": "data/reports/20251111_073951_wikipedia-somali_a9c41111_final_quality_report.md",
+      "details": "Quality filter pass rate: 64.2%",
+      "recommendation": "Review filter breakdown to identify primary rejection reasons. Consider adjusting filter thresholds or improving source data quality."
+    },
+    {
+      "id": "alert-7",
+      "severity": "medium",
+      "message": "Wikipedia-Somali quality pass rate at 64.2% is below the 70% threshold.",
+      "source": "Wikipedia-Somali",
+      "timestamp": "2025-11-11T07:40:11.735101+00:00",
+      "report_url": "data/reports/20251111_074005_wikipedia-somali_3ea09b17_final_quality_report.md",
+      "details": "Quality filter pass rate: 64.2%",
+      "recommendation": "Review filter breakdown to identify primary rejection reasons. Consider adjusting filter thresholds or improving source data quality."
     }
   ],
-  "generated_at": "2025-11-05T11:21:55.566899+00:00",
-  "total_alerts": 3
+  "generated_at": "2025-11-14T10:18:40.542063+00:00",
+  "total_alerts": 7
 }

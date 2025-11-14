@@ -6,7 +6,6 @@ Usage:
     python -m somali_dialect_classifier.cli.lock_status
     python -m somali_dialect_classifier.cli.lock_status --cleanup
 """
-import sys
 from datetime import datetime
 from pathlib import Path
 
