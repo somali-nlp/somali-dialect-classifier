@@ -12,7 +12,7 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +170,7 @@ class GitOperations:
             return False
 
     @staticmethod
-    def get_repo_status(repo_path: Path) -> dict[str, any]:
+    def get_repo_status(repo_path: Path) -> dict[str, Any]:
         """
         Get current repository status.
 
@@ -329,7 +329,7 @@ class DashboardDeployer:
             current = current.parent
         raise RuntimeError(f"Not in a git repository: {self.config.metrics_dir}")
 
-    def _get_metrics_summary(self, metrics_files: list[Path]) -> dict[str, any]:
+    def _get_metrics_summary(self, metrics_files: list[Path]) -> dict[str, Any]:
         """
         Generate summary of metrics being deployed.
 
@@ -363,7 +363,7 @@ class DashboardDeployer:
             "latest_timestamp": max(timestamps) if timestamps else None,
         }
 
-    def _generate_commit_message(self, summary: dict[str, any]) -> str:
+    def _generate_commit_message(self, summary: dict[str, Any]) -> str:
         """
         Generate Conventional Commits compliant commit message.
 

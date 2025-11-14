@@ -33,6 +33,7 @@ dev = [
   "pytest>=7.4",
   "pytest-cov>=4.1",
   "pytest-timeout>=2.1",
+  "responses>=0.23",  # HTTP request mocking for integration tests
   "pydantic>=2.0",
 
   # Linting & Formatting
@@ -42,6 +43,8 @@ dev = [
   "mypy>=1.7",
   "types-requests>=2.31",
   "types-beautifulsoup4>=4.12",
+  "types-psycopg2>=2.9",  # Type stubs for PostgreSQL driver
+  "types-PyYAML>=6.0",  # Type stubs for YAML parsing
 
   # Development Tools
   "ipython>=8.12",
@@ -150,6 +153,13 @@ module = [
   "bs4",
   "datasketch",
   "feedparser",
+  "prefect.*",  # Workflow orchestration
+  "click",  # CLI framework
+  "pandas.*",  # DataFrame library (stubs may not cover all)
+  "apify_client",  # Apify API client
+  "filelock",  # File locking
+  "aiohttp.*",  # Async HTTP
+  "aiodns",  # Async DNS
 ]
 ignore_missing_imports = true
 

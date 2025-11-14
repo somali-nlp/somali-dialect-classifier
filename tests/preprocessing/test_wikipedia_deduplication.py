@@ -1,15 +1,18 @@
 """
-Unit tests for Wikipedia discovery-stage deduplication.
+Unit tests for Wikipedia two-level deduplication.
 
-Tests the _filter_already_processed method and integration with ledger.
+Tests both:
+- Level 1: Dump-level deduplication (HTTP conditional requests)
+- Level 2: Article-level deduplication (URL filtering)
 """
 
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, MagicMock, patch
 
 import pytest
+import requests
 
 from somali_dialect_classifier.preprocessing.crawl_ledger import (
     CrawlLedger,
@@ -419,3 +422,273 @@ class TestWikipediaIntegrationScenarios:
         for article in filtered:
             article_num = int(article["url"].split("Article")[-1])
             assert article_num >= 100
+
+
+class TestDumpLevelDeduplication:
+    """Test dump-level deduplication with HTTP conditional requests."""
+
+    def test_304_not_modified_skips_everything(self, mock_processor, temp_ledger):
+        """Test that 304 response skips download, parse, and processing."""
+        dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
+
+        # Mark dump URL as already processed in ledger
+        temp_ledger.discover_url(dump_url, "wikipedia")
+        temp_ledger.mark_fetched(
+            url=dump_url,
+            http_status=200,
+            etag="old-etag-12345",
+            last_modified="Sat, 01 Nov 2025 22:07:38 GMT",
+            content_length=1000000,
+            source="wikipedia",
+        )
+
+        # Create mock session
+        mock_session = Mock()
+        mock_head_response = Mock()
+        mock_head_response.status_code = 304
+        mock_session.head.return_value = mock_head_response
+
+        # Mock _get_http_session to return our mock session
+        with patch.object(mock_processor, "_get_http_session", return_value=mock_session):
+            result = mock_processor.download()
+
+            # Should return None (skip signal)
+            assert result is None
+
+            # Should have made HEAD request with conditional headers
+            mock_session.head.assert_called_once()
+            call_args = mock_session.head.call_args
+            headers = call_args.kwargs.get("headers", call_args.args[1] if len(call_args.args) > 1 else {})
+            assert "If-None-Match" in headers
+            assert headers["If-None-Match"] == "old-etag-12345"
+
+    def test_200_with_new_etag_downloads_dump(self, mock_processor, temp_ledger):
+        """Test that 200 OK with different ETag downloads new dump."""
+        dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
+
+        # Mark dump URL as already fetched with old ETag
+        temp_ledger.discover_url(dump_url, "wikipedia")
+        temp_ledger.mark_fetched(
+            url=dump_url,
+            http_status=200,
+            etag="old-etag",
+            last_modified="Sat, 01 Nov 2025 22:07:38 GMT",
+            source="wikipedia",
+        )
+
+        # Create mock session
+        mock_session = Mock()
+
+        # Mock HEAD returning 200 (dump changed)
+        mock_head_response = Mock()
+        mock_head_response.status_code = 200
+        mock_head_response.headers = {
+            "ETag": "new-etag-67890",
+            "Last-Modified": "Sun, 02 Nov 2025 01:00:00 GMT",
+        }
+        mock_session.head.return_value = mock_head_response
+
+        # Mock GET for actual download
+        mock_get_response = Mock()
+        mock_get_response.status_code = 200
+        mock_get_response.headers = {
+            "ETag": "new-etag-67890",
+            "Last-Modified": "Sun, 02 Nov 2025 01:00:00 GMT",
+            "Content-Length": "2000000",
+        }
+        mock_get_response.iter_content = Mock(return_value=[b"test data chunk"])
+        mock_session.get.return_value = mock_get_response
+
+        with patch.object(mock_processor, "_get_http_session", return_value=mock_session):
+            result = mock_processor.download()
+
+            # Should download and return path
+            assert result is not None
+            assert result.name.endswith(".bz2")
+
+            # Should have made GET request
+            mock_session.get.assert_called()
+
+    def test_first_run_downloads_without_conditional_request(self, mock_processor, temp_ledger):
+        """Test that first run (URL not in ledger) downloads normally."""
+        # Don't add dump URL to ledger (first run)
+
+        # Create mock session
+        mock_session = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "ETag": "first-etag-abcdef",
+            "Last-Modified": "Mon, 03 Nov 2025 10:00:00 GMT",
+            "Content-Length": "1500000",
+        }
+        mock_response.iter_content = Mock(return_value=[b"first download data"])
+        mock_session.get.return_value = mock_response
+
+        with patch.object(mock_processor, "_get_http_session", return_value=mock_session):
+            result = mock_processor.download()
+
+            # Should download
+            assert result is not None
+
+            # Should NOT make conditional HEAD request (first run)
+            mock_session.head.assert_not_called()
+
+            # Should have made GET request
+            mock_session.get.assert_called()
+
+    def test_conditional_request_headers_sent_correctly(self, mock_processor, temp_ledger):
+        """Test that conditional headers are sent correctly in HEAD request."""
+        dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
+
+        # Mark dump with both ETag and Last-Modified
+        temp_ledger.discover_url(dump_url, "wikipedia")
+        temp_ledger.mark_fetched(
+            url=dump_url,
+            http_status=200,
+            etag='"etag-value-123"',
+            last_modified="Wed, 05 Nov 2025 14:30:00 GMT",
+            source="wikipedia",
+        )
+
+        # Create mock session
+        mock_session = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 304
+        mock_session.head.return_value = mock_response
+
+        with patch.object(mock_processor, "_get_http_session", return_value=mock_session):
+            mock_processor.download()
+
+            # Verify headers
+            call_args = mock_session.head.call_args
+            headers = call_args.kwargs.get("headers", call_args.args[1] if len(call_args.args) > 1 else {})
+
+            assert "If-None-Match" in headers
+            assert headers["If-None-Match"] == '"etag-value-123"'
+            assert "If-Modified-Since" in headers
+            assert headers["If-Modified-Since"] == "Wed, 05 Nov 2025 14:30:00 GMT"
+
+    def test_head_request_failure_proceeds_with_download(self, mock_processor, temp_ledger):
+        """Test that HEAD request failure gracefully falls back to download."""
+        dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
+
+        temp_ledger.discover_url(dump_url, "wikipedia")
+        temp_ledger.mark_fetched(
+            url=dump_url, http_status=200, etag="old-etag", source="wikipedia"
+        )
+
+        # Create mock session
+        mock_session = Mock()
+        # Mock HEAD to raise exception
+        mock_session.head.side_effect = requests.RequestException("Connection timeout")
+
+        # Mock GET for fallback download
+        mock_get_response = Mock()
+        mock_get_response.status_code = 200
+        mock_get_response.headers = {"Content-Length": "1000000", "ETag": "new-etag"}
+        mock_get_response.iter_content = Mock(return_value=[b"fallback data"])
+        mock_session.get.return_value = mock_get_response
+
+        with patch.object(mock_processor, "_get_http_session", return_value=mock_session):
+            result = mock_processor.download()
+
+            # Should proceed with download despite HEAD failure
+            assert result is not None
+            mock_session.get.assert_called()
+
+    def test_metrics_tracked_for_304_skip(self, mock_processor, temp_ledger):
+        """Test that metrics are tracked when dump is skipped (304)."""
+        dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
+
+        temp_ledger.discover_url(dump_url, "wikipedia")
+        temp_ledger.mark_fetched(
+            url=dump_url, http_status=200, etag="current-etag", source="wikipedia"
+        )
+
+        # Create mock session
+        mock_session = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 304
+        mock_session.head.return_value = mock_response
+
+        with patch.object(mock_processor, "_get_http_session", return_value=mock_session):
+            mock_processor.download()
+
+            # Should have incremented skip metric
+            mock_processor.metrics.increment.assert_any_call("dumps_skipped_not_modified")
+
+    def test_etag_stored_in_ledger_after_download(self, mock_processor, temp_ledger):
+        """Test that ETag and Last-Modified are stored in ledger after download."""
+        # Create mock session
+        mock_session = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "ETag": "new-etag-xyz",
+            "Last-Modified": "Thu, 06 Nov 2025 09:00:00 GMT",
+            "Content-Length": "3000000",
+        }
+        mock_response.iter_content = Mock(return_value=[b"new dump data"])
+        mock_session.get.return_value = mock_response
+
+        with patch.object(mock_processor, "_get_http_session", return_value=mock_session):
+            mock_processor.download()
+
+            # Verify ledger was updated with HTTP metadata
+            dump_url = mock_processor.dump_url
+            state = temp_ledger.backend.get_url_state(dump_url)
+
+            assert state is not None
+            assert state["etag"] == "new-etag-xyz"
+            assert state["last_modified"] == "Thu, 06 Nov 2025 09:00:00 GMT"
+
+
+class TestRunMethodIntegration:
+    """Test run() method with two-level deduplication."""
+
+    def test_run_with_304_returns_none(self, mock_processor, temp_ledger):
+        """Test that run() returns None when dump is unchanged (304)."""
+        dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
+
+        temp_ledger.discover_url(dump_url, "wikipedia")
+        temp_ledger.mark_fetched(
+            url=dump_url, http_status=200, etag="current-etag", source="wikipedia"
+        )
+
+        # Create mock session
+        mock_session = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 304
+        mock_session.head.return_value = mock_response
+
+        with patch.object(mock_processor, "_get_http_session", return_value=mock_session):
+            result = mock_processor.run()
+
+            # Should return None (nothing to process)
+            assert result is None
+
+    def test_run_with_no_new_articles_returns_none(self, mock_processor, temp_ledger):
+        """Test that run() returns None when all articles already processed."""
+        # Mock download to return a path
+        with patch.object(mock_processor, "download", return_value=Path("/tmp/dump.xml.bz2")):
+            # Mock extract to return None (no new articles)
+            with patch.object(mock_processor, "extract", return_value=None):
+                result = mock_processor.run()
+
+                # Should return None (no new articles)
+                assert result is None
+
+    def test_run_with_new_articles_processes_successfully(self, mock_processor):
+        """Test that run() processes new articles and returns silver path."""
+        staging_file = Path("/tmp/staging.txt")
+        silver_file = Path("/tmp/silver.parquet")
+
+        # Mock download, extract, process
+        with patch.object(mock_processor, "download", return_value=Path("/tmp/dump.xml.bz2")):
+            with patch.object(mock_processor, "extract", return_value=staging_file):
+                with patch.object(mock_processor, "process", return_value=silver_file):
+                    result = mock_processor.run()
+
+                    # Should return silver path
+                    assert result == silver_file

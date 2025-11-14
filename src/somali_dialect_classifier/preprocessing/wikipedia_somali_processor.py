@@ -161,8 +161,18 @@ class WikipediaSomaliProcessor(BasePipeline):
         """
         return self.dedup.hasher.compute_hash(text=text, url=url)
 
-    def download(self) -> Path:
-        """Download Wikipedia dump if not already present."""
+    def download(self) -> Optional[Path]:
+        """
+        Download Wikipedia dump with HTTP conditional request deduplication.
+
+        Implements dump-level deduplication (Level 1):
+        - If dump URL exists in ledger, make HEAD request with If-None-Match/If-Modified-Since
+        - If 304 Not Modified: Skip download entirely and return None
+        - If 200 OK: Download new dump and update ledger
+
+        Returns:
+            Path to dump file, or None if dump unchanged (304 Not Modified)
+        """
         self.raw_dir.mkdir(parents=True, exist_ok=True)
 
         # Set context using run_id from base_pipeline
@@ -173,8 +183,41 @@ class WikipediaSomaliProcessor(BasePipeline):
             self.run_id, "Wikipedia-Somali", pipeline_type=PipelineType.FILE_PROCESSING
         )
 
-        if self.dump_file.exists():
-            self.logger.info(f"Dump already exists: {self.dump_file}")
+        # LEVEL 1: DUMP-LEVEL DEDUPLICATION (HTTP Conditional Requests)
+        # Check if dump URL is in ledger (already fetched/processed before)
+        if not self.ledger.should_fetch_url(self.dump_url, force=self.force):
+            # Dump URL exists in ledger - check if it's changed using HTTP conditional request
+            self.logger.info("Dump URL found in ledger - checking for changes...")
+
+            headers = self.ledger.get_conditional_headers(self.dump_url)
+            self.logger.info(f"Conditional headers: {headers}")
+
+            # Make HEAD request to check if dump changed
+            session = self._get_http_session()
+            try:
+                response = session.head(self.dump_url, headers=headers, timeout=30)
+
+                if response.status_code == 304:
+                    # Not Modified - dump is identical to what we processed before
+                    self.logger.info("Dump unchanged (304 Not Modified) - skipping download and processing")
+                    self.metrics.increment("dumps_skipped_not_modified")
+                    self._export_stage_metrics("discovery")
+                    return None  # Signal to skip all processing
+
+                elif response.status_code == 200:
+                    # Dump has changed (new ETag or Last-Modified)
+                    self.logger.info("Dump changed (200 OK) - downloading new version")
+                    new_etag = response.headers.get("ETag")
+                    new_last_modified = response.headers.get("Last-Modified")
+                    self.logger.info(f"New ETag: {new_etag}, New Last-Modified: {new_last_modified}")
+                    # Continue to download below
+
+            except requests.RequestException as e:
+                self.logger.warning(f"Failed to check dump modification status: {e}. Proceeding with download.")
+
+        # Check if dump file already exists locally
+        if self.dump_file.exists() and not self.force:
+            self.logger.info(f"Dump already exists locally: {self.dump_file}")
             return self.dump_file
 
         self.logger.info(f"Downloading from: {self.dump_url}")
@@ -196,6 +239,10 @@ class WikipediaSomaliProcessor(BasePipeline):
             response.raise_for_status()
 
             total_size = int(response.headers.get("Content-Length", 0))
+            etag = response.headers.get("ETag")
+            last_modified = response.headers.get("Last-Modified")
+
+            self.logger.info(f"Download metadata - ETag: {etag}, Last-Modified: {last_modified}, Size: {total_size}")
 
             # Track URL discovery and file discovery
             self.ledger.discover_url(
@@ -218,9 +265,14 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.metrics.increment("files_processed")
         self.metrics.record_http_status(200)
 
-        # Mark as fetched in ledger
+        # Mark as fetched in ledger with HTTP metadata for conditional requests
         self.ledger.mark_fetched(
-            url=self.dump_url, http_status=200, content_length=total_size, source=self.source
+            url=self.dump_url,
+            http_status=200,
+            etag=etag,
+            last_modified=last_modified,
+            content_length=total_size,
+            source=self.source,
         )
 
         self.logger.info(f"Download completed: {self.dump_file}")
@@ -230,10 +282,28 @@ class WikipediaSomaliProcessor(BasePipeline):
 
         return self.dump_file
 
-    def extract(self) -> Path:
-        """Extract raw text from Wikipedia XML dump with memory-efficient streaming."""
-        if not self.dump_file.exists():
-            raise FileNotFoundError(f"Dump file not found: {self.dump_file}")
+    def extract(self) -> Optional[Path]:
+        """
+        Extract raw text from Wikipedia XML dump with article-level deduplication.
+
+        Implements article-level deduplication (Level 2):
+        - Parse all articles from dump
+        - Query ledger for already-processed article URLs
+        - Filter out processed articles (only process new ones)
+
+        Returns:
+            Path to staging file, or None if no new articles to process
+        """
+        # Check if download returned None (304 Not Modified)
+        if not hasattr(self, "_dump_path_from_download"):
+            # This is called standalone, check if dump file exists
+            if not self.dump_file.exists():
+                raise FileNotFoundError(f"Dump file not found: {self.dump_file}")
+        elif self._dump_path_from_download is None:
+            # download() returned None (304), skip extraction
+            self.logger.info("Dump unchanged - skipping extraction and processing")
+            return None
+
         self.staging_dir.mkdir(parents=True, exist_ok=True)
 
         # Set context for extraction phase using run_id from base_pipeline
@@ -297,11 +367,17 @@ class WikipediaSomaliProcessor(BasePipeline):
                     # Keep only the last chunk to maintain page boundary context
                     buffer = buffer[-(BUFFER_TRUNCATE_SIZE_MB * 1024 * 1024) :]
 
-        self.logger.info(f"Collected {len(raw_articles)} articles from XML dump")
+        self.logger.info(f"Parsed {len(raw_articles)} articles from XML dump")
 
-        # PHASE 2: Discovery-stage deduplication (skip already-processed articles)
-        self.logger.info("Phase 2: Discovery-stage deduplication...")
+        # PHASE 2: ARTICLE-LEVEL DEDUPLICATION (URL filtering)
+        self.logger.info("Phase 2: Article-level deduplication (querying ledger for processed URLs)...")
         articles_after_dedup = self._filter_already_processed(raw_articles)
+
+        # If no new articles after deduplication, return None
+        if len(articles_after_dedup) == 0:
+            self.logger.info("No new articles to process after article-level deduplication")
+            self._export_stage_metrics("extraction")
+            return None
 
         # PHASE 3: Incremental filtering (skip unchanged articles)
         self.logger.info("Phase 3: Filtering articles based on last processing time...")
@@ -372,6 +448,53 @@ class WikipediaSomaliProcessor(BasePipeline):
         self._generate_quality_report("extraction")
 
         return self.staging_file
+
+    def run(self) -> Optional[Path]:
+        """
+        Run full pipeline with early exit if dump unchanged or no new articles.
+
+        Implements two-level deduplication workflow:
+        - Level 1 (Dump): HTTP conditional requests (304 → skip everything)
+        - Level 2 (Article): URL filtering (skip already-processed articles)
+
+        Returns:
+            Path to silver parquet file, or None if nothing to process
+        """
+        try:
+            # LEVEL 1: Dump-level deduplication check
+            dump_path = self.download()
+            if dump_path is None:
+                # 304 Not Modified - dump unchanged, skip all processing
+                self.logger.info("Dump unchanged (304) - pipeline complete (nothing to process)")
+                return None
+
+            # Store for extract() to check
+            self._dump_path_from_download = dump_path
+
+            # LEVEL 2: Article-level deduplication
+            staging_path = self.extract()
+            if staging_path is None:
+                # No new articles after filtering
+                self.logger.info("No new articles - pipeline complete")
+                return None
+
+            # Process new articles
+            silver_path = self.process()
+
+            # Mark dump URL as successfully processed
+            self.ledger.mark_processed(
+                self.dump_url,
+                source="wikipedia",
+                text_hash="",  # Not applicable for dump URLs
+                silver_id="",  # Not applicable for dump URLs
+            )
+
+            self.logger.info(f"Pipeline complete - silver data: {silver_path}")
+            return silver_path
+
+        except Exception as e:
+            self.logger.error(f"Pipeline failed: {e}")
+            raise
 
     def _extract_records(self) -> Iterator[RawRecord]:
         """

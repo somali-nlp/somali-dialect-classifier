@@ -17,7 +17,7 @@ Filters can be chained in BasePipeline to enforce data quality standards
 across all sources (Wikipedia, BBC, HuggingFace, etc.).
 """
 
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 
 def min_length_filter(cleaned_text: str, threshold: int = 50) -> tuple[bool, dict[str, Any]]:
@@ -46,7 +46,7 @@ def min_length_filter(cleaned_text: str, threshold: int = 50) -> tuple[bool, dic
 
 
 def langid_filter(
-    cleaned_text: str, allowed_langs: set[str] = None, confidence_threshold: float = 0.5
+    cleaned_text: str, allowed_langs: Optional[set[str]] = None, confidence_threshold: float = 0.5
 ) -> tuple[bool, dict[str, Any]]:
     """
     Filter records not in allowed languages using heuristic detection.
@@ -447,8 +447,8 @@ def custom_filter(
 
 
 def create_wikipedia_filters(
-    min_length: int = 50, skip_prefixes: list[str] = None
-) -> list[tuple[callable, dict[str, Any]]]:
+    min_length: int = 50, skip_prefixes: Optional[list[str]] = None
+) -> list[tuple[Callable, dict[str, Any]]]:
     """
     Create standard filter chain for Wikipedia sources.
 
@@ -485,8 +485,8 @@ def create_wikipedia_filters(
 
 
 def create_news_filters(
-    min_length: int = 50, dialect_ruleset: dict[str, list[str]] = None
-) -> list[tuple[callable, dict[str, Any]]]:
+    min_length: int = 50, dialect_ruleset: Optional[dict[str, list[str]]] = None
+) -> list[tuple[Callable, dict[str, Any]]]:
     """
     Create standard filter chain for news sources (BBC, VOA, etc.).
 
@@ -515,8 +515,8 @@ def create_news_filters(
 
 
 def create_hf_filters(
-    min_length: int = 50, allowed_langs: set[str] = None
-) -> list[tuple[callable, dict[str, Any]]]:
+    min_length: int = 50, allowed_langs: Optional[set[str]] = None
+) -> list[tuple[Callable, dict[str, Any]]]:
     """
     Create standard filter chain for HuggingFace datasets.
 
