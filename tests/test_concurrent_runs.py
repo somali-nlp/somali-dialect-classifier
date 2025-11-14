@@ -36,7 +36,7 @@ def test_lock_prevents_concurrent_runs_same_source(test_lock_dir):
         """Worker that tries to acquire lock."""
         try:
             lock_mgr = LockManager(lock_dir)
-            lock = lock_mgr.acquire_lock(source, timeout=2)
+            lock_mgr.acquire_lock(source, timeout=2)
             results_list.append(f"worker_{worker_id}_acquired")
             time.sleep(0.5)  # Hold lock for 0.5 second
             lock_mgr.release_lock(source)
@@ -75,7 +75,7 @@ def test_lock_allows_concurrent_runs_different_sources(test_lock_dir):
         """Worker that tries to acquire lock."""
         try:
             lock_mgr = LockManager(lock_dir)
-            lock = lock_mgr.acquire_lock(source, timeout=5)
+            lock_mgr.acquire_lock(source, timeout=5)
             results_list.append(f"{source}_worker_{worker_id}_acquired")
             time.sleep(0.3)
             lock_mgr.release_lock(source)
@@ -107,7 +107,7 @@ def test_lock_allows_concurrent_runs_different_sources(test_lock_dir):
 def test_lock_automatic_release_on_exception(lock_manager):
     """Test that lock is released even if exception occurs."""
     # Acquire lock
-    lock = lock_manager.acquire_lock("wikipedia", timeout=5)
+    lock_manager.acquire_lock("wikipedia", timeout=5)
 
     # Simulate exception handling (explicit release)
     lock_manager.release_lock("wikipedia")
@@ -143,7 +143,7 @@ def test_is_locked_detection(lock_manager):
     assert not lock_manager.is_locked("wikipedia")
 
     # Acquire lock
-    lock = lock_manager.acquire_lock("wikipedia", timeout=5)
+    lock_manager.acquire_lock("wikipedia", timeout=5)
 
     # Should be detected as locked
     assert lock_manager.is_locked("wikipedia")
@@ -160,7 +160,7 @@ def test_lock_file_creation(lock_manager):
     source = "wikipedia"
 
     # Acquire lock
-    lock = lock_manager.acquire_lock(source, timeout=5)
+    lock_manager.acquire_lock(source, timeout=5)
 
     # Check lock file exists
     lock_file = lock_manager.lock_dir / f"{source}.lock"
@@ -173,9 +173,9 @@ def test_lock_file_creation(lock_manager):
 def test_multiple_sources_locked_independently(lock_manager):
     """Test that multiple sources can be locked independently."""
     # Acquire locks for multiple sources
-    lock1 = lock_manager.acquire_lock("wikipedia", timeout=5)
-    lock2 = lock_manager.acquire_lock("bbc", timeout=5)
-    lock3 = lock_manager.acquire_lock("tiktok", timeout=5)
+    lock_manager.acquire_lock("wikipedia", timeout=5)
+    lock_manager.acquire_lock("bbc", timeout=5)
+    lock_manager.acquire_lock("tiktok", timeout=5)
 
     # All should be locked
     assert lock_manager.is_locked("wikipedia")
@@ -198,12 +198,12 @@ def test_multiple_sources_locked_independently(lock_manager):
 def test_lock_timeout_error_message(lock_manager):
     """Test that timeout error provides helpful message."""
     # Acquire lock
-    lock1 = lock_manager.acquire_lock("wikipedia", timeout=5)
+    lock_manager.acquire_lock("wikipedia", timeout=5)
 
     # Try to acquire again with short timeout
     try:
-        lock2 = lock_manager.acquire_lock("wikipedia", timeout=1)
-        assert False, "Should have raised RuntimeError"
+        lock_manager.acquire_lock("wikipedia", timeout=1)
+        raise AssertionError("Should have raised RuntimeError")
     except RuntimeError as e:
         error_msg = str(e)
         assert "wikipedia" in error_msg.lower()

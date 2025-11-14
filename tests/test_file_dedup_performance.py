@@ -14,8 +14,8 @@ NOTE: Tests updated to use sha256 algorithm explicitly and skip unimplemented me
 
 import time
 from pathlib import Path
+
 import pytest
-import tempfile
 
 
 class TestChecksumPerformance:
@@ -45,7 +45,7 @@ class TestChecksumPerformance:
 
         # Log benchmark result
         throughput = (5 / (elapsed_ms / 1000))  # MB/s
-        print(f"\nChecksum Performance (5MB):")
+        print("\nChecksum Performance (5MB):")
         print(f"  Time: {elapsed_ms:.0f}ms")
         print(f"  Throughput: {throughput:.0f} MB/s")
         print(f"  Target: <200ms ({'PASS' if elapsed_ms < 200 else 'FAIL'})")
@@ -126,7 +126,7 @@ class TestChecksumPerformance:
 
         # Log benchmark result
         throughput = (100 / elapsed_s)
-        print(f"\nChecksum Performance (100MB stress test):")
+        print("\nChecksum Performance (100MB stress test):")
         print(f"  Time: {elapsed_s:.1f}s")
         print(f"  Throughput: {throughput:.0f} MB/s")
         print(f"  Target: <5s ({'PASS' if elapsed_s < 5.0 else 'FAIL'})")
@@ -156,7 +156,7 @@ class TestChecksumPerformance:
             elapsed_ms < 100
         ), f"Metadata search took {elapsed_ms:.0f}ms, expected <100ms"
 
-        print(f"\nMetadata Search Performance (empty):")
+        print("\nMetadata Search Performance (empty):")
         print(f"  Time: {elapsed_ms:.0f}ms")
         print(f"  Target: <100ms ({'PASS' if elapsed_ms < 100 else 'FAIL'})")
 

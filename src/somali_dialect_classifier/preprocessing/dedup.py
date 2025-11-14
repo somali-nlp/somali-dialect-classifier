@@ -160,7 +160,7 @@ class ShardedLSH:
         # Load metadata
         metadata_path = directory / "sharded_lsh_metadata.json"
         if metadata_path.exists():
-            with open(metadata_path, 'r') as f:
+            with open(metadata_path) as f:
                 metadata = json.load(f)
                 self.num_shards = metadata['num_shards']
                 self.threshold = metadata['threshold']

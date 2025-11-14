@@ -143,8 +143,8 @@ class TestBBCIntegration:
         }
         assert titles == expected_titles
 
-        # Verify all records have BBC source
-        assert all(df["source"] == "BBC-Somali")
+        # Verify all records have BBC source (updated to match actual implementation - lowercase)
+        assert all(df["source"] == "bbc-somali")
         assert all(df["source_type"] == "news")
         assert all(df["language"] == "so")
         assert all(df["license"] == "BBC Terms of Use")

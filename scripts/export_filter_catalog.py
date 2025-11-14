@@ -33,13 +33,13 @@ Output Format:
     }
 """
 
-import sys
+import argparse
 import json
 import logging
-import argparse
-from pathlib import Path
+import sys
 from datetime import datetime, timezone
-from typing import Dict, Any
+from pathlib import Path
+from typing import Any
 
 # Add src to path to import filter catalog
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -52,7 +52,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def export_full_catalog(output_path: Path) -> Dict[str, Any]:
+def export_full_catalog(output_path: Path) -> dict[str, Any]:
     """
     Export complete filter catalog with labels, descriptions, and categories.
 
@@ -69,7 +69,7 @@ def export_full_catalog(output_path: Path) -> Dict[str, Any]:
     try:
         from somali_dialect_classifier.pipeline.filters.catalog import (
             FILTER_CATALOG,
-            get_all_categories
+            get_all_categories,
         )
     except ImportError as e:
         error_msg = (
@@ -80,7 +80,7 @@ def export_full_catalog(output_path: Path) -> Dict[str, Any]:
         raise ImportError(error_msg) from e
 
     # Build filters dictionary with all metadata
-    filters: Dict[str, Dict[str, str]] = {}
+    filters: dict[str, dict[str, str]] = {}
 
     for key, (label, description, category) in FILTER_CATALOG.items():
         filters[key] = {
@@ -122,7 +122,7 @@ def export_full_catalog(output_path: Path) -> Dict[str, Any]:
     return catalog_export
 
 
-def validate_catalog_export(catalog_data: Dict[str, Any]) -> bool:
+def validate_catalog_export(catalog_data: dict[str, Any]) -> bool:
     """
     Validate exported catalog structure.
 
@@ -205,12 +205,12 @@ def main():
 
         # Print summary
         metadata = catalog_data["metadata"]
-        print(f"\n✓ Filter catalog exported successfully")
+        print("\n✓ Filter catalog exported successfully")
         print(f"  Version: {metadata['version']}")
         print(f"  Filters: {metadata['filter_count']}")
         print(f"  Categories: {metadata['category_count']}")
         print(f"  Output: {args.output}")
-        print(f"\n  Use in dashboard: fetch('/data/filter_catalog.json')")
+        print("\n  Use in dashboard: fetch('/data/filter_catalog.json')")
 
     except ImportError as e:
         print(f"\n✗ Import Error: {e}", file=sys.stderr)

@@ -20,7 +20,6 @@ import sqlite3
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Optional
 
 logging.basicConfig(
     level=logging.INFO,
@@ -135,7 +134,7 @@ def export_quota_status(
             "export_timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             "summary": {
                 "total_quota_hits": total_quota_hits,
-                "sources_with_quotas": sorted(list(sources_seen)),
+                "sources_with_quotas": sorted(sources_seen),
                 "reporting_period_days": days
             },
             "daily_usage": daily_usage,
@@ -267,7 +266,7 @@ def export_manifest_analytics(
 
     for manifest_file in manifest_files:
         try:
-            with open(manifest_file, 'r', encoding='utf-8') as f:
+            with open(manifest_file, encoding='utf-8') as f:
                 manifest = json.load(f)
 
             # Extract run metadata

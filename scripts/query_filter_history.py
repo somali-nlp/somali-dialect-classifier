@@ -340,7 +340,7 @@ Examples:
     # Validate Parquet path
     if not args.parquet_path.exists():
         print(f"❌ Parquet dataset not found: {args.parquet_path}")
-        print(f"   Run: python scripts/export_filters_to_parquet.py")
+        print("   Run: python scripts/export_filters_to_parquet.py")
         sys.exit(1)
 
     print(f"🔍 Querying filter history from: {args.parquet_path}")

@@ -154,6 +154,33 @@ mypy src/
 pytest
 ```
 
+### Secret Scanning
+
+We use **Gitleaks** to prevent accidental secret commits (API keys, passwords, tokens).
+
+**One-time setup** (installs automatic pre-commit hook):
+
+```bash
+make secrets-install
+```
+
+**Manual checks** (optional, the hook runs automatically):
+
+```bash
+# Check staged files (fast)
+make secrets-check
+
+# Full repository scan (slower, use occasionally)
+make secrets-scan
+```
+
+Once installed, the hook automatically scans before every commit:
+- Scans only staged files (completes in milliseconds)
+- Blocks commit if secrets are detected
+- Provides guidance on how to fix issues
+
+See [Secret Scanning Guide](docs/howto/secret-scanning.md) for detailed setup, troubleshooting, and configuration.
+
 ## Adding New Data Sources
 
 The project currently has **4 production data sources**: Wikipedia, BBC Somali, HuggingFace (MC4), and Språkbanken (23 corpora). When adding a fifth source:

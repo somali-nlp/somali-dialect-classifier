@@ -8,9 +8,7 @@ Tests for:
 4. Secrets masking
 """
 
-import os
 import sqlite3
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -74,7 +72,7 @@ class TestSQLInjectionPrevention:
         malicious_source = "'; DROP TABLE crawl_ledger; --"
 
         # This should not drop the table
-        stats = ledger.get_statistics(source=malicious_source)
+        ledger.get_statistics(source=malicious_source)
 
         # Table should still exist
         conn = sqlite3.connect(str(db_path))
@@ -156,7 +154,6 @@ class TestPathTraversalPrevention:
         """Test that BasePipeline sanitizes source names."""
         from somali_dialect_classifier.preprocessing.base_pipeline import BasePipeline
         from somali_dialect_classifier.preprocessing.text_cleaners import (
-            TextCleaningPipeline,
             create_html_cleaner,
         )
 

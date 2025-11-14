@@ -8,6 +8,7 @@ Uses BasePipeline for shared orchestration and composable utilities.
 import bz2
 import re
 from collections.abc import Iterator
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -17,7 +18,7 @@ from tqdm import tqdm
 from ..config import get_config
 from ..utils.http import HTTPSessionFactory
 from ..utils.logging_utils import Timer, set_context
-from ..utils.metrics import MetricsCollector, PipelineType, QualityReporter
+from ..utils.metrics import MetricsCollector, PipelineType
 from .base_pipeline import BasePipeline, RawRecord
 from .crawl_ledger import get_ledger
 from .dedup import DedupConfig, DedupEngine
@@ -505,7 +506,6 @@ class WikipediaSomaliProcessor(BasePipeline):
         Returns:
             datetime of last processing, or None if first run
         """
-        from datetime import datetime
 
         try:
             return self.ledger.get_last_processing_time(self.source)

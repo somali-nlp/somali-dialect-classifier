@@ -20,11 +20,11 @@ Safety Features:
 
 import argparse
 import logging
+import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
-import shutil
+from typing import Optional
 
 try:
     import duckdb
@@ -50,7 +50,7 @@ class SilverDeduplicator:
         self.silver_dir = silver_dir
         self.archive_dir = silver_dir.parent / "archive" / f"pre-dedup-{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-    def find_sources(self) -> List[Path]:
+    def find_sources(self) -> list[Path]:
         """
         Find all source directories.
 
@@ -68,7 +68,7 @@ class SilverDeduplicator:
 
         return sources
 
-    def get_source_statistics(self, source_dir: Path) -> Dict:
+    def get_source_statistics(self, source_dir: Path) -> dict:
         """
         Get statistics for a source directory.
 
@@ -135,7 +135,7 @@ class SilverDeduplicator:
                 'error': str(e)
             }
 
-    def deduplicate_source(self, source_dir: Path, dry_run: bool = True, archive: bool = True) -> Dict:
+    def deduplicate_source(self, source_dir: Path, dry_run: bool = True, archive: bool = True) -> dict:
         """
         Deduplicate a single source directory.
 
@@ -274,7 +274,7 @@ class SilverDeduplicator:
             logger.error(f"❌ Deduplication failed for {source_dir.name}: {e}")
             raise
 
-    def deduplicate_all(self, dry_run: bool = True, archive: bool = True, source_filter: Optional[str] = None) -> List[Dict]:
+    def deduplicate_all(self, dry_run: bool = True, archive: bool = True, source_filter: Optional[str] = None) -> list[dict]:
         """
         Deduplicate all sources.
 
@@ -326,7 +326,7 @@ class SilverDeduplicator:
 
         if not dry_run and archive:
             logger.info(f"\n📦 Archives stored in: {self.archive_dir}")
-            logger.info(f"To rollback:")
+            logger.info("To rollback:")
             logger.info(f"  mv {self.archive_dir}/source=*/* {self.silver_dir}/source=*/")
 
         return results

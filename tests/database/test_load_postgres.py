@@ -177,7 +177,7 @@ class TestQueryPerformance:
         p95_read = read_latencies[int(len(read_latencies) * 0.95)] * 1000  # ms
         p95_write = write_latencies[int(len(write_latencies) * 0.95)] * 1000  # ms
 
-        print(f"\nConcurrent read/write test:")
+        print("\nConcurrent read/write test:")
         print(f"  Duration: {duration:.2f}s")
         print(f"  p95 read latency: {p95_read:.2f}ms")
         print(f"  p95 write latency: {p95_write:.2f}ms")
@@ -199,7 +199,7 @@ class TestQueryPerformance:
         results = ledger.backend.get_urls_by_state("bulk_test", CrawlState.DISCOVERED, limit=1000)
         query_duration = time.time() - query_start
 
-        print(f"\nBulk operations:")
+        print("\nBulk operations:")
         print(f"  Insert: 1000 URLs in {insert_duration:.2f}s ({1000/insert_duration:.1f} ops/s)")
         print(f"  Query: {len(results)} URLs in {query_duration:.2f}s")
 
@@ -269,7 +269,7 @@ class TestStressScenarios:
                 current_state = ledger.backend.get_url_state(url)
                 assert current_state["state"] == state.value
 
-        print(f"\nRapid state transitions: 30 transitions completed successfully")
+        print("\nRapid state transitions: 30 transitions completed successfully")
 
     def test_concurrent_duplicate_detection(self, ledger):
         """Test concurrent duplicate detection."""
@@ -301,4 +301,4 @@ class TestStressScenarios:
 
         assert len(errors) == 0, f"Duplicate detection errors: {errors}"
         assert duplicate_counts["found"] == 20, "Not all threads found duplicate"
-        print(f"\nConcurrent duplicate detection: 20 threads succeeded")
+        print("\nConcurrent duplicate detection: 20 threads succeeded")

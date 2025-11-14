@@ -14,7 +14,7 @@ import logging
 from collections import Counter
 from typing import Any, Callable, Optional
 
-from .filters.catalog import FILTER_CATALOG, get_filter_label
+from .filters.catalog import get_filter_label
 
 logger = logging.getLogger(__name__)
 

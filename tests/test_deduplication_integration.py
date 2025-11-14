@@ -13,12 +13,10 @@ IMPORTANT: Tests updated to fix ledger initialization and missing module issues.
 
 import json
 import sqlite3
-from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pytest
 
-from somali_dialect_classifier.preprocessing.crawl_ledger import CrawlLedger, get_ledger
+from somali_dialect_classifier.preprocessing.crawl_ledger import CrawlLedger
 from somali_dialect_classifier.preprocessing.dedup import DedupConfig, DedupEngine
 from somali_dialect_classifier.preprocessing.huggingface_somali_processor import (
     HuggingFaceSomaliProcessor,
@@ -359,9 +357,7 @@ class TestSprakbankenXMLTokenFix:
     def test_token_element_extraction(self):
         """Test that <token> elements are correctly extracted (not <w> elements)."""
         import xml.etree.ElementTree as ET
-        from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import (
-            SprakbankenSomaliProcessor,
-        )
+
 
         # Create sample sentence with <token> elements
         sentence_xml = """

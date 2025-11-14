@@ -31,7 +31,13 @@ RUN pip install --no-cache-dir --upgrade pip && \
         apify-client==1.7.1 \
         pydantic>=2.5 \
         pydantic-settings>=2.1 \
-        python-dotenv>=1.0
+        python-dotenv>=1.0 \
+        psycopg2-binary>=2.9.9 \
+        sqlalchemy>=2.0.23 \
+        filelock>=3.13.1 \
+        aiohttp>=3.9 \
+        aiodns>=3.1 \
+        pandas>=2.0
 
 # ============================================================================
 # Stage 2: Runtime
@@ -60,7 +66,7 @@ COPY src/ ./src/
 COPY scripts/ ./scripts/
 
 # Create .env.example as template (actual .env should be mounted or passed via env vars)
-COPY .env .env.example
+COPY .env.example .env.example
 
 # Create non-root user for security
 RUN useradd -m -u 1000 somali && \

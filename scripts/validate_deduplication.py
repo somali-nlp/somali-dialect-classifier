@@ -20,10 +20,10 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
 
 try:
     import sqlite3
+
     import duckdb
 except ImportError:
     print("Error: Required packages not installed")
@@ -62,7 +62,7 @@ class DeduplicationValidator:
         if self.conn:
             self.conn.close()
 
-    def add_result(self, check_name: str, passed: bool, message: str, details: Dict = None):
+    def add_result(self, check_name: str, passed: bool, message: str, details: dict = None):
         """Add validation result."""
         self.validation_results.append({
             'check': check_name,

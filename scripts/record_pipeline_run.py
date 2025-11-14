@@ -33,10 +33,10 @@ Features:
 import argparse
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-import time
+from typing import Any
 
 # Make psutil optional - only required for resource monitoring
 try:
@@ -65,7 +65,7 @@ class PipelineRunRecorder:
     def __init__(self, output_path: str):
         self.output_path = Path(output_path)
 
-    def validate_run_data(self, run_data: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_run_data(self, run_data: dict[str, Any]) -> dict[str, Any]:
         """
         Validate pipeline run data against schema
 
@@ -144,14 +144,14 @@ class PipelineRunRecorder:
             return False
 
         try:
-            with open(self.output_path, 'r') as f:
+            with open(self.output_path) as f:
                 history = json.load(f)
 
             return any(run['run_id'] == run_id for run in history)
         except (json.JSONDecodeError, KeyError):
             return False
 
-    def append_run(self, run_data: Dict[str, Any]) -> Dict[str, Any]:
+    def append_run(self, run_data: dict[str, Any]) -> dict[str, Any]:
         """
         Append validated run to history file
 
@@ -183,7 +183,7 @@ class PipelineRunRecorder:
 
         # Load existing history
         if self.output_path.exists():
-            with open(self.output_path, 'r') as f:
+            with open(self.output_path) as f:
                 history = json.load(f)
         else:
             history = []
@@ -238,7 +238,7 @@ class ResourceMonitor:
         }
         self.samples.append(sample)
 
-    def finalize(self) -> Dict[str, Any]:
+    def finalize(self) -> dict[str, Any]:
         """Compute aggregated metrics"""
         if len(self.samples) < 2:
             return None
@@ -279,7 +279,7 @@ class ResourceMonitor:
         return metrics
 
 
-def collect_environment_info() -> Dict[str, Any]:
+def collect_environment_info() -> dict[str, Any]:
     """Collect system environment information"""
     import platform
 
@@ -298,7 +298,7 @@ def collect_environment_info() -> Dict[str, Any]:
     return env_info
 
 
-def interactive_run_entry() -> Dict[str, Any]:
+def interactive_run_entry() -> dict[str, Any]:
     """Interactive CLI for entering run metrics"""
     print("\n=== Pipeline Run Recorder - Interactive Mode ===\n")
 
@@ -334,7 +334,7 @@ def interactive_run_entry() -> Dict[str, Any]:
 
             # Simulate some work for demonstration
             print("Sampling system resources (this takes ~5 seconds)...")
-            for i in range(5):
+            for _i in range(5):
                 time.sleep(1)
                 monitor.sample()
 
@@ -392,7 +392,7 @@ Examples:
 
     # Get run data
     if args.input:
-        with open(args.input, 'r') as f:
+        with open(args.input) as f:
             run_data = json.load(f)
     else:
         run_data = interactive_run_entry()

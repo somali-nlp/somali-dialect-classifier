@@ -103,13 +103,13 @@ class LockManager:
             logger.info(f"Acquired lock for source: {source}")
             self._active_locks[source] = lock
             return lock
-        except Timeout:
+        except Timeout as err:
             logger.error(f"Failed to acquire lock for {source} (timeout={timeout}s)")
             logger.error(f"Another run for {source} is likely still active")
             raise RuntimeError(
                 f"Cannot start run for {source}: another run is already active. "
                 f"If the previous run crashed, manually delete .locks/{source}.lock"
-            )
+            ) from err
 
     def release_lock(self, source: str):
         """Release a lock for a source."""

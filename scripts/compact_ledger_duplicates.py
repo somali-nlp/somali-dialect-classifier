@@ -21,7 +21,7 @@ import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 # Configure logging
 logging.basicConfig(
@@ -87,7 +87,7 @@ class LedgerCompactor:
 
         return self.backup_path
 
-    def get_statistics(self) -> Dict:
+    def get_statistics(self) -> dict:
         """
         Get current ledger statistics.
 
@@ -176,7 +176,7 @@ class LedgerCompactor:
 
         return [dict(row) for row in results]
 
-    def compact(self, dry_run: bool = True) -> Dict:
+    def compact(self, dry_run: bool = True) -> dict:
         """
         Compact duplicate entries, keeping most recent per hash.
 
@@ -370,7 +370,7 @@ Safety:
         if not args.no_confirm:
             print(f"\n⚠️  This will remove {results['duplicates_found']} duplicate entries")
             print(f"    from {args.ledger_path}")
-            print(f"\n    A backup will be created automatically.")
+            print("\n    A backup will be created automatically.")
             response = input("\nProceed? (yes/no): ").strip().lower()
 
             if response != 'yes':
@@ -378,7 +378,7 @@ Safety:
                 return 1
 
         # Create backup
-        backup_path = compactor.create_backup()
+        compactor.create_backup()
 
         # Execute compaction
         results = compactor.compact(dry_run=False)
@@ -388,7 +388,7 @@ Safety:
         logger.info("=" * 60)
         logger.info(f"Removed: {results['duplicates_removed']} duplicate entries")
         logger.info(f"Backup: {results['backup_path']}")
-        logger.info(f"\nTo rollback if needed:")
+        logger.info("\nTo rollback if needed:")
         logger.info(f"  cp {results['backup_path']} {args.ledger_path}")
 
         return 0

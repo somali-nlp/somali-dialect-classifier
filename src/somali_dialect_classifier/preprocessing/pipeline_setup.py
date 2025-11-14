@@ -5,7 +5,6 @@ Extracted from BasePipeline (P3.1 God Object Refactoring) to reduce line count.
 """
 
 import logging
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -14,7 +13,7 @@ from ..data import DataManager
 from ..pipeline.filter_engine import FilterEngine
 from ..schema import CURRENT_SCHEMA_VERSION
 from ..schema.validation_service import ValidationService
-from ..utils.logging_utils import StructuredLogger, generate_run_id
+from ..utils.logging_utils import StructuredLogger
 from ..utils.security import sanitize_source_name
 from .record_builder import RecordBuilder
 
@@ -45,7 +44,7 @@ class PipelineSetup:
         try:
             return sanitize_source_name(source)
         except ValueError as e:
-            raise ValueError(f"Invalid source name: {e}")
+            raise ValueError(f"Invalid source name: {e}") from e
 
     @staticmethod
     def create_logger(source: str, run_id: str) -> logging.Logger:

@@ -40,12 +40,11 @@ logger = logging.getLogger(__name__)
 
 def _get_ledger():
     """Get ledger instance for orchestrator operations."""
-    from ..preprocessing.crawl_ledger import SQLiteLedger
-    from pathlib import Path
+    from ..preprocessing.crawl_ledger import CrawlLedger
 
-    ledger_path = Path("data/ledger/crawl_ledger.db")
-    ledger_path.parent.mkdir(parents=True, exist_ok=True)
-    return SQLiteLedger(str(ledger_path))
+    # Use CrawlLedger factory which respects SDC_LEDGER_BACKEND env var
+    # Automatically selects PostgreSQL or SQLite based on configuration
+    return CrawlLedger()
 
 
 def should_run_source(source: str) -> tuple[bool, str]:
@@ -197,7 +196,7 @@ def run_wikipedia_task(force: bool = False) -> dict[str, Any]:
 
     # Acquire lock before pipeline starts
     try:
-        lock = ledger.acquire_source_lock("wikipedia", timeout=30)
+        ledger.acquire_source_lock("wikipedia", timeout=30)
     except RuntimeError as e:
         logger.error(f"Failed to acquire lock: {e}")
         return {"source": "Wikipedia-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
@@ -254,7 +253,7 @@ def run_bbc_task(max_articles: Optional[int] = None, force: bool = False) -> dic
 
     # Acquire lock before pipeline starts
     try:
-        lock = ledger.acquire_source_lock("bbc", timeout=30)
+        ledger.acquire_source_lock("bbc", timeout=30)
     except RuntimeError as e:
         logger.error(f"Failed to acquire lock: {e}")
         return {"source": "BBC-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
@@ -318,7 +317,7 @@ def run_huggingface_task(
 
     # Acquire lock before pipeline starts
     try:
-        lock = ledger.acquire_source_lock("huggingface", timeout=30)
+        ledger.acquire_source_lock("huggingface", timeout=30)
     except RuntimeError as e:
         logger.error(f"Failed to acquire lock: {e}")
         return {"source": "HuggingFace-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
@@ -383,7 +382,7 @@ def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> dict[st
 
     # Acquire lock before pipeline starts
     try:
-        lock = ledger.acquire_source_lock("sprakbanken", timeout=30)
+        ledger.acquire_source_lock("sprakbanken", timeout=30)
     except RuntimeError as e:
         logger.error(f"Failed to acquire lock: {e}")
         return {"source": "Sprakbanken-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
@@ -447,7 +446,7 @@ def run_tiktok_task(
 
     # Acquire lock before pipeline starts
     try:
-        lock = ledger.acquire_source_lock("tiktok", timeout=30)
+        ledger.acquire_source_lock("tiktok", timeout=30)
     except RuntimeError as e:
         logger.error(f"Failed to acquire lock: {e}")
         return {"source": "TikTok-Somali", "status": "failed", "reason": "lock_timeout", "error": str(e)}
@@ -641,9 +640,23 @@ def run_all_pipelines(
     Returns:
         Dictionary with results from all pipelines
     """
+    import uuid
+    from datetime import datetime, timezone
+
+    from ..utils.manifest_writer import ManifestWriter
+
+    # Generate unique run_id for this orchestration run
+    run_id = f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+    run_start_time = datetime.now(timezone.utc)
+
     logger.info("=" * 80)
     logger.info("STARTING COMPLETE DATA COLLECTION PIPELINE")
+    logger.info(f"Run ID: {run_id}")
     logger.info("=" * 80)
+
+    # Initialize manifest writer and sources dict
+    manifest_writer = ManifestWriter()
+    manifest_sources = {}
 
     # Check initial collection phase status
     in_initial_phase = is_initial_collection_phase()
@@ -796,6 +809,51 @@ def run_all_pipelines(
     successful = [r for r in completed_results if r["status"] == "success"]
     failed = [r for r in completed_results if r["status"] == "failed"]
 
+    # Collect manifest data from all completed results
+    for result in completed_results:
+        source_name = result.get("source", "unknown").lower()
+        # Normalize source names for manifest
+        if "wikipedia" in source_name:
+            source_key = "wikipedia"
+        elif "bbc" in source_name:
+            source_key = "bbc"
+        elif "huggingface" in source_name:
+            source_key = "huggingface"
+        elif "sprakbanken" in source_name:
+            source_key = "sprakbanken"
+        elif "tiktok" in source_name:
+            source_key = "tiktok"
+        else:
+            source_key = source_name
+
+        # Build manifest source entry
+        manifest_sources[source_key] = {
+            "status": result.get("status", "unknown"),
+            "records_ingested": result.get("statistics", {}).get("processed", 0),
+            "records_skipped": result.get("statistics", {}).get("skipped", 0),
+            "partitions": [datetime.now(timezone.utc).strftime("%Y-%m-%d")],
+            "quota_hit": result.get("quota_hit", False),
+            "processing_time_seconds": result.get("processing_time", 0.0)
+        }
+
+        # Add quota info if quota was hit
+        if result.get("quota_hit"):
+            manifest_sources[source_key]["quota_limit"] = result.get("quota_limit")
+            manifest_sources[source_key]["items_remaining"] = result.get("items_remaining", 0)
+
+    # Generate and write manifest
+    try:
+        manifest = manifest_writer.create_manifest(
+            run_id=run_id,
+            sources=manifest_sources,
+            timestamp=run_start_time
+        )
+        manifest_path = manifest_writer.write_manifest(manifest)
+        logger.info(f"📝 Ingestion manifest written: {manifest_path}")
+    except Exception as e:
+        logger.error(f"Failed to write manifest: {e}")
+        manifest_path = None
+
     logger.info("=" * 80)
     logger.info("PIPELINE EXECUTION COMPLETE")
     logger.info("=" * 80)
@@ -846,6 +904,8 @@ def run_all_pipelines(
         "successful": successful,
         "failed": failed,
         "total": len(completed_results),
+        "run_id": run_id,
+        "manifest_path": str(manifest_path) if manifest_path else None,
     }
 
 

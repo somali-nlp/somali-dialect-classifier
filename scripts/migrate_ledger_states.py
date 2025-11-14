@@ -6,11 +6,12 @@ This script fixes the issue where Nov 2 data is stuck in 'discovered' state,
 preventing historic hash loading on subsequent runs.
 """
 
-import sqlite3
-import duckdb
-from pathlib import Path
-from datetime import datetime
 import hashlib
+import sqlite3
+from pathlib import Path
+
+import duckdb
+
 
 def main():
     ledger_path = Path("data/ledger/crawl_ledger.db")
@@ -151,7 +152,7 @@ def main():
     if orphaned > 0:
         print(f"\n  ⚠️  WARNING: {orphaned} 'processed' entries still missing hashes")
     else:
-        print(f"\n  ✅ All 'processed' entries have hashes")
+        print("\n  ✅ All 'processed' entries have hashes")
 
     ledger_conn.close()
     duckdb_conn.close()

@@ -19,11 +19,12 @@ Usage:
 
 import json
 import sys
-import numpy as np
-from pathlib import Path
-from typing import List, Dict, Any, Optional
 from collections import defaultdict
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+import numpy as np
 
 try:
     from somali_dialect_classifier.utils.metrics_schema import validate_processing_json
@@ -33,7 +34,7 @@ except ImportError:
     SCHEMA_VALIDATION_AVAILABLE = False
 
 
-def load_processing_metrics(metrics_dir: Path) -> List[Dict[str, Any]]:
+def load_processing_metrics(metrics_dir: Path) -> list[dict[str, Any]]:
     """
     Load all *_processing.json files from metrics directory.
 
@@ -57,7 +58,7 @@ def load_processing_metrics(metrics_dir: Path) -> List[Dict[str, Any]]:
 
     for metrics_file in processing_files:
         try:
-            with open(metrics_file, 'r', encoding='utf-8') as f:
+            with open(metrics_file, encoding='utf-8') as f:
                 data = json.load(f)
 
             # Basic validation - ensure required structure exists
@@ -74,7 +75,7 @@ def load_processing_metrics(metrics_dir: Path) -> List[Dict[str, Any]]:
     return all_metrics
 
 
-def generate_sankey_flow(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
+def generate_sankey_flow(metrics: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Generate Sankey diagram data showing pipeline flow from discovery to final dataset.
 
@@ -117,14 +118,14 @@ def generate_sankey_flow(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
     for metric in metrics:
         layered = metric.get("layered_metrics", {})
         legacy = metric.get("legacy_metrics", {})
-        snapshot = legacy.get("snapshot", {})
+        legacy.get("snapshot", {})
 
-        extraction = layered.get("extraction", {})
+        layered.get("extraction", {})
         quality = layered.get("quality", {})
         volume = layered.get("volume", {})
 
         # Quality stage metrics
-        quality_received = quality.get("records_received", 0)
+        quality.get("records_received", 0)
         quality_passed = quality.get("records_passed_filters", 0)
         written = volume.get("records_written", 0)
 
@@ -221,7 +222,7 @@ def generate_sankey_flow(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
     return sankey_data
 
 
-def generate_text_distributions(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
+def generate_text_distributions(metrics: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Generate text length distributions by source for ridge plots.
 
@@ -309,7 +310,7 @@ def generate_text_distributions(metrics: List[Dict[str, Any]]) -> Dict[str, Any]
     }
 
 
-def generate_comparison_metadata(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
+def generate_comparison_metadata(metrics: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Generate metadata for run-to-run comparisons.
 
@@ -414,7 +415,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate Sankey flow data
-    print(f"\n[2/4] Generating Sankey flow data...")
+    print("\n[2/4] Generating Sankey flow data...")
     sankey_data = generate_sankey_flow(metrics)
 
     sankey_file = output_dir / "sankey_flow.json"
@@ -428,7 +429,7 @@ def main():
         print(f"  - Records written: {sankey_data['stage_counts']['written']:,}")
 
     # Generate text distributions
-    print(f"\n[3/4] Generating text distribution data...")
+    print("\n[3/4] Generating text distribution data...")
     distribution_data = generate_text_distributions(metrics)
 
     distribution_file = output_dir / "text_distributions.json"
@@ -443,7 +444,7 @@ def main():
             print(f"  - {source}: {stats['count']:,} texts, median={stats['median']:.0f} chars")
 
     # Generate comparison metadata
-    print(f"\n[4/4] Generating comparison metadata...")
+    print("\n[4/4] Generating comparison metadata...")
     comparison_data = generate_comparison_metadata(metrics)
 
     comparison_file = output_dir / "comparison_metadata.json"

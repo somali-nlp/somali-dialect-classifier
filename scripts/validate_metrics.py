@@ -13,7 +13,7 @@ import json
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 
 class MetricsValidator:
@@ -30,10 +30,10 @@ class MetricsValidator:
         self.metrics_path = metrics_path
         self.max_age_days = max_age_days
         self.min_success_rate = min_success_rate
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
 
-    def validate(self) -> Tuple[bool, List[str], List[str]]:
+    def validate(self) -> tuple[bool, list[str], list[str]]:
         """
         Run all validation checks.
 
@@ -67,7 +67,7 @@ class MetricsValidator:
         is_valid = len(self.errors) == 0
         return is_valid, self.errors, self.warnings
 
-    def _validate_schema_compliance(self, data: Dict[str, Any]) -> None:
+    def _validate_schema_compliance(self, data: dict[str, Any]) -> None:
         """Validate against JSON schema using basic checks."""
         # Check top-level required fields
         required_fields = ["count", "records", "sources", "pipeline_types", "metrics", "schema_version"]
@@ -88,7 +88,7 @@ class MetricsValidator:
         if "metrics" in data and not isinstance(data["metrics"], list):
             self.errors.append("Field 'metrics' must be an array")
 
-    def _validate_required_fields(self, data: Dict[str, Any]) -> None:
+    def _validate_required_fields(self, data: dict[str, Any]) -> None:
         """Validate that all metrics entries have required fields."""
         if "metrics" not in data:
             return
@@ -128,7 +128,7 @@ class MetricsValidator:
                         f"Metric entry {idx} quality missing: {', '.join(quality_missing)}"
                     )
 
-    def _validate_data_freshness(self, data: Dict[str, Any]) -> None:
+    def _validate_data_freshness(self, data: dict[str, Any]) -> None:
         """Check if metrics data is fresh enough."""
         if "metrics" not in data or not data["metrics"]:
             self.warnings.append("No metrics data found")
@@ -165,7 +165,7 @@ class MetricsValidator:
                 f"Stale data detected (older than {self.max_age_days} days): {', '.join(stale_runs)}"
             )
 
-    def _validate_metrics_quality(self, data: Dict[str, Any]) -> None:
+    def _validate_metrics_quality(self, data: dict[str, Any]) -> None:
         """Check that metrics values are within acceptable ranges."""
         if "metrics" not in data:
             return
@@ -209,7 +209,7 @@ class MetricsValidator:
             if metric.get("records_written", 0) == 0:
                 self.warnings.append(f"{source}: No records written")
 
-    def _validate_pipeline_types(self, data: Dict[str, Any]) -> None:
+    def _validate_pipeline_types(self, data: dict[str, Any]) -> None:
         """Validate that pipeline types are recognized."""
         valid_types = ["web_scraping", "file_processing", "stream_processing", "unknown"]
 

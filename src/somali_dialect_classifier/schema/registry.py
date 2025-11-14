@@ -7,7 +7,7 @@ Starting fresh at v1.0 - no legacy data migration needed.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -131,9 +131,9 @@ class SchemaV1_0(BaseModel):
         """Validate source type."""
         try:
             SourceType(v)
-        except ValueError:
+        except ValueError as err:
             valid_types = [st.value for st in SourceType]
-            raise ValueError(f"source_type must be one of {valid_types}, got: {v}")
+            raise ValueError(f"source_type must be one of {valid_types}, got: {v}") from err
         return v
 
     @field_validator("linguistic_register")
@@ -142,9 +142,9 @@ class SchemaV1_0(BaseModel):
         """Validate linguistic register."""
         try:
             Register(v)
-        except ValueError:
+        except ValueError as err:
             valid_registers = [r.value for r in Register]
-            raise ValueError(f"register must be one of {valid_registers}, got: {v}")
+            raise ValueError(f"register must be one of {valid_registers}, got: {v}") from err
         return v
 
     @field_validator("language")
@@ -178,8 +178,8 @@ class SchemaV1_0(BaseModel):
                 datetime.fromisoformat(v.replace("Z", "+00:00"))
             else:
                 datetime.fromisoformat(v)
-        except ValueError:
-            raise ValueError(f"date must be in ISO 8601 format, got: {v}")
+        except ValueError as err:
+            raise ValueError(f"date must be in ISO 8601 format, got: {v}") from err
         return v
 
     model_config = {"extra": "forbid", "validate_assignment": True, "populate_by_name": True}

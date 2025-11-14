@@ -15,35 +15,35 @@ Usage:
     python scripts/generate_enhanced_metrics.py --force-refresh
 """
 
-import json
-import sys
+import argparse
 import gzip
 import hashlib
-from pathlib import Path
+import json
+import sys
 from datetime import datetime
-from typing import List, Dict, Any, Optional
-import argparse
+from pathlib import Path
+from typing import Any, Optional
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 try:
-    from somali_dialect_classifier.utils.metrics_schema import (
-        validate_processing_json,
-        ConsolidatedMetric,
-        ConsolidatedMetricsOutput,
-        DashboardSummary,
-        AdvancedVisualizationData,
-        EnhancedDashboardMetadata
-    )
-    from somali_dialect_classifier.utils.visualization_aggregator import (
-        export_visualization_data,
-        calculate_summary_stats
-    )
     from somali_dialect_classifier.utils.metrics_comparison import (
         compare_multiple_runs,
         export_comparison_data,
-        export_trend_analysis
+        export_trend_analysis,
+    )
+    from somali_dialect_classifier.utils.metrics_schema import (
+        AdvancedVisualizationData,
+        ConsolidatedMetric,
+        ConsolidatedMetricsOutput,
+        DashboardSummary,
+        EnhancedDashboardMetadata,
+        validate_processing_json,
+    )
+    from somali_dialect_classifier.utils.visualization_aggregator import (
+        calculate_summary_stats,
+        export_visualization_data,
     )
     SCHEMA_VALIDATION_AVAILABLE = True
 except ImportError as e:
@@ -51,7 +51,7 @@ except ImportError as e:
     SCHEMA_VALIDATION_AVAILABLE = False
 
 
-def load_metrics_from_processing_files(metrics_dir: Path) -> List[Dict[str, Any]]:
+def load_metrics_from_processing_files(metrics_dir: Path) -> list[dict[str, Any]]:
     """
     Load all metrics from *_processing.json files.
 
@@ -75,7 +75,7 @@ def load_metrics_from_processing_files(metrics_dir: Path) -> List[Dict[str, Any]
 
     for metrics_file in processing_files:
         try:
-            with open(metrics_file, 'r', encoding='utf-8') as f:
+            with open(metrics_file, encoding='utf-8') as f:
                 data = json.load(f)
 
             metric = extract_consolidated_metric(data, metrics_file.name)
@@ -93,7 +93,7 @@ def load_metrics_from_processing_files(metrics_dir: Path) -> List[Dict[str, Any]
     return all_metrics
 
 
-def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optional[Dict[str, Any]]:
+def extract_consolidated_metric(data: dict[str, Any], source_file: str) -> Optional[dict[str, Any]]:
     """
     Extract consolidated metric from Phase 3 *_processing.json.
 
@@ -111,8 +111,6 @@ def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optio
             snapshot = legacy.snapshot
             stats = legacy.statistics
 
-            connectivity = layered.connectivity
-            extraction = layered.extraction
             quality = layered.quality
             volume = layered.volume
 
@@ -228,7 +226,7 @@ def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optio
         return None
 
 
-def generate_cache_key(metrics: List[Dict[str, Any]]) -> str:
+def generate_cache_key(metrics: list[dict[str, Any]]) -> str:
     """
     Generate cache key based on metrics content.
 
@@ -263,7 +261,7 @@ def check_cache_validity(
         return False
 
     try:
-        with open(cache_file, 'r') as f:
+        with open(cache_file) as f:
             cache_meta = json.load(f)
 
         cached_key = cache_meta.get("cache_key", "")
@@ -314,7 +312,7 @@ def export_filter_catalog(output_dir: Path) -> None:
     try:
         from somali_dialect_classifier.pipeline.filters.catalog import (
             FILTER_CATALOG,
-            get_all_categories
+            get_all_categories,
         )
 
         # Build filters dictionary
@@ -408,7 +406,7 @@ def main():
         # Fallback summary
         summary_stats = {
             "total_records": sum(m.get("records_written", 0) for m in metrics),
-            "total_sources": len(set(m.get("source", "") for m in metrics)),
+            "total_sources": len({m.get("source", "") for m in metrics}),
             "total_runs": len(metrics)
         }
 
@@ -419,7 +417,7 @@ def main():
     targets_path = project_root / "dashboard" / "data" / "source_mix_targets.json"
     if targets_path.exists():
         try:
-            with open(targets_path, 'r', encoding='utf-8') as f:
+            with open(targets_path, encoding='utf-8') as f:
                 source_mix_config = json.load(f)
                 if isinstance(source_mix_config, dict):
                     candidate_volumes = source_mix_config.get("volumes")
@@ -439,7 +437,7 @@ def main():
             print(f"⚠ Warning: Failed to load source mix targets from {targets_path}: {exc}", file=sys.stderr)
 
     # Build dashboard summary
-    sources = sorted(set(m.get("source", "") for m in metrics if m.get("source")))
+    sources = sorted({m.get("source", "") for m in metrics if m.get("source")})
     source_breakdown = {}
 
     for source in sources:
@@ -568,7 +566,7 @@ def main():
                 compress_json_file(file, compressed_file)
 
     # Print summary
-    print(f"\n=== Generation Complete ===")
+    print("\n=== Generation Complete ===")
     print(f"Total Records: {summary['total_records']:,}")
     print(f"Total URLs Processed: {summary['total_urls_processed']:,}")
     print(f"Avg Success Rate: {summary['avg_success_rate']:.1%}")
@@ -577,11 +575,11 @@ def main():
     print(f"Total Runs: {summary['total_runs']}")
 
     if SCHEMA_VALIDATION_AVAILABLE:
-        print(f"\n✓ All schema validations passed")
+        print("\n✓ All schema validations passed")
         print(f"✓ Advanced visualizations: {'Enabled' if not args.skip_visualizations else 'Skipped'}")
         print(f"✓ Compression: {'Enabled' if args.compress else 'Disabled'}")
     else:
-        print(f"\n⚠ Schema validation skipped (pydantic not installed)")
+        print("\n⚠ Schema validation skipped (pydantic not installed)")
 
 
 if __name__ == "__main__":

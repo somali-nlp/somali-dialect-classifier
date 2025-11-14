@@ -17,16 +17,16 @@ Usage:
 
 import json
 import sys
-from pathlib import Path
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Optional
 
 try:
     from somali_dialect_classifier.utils.metrics_schema import (
-        validate_processing_json,
         ConsolidatedMetric,
         ConsolidatedMetricsOutput,
         DashboardSummary,
+        validate_processing_json,
     )
     SCHEMA_VALIDATION_AVAILABLE = True
 except ImportError:
@@ -34,7 +34,7 @@ except ImportError:
     SCHEMA_VALIDATION_AVAILABLE = False
 
 
-def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optional[Dict[str, Any]]:
+def extract_consolidated_metric(data: dict[str, Any], source_file: str) -> Optional[dict[str, Any]]:
     """
     Extract consolidated metric from Phase 3 *_processing.json.
 
@@ -63,8 +63,6 @@ def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optio
             snapshot = legacy.snapshot
             stats = legacy.statistics
 
-            connectivity = layered.connectivity
-            extraction = layered.extraction
             quality = layered.quality
             volume = layered.volume
         else:
@@ -85,8 +83,8 @@ def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optio
                 print(f"Warning: No run_id found in {source_file}, skipping", file=sys.stderr)
                 return None
 
-            connectivity = layered.get("connectivity", {})
-            extraction = layered.get("extraction", {})
+            layered.get("connectivity", {})
+            layered.get("extraction", {})
             quality = layered.get("quality", {})
             volume = layered.get("volume", {})
 
@@ -193,7 +191,7 @@ def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optio
         return None
 
 
-def load_metrics(metrics_dir: Path) -> List[Dict[str, Any]]:
+def load_metrics(metrics_dir: Path) -> list[dict[str, Any]]:
     """
     Load all metrics from individual JSON files.
 
@@ -216,7 +214,7 @@ def load_metrics(metrics_dir: Path) -> List[Dict[str, Any]]:
 
     for metrics_file in processing_files:
         try:
-            with open(metrics_file, 'r', encoding='utf-8') as f:
+            with open(metrics_file, encoding='utf-8') as f:
                 data = json.load(f)
 
             metric = extract_consolidated_metric(data, metrics_file.name)
@@ -234,7 +232,7 @@ def load_metrics(metrics_dir: Path) -> List[Dict[str, Any]]:
     return all_metrics
 
 
-def generate_summary(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
+def generate_summary(metrics: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Generate summary statistics from consolidated metrics.
 
@@ -265,7 +263,7 @@ def generate_summary(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
                      if m["http_request_success_rate"] is not None and m["http_request_success_rate"] > 0]
     avg_success_rate = sum(success_rates) / len(success_rates) if success_rates else 0
 
-    sources = sorted(set(m["source"] for m in metrics if m["source"]))
+    sources = sorted({m["source"] for m in metrics if m["source"]})
 
     # Per-source breakdown
     source_stats = {}
@@ -358,7 +356,7 @@ def main():
         json.dump(summary, f, indent=2)
 
     print(f"✓ Wrote summary to: {summary_file}")
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  Total Records: {summary['total_records']:,}")
     print(f"  Total URLs Processed: {summary['total_urls_processed']:,}")
     print(f"  Avg HTTP Success Rate: {summary['avg_success_rate']:.1%}")
@@ -367,9 +365,9 @@ def main():
     print(f"  Total Runs: {summary['total_runs']}")
 
     if SCHEMA_VALIDATION_AVAILABLE:
-        print(f"\n✓ All schema validations passed")
+        print("\n✓ All schema validations passed")
     else:
-        print(f"\n⚠ Schema validation skipped (pydantic not installed)")
+        print("\n⚠ Schema validation skipped (pydantic not installed)")
 
 
 if __name__ == "__main__":

@@ -504,6 +504,29 @@ class BBCSomaliProcessor(BasePipeline):
             data = json.load(f)
             links = data["links"]
 
+        # Check quota availability before processing
+        quota_limit = self.config.orchestration.get_quota("bbc")
+        has_quota, remaining = self.ledger.check_quota_available("bbc", quota_limit)
+
+        if not has_quota:
+            self.logger.warning(f"Daily quota already reached for BBC: {quota_limit} articles")
+            if self.metrics is None:
+                self.metrics = MetricsCollector(
+                    self.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
+                )
+            self.metrics.increment("quota_hit")
+            return self.staging_file
+
+        # Apply quota limit to links
+        if quota_limit is not None and remaining < len(links):
+            self.logger.info(
+                f"Quota enforcement: processing {remaining} of {len(links)} links "
+                f"(quota: {quota_limit} articles/day)"
+            )
+            links = links[:remaining]
+        else:
+            self.logger.info(f"Processing {len(links)} links (quota: {quota_limit or 'unlimited'})")
+
         # Set context for extraction phase
         set_context(run_id=self.run_id, source="bbc-somali", phase="fetch")
 
@@ -604,12 +627,40 @@ class BBCSomaliProcessor(BasePipeline):
                 staging_out.write(json.dumps(article, ensure_ascii=False) + "\n")
                 articles_count += 1
 
+                # Increment quota counter
+                if quota_limit is not None:
+                    self.ledger.increment_daily_quota(
+                        source="bbc",
+                        count=1,
+                        quota_limit=quota_limit
+                    )
+
                 # Save incrementally
                 individual_file = (
                     self.raw_dir / f"bbc-somali_{self.run_id}_raw_article-{i:04d}.json"
                 )
                 with open(individual_file, "w", encoding="utf-8") as f:
                     json.dump(article, f, ensure_ascii=False, indent=2)
+
+        # Mark quota hit if we processed fewer links than available due to quota
+        if quota_limit is not None:
+            # Get original link count from file
+            with open(self.article_links_file, encoding="utf-8") as f:
+                data = json.load(f)
+                total_links = len(data["links"])
+
+            if len(links) < total_links:
+                items_remaining = total_links - len(links)
+                self.ledger.mark_quota_hit(
+                    source="bbc",
+                    items_remaining=items_remaining,
+                    quota_limit=quota_limit
+                )
+                self.logger.info(
+                    f"Quota hit: {quota_limit} articles processed, "
+                    f"{items_remaining} links remaining for next run"
+                )
+                self.metrics.increment("quota_hit")
 
         # Calculate success rate
         total_attempted = len(urls_to_fetch)
@@ -684,6 +735,29 @@ class BBCSomaliProcessor(BasePipeline):
         with open(self.article_links_file, encoding="utf-8") as f:
             data = json.load(f)
             links = data["links"]
+
+        # Check quota availability before processing
+        quota_limit = self.config.orchestration.get_quota("bbc")
+        has_quota, remaining = self.ledger.check_quota_available("bbc", quota_limit)
+
+        if not has_quota:
+            self.logger.warning(f"Daily quota already reached for BBC: {quota_limit} articles")
+            if self.metrics is None:
+                self.metrics = MetricsCollector(
+                    self.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
+                )
+            self.metrics.increment("quota_hit")
+            return self.staging_file
+
+        # Apply quota limit to links
+        if quota_limit is not None and remaining < len(links):
+            self.logger.info(
+                f"Quota enforcement: processing {remaining} of {len(links)} links "
+                f"(quota: {quota_limit} articles/day)"
+            )
+            links = links[:remaining]
+        else:
+            self.logger.info(f"Processing {len(links)} links (quota: {quota_limit or 'unlimited'})")
 
         # Set context for extraction phase using run_id from base_pipeline
         set_context(run_id=self.run_id, source="bbc-somali", phase="fetch")
@@ -763,6 +837,14 @@ class BBCSomaliProcessor(BasePipeline):
                                 # Write to staging JSONL (streaming to avoid memory spike)
                                 staging_out.write(json.dumps(article, ensure_ascii=False) + "\n")
                                 articles_count += 1
+
+                                # Increment quota counter
+                                if quota_limit is not None:
+                                    self.ledger.increment_daily_quota(
+                                        source="bbc",
+                                        count=1,
+                                        quota_limit=quota_limit
+                                    )
 
                                 # Save incrementally (resilience against failures)
                                 # Pattern: {source_slug}_{run_id}_raw_article-{num}.json
@@ -857,6 +939,26 @@ class BBCSomaliProcessor(BasePipeline):
 
         # Calculate success rate
         success_rate = (articles_count / len(links) * 100) if len(links) > 0 else 0
+
+        # Mark quota hit if we processed fewer links than available due to quota
+        if quota_limit is not None:
+            # Get original link count from file
+            with open(self.article_links_file, encoding="utf-8") as f:
+                data = json.load(f)
+                total_links = len(data["links"])
+
+            if len(links) < total_links:
+                items_remaining = total_links - len(links)
+                self.ledger.mark_quota_hit(
+                    source="bbc",
+                    items_remaining=items_remaining,
+                    quota_limit=quota_limit
+                )
+                self.logger.info(
+                    f"Quota hit: {quota_limit} articles processed, "
+                    f"{items_remaining} links remaining for next run"
+                )
+                self.metrics.increment("quota_hit")
 
         self.logger.info("=" * 60)
         self.logger.info(f"Extraction complete: {articles_count}/{len(links)} articles extracted")

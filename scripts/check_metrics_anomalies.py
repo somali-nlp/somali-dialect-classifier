@@ -18,9 +18,9 @@ Exit Codes:
 import argparse
 import json
 import sys
-from pathlib import Path
 from datetime import datetime, timezone
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import Any
 
 
 class AnomalyLevel:
@@ -29,7 +29,7 @@ class AnomalyLevel:
     ERROR = "error"
 
 
-def check_file_for_anomalies(metrics_file: Path) -> List[Dict[str, Any]]:
+def check_file_for_anomalies(metrics_file: Path) -> list[dict[str, Any]]:
     """
     Check a single metrics file for anomalies.
 
@@ -159,7 +159,7 @@ def check_file_for_anomalies(metrics_file: Path) -> List[Dict[str, Any]]:
     return anomalies
 
 
-def scan_metrics_directory(metrics_dir: Path) -> Dict[str, Any]:
+def scan_metrics_directory(metrics_dir: Path) -> dict[str, Any]:
     """
     Scan all metrics files in directory for anomalies.
 
@@ -198,7 +198,7 @@ def scan_metrics_directory(metrics_dir: Path) -> Dict[str, Any]:
     warning_count = sum(1 for a in all_anomalies if a["level"] == AnomalyLevel.WARNING)
 
     # Get unique sources affected
-    sources_affected = sorted(list(set(a["source"] for a in all_anomalies)))
+    sources_affected = sorted({a["source"] for a in all_anomalies})
 
     return {
         "total_files": len(metrics_files),
@@ -252,7 +252,7 @@ def main():
 
     # Print summary
     print(f"\n{'='*60}")
-    print(f"Metrics Anomaly Report")
+    print("Metrics Anomaly Report")
     print(f"{'='*60}")
     print(f"Files scanned:       {report['total_files']}")
     print(f"Total anomalies:     {report['total_anomalies']}")

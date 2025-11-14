@@ -141,7 +141,6 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
         # Initialize deduplication BEFORE BasePipeline (which generates run_id)
         # PHASE 3: Enable LSH persistence for cross-run near-duplicate detection
-        from pathlib import Path as PathLib
         dedup_config = DedupConfig(
             hash_fields=["text", "url"],
             enable_minhash=True,
@@ -352,6 +351,29 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 self.run_id, self.source, pipeline_type=PipelineType.STREAM_PROCESSING
             )
 
+        # Check quota availability before processing
+        quota_limit = self.config.orchestration.get_quota("huggingface")
+        has_quota, remaining = self.ledger.check_quota_available("huggingface", quota_limit)
+
+        if not has_quota:
+            self.logger.warning(f"Daily quota already reached for HuggingFace: {quota_limit} records")
+            self.metrics.increment("quota_hit")
+            return staging_dir
+
+        # Apply quota limit to max_records if needed
+        effective_max_records = self.max_records
+        if quota_limit is not None:
+            if effective_max_records is None:
+                effective_max_records = remaining
+            else:
+                effective_max_records = min(effective_max_records, remaining)
+            self.logger.info(
+                f"Quota enforcement: processing max {effective_max_records} records "
+                f"(quota: {quota_limit} records/day, remaining: {remaining})"
+            )
+        else:
+            self.logger.info("Processing records (quota: unlimited)")
+
         # Check if extraction already complete and not forcing
         extraction_complete_marker = staging_dir / ".extraction_complete"
         if extraction_complete_marker.exists() and not self.force:
@@ -431,9 +453,10 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 if i < start_offset:
                     continue
 
-                # Check max_records limit
-                if self.max_records and total_processed >= self.max_records:
-                    self.logger.info(f"Reached max_records limit: {self.max_records}")
+                # Check max_records limit (with quota enforcement)
+                if effective_max_records and total_processed >= effective_max_records:
+                    reason = "quota limit" if quota_limit and effective_max_records == remaining else "max_records limit"
+                    self.logger.info(f"Reached {reason}: {effective_max_records}")
                     stopped_at_limit = True
                     break
 
@@ -487,6 +510,14 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 # Record fetch duration
                 self.metrics.record_fetch_duration(timer.get_elapsed_ms())
                 self.metrics.increment("records_fetched")
+
+                # Increment quota counter
+                if quota_limit is not None:
+                    self.ledger.increment_daily_quota(
+                        source="huggingface",
+                        count=1,
+                        quota_limit=quota_limit
+                    )
 
                 current_offset = i + 1
                 total_processed += 1
@@ -555,7 +586,23 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 extraction_complete_marker.touch()
                 self.logger.info("Dataset exhausted - marking extraction as complete")
             else:
-                self.logger.info(f"Stopped at max_records limit - more data available to stream from offset {current_offset}")
+                # Check if we stopped due to quota limit
+                if quota_limit is not None and effective_max_records == remaining:
+                    # Quota hit - mark in ledger
+                    # Note: We can't calculate exact items_remaining for infinite streams,
+                    # so we mark it as unknown (-1)
+                    self.ledger.mark_quota_hit(
+                        source="huggingface",
+                        items_remaining=-1,  # Unknown for infinite dataset streams
+                        quota_limit=quota_limit
+                    )
+                    self.logger.info(
+                        f"Quota hit: {quota_limit} records processed, "
+                        f"more data available to stream from offset {current_offset}"
+                    )
+                    self.metrics.increment("quota_hit")
+                else:
+                    self.logger.info(f"Stopped at max_records limit - more data available to stream from offset {current_offset}")
 
             # PHASE 5: Save final checkpoint and clean up
             self._save_checkpoint({

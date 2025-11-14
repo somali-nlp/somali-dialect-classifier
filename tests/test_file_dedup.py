@@ -11,10 +11,9 @@ Tests have been updated to test public behavior rather than private methods.
 """
 
 import json
-from pathlib import Path
-import pytest
-import tempfile
 import time
+
+import pytest
 
 
 class TestFileChecksumComputation:
@@ -110,10 +109,10 @@ class TestDumpAlreadyProcessedCheck:
     @pytest.mark.skip(reason="Method _check_if_dump_already_processed not implemented")
     def test_dump_already_processed_found(self, tmp_path, monkeypatch):
         """Verify returns silver path when dump already processed."""
+        from somali_dialect_classifier.config import get_config
         from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
-        from somali_dialect_classifier.config import get_config
 
         # Mock config to use tmp_path
         config = get_config()
@@ -160,10 +159,10 @@ class TestDumpAlreadyProcessedCheck:
     @pytest.mark.skip(reason="Method _check_if_dump_already_processed not implemented")
     def test_checksum_mismatch_triggers_reprocess(self, tmp_path, monkeypatch):
         """Verify changed file triggers reprocessing."""
+        from somali_dialect_classifier.config import get_config
         from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
-        from somali_dialect_classifier.config import get_config
 
         # Mock config
         config = get_config()
@@ -326,10 +325,10 @@ class TestConcurrentRunCoordination:
 
     def test_lock_prevents_concurrent_processing(self, tmp_path, monkeypatch):
         """Verify file lock prevents duplicate processing."""
+        from somali_dialect_classifier.config import get_config
         from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
-        from somali_dialect_classifier.config import get_config
 
         # Mock directories
         config = get_config()
@@ -370,7 +369,7 @@ class TestConcurrentRunCoordination:
             WikipediaSomaliProcessor,
         )
 
-        processor = WikipediaSomaliProcessor()
+        WikipediaSomaliProcessor()
 
         # Create stale lock file
         lock_file = tmp_path / "stale.lock"

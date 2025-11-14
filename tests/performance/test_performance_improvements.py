@@ -11,8 +11,6 @@ Run with: pytest tests/performance/test_performance_improvements.py -v
 import asyncio
 import json
 import time
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 from datasketch import MinHash
@@ -73,7 +71,7 @@ class TestAsyncHTTPPerformance:
         # Calculate speedup
         speedup = sync_time / async_time
 
-        print(f"\nAsync HTTP Performance:")
+        print("\nAsync HTTP Performance:")
         print(f"  Sync time: {sync_time:.2f}s")
         print(f"  Async time: {async_time:.2f}s")
         print(f"  Speedup: {speedup:.1f}x")
@@ -131,7 +129,7 @@ class TestShardedLSHPerformance:
         # Calculate speedup
         speedup = mono_time / sharded_time
 
-        print(f"\nShardedLSH Insert Performance:")
+        print("\nShardedLSH Insert Performance:")
         print(f"  Monolithic time: {mono_time:.2f}s")
         print(f"  Sharded time: {sharded_time:.2f}s")
         print(f"  Speedup: {speedup:.1f}x")
@@ -190,7 +188,7 @@ class TestShardedLSHPerformance:
         # Calculate speedup
         speedup = mono_query_time / sharded_query_time
 
-        print(f"\nShardedLSH Query Performance:")
+        print("\nShardedLSH Query Performance:")
         print(f"  Monolithic query time: {mono_query_time:.3f}s")
         print(f"  Sharded query time: {sharded_query_time:.3f}s")
         print(f"  Speedup: {speedup:.1f}x")
@@ -265,7 +263,7 @@ class TestFileIOPerformance:
         # Calculate speedup
         speedup = standard_time / buffered_time
 
-        print(f"\nBuffered Write Performance:")
+        print("\nBuffered Write Performance:")
         print(f"  Standard time: {standard_time:.3f}s")
         print(f"  Buffered time: {buffered_time:.3f}s")
         print(f"  Speedup: {speedup:.1f}x")
@@ -290,7 +288,7 @@ class TestFileIOPerformance:
         # Standard read (small buffer)
         start_standard = time.time()
         records_standard = []
-        with open(test_file, 'r', encoding='utf-8', buffering=4096) as f:
+        with open(test_file, encoding='utf-8', buffering=4096) as f:
             for line in f:
                 if line.strip():
                     records_standard.append(json.loads(line))
@@ -299,7 +297,7 @@ class TestFileIOPerformance:
         # Buffered read (large buffer)
         start_buffered = time.time()
         records_buffered = []
-        with open(test_file, 'r', encoding='utf-8', buffering=819200) as f:
+        with open(test_file, encoding='utf-8', buffering=819200) as f:
             for line in f:
                 if line.strip():
                     records_buffered.append(json.loads(line))
@@ -308,7 +306,7 @@ class TestFileIOPerformance:
         # Calculate speedup
         speedup = standard_time / buffered_time
 
-        print(f"\nBuffered Read Performance:")
+        print("\nBuffered Read Performance:")
         print(f"  Standard time: {standard_time:.3f}s")
         print(f"  Buffered time: {buffered_time:.3f}s")
         print(f"  Speedup: {speedup:.1f}x")
@@ -367,7 +365,7 @@ class TestFileIOPerformance:
 
         speedup = standard_time / optimized_time
 
-        print(f"\nChecksum Performance:")
+        print("\nChecksum Performance:")
         print(f"  Standard (4KB): {standard_time:.3f}s")
         print(f"  Optimized (64KB): {optimized_time:.3f}s")
         print(f"  Speedup: {speedup:.1f}x")
@@ -381,7 +379,7 @@ class TestIntegratedPerformance:
 
     def test_minhash_deduplicator_with_sharding(self, temp_data_dir):
         """Test MinHashDeduplicator with sharding enabled."""
-        config = DedupConfig(
+        DedupConfig(
             enable_minhash=True,
             enable_sharding=True,
             num_shards=10,

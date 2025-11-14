@@ -19,25 +19,25 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from somali_dialect_classifier.utils.visualization_aggregator import (
-    calculate_pipeline_flow,
-    calculate_text_length_distribution,
-    calculate_time_series
-)
-from somali_dialect_classifier.utils.metrics_filters import (
-    filter_by_source,
-    filter_by_quality,
-    filter_by_date_range,
-    filter_by_status,
-    apply_filters,
-    search_metrics,
-    get_top_performers
-)
 from somali_dialect_classifier.utils.metrics_comparison import (
     calculate_delta,
     compare_multiple_runs,
+    generate_comparison_summary,
     identify_trends,
-    generate_comparison_summary
+)
+from somali_dialect_classifier.utils.metrics_filters import (
+    apply_filters,
+    filter_by_date_range,
+    filter_by_quality,
+    filter_by_source,
+    filter_by_status,
+    get_top_performers,
+    search_metrics,
+)
+from somali_dialect_classifier.utils.visualization_aggregator import (
+    calculate_pipeline_flow,
+    calculate_text_length_distribution,
+    calculate_time_series,
 )
 
 
@@ -50,7 +50,7 @@ def load_test_metrics():
         print(f"Error: {all_metrics_file} not found. Run generate_enhanced_metrics.py first.")
         sys.exit(1)
 
-    with open(all_metrics_file, 'r') as f:
+    with open(all_metrics_file) as f:
         data = json.load(f)
 
     return data["metrics"]
@@ -102,7 +102,7 @@ def test_filtering(metrics):
 
     # Test source filter
     print("\n1. Testing source filter...")
-    sources = list(set(m.get("source", "") for m in metrics))
+    sources = list({m.get("source", "") for m in metrics})
     if sources:
         filtered = filter_by_source(metrics, [sources[0]])
         print(f"   ✓ Filtered by source '{sources[0]}': {len(filtered)} metrics")
@@ -166,7 +166,7 @@ def test_comparison(metrics):
 
     # Test multiple run comparison
     print("\n2. Testing multiple run comparison...")
-    sources = list(set(m.get("source", "") for m in metrics))
+    sources = list({m.get("source", "") for m in metrics})
     if sources:
         comparisons = compare_multiple_runs(metrics, source=sources[0])
         print(f"   ✓ Generated {len(comparisons)} comparisons for '{sources[0]}'")

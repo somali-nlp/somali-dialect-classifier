@@ -10,7 +10,6 @@ Provides defense against:
 import re
 from typing import Optional
 
-
 # Allowed source names (whitelist for path traversal protection)
 ALLOWED_SOURCES = {
     'wikipedia',
@@ -25,7 +24,7 @@ ALLOWED_SOURCES = {
 
 
 def sanitize_source_name(source: str) -> str:
-    """
+    r"""
     Sanitize source name to prevent path traversal attacks.
 
     Implements defense-in-depth:

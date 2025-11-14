@@ -14,13 +14,11 @@ Features:
 - Transaction support with rollback
 """
 
-import json
 import logging
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-import psycopg2
 from psycopg2.extras import Json, RealDictCursor
 from psycopg2.pool import ThreadedConnectionPool
 

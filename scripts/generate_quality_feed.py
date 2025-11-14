@@ -20,13 +20,13 @@ Usage:
 import json
 import re
 import sys
-from pathlib import Path
-from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Any, Optional
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any, Optional
 
 
-def parse_quality_report(report_path: Path) -> Optional[Dict[str, Any]]:
+def parse_quality_report(report_path: Path) -> Optional[dict[str, Any]]:
     """
     Parse a quality report markdown file.
 
@@ -37,7 +37,7 @@ def parse_quality_report(report_path: Path) -> Optional[Dict[str, Any]]:
         Dictionary with parsed report data or None if parsing failed
     """
     try:
-        with open(report_path, 'r', encoding='utf-8') as f:
+        with open(report_path, encoding='utf-8') as f:
             content = f.read()
 
         # Extract metadata
@@ -101,7 +101,7 @@ def parse_quality_report(report_path: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
-def generate_quality_alerts(reports: List[Dict[str, Any]]) -> Dict[str, Any]:
+def generate_quality_alerts(reports: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Generate quality alerts from parsed reports.
 
@@ -246,7 +246,7 @@ def generate_quality_alerts(reports: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def generate_quality_waivers(reports: List[Dict[str, Any]]) -> Dict[str, Any]:
+def generate_quality_waivers(reports: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Generate quality waivers from parsed reports.
 
@@ -416,7 +416,7 @@ def main():
     print(f"✓ Found {len(report_files)} quality reports")
 
     # Parse all reports
-    print(f"\n[2/4] Parsing quality reports...")
+    print("\n[2/4] Parsing quality reports...")
     reports = []
 
     for report_file in report_files:
@@ -435,7 +435,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate quality alerts
-    print(f"\n[3/4] Generating quality alerts...")
+    print("\n[3/4] Generating quality alerts...")
     alerts_data = generate_quality_alerts(reports)
 
     alerts_file = output_dir / "quality_alerts.json"
@@ -455,7 +455,7 @@ def main():
         print(f"  - Low severity: {severity_counts['low']}")
 
     # Generate quality waivers
-    print(f"\n[4/4] Generating quality waivers...")
+    print("\n[4/4] Generating quality waivers...")
     waivers_data = generate_quality_waivers(reports)
 
     waivers_file = output_dir / "quality_waivers.json"

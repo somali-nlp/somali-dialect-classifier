@@ -108,11 +108,11 @@ class ManifestWriter:
 
         # Calculate totals
         total_records = sum(s.get("records_ingested", 0) for s in sources.values())
-        total_partitions = len(set(
+        total_partitions = len({
             partition
             for source in sources.values()
             for partition in source.get("partitions", [])
-        ))
+        })
         total_processing_time = sum(
             s.get("processing_time_seconds", 0) for s in sources.values()
         )
@@ -202,7 +202,7 @@ class ManifestWriter:
         if not manifest_path.exists():
             raise FileNotFoundError(f"Manifest not found: {manifest_path}")
 
-        with open(manifest_path, "r", encoding="utf-8") as f:
+        with open(manifest_path, encoding="utf-8") as f:
             manifest = json.load(f)
 
         # Validate schema
@@ -241,7 +241,7 @@ class ManifestWriter:
             filtered = []
             for manifest_path in manifests:
                 # Read manifest to get timestamp
-                with open(manifest_path, "r", encoding="utf-8") as f:
+                with open(manifest_path, encoding="utf-8") as f:
                     manifest = json.load(f)
                     timestamp = datetime.fromisoformat(
                         manifest["timestamp"].replace("Z", "+00:00")
@@ -289,7 +289,7 @@ class ManifestWriter:
         for manifest_path in self.manifest_dir.glob("*.json"):
             # Read manifest to get timestamp
             try:
-                with open(manifest_path, "r", encoding="utf-8") as f:
+                with open(manifest_path, encoding="utf-8") as f:
                     manifest = json.load(f)
                     timestamp = datetime.fromisoformat(
                         manifest["timestamp"].replace("Z", "+00:00")
@@ -383,8 +383,8 @@ class ManifestWriter:
             >>> for source, hit_count in quota_hits.items():
             ...     print(f"{source}: {hit_count} quota hits in last 7 days")
         """
-        from datetime import timedelta
         from collections import defaultdict
+        from datetime import timedelta
 
         start_date = datetime.now(timezone.utc) - timedelta(days=days)
         manifests = self.list_manifests(start_date=start_date)

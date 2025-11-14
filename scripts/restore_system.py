@@ -20,7 +20,7 @@ import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # Configure logging
 logging.basicConfig(
@@ -80,7 +80,7 @@ class RestoreSystem:
                 manifest_path = backup_folder / "metadata.json"
                 manifest = None
                 if manifest_path.exists():
-                    with open(manifest_path, "r") as f:
+                    with open(manifest_path) as f:
                         manifest = json.load(f)
 
                 backups.append(
@@ -138,7 +138,7 @@ class RestoreSystem:
         if not manifest_path.exists():
             raise ValueError(f"Backup manifest not found: {manifest_path}")
 
-        with open(manifest_path, "r") as f:
+        with open(manifest_path) as f:
             manifest = json.load(f)
 
         logger.info(f"Backup: {backup_name}")
@@ -415,7 +415,7 @@ def main():
                     )
                 print(f"\n{'=' * 80}")
                 print("\nTo restore a backup, use:")
-                print(f"  python scripts/restore_system.py --backup BACKUP_NAME")
+                print("  python scripts/restore_system.py --backup BACKUP_NAME")
             else:
                 print("No backups found")
             return
@@ -438,7 +438,7 @@ def main():
             if not args.dry_run:
                 print(f"Data restored to: {args.target_dir}")
         else:
-            print(f"\nRestore failed")
+            print("\nRestore failed")
             sys.exit(1)
 
     except Exception as e:

@@ -33,9 +33,9 @@ import argparse
 import json
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
-from datetime import datetime, timezone
-from typing import List, Dict, Any, Set
+from typing import Any
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
@@ -53,8 +53,8 @@ except ImportError as e:
 # Import filter catalog functions
 try:
     from somali_dialect_classifier.pipeline.filters.catalog import (
+        get_filter_category,
         get_filter_label,
-        get_filter_category
     )
 except ImportError:
     print("WARNING: Could not import filter catalog. Using fallback labels.")
@@ -71,7 +71,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-def load_processed_run_ids(parquet_path: Path) -> Set[str]:
+def load_processed_run_ids(parquet_path: Path) -> set[str]:
     """
     Load run_ids that have already been processed from existing Parquet.
 
@@ -96,7 +96,7 @@ def load_processed_run_ids(parquet_path: Path) -> Set[str]:
         return set()
 
 
-def parse_metrics_file(metrics_path: Path) -> Dict[str, Any]:
+def parse_metrics_file(metrics_path: Path) -> dict[str, Any]:
     """
     Parse processing.json metrics file and extract filter data.
 
@@ -149,7 +149,7 @@ def parse_metrics_file(metrics_path: Path) -> Dict[str, Any]:
     }
 
 
-def create_filter_records(parsed_metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
+def create_filter_records(parsed_metrics: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Create individual records for each filter in the breakdown.
 
@@ -262,7 +262,7 @@ def export_to_parquet(
         if len(all_records) >= batch_size * 10:  # Process every ~1000 records
             logger.info(f"Batch checkpoint: {len(all_records)} records accumulated")
 
-    logger.info(f"Extraction complete:")
+    logger.info("Extraction complete:")
     logger.info(f"  - Total files: {len(metrics_files)}")
     logger.info(f"  - Processed: {len(metrics_files) - skipped_count - error_count - empty_breakdown_count}")
     logger.info(f"  - Skipped (incremental): {skipped_count}")
@@ -323,24 +323,24 @@ def export_to_parquet(
     )
 
     logger.info("Export complete!")
-    print(f"\n✅ Filter metrics exported to Parquet")
+    print("\n✅ Filter metrics exported to Parquet")
     print(f"   Output: {output_path}")
     print(f"   Total records: {len(df):,}")
     print(f"   Unique sources: {df['source'].nunique()}")
     print(f"   Unique filters: {df['filter_type'].nunique()}")
     print(f"   Date range: {df['date'].min()} to {df['date'].max()}")
-    print(f"   Partition structure: source=<source>/month=<YYYY-MM>/")
-    print(f"\n📊 Parquet file size:")
+    print("   Partition structure: source=<source>/month=<YYYY-MM>/")
+    print("\n📊 Parquet file size:")
 
     # Calculate total size
     total_size = sum(f.stat().st_size for f in output_path.rglob("*.parquet"))
     print(f"   {total_size / (1024 * 1024):.2f} MB")
 
     # Show sample query
-    print(f"\n🔍 Query example:")
-    print(f"   import pandas as pd")
+    print("\n🔍 Query example:")
+    print("   import pandas as pd")
     print(f"   df = pd.read_parquet('{output_path}')")
-    print(f"   print(df.head())")
+    print("   print(df.head())")
 
 
 def main():

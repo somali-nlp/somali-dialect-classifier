@@ -30,6 +30,14 @@ class TikTokSomaliProcessor(BasePipeline):
     Note:
         TikTok comments represent informal, colloquial Somali text
         from social media - ideal for dialect classification training data.
+
+    Quota Policy:
+        TikTok scraping does NOT use automatic daily quotas. Instead, it uses
+        manual cost-gating because each comment incurs a direct Apify API cost
+        (~$1 per 1,000 comments). Users must manually schedule TikTok runs and
+        specify video URLs to control costs. This differs from other sources
+        (BBC, HuggingFace, Språkbanken) which use automated daily quotas for
+        rate limiting and resource management.
     """
 
     def __init__(

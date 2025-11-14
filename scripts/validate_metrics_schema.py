@@ -18,17 +18,17 @@ Exit Codes:
     2 - No metrics files found (warning)
 """
 
-import sys
-import json
-from pathlib import Path
-from typing import List, Dict, Any, Tuple
 import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
 
 try:
     from somali_dialect_classifier.utils.metrics_schema import (
-        validate_processing_json,
         validate_consolidated_metrics,
         validate_dashboard_summary,
+        validate_processing_json,
     )
     SCHEMA_AVAILABLE = True
 except ImportError:
@@ -45,8 +45,8 @@ class ValidationReport:
         self.passed = 0
         self.failed = 0
         self.warnings = 0
-        self.errors: List[Dict[str, Any]] = []
-        self.warning_messages: List[Dict[str, Any]] = []
+        self.errors: list[dict[str, Any]] = []
+        self.warning_messages: list[dict[str, Any]] = []
 
     def add_error(self, file_path: str, error_type: str, message: str):
         """Record a validation error."""
@@ -128,7 +128,7 @@ def validate_processing_file(file_path: Path, report: ValidationReport) -> bool:
         True if validation passed, False otherwise
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
         report.add_error(
@@ -188,7 +188,7 @@ def validate_consolidated_file(file_path: Path, report: ValidationReport) -> boo
         True if validation passed, False otherwise
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
         report.add_error(
@@ -252,7 +252,7 @@ def validate_summary_file(file_path: Path, report: ValidationReport) -> bool:
         True if validation passed, False otherwise
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
         report.add_error(
@@ -271,7 +271,7 @@ def validate_summary_file(file_path: Path, report: ValidationReport) -> bool:
 
     # Validate schema
     try:
-        validated = validate_dashboard_summary(data)
+        validate_dashboard_summary(data)
         report.record_success()
         return True
 

@@ -281,7 +281,7 @@ class BackupSystem:
                 manifest_path = backup_folder / "metadata.json"
                 manifest = None
                 if manifest_path.exists():
-                    with open(manifest_path, "r") as f:
+                    with open(manifest_path) as f:
                         manifest = json.load(f)
 
                 backups.append(

@@ -17,17 +17,17 @@ Usage:
 """
 
 import json
-from pathlib import Path
-from datetime import datetime
-from typing import List, Dict, Any
 import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 try:
     from somali_dialect_classifier.utils.metrics_schema import (
-        validate_processing_json,
+        ConsolidatedMetric,
         validate_consolidated_metrics,
         validate_dashboard_summary,
-        ConsolidatedMetric,
+        validate_processing_json,
     )
     SCHEMA_VALIDATION_AVAILABLE = True
 except ImportError:
@@ -35,7 +35,7 @@ except ImportError:
     SCHEMA_VALIDATION_AVAILABLE = False
 
 
-def load_all_metrics() -> List[Dict[str, Any]]:
+def load_all_metrics() -> list[dict[str, Any]]:
     """
     Load all metrics JSON files with Phase 3 schema support.
 
@@ -53,7 +53,7 @@ def load_all_metrics() -> List[Dict[str, Any]]:
 
     for metrics_file in sorted(metrics_dir.glob("*_processing.json")):
         try:
-            with open(metrics_file, 'r') as f:
+            with open(metrics_file) as f:
                 data = json.load(f)
 
             # Validate input schema if available
@@ -168,7 +168,7 @@ def load_all_metrics() -> List[Dict[str, Any]]:
     return all_metrics
 
 
-def generate_summary(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
+def generate_summary(metrics: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Generate summary statistics for dashboard.
 
@@ -205,7 +205,7 @@ def generate_summary(metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
     success_rates = [m["http_request_success_rate"] for m in metrics if m.get("http_request_success_rate") and m["http_request_success_rate"] > 0]
     avg_success_rate = sum(success_rates) / len(success_rates) if success_rates else 0
 
-    sources = sorted(list(set(m["source"] for m in metrics)))
+    sources = sorted({m["source"] for m in metrics})
 
     summary = {
         "total_records": total_records,

@@ -32,7 +32,7 @@ from tqdm import tqdm
 from ..config import get_config
 from ..utils.http import HTTPSessionFactory
 from ..utils.logging_utils import Timer, set_context
-from ..utils.metrics import MetricsCollector, PipelineType, QualityReporter
+from ..utils.metrics import MetricsCollector, PipelineType
 from .base_pipeline import BasePipeline, RawRecord
 from .crawl_ledger import get_ledger
 from .dedup import DedupConfig, DedupEngine
@@ -589,6 +589,10 @@ class SprakbankenSomaliProcessor(BasePipeline):
         with open(self.manifest_file, encoding="utf-8") as f:
             manifest = json.load(f)
 
+        # Check quota availability before processing
+        quota_limit = self.config.orchestration.get_quota("sprakbanken")
+        has_quota, remaining = self.ledger.check_quota_available("sprakbanken", quota_limit)
+
         # Set context using run_id from base_pipeline
         set_context(run_id=self.run_id, source=self.source, phase="extract")
 
@@ -597,6 +601,22 @@ class SprakbankenSomaliProcessor(BasePipeline):
             self.metrics = MetricsCollector(
                 self.run_id, self.source, pipeline_type=PipelineType.FILE_PROCESSING
             )
+
+        if not has_quota:
+            self.logger.warning(f"Daily quota already reached for Språkbanken: {quota_limit} corpora")
+            self.metrics.increment("quota_hit")
+            return self.staging_file
+
+        # Apply quota limit to corpora list
+        corpora_to_process = manifest["corpora"]
+        if quota_limit is not None and remaining < len(corpora_to_process):
+            self.logger.info(
+                f"Quota enforcement: processing {remaining} of {len(corpora_to_process)} corpora "
+                f"(quota: {quota_limit} corpora/day)"
+            )
+            corpora_to_process = corpora_to_process[:remaining]
+        else:
+            self.logger.info(f"Processing {len(corpora_to_process)} corpora (quota: {quota_limit or 'unlimited'})")
 
         if self.staging_file.exists() and not self.force:
             self.logger.info(f"Staging file already exists: {self.staging_file}")
@@ -613,7 +633,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         with Timer() as timer:
             # Open staging file for writing
             with open(self.staging_file, "w", encoding="utf-8") as out_f:
-                for corpus_info in tqdm(manifest["corpora"], desc="Extracting corpora"):
+                for corpus_info in tqdm(corpora_to_process, desc="Extracting corpora"):
                     corpus_id = corpus_info["id"]
                     corpus_file = self.raw_dir / corpus_info["file"]
 
@@ -634,6 +654,14 @@ class SprakbankenSomaliProcessor(BasePipeline):
                     self.metrics.increment("records_extracted", texts_count)
                     self.metrics.increment("sentences_extracted", sentences_count)
 
+                    # Increment quota counter (per corpus)
+                    if quota_limit is not None:
+                        self.ledger.increment_daily_quota(
+                            source="sprakbanken",
+                            count=1,
+                            quota_limit=quota_limit
+                        )
+
                     total_texts += texts_count
                     total_sentences += sentences_count
 
@@ -643,6 +671,22 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
         # Record total extraction timing (use process_duration for extraction phase)
         self.metrics.record_process_duration(timer.get_elapsed_ms())
+
+        # Mark quota hit if we processed fewer corpora than available due to quota
+        if quota_limit is not None:
+            total_corpora = len(manifest["corpora"])
+            if len(corpora_to_process) < total_corpora:
+                items_remaining = total_corpora - len(corpora_to_process)
+                self.ledger.mark_quota_hit(
+                    source="sprakbanken",
+                    items_remaining=items_remaining,
+                    quota_limit=quota_limit
+                )
+                self.logger.info(
+                    f"Quota hit: {quota_limit} corpora processed, "
+                    f"{items_remaining} corpora remaining for next run"
+                )
+                self.metrics.increment("quota_hit")
 
         self.logger.info("=" * 60)
         self.logger.info(f"Extraction complete: {total_texts} texts, {total_sentences} sentences")

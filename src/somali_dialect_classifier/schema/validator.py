@@ -10,7 +10,7 @@ from typing import Any, Optional
 import pandas as pd
 from pydantic import ValidationError
 
-from .registry import CURRENT_SCHEMA_VERSION, get_current_schema, get_schema
+from .registry import CURRENT_SCHEMA_VERSION, get_schema
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +112,7 @@ class SchemaValidator:
             )
 
             # Log first few validation errors for debugging
-            for i, result in enumerate(validation_results[:5]):
+            for _i, result in enumerate(validation_results[:5]):
                 if not result["valid"]:
                     logger.debug(
                         f"Record {result['index']} validation errors: {result['errors']}"

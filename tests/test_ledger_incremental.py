@@ -259,7 +259,7 @@ class TestIncrementalProcessingWorkflow:
         import time
         time.sleep(0.1)  # Simulate time passing
 
-        second_run_time = datetime.now(timezone.utc)
+        datetime.now(timezone.utc)
         for i in range(1000, 1010):
             url = f"https://so.wikipedia.org/wiki/Article{i}"
             ledger.discover_url(url, source)

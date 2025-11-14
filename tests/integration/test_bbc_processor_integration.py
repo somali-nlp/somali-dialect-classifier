@@ -5,11 +5,7 @@ Tests BBC processor end-to-end workflows including discovery,
 extraction, rate limiting, deduplication, and error handling.
 """
 
-import json
-import tempfile
-import time
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -219,14 +215,14 @@ class TestBBCArticleScraping:
 
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
-        # Initialize minimal metrics  
+        # Initialize minimal metrics
         from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
         processor.metrics = MetricsCollector(
             run_id=processor.run_id,
             source="bbc-somali",
             pipeline_type=PipelineType.WEB_SCRAPING
         )
-        
+
         # Should raise HTTPError on 404
         with pytest.raises(requests.exceptions.HTTPError):
             processor._scrape_article(
@@ -237,11 +233,11 @@ class TestBBCArticleScraping:
     def test_scrape_article_respects_rate_limiting(self):
         """Test article scraping has rate limiter configured."""
         processor = BBCSomaliProcessor(delay_range=(0.1, 0.2))
-        
+
         # Verify rate limiter is configured with correct delay range
         assert processor.rate_limiter is not None
         assert processor.delay_range == (0.1, 0.2)
-        
+
         # Verify processor has wait method (used for rate limiting)
         assert hasattr(processor.rate_limiter, 'wait')
 
@@ -307,7 +303,7 @@ class TestBBCDeduplication:
     def test_ledger_tracks_processed_urls(self):
         """Test that ledger is initialized and has required methods."""
         processor = BBCSomaliProcessor()
-        
+
         # Test that ledger exists and has required methods
         assert processor.ledger is not None
         assert hasattr(processor.ledger, 'mark_processed')
@@ -388,7 +384,7 @@ class TestBBCErrorHandling:
 
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
-        # Initialize minimal metrics  
+        # Initialize minimal metrics
         from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
         processor.metrics = MetricsCollector(
             run_id=processor.run_id,
@@ -420,7 +416,7 @@ class TestBBCErrorHandling:
 
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
-        # Initialize minimal metrics  
+        # Initialize minimal metrics
         from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
         processor.metrics = MetricsCollector(
             run_id=processor.run_id,
@@ -454,7 +450,7 @@ class TestBBCErrorHandling:
 
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
-        # Initialize minimal metrics  
+        # Initialize minimal metrics
         from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
         processor.metrics = MetricsCollector(
             run_id=processor.run_id,

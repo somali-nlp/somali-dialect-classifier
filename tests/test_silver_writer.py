@@ -8,8 +8,8 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
 import pyarrow.parquet as pq
+import pytest
 
 from somali_dialect_classifier.preprocessing.record_utils import build_silver_record
 from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter

@@ -77,7 +77,7 @@ def migrate(
 
     # Get statistics from SQLite
     sqlite_stats = sqlite_ledger.get_statistics()
-    logger.info(f"\nSQLite Database Statistics:")
+    logger.info("\nSQLite Database Statistics:")
     logger.info(f"  Total URLs: {sqlite_stats['total_urls']}")
     logger.info(f"  By state: {sqlite_stats['by_state']}")
 
@@ -173,7 +173,7 @@ def migrate(
 
     if not dry_run and postgres_ledger:
         postgres_stats = postgres_ledger.get_statistics()
-        logger.info(f"\nPostgreSQL Database Statistics:")
+        logger.info("\nPostgreSQL Database Statistics:")
         logger.info(f"  Total URLs: {postgres_stats['total_urls']}")
         logger.info(f"  By state: {postgres_stats['by_state']}")
 

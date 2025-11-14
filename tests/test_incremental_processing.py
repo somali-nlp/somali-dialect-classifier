@@ -9,7 +9,6 @@ Tests cover:
 - Metrics tracking
 """
 
-import json
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -17,7 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from somali_dialect_classifier.preprocessing.crawl_ledger import CrawlLedger, CrawlState
+from somali_dialect_classifier.preprocessing.crawl_ledger import CrawlLedger
 from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import (
     SprakbankenSomaliProcessor,
 )
@@ -413,10 +412,6 @@ class TestFailSafeBehavior:
         # Set ledger to None to simulate failure
         mock_wikipedia_processor.ledger = None
 
-        articles = [
-            {"title": "Article1", "text": "Content1", "timestamp": "2024-01-01T00:00:00Z"},
-            {"title": "Article2", "text": "Content2", "timestamp": "2024-01-02T00:00:00Z"},
-        ]
 
         # Should not raise error, should process all
         last_time = mock_wikipedia_processor._get_last_processing_time()

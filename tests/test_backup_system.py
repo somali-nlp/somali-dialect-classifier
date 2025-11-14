@@ -8,7 +8,6 @@ import json
 import shutil
 import sqlite3
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import pytest
 
@@ -86,7 +85,7 @@ def test_backup_creation(sample_data):
     assert manifest_path.exists()
 
     # Load and verify manifest
-    with open(manifest_path, "r") as f:
+    with open(manifest_path) as f:
         manifest = json.load(f)
 
     assert "timestamp" in manifest
@@ -113,7 +112,7 @@ def test_backup_checksums(sample_data):
 
     # Load manifest
     manifest_path = backup_path / "metadata.json"
-    with open(manifest_path, "r") as f:
+    with open(manifest_path) as f:
         manifest = json.load(f)
 
     # Verify all files have checksums
@@ -169,7 +168,7 @@ def test_list_backups(sample_data):
 
     # Create backups
     backup1 = backup_system.create_backup()
-    
+
     # List backups
     backups = backup_system.list_backups()
 
@@ -286,7 +285,7 @@ def test_restore_list_backups(sample_data):
     backup_system = BackupSystem(
         source_dir=sample_data["data"], backup_dir=sample_data["backup"]
     )
-    backup1 = backup_system.create_backup()
+    backup_system.create_backup()
 
     # List via restore system
     restore_system = RestoreSystem(
