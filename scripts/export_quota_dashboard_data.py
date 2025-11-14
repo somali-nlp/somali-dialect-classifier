@@ -50,8 +50,29 @@ def export_quota_status(
         sqlite3.Error: If database query fails
     """
     # Check if database exists
+    # In CI/CD, database won't exist (gitignored) - create empty data
     if not ledger_path.exists():
-        raise FileNotFoundError(f"Ledger database not found: {ledger_path}")
+        logger.warning(f"Ledger database not found: {ledger_path}")
+        logger.info("Creating empty quota status (expected in CI/CD environment)")
+
+        # Create empty quota status JSON
+        empty_data = {
+            "export_timestamp": datetime.now(timezone.utc).isoformat(),
+            "summary": {
+                "total_quota_hits": 0,
+                "sources_with_quotas": [],
+                "reporting_period_days": days
+            },
+            "daily_usage": [],
+            "quota_hits_by_source": {}
+        }
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, 'w') as f:
+            json.dump(empty_data, f, indent=2)
+
+        logger.info(f"✓ Created empty quota_status.json at {output_path}")
+        return output_path
 
     # Connect to database
     conn = sqlite3.connect(str(ledger_path))
