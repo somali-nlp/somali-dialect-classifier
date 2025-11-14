@@ -88,32 +88,18 @@ function getLatestUsageBySource(dailyUsage) {
  */
 function renderQuotaCard(source, data, quotaHits) {
     const sourceName = normalizeSourceName(source);
-    const usageColor = getUsageColor(data.usage_percent || 0);
     const quotaHitCount = (quotaHits[source] || []).length;
-    const quotaHitBadge = data.quota_hit
-        ? '<span class="quota-hit-badge">Quota Hit</span>'
-        : '';
-
-    const itemsRemainingText = data.items_remaining > 0
-        ? `<p class="items-remaining">${data.items_remaining.toLocaleString()} items remaining</p>`
-        : '';
+    const usagePercent = Math.round(data.usage_percent || 0);
 
     return `
         <article class="roster-card">
-            <div class="quota-card-header">
-                <h3>${sourceName}</h3>
-                ${quotaHitBadge}
-            </div>
-            <div class="quota-usage">
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${Math.min(data.usage_percent, 100)}%; background-color: ${usageColor}"></div>
-                </div>
-                <p class="usage-text">${data.records_ingested.toLocaleString()} / ${data.quota_limit.toLocaleString()} (${data.usage_percent.toFixed(1)}%)</p>
-                ${itemsRemainingText}
-            </div>
-            <div class="quota-stats">
-                <p>Quota hits (30d): ${quotaHitCount}</p>
-            </div>
+            <h3>${sourceName}</h3>
+            <p class="roster-value">${usagePercent}%</p>
+            <p class="roster-caption">
+                ${data.records_ingested.toLocaleString()} / ${data.quota_limit.toLocaleString()}
+                ${data.items_remaining > 0 ? ` · ${data.items_remaining.toLocaleString()} remaining` : ''}
+            </p>
+            ${quotaHitCount > 0 ? `<p class="roster-caption" style="margin-top: 0.5rem;">Quota hits (30d): ${quotaHitCount}</p>` : ''}
         </article>
     `;
 }
@@ -133,18 +119,6 @@ function normalizeSourceName(source) {
         'tiktok': 'TikTok'
     };
     return names[source.toLowerCase()] || source;
-}
-
-/**
- * Get usage color based on percentage
- * Color coding: green (<80%), orange (80-99%), red (100%)
- * @param {number} usagePercent - Usage percentage (0-100)
- * @returns {string} CSS color variable
- */
-function getUsageColor(usagePercent) {
-    if (usagePercent >= 100) return 'var(--error)';      // Red
-    if (usagePercent >= 80) return 'var(--warning)';     // Orange
-    return 'var(--success)';                              // Green
 }
 
 /**

@@ -102,7 +102,7 @@ function renderTableRow(manifest) {
     const quotaHits = manifest.sources_with_quota_hit || [];
 
     const quotaHitsDisplay = quotaHits.length > 0
-        ? quotaHits.map(source => `<span class="quota-hit-badge">${source}</span>`).join(' ')
+        ? quotaHits.join(', ')
         : '—';
 
     return `

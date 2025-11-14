@@ -747,48 +747,6 @@
                     </div>
                 </section>
 
-                <!-- Quota Status Section -->
-                <section class="quota-status-section" aria-label="Quota status monitoring">
-                    <div class="timeline-header">
-                        <div>
-                            <h3 class="section-title">Quota Status</h3>
-                            <p class="timeline-caption">Daily quota usage and limits per source</p>
-                        </div>
-                    </div>
-                    <div id="quota-cards" class="source-roster-grid">
-                        <!-- Cards populated by JavaScript -->
-                    </div>
-                </section>
-
-                <!-- Manifest Analytics Section -->
-                <section class="manifest-analytics-section" aria-label="Ingestion run analytics">
-                    <div class="timeline-header">
-                        <div>
-                            <h3 class="section-title">Recent Ingestion Runs</h3>
-                            <p class="timeline-caption" id="manifest-caption">Orchestration run history and statistics</p>
-                        </div>
-                    </div>
-                    <div id="manifest-summary" class="source-roster-grid" style="margin-bottom: 2rem;">
-                        <!-- Summary cards populated by JavaScript -->
-                    </div>
-                    <div class="comparison-table">
-                        <table>
-                            <caption class="sr-only">Recent Ingestion Runs</caption>
-                            <thead>
-                                <tr>
-                                    <th>Run ID</th>
-                                    <th>Timestamp</th>
-                                    <th>Records</th>
-                                    <th>Quota Hits</th>
-                                </tr>
-                            </thead>
-                            <tbody id="manifest-table-body">
-                                <!-- Populated by JavaScript -->
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
                 <section class="source-relationship-cards" id="sourceBriefings" aria-label="Source relationship overview">
                     <!-- Populated by JavaScript -->
                 </section>
@@ -831,6 +789,48 @@
                     </div>
                     <div class="roadmap-grid" id="integrationRoadmap">
                         <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+
+                <!-- Quota Status Section -->
+                <section class="quota-status-section" aria-label="Quota status monitoring">
+                    <div class="timeline-header">
+                        <div>
+                            <h3 class="section-title">Quota Status</h3>
+                            <p class="timeline-caption">Daily quota usage and limits per source</p>
+                        </div>
+                    </div>
+                    <div id="quota-cards" class="source-roster-grid">
+                        <!-- Cards populated by JavaScript -->
+                    </div>
+                </section>
+
+                <!-- Manifest Analytics Section -->
+                <section class="manifest-analytics-section" aria-label="Ingestion run analytics">
+                    <div class="timeline-header">
+                        <div>
+                            <h3 class="section-title">Recent Ingestion Runs</h3>
+                            <p class="timeline-caption">Orchestration run history and statistics</p>
+                        </div>
+                    </div>
+                    <div id="manifest-summary" class="source-roster-grid" style="margin-bottom: 2rem;">
+                        <!-- Summary cards populated by JavaScript -->
+                    </div>
+                    <div class="comparison-table">
+                        <table>
+                            <caption class="sr-only">Recent Ingestion Runs</caption>
+                            <thead>
+                                <tr>
+                                    <th>Run ID</th>
+                                    <th>Timestamp</th>
+                                    <th>Records</th>
+                                    <th>Quota Hits</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manifest-table-body">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
                     </div>
                 </section>
             </div>

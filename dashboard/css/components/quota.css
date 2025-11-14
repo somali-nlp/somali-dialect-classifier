@@ -1,100 +1,11 @@
 /* ========================================
    QUOTA STATUS COMPONENT STYLES
-   Tableau-inspired design for quota cards
-   Uses existing dashboard patterns
+   Minimal styling - uses existing roster-card pattern
    ======================================== */
 
 /* Quota Section Spacing */
 .quota-status-section {
-    margin-top: 3rem;
+    margin-top: var(--space-12);
 }
 
-/* Quota Cards - use existing source-roster-grid and roster-card */
-/* Grid layout handled by .source-roster-grid in layout.css */
-
-/* Progress Bar */
-.progress-bar {
-    width: 100%;
-    height: 24px;
-    background: var(--gray-100);
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 0.5rem;
-}
-
-.progress-fill {
-    height: 100%;
-    transition: width 0.3s ease;
-    border-radius: 12px;
-}
-
-/* Usage Text */
-.usage-text {
-    font-size: 1rem;
-    color: var(--tableau-text-secondary);
-    margin: 0.5rem 0;
-    font-weight: 500;
-}
-
-/* Items Remaining */
-.items-remaining {
-    font-size: 0.875rem;
-    color: var(--gray-500);
-    margin: 0.25rem 0 0 0;
-}
-
-/* Quota Hit Badge */
-.quota-hit-badge {
-    background: var(--error);
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-/* Quota Stats */
-.quota-stats {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--tableau-gray-border);
-}
-
-.quota-stats p {
-    margin: 0;
-    font-size: 0.875rem;
-    color: var(--tableau-text-secondary);
-}
-
-/* Card Header for Quota Cards */
-.quota-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.quota-card-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--tableau-text-primary);
-}
-
-/* Usage Section */
-.quota-usage {
-    margin-bottom: 1rem;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .quota-card-header {
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-
-    .quota-card-header h3 {
-        font-size: 1.125rem;
-    }
-}
+/* All card styling inherited from .roster-card in cards.css */
