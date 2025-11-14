@@ -327,8 +327,8 @@ Examples:
 
     parser.add_argument(
         "--ledger",
-        default="data/crawl_ledger.db",
-        help="Path to SQLite ledger database (default: data/crawl_ledger.db)"
+        default="data/ledger/crawl_ledger.db",
+        help="Path to SQLite ledger database (default: data/ledger/crawl_ledger.db)"
     )
     parser.add_argument(
         "--manifests",

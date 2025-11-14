@@ -115,7 +115,7 @@ fi
 if [ -f "scripts/export_quota_dashboard_data.py" ]; then
     echo "Exporting quota and manifest data..."
     python3 scripts/export_quota_dashboard_data.py \
-        --ledger data/crawl_ledger.db \
+        --ledger data/ledger/crawl_ledger.db \
         --manifests data/manifests \
         --output-dir dashboard/data \
         --quota-days 30
