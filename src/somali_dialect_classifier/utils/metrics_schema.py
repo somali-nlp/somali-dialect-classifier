@@ -238,6 +238,25 @@ class LegacyMetrics(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class IncrementalFilteringMetrics(BaseModel):
+    """Metrics for incremental filtering based on last processing time."""
+
+    total: int = Field(ge=0, description="Total articles in dump")
+    new: int = Field(ge=0, description="New articles (not previously processed)")
+    skipped: int = Field(ge=0, description="Articles skipped (already processed)")
+    last_processing_time: Optional[str] = Field(default=None, description="Last processing timestamp")
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CustomMetrics(BaseModel):
+    """Custom metrics specific to different pipeline types."""
+
+    incremental_filtering: Optional[IncrementalFilteringMetrics] = None
+
+    model_config = ConfigDict(extra="allow")
+
+
 class Phase3MetricsSchema(BaseModel):
     """
     Complete Phase 3 metrics schema for *_processing.json files.
@@ -254,6 +273,7 @@ class Phase3MetricsSchema(BaseModel):
 
     layered_metrics: LayeredMetrics
     legacy_metrics: LegacyMetrics
+    custom_metrics: Optional[CustomMetrics] = None
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
