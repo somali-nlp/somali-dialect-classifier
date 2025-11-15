@@ -186,11 +186,15 @@ class WikipediaSomaliProcessor(BasePipeline):
         # LEVEL 1: DUMP-LEVEL DEDUPLICATION (HTTP Conditional Requests)
         # Check if dump URL exists in ledger with HTTP metadata (ETag/Last-Modified)
         dump_state = self.ledger.backend.get_url_state(self.dump_url)
-        has_http_metadata = dump_state and (dump_state.get("etag") or dump_state.get("last_modified"))
+        has_http_metadata = dump_state and (
+            dump_state.get("etag") or dump_state.get("last_modified")
+        )
 
         if has_http_metadata and not self.force:
             # Dump URL exists in ledger with HTTP metadata - check if it's changed
-            self.logger.info("Dump URL found in ledger - checking for changes with conditional request...")
+            self.logger.info(
+                "Dump URL found in ledger - checking for changes with conditional request..."
+            )
 
             headers = self.ledger.get_conditional_headers(self.dump_url)
             self.logger.info(f"Conditional headers: {headers}")
@@ -202,7 +206,9 @@ class WikipediaSomaliProcessor(BasePipeline):
 
                 if response.status_code == 304:
                     # Not Modified - dump is identical to what we processed before
-                    self.logger.info("Dump unchanged (304 Not Modified) - skipping download and processing")
+                    self.logger.info(
+                        "Dump unchanged (304 Not Modified) - skipping download and processing"
+                    )
                     self.metrics.increment("dumps_skipped_not_modified")
                     self._export_stage_metrics("discovery")
                     return None  # Signal to skip all processing
@@ -212,11 +218,15 @@ class WikipediaSomaliProcessor(BasePipeline):
                     self.logger.info("Dump changed (200 OK) - downloading new version")
                     new_etag = response.headers.get("ETag")
                     new_last_modified = response.headers.get("Last-Modified")
-                    self.logger.info(f"New ETag: {new_etag}, New Last-Modified: {new_last_modified}")
+                    self.logger.info(
+                        f"New ETag: {new_etag}, New Last-Modified: {new_last_modified}"
+                    )
                     # Continue to download below
 
             except requests.RequestException as e:
-                self.logger.warning(f"Failed to check dump modification status: {e}. Proceeding with download.")
+                self.logger.warning(
+                    f"Failed to check dump modification status: {e}. Proceeding with download."
+                )
 
         # Check if dump file already exists locally
         if self.dump_file.exists() and not self.force:
@@ -245,7 +255,9 @@ class WikipediaSomaliProcessor(BasePipeline):
             etag = response.headers.get("ETag")
             last_modified = response.headers.get("Last-Modified")
 
-            self.logger.info(f"Download metadata - ETag: {etag}, Last-Modified: {last_modified}, Size: {total_size}")
+            self.logger.info(
+                f"Download metadata - ETag: {etag}, Last-Modified: {last_modified}, Size: {total_size}"
+            )
 
             # Track URL discovery and file discovery
             self.ledger.discover_url(
@@ -373,7 +385,9 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.logger.info(f"Parsed {len(raw_articles)} articles from XML dump")
 
         # PHASE 2: ARTICLE-LEVEL DEDUPLICATION (URL filtering)
-        self.logger.info("Phase 2: Article-level deduplication (querying ledger for processed URLs)...")
+        self.logger.info(
+            "Phase 2: Article-level deduplication (querying ledger for processed URLs)..."
+        )
         articles_after_dedup = self._filter_already_processed(raw_articles)
 
         # If no new articles after deduplication, return None

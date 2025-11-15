@@ -465,7 +465,9 @@ class TestDumpLevelDeduplication:
             # Should have made HEAD request with conditional headers
             mock_session.head.assert_called_once()
             call_args = mock_session.head.call_args
-            headers = call_args.kwargs.get("headers", call_args.args[1] if len(call_args.args) > 1 else {})
+            headers = call_args.kwargs.get(
+                "headers", call_args.args[1] if len(call_args.args) > 1 else {}
+            )
             assert "If-None-Match" in headers
             assert headers["If-None-Match"] == "old-etag-12345"
 
@@ -569,7 +571,9 @@ class TestDumpLevelDeduplication:
 
             # Verify headers
             call_args = mock_session.head.call_args
-            headers = call_args.kwargs.get("headers", call_args.args[1] if len(call_args.args) > 1 else {})
+            headers = call_args.kwargs.get(
+                "headers", call_args.args[1] if len(call_args.args) > 1 else {}
+            )
 
             assert "If-None-Match" in headers
             assert headers["If-None-Match"] == '"etag-value-123"'
@@ -581,9 +585,7 @@ class TestDumpLevelDeduplication:
         dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
 
         temp_ledger.discover_url(dump_url, "wikipedia")
-        temp_ledger.mark_fetched(
-            url=dump_url, http_status=200, etag="old-etag", source="wikipedia"
-        )
+        temp_ledger.mark_fetched(url=dump_url, http_status=200, etag="old-etag", source="wikipedia")
 
         # Create mock session
         mock_session = Mock()
