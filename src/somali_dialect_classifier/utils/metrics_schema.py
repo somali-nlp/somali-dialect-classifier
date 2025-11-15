@@ -244,7 +244,9 @@ class IncrementalFilteringMetrics(BaseModel):
     total: int = Field(ge=0, description="Total articles in dump")
     new: int = Field(ge=0, description="New articles (not previously processed)")
     skipped: int = Field(ge=0, description="Articles skipped (already processed)")
-    last_processing_time: Optional[str] = Field(default=None, description="Last processing timestamp")
+    last_processing_time: Optional[str] = Field(
+        default=None, description="Last processing timestamp"
+    )
 
     model_config = ConfigDict(extra="forbid")
 
