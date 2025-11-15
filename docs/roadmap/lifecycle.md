@@ -138,7 +138,7 @@ The Somali Dialect Classifier is a multi-phase project to build a machine learni
 
 #### Baseline Models
 
-1. **Heuristic Classifier**: Lexicon-based (already have dialect_heuristic_filter)
+1. **Heuristic Classifier**: Lexicon-based topic enrichment (already have topic_lexicon_enrichment_filter for topics, NOT dialect classification)
 2. **TF-IDF + Logistic Regression**: Fast, interpretable baseline
 3. **FastText**: Word embeddings + classification
 

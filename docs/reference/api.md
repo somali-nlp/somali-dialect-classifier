@@ -20,7 +20,7 @@ Comprehensive API documentation for the Somali Dialect Classifier preprocessing 
 4. [Filters](#filters)
    - [min_length_filter](#min_length_filter)
    - [langid_filter](#langid_filter)
-   - [dialect_heuristic_filter](#dialect_heuristic_filter)
+   - [topic_lexicon_enrichment_filter](#topic_lexicon_enrichment_filter)
    - [namespace_filter](#namespace_filter)
    - [custom_filter](#custom_filter)
 5. [Record Utilities](#record-utilities)
@@ -294,7 +294,10 @@ def _register_filters(self) -> None:
 **Example**:
 ```python
 def _register_filters(self) -> None:
-    from .filters import min_length_filter, langid_filter
+    from somali_dialect_classifier.preprocessing.filters import (
+        min_length_filter,
+        langid_filter
+    )
 
     self.record_filters.append((min_length_filter, {"threshold": 50}))
     self.record_filters.append((langid_filter, {
@@ -1108,14 +1111,16 @@ print(meta)  # {"detected_lang": "en", "lang_confidence": 0.7}
 
 ---
 
-### dialect_heuristic_filter
+### topic_lexicon_enrichment_filter
 
 **Module**: `somali_dialect_classifier.preprocessing.filters`
 
-Apply dialect heuristics and optionally enrich metadata.
+Enriches metadata with topic markers based on lexicon matching. Previously named `dialect_heuristic_filter` (renamed in Phase B, 2025-11-13).
+
+**Important**: This filter performs topic-based enrichment, NOT dialect classification. It matches text against topic lexicons to identify subject matter. True dialect labels require supervised annotation.
 
 ```python
-def dialect_heuristic_filter(
+def topic_lexicon_enrichment_filter(
     cleaned_text: str,
     ruleset: Dict[str, List[str]],
     enrich_only: bool = True
@@ -1124,29 +1129,30 @@ def dialect_heuristic_filter(
 
 **Parameters**:
 - `cleaned_text` (str): Cleaned text content
-- `ruleset` (Dict[str, List[str]]): Dict mapping dialect names to marker word lists
+- `ruleset` (Dict[str, List[str]]): Dict mapping topic names to lexicon word lists
 - `enrich_only` (bool, optional): If True, always pass but add metadata. Default: True
 
 **Returns**:
 - `passes` (bool): True if markers found OR `enrich_only=True`
-- `metadata_updates` (dict): `{"dialect_markers": {...}, "primary_dialect": str, "total_dialect_markers": int}`
+- `metadata_updates` (dict): `{"dialect_markers": {...}, "primary_dialect": str, "total_dialect_markers": int}` (field names unchanged for backward compatibility)
 
 **Example**:
 ```python
-from somali_dialect_classifier.preprocessing.filters import dialect_heuristic_filter
+from somali_dialect_classifier.preprocessing.filters import topic_lexicon_enrichment_filter
 
+# Define topic lexicons (NOT dialect markers)
 ruleset = {
-    "northern": ["waxaan", "baan", "ayaan"],
-    "southern": ["waan", "aan"]
+    "sports": ["kubadda", "ciyaaryahan", "koob"],
+    "politics": ["dowladda", "madaxweyne", "baarlamaan"]
 }
 
-# Text with northern dialect markers
-text = "Waxaan arkay wadanka baan booqday"
-passes, meta = dialect_heuristic_filter(text, ruleset, enrich_only=True)
+# Text about sports
+text = "Ciyaaryahan kubadda cagta ayaa gool dhalay"
+passes, meta = topic_lexicon_enrichment_filter(text, ruleset, enrich_only=True)
 
 print(passes)  # True (enrich_only=True)
-print(meta["primary_dialect"])  # "northern"
-print(meta["dialect_markers"])  # {"northern": 2, "southern": 0}
+print(meta["primary_dialect"])  # "sports" (topic name, not linguistic dialect)
+print(meta["dialect_markers"])  # {"sports": 2, "politics": 0}
 ```
 
 ---

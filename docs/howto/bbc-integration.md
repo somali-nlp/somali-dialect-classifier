@@ -614,12 +614,12 @@ langid_filter(cleaned_text, allowed_langs={"so"}, confidence_threshold=0.3)
 - Confidence threshold: 0.3 (relaxed for short articles)
 - ~2-3% rejection rate on BBC Somali
 
-### 3. Dialect Heuristic Filter (Enrichment Only)
+### 3. Topic Lexicon Enrichment Filter (Enrichment Only)
 
-**Purpose**: Classify articles by topic using keyword matching
+**Purpose**: Classify articles by topic using keyword matching (NOT dialect classification)
 
 ```python
-dialect_heuristic_filter(cleaned_text, ruleset=TOPIC_LEXICONS, enrich_only=True)
+topic_lexicon_enrichment_filter(cleaned_text, ruleset=TOPIC_LEXICONS, enrich_only=True)
 ```
 
 **Important**: This filter **does NOT reject** articles - it only enriches metadata with topic information.

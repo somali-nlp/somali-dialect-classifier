@@ -277,6 +277,28 @@ class BasePipeline(DataProcessor, ABC):
         """Save processed data (no-op: handled by process() via SilverDatasetWriter)."""
         pass
 
+    def _generate_run_id_for_tracking(self) -> str:
+        """Generate unique run ID for pipeline tracking."""
+        import uuid
+
+        return f"{self.source}_{uuid.uuid4().hex[:12]}"
+
+    def _get_git_commit(self) -> Optional[str]:
+        """Get current git commit hash."""
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd=Path(__file__).parent.parent.parent.parent,
+            )
+            return result.stdout.strip()
+        except Exception:
+            return None
+
     def run(self) -> Path:
         """Template method: download→extract→process. Returns silver Parquet path."""
         self.download()

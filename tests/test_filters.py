@@ -9,7 +9,7 @@ from somali_dialect_classifier.preprocessing.filters import (
     create_news_filters,
     create_wikipedia_filters,
     custom_filter,
-    dialect_heuristic_filter,
+    topic_lexicon_enrichment_filter,
     langid_filter,
     min_length_filter,
     namespace_filter,
@@ -123,8 +123,8 @@ class TestLangidFilter:
         assert meta["lang_confidence"] == 0.0
 
 
-class TestDialectHeuristicFilter:
-    """Tests for dialect/topic heuristic filter."""
+class TestTopicLexiconEnrichmentFilter:
+    """Tests for topic lexicon enrichment filter."""
 
     def test_enriches_with_topic_markers(self):
         """Test that topic markers are detected and added to metadata."""
@@ -134,70 +134,70 @@ class TestDialectHeuristicFilter:
         }
         text = "Kubadda cagta waa ciyaar aad u xiiso badan"
 
-        passes, meta = dialect_heuristic_filter(text, ruleset, enrich_only=True)
+        passes, meta = topic_lexicon_enrichment_filter(text, ruleset, enrich_only=True)
 
         assert passes is True
-        assert "dialect_markers" in meta
-        assert "primary_dialect" in meta
-        assert meta["dialect_markers"]["sports"] > 0
-        assert meta["primary_dialect"] == "sports"
+        assert "topic_markers" in meta
+        assert "primary_topic" in meta
+        assert meta["topic_markers"]["sports"] > 0
+        assert meta["primary_topic"] == "sports"
 
-    def test_identifies_primary_dialect(self):
-        """Test that primary dialect is correctly identified."""
+    def test_identifies_primary_topic(self):
+        """Test that primary topic is correctly identified."""
         ruleset = {
             "sports": ["kubadda"],
             "politics": ["xukuumad", "baarlamaan", "madaxweyne"],
         }
         text = "Xukuumad cusub oo baarlamaan ka dhiganaya madaxweyne"
 
-        passes, meta = dialect_heuristic_filter(text, ruleset, enrich_only=True)
+        passes, meta = topic_lexicon_enrichment_filter(text, ruleset, enrich_only=True)
 
-        assert meta["primary_dialect"] == "politics"
-        assert meta["dialect_markers"]["politics"] == 3
+        assert meta["primary_topic"] == "politics"
+        assert meta["topic_markers"]["politics"] == 3
 
     def test_enrich_only_mode_always_passes(self):
         """Test that enrich_only mode never rejects records."""
         ruleset = {"sports": ["kubadda"]}
         text = "Text with no markers at all"
 
-        passes, meta = dialect_heuristic_filter(text, ruleset, enrich_only=True)
+        passes, meta = topic_lexicon_enrichment_filter(text, ruleset, enrich_only=True)
 
         assert passes is True
-        assert meta["primary_dialect"] == "unknown"
-        assert meta["total_dialect_markers"] == 0
+        assert meta["primary_topic"] == "unknown"
+        assert meta["total_topic_markers"] == 0
 
     def test_filter_mode_rejects_without_markers(self):
         """Test that filter mode rejects records without markers."""
         ruleset = {"sports": ["kubadda"]}
         text = "Text with no markers"
 
-        passes, meta = dialect_heuristic_filter(text, ruleset, enrich_only=False)
+        passes, meta = topic_lexicon_enrichment_filter(text, ruleset, enrich_only=False)
 
         assert passes is False
-        assert meta["primary_dialect"] == "unknown"
+        assert meta["primary_topic"] == "unknown"
 
     def test_filter_mode_passes_with_markers(self):
         """Test that filter mode passes records with markers."""
         ruleset = {"sports": ["kubadda"]}
         text = "Kubadda cagta waa xiiso badan"
 
-        passes, meta = dialect_heuristic_filter(text, ruleset, enrich_only=False)
+        passes, meta = topic_lexicon_enrichment_filter(text, ruleset, enrich_only=False)
 
         assert passes is True
-        assert meta["total_dialect_markers"] > 0
+        assert meta["total_topic_markers"] > 0
 
     def test_case_insensitive_matching(self):
         """Test that marker matching is case-insensitive."""
         ruleset = {"sports": ["kubadda"]}
         text = "KUBADDA CAGTA"  # All caps
 
-        passes, meta = dialect_heuristic_filter(text, ruleset, enrich_only=True)
+        passes, meta = topic_lexicon_enrichment_filter(text, ruleset, enrich_only=True)
 
-        assert meta["dialect_markers"]["sports"] > 0
+        assert meta["topic_markers"]["sports"] > 0
 
     def test_empty_ruleset(self):
         """Test behavior with empty ruleset."""
-        passes, meta = dialect_heuristic_filter("Some text", {}, enrich_only=True)
+        passes, meta = topic_lexicon_enrichment_filter("Some text", {}, enrich_only=True)
 
         assert passes is True
         assert meta == {}
@@ -207,9 +207,16 @@ class TestDialectHeuristicFilter:
         ruleset = {"sports": ["kubadda", "ciyaaryahan", "kooxda"]}
         text = "Kubadda iyo ciyaaryahan kooxda"
 
-        passes, meta = dialect_heuristic_filter(text, ruleset, enrich_only=True)
+        passes, meta = topic_lexicon_enrichment_filter(text, ruleset, enrich_only=True)
 
-        assert meta["dialect_markers"]["sports"] == 3
+        assert meta["topic_markers"]["sports"] == 3
+
+    def test_dialect_heuristic_filter_alias_removed(self):
+        """Ensure legacy dialect_heuristic_filter alias has been completely removed."""
+        from somali_dialect_classifier.preprocessing import filters
+
+        assert not hasattr(filters, 'dialect_heuristic_filter'), \
+            "dialect_heuristic_filter alias should be completely removed (Stage 0.1)"
 
 
 class TestNamespaceFilter:
@@ -319,13 +326,13 @@ class TestConvenienceConstructors:
         assert any("min_length" in f[0].__name__ for f in filters)
         assert any("langid" in f[0].__name__ for f in filters)
 
-    def test_create_news_filters_with_dialect_ruleset(self):
-        """Test news filters with dialect enrichment."""
+    def test_create_news_filters_with_topic_ruleset(self):
+        """Test news filters with topic enrichment."""
         ruleset = {"sports": ["kubadda"], "politics": ["xukuumad"]}
         filters = create_news_filters(dialect_ruleset=ruleset)
 
         assert len(filters) >= 3
-        # Filter renamed from dialect_heuristic_filter to topic_lexicon_enrichment_filter in Phase A
+        # Filter uses topic_lexicon_enrichment_filter for topic enrichment
         assert any(
             "topic_lexicon" in f[0].__name__ or "enrichment" in f[0].__name__ for f in filters
         )

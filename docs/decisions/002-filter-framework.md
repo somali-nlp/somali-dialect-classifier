@@ -67,12 +67,13 @@ def filter_func(cleaned_text: str, **kwargs) -> Tuple[bool, Dict[str, Any]]:
 - **Enriches**: Adds language detection metadata
 - **Use case**: Filter out English/mixed-language content
 
-#### 3. `dialect_heuristic_filter(cleaned_text, ruleset, enrich_only=True)`
-- Scans for dialect/topic markers from lexicon
-- **Returns**: `(passes, {"dialect_markers": {...}, "primary_dialect": str})`
+#### 3. `topic_lexicon_enrichment_filter(cleaned_text, ruleset, enrich_only=True)`
+- Matches text against topic lexicons for enrichment (NOT dialect classification)
+- **Returns**: `(passes, {"dialect_markers": {...}, "primary_dialect": str})` (field names unchanged for compatibility)
 - **Enrichment mode** (`enrich_only=True`): Always passes, adds metadata
 - **Filter mode** (`enrich_only=False`): Rejects if no markers found
-- **Use case**: Topic classification (sports/politics), dialect scoring prep
+- **Use case**: Topic classification (sports/politics), metadata enrichment for downstream analysis
+- **Note**: Previously named `dialect_heuristic_filter` (renamed 2025-11-13)
 
 #### 4. `namespace_filter(title, text, skip_prefixes)`
 - Wikipedia-specific: rejects pages by title prefix
@@ -179,7 +180,10 @@ Filter statistics:
 
 ```python
 def _register_filters(self) -> None:
-    from .filters import min_length_filter, langid_filter
+    from somali_dialect_classifier.preprocessing.filters import (
+        min_length_filter,
+        langid_filter
+    )
 
     self.record_filters.append((min_length_filter, {"threshold": 50}))
     self.record_filters.append((langid_filter, {
@@ -199,7 +203,11 @@ def _register_filters(self) -> None:
 
 ```python
 def _register_filters(self) -> None:
-    from .filters import min_length_filter, langid_filter, dialect_heuristic_filter
+    from somali_dialect_classifier.preprocessing.filters import (
+        min_length_filter,
+        langid_filter,
+        topic_lexicon_enrichment_filter
+    )
 
     self.record_filters.append((min_length_filter, {"threshold": 50}))
     self.record_filters.append((langid_filter, {"allowed_langs": {"so"}, "confidence_threshold": 0.5}))
@@ -210,7 +218,7 @@ def _register_filters(self) -> None:
         "economy": ["dhaqaale", "ganacsiga", "suuq", "lacagta"],
     }
 
-    self.record_filters.append((dialect_heuristic_filter, {
+    self.record_filters.append((topic_lexicon_enrichment_filter, {
         "ruleset": topic_lexicons,
         "enrich_only": True  # Don't filter, just enrich
     }))
@@ -218,7 +226,7 @@ def _register_filters(self) -> None:
 
 **Effect**:
 - Same length/language filtering as Wikipedia
-- **Topic enrichment**: Adds `{"dialect_markers": {"sports": 2, "politics": 0, ...}, "primary_dialect": "sports"}`
+- **Topic enrichment**: Adds `{"dialect_markers": {"sports": 2, "politics": 0, ...}, "primary_dialect": "sports"}` (field names use "dialect" for compatibility, but represent topics)
 - Useful for downstream dialect scoring models
 - `enrich_only=True` means articles pass even without matches
 
@@ -415,7 +423,7 @@ def _extract_records(self) -> Iterator[RawRecord]:
 ```python
 def _register_filters(self) -> None:
     """Register standard filters for HuggingFace datasets."""
-    from .filters import create_hf_filters
+    from somali_dialect_classifier.preprocessing.filters import create_hf_filters
 
     # Use convenience constructor
     for filter_func, kwargs in create_hf_filters(min_length=50):
@@ -490,7 +498,7 @@ class TestDialectHeuristicFilter:
     def test_enriches_with_markers(self):
         ruleset = {"sports": ["kubadda"], "politics": ["xukuumad"]}
         text = "Kubadda cagta waa ciyaar aad u xiiso badan"
-        passes, meta = dialect_heuristic_filter(text, ruleset, enrich_only=True)
+        passes, meta = topic_lexicon_enrichment_filter(text, ruleset, enrich_only=True)
 
         assert passes
         assert meta["dialect_markers"]["sports"] > 0
@@ -499,7 +507,7 @@ class TestDialectHeuristicFilter:
     def test_filters_when_enrich_only_false(self):
         ruleset = {"sports": ["kubadda"]}
         text = "Text with no markers"
-        passes, meta = dialect_heuristic_filter(text, ruleset, enrich_only=False)
+        passes, meta = topic_lexicon_enrichment_filter(text, ruleset, enrich_only=False)
 
         assert not passes
         assert meta["primary_dialect"] == "unknown"
@@ -613,7 +621,10 @@ class Config(BaseSettings):
 
 ```python
 def _register_filters(self) -> None:
-    from .filters import min_length_filter, langid_filter
+    from somali_dialect_classifier.preprocessing.filters import (
+        min_length_filter,
+        langid_filter
+    )
     from ..config import get_config
 
     config = get_config()
@@ -683,7 +694,7 @@ All processors use a pluggable filter framework to ensure silver dataset quality
 - `langid_filter`: Removes non-Somali content (confidence < 50%)
 
 **BBC News**:
-- Additional `dialect_heuristic_filter` for topic enrichment
+- Additional `topic_lexicon_enrichment_filter` for topic enrichment (renamed from `dialect_heuristic_filter`)
 
 ### Custom Filters
 

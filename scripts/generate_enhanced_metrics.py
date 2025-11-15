@@ -28,6 +28,11 @@ from typing import Any, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 try:
+    from somali_dialect_classifier.utils.metrics_aggregation import (
+        extract_consolidated_metric,
+        load_all_processing_metrics,
+        load_metrics_from_file,
+    )
     from somali_dialect_classifier.utils.metrics_comparison import (
         compare_multiple_runs,
         export_comparison_data,
@@ -55,175 +60,16 @@ def load_metrics_from_processing_files(metrics_dir: Path) -> list[dict[str, Any]
     """
     Load all metrics from *_processing.json files.
 
+    This is a thin wrapper around load_all_processing_metrics from the
+    centralized utilities module.
+
     Args:
         metrics_dir: Path to data/metrics directory
 
     Returns:
         List of consolidated metrics
     """
-    all_metrics = []
-
-    if not metrics_dir.exists():
-        print(f"Warning: Metrics directory not found: {metrics_dir}", file=sys.stderr)
-        return all_metrics
-
-    processing_files = sorted(metrics_dir.glob("*_processing.json"))
-
-    if not processing_files:
-        print(f"Warning: No *_processing.json files found in {metrics_dir}", file=sys.stderr)
-        return all_metrics
-
-    for metrics_file in processing_files:
-        try:
-            with open(metrics_file, encoding='utf-8') as f:
-                data = json.load(f)
-
-            metric = extract_consolidated_metric(data, metrics_file.name)
-
-            if metric:
-                all_metrics.append(metric)
-            else:
-                print(f"Skipped {metrics_file.name} (failed extraction)", file=sys.stderr)
-
-        except json.JSONDecodeError as e:
-            print(f"Error parsing {metrics_file.name}: {e}", file=sys.stderr)
-        except Exception as e:
-            print(f"Error processing {metrics_file.name}: {e}", file=sys.stderr)
-
-    return all_metrics
-
-
-def extract_consolidated_metric(data: dict[str, Any], source_file: str) -> Optional[dict[str, Any]]:
-    """
-    Extract consolidated metric from Phase 3 *_processing.json.
-
-    This is imported from generate_consolidated_metrics.py logic.
-    """
-    try:
-        if SCHEMA_VALIDATION_AVAILABLE:
-            validated = validate_processing_json(data)
-
-            source = validated.source
-            run_id = validated.run_id
-
-            layered = validated.layered_metrics
-            legacy = validated.legacy_metrics
-            snapshot = legacy.snapshot
-            stats = legacy.statistics
-
-            quality = layered.quality
-            volume = layered.volume
-
-            metric = {
-                "run_id": run_id,
-                "source": source,
-                "timestamp": validated.timestamp,
-                "duration_seconds": snapshot.duration_seconds,
-                "pipeline_type": validated.pipeline_type,
-
-                # Discovery metrics
-                "urls_discovered": snapshot.urls_discovered,
-                "urls_fetched": snapshot.urls_fetched,
-                "urls_processed": snapshot.urls_processed,
-
-                # Volume metrics
-                "records_written": volume.records_written,
-                "bytes_downloaded": volume.bytes_downloaded,
-                "total_chars": volume.total_chars,
-
-                # Quality metrics
-                "http_request_success_rate": stats.http_request_success_rate or 0,
-                "content_extraction_success_rate": stats.content_extraction_success_rate or 0,
-                "quality_pass_rate": stats.quality_pass_rate or 0,
-                "deduplication_rate": stats.deduplication_rate or 0,
-
-                # Throughput metrics
-                "urls_per_second": stats.throughput.urls_per_second or 0,
-                "bytes_per_second": stats.throughput.bytes_per_second or 0,
-                "records_per_minute": stats.throughput.records_per_minute or 0,
-            }
-
-            # Optional stats
-            if stats.text_length_stats:
-                metric["text_length_stats"] = stats.text_length_stats.model_dump()
-
-            if stats.fetch_duration_stats:
-                metric["fetch_duration_stats"] = stats.fetch_duration_stats.model_dump()
-
-            if quality.filter_breakdown:
-                metric["filter_breakdown"] = quality.filter_breakdown
-
-            # Validate consolidated metric
-            try:
-                ConsolidatedMetric.model_validate(metric)
-            except Exception as e:
-                print(f"Warning: Consolidated metric validation failed for {source_file}: {e}", file=sys.stderr)
-
-            return metric
-
-        else:
-            # Fallback without validation
-            layered = data.get("layered_metrics", {})
-            legacy = data.get("legacy_metrics", {})
-            snapshot = legacy.get("snapshot", {})
-            stats = legacy.get("statistics", {})
-
-            source = data.get("_source") or snapshot.get("source")
-            if not source:
-                print(f"Warning: No source found in {source_file}, skipping", file=sys.stderr)
-                return None
-
-            run_id = data.get("_run_id") or snapshot.get("run_id")
-            if not run_id:
-                print(f"Warning: No run_id found in {source_file}, skipping", file=sys.stderr)
-                return None
-
-            volume = layered.get("volume", {})
-            quality = layered.get("quality", {})
-
-            metric = {
-                "run_id": run_id,
-                "source": source,
-                "timestamp": data.get("_timestamp") or snapshot.get("timestamp", ""),
-                "duration_seconds": snapshot.get("duration_seconds", 0),
-                "pipeline_type": data.get("_pipeline_type", "web_scraping"),
-
-                "urls_discovered": snapshot.get("urls_discovered", 0),
-                "urls_fetched": snapshot.get("urls_fetched", 0),
-                "urls_processed": snapshot.get("urls_processed", 0),
-
-                "records_written": volume.get("records_written", 0),
-                "bytes_downloaded": volume.get("bytes_downloaded", 0),
-                "total_chars": volume.get("total_chars", 0),
-
-                "http_request_success_rate": stats.get("http_request_success_rate", 0),
-                "content_extraction_success_rate": stats.get("content_extraction_success_rate", 0),
-                "quality_pass_rate": stats.get("quality_pass_rate", 0),
-                "deduplication_rate": stats.get("deduplication_rate", 0),
-
-                "urls_per_second": stats.get("throughput", {}).get("urls_per_second", 0),
-                "bytes_per_second": stats.get("throughput", {}).get("bytes_per_second", 0),
-                "records_per_minute": stats.get("throughput", {}).get("records_per_minute", 0),
-            }
-
-            if "text_length_stats" in stats and stats["text_length_stats"]:
-                metric["text_length_stats"] = stats["text_length_stats"]
-
-            if "fetch_duration_stats" in stats and stats["fetch_duration_stats"]:
-                metric["fetch_duration_stats"] = stats["fetch_duration_stats"]
-
-            filter_breakdown = quality.get("filter_breakdown", {})
-            if filter_breakdown:
-                metric["filter_breakdown"] = filter_breakdown
-
-            return metric
-
-    except KeyError as e:
-        print(f"Error: Missing required field in {source_file}: {e}", file=sys.stderr)
-        return None
-    except Exception as e:
-        print(f"Error processing {source_file}: {e}", file=sys.stderr)
-        return None
+    return load_all_processing_metrics(metrics_dir)
 
 
 def generate_cache_key(metrics: list[dict[str, Any]]) -> str:

@@ -230,7 +230,10 @@ class YourSourceSomaliProcessor(BasePipeline):
 
     def _register_filters(self):
         """Register quality filters."""
-        from .filters import min_length_filter, langid_filter
+        from somali_dialect_classifier.preprocessing.filters import (
+            min_length_filter,
+            langid_filter
+        )
 
         self.record_filters.append((min_length_filter, {
             "threshold": self.source_config.min_length_threshold

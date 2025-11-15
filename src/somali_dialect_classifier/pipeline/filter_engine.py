@@ -21,20 +21,40 @@ logger = logging.getLogger(__name__)
 
 class FilterEngine:
     """
-    Executes quality filters and tracks statistics.
+    Execute and manage filters for data quality.
 
-    Decouples filter execution logic from pipeline orchestration.
-    Supports any filter function with signature:
-        (cleaned_text: str, **kwargs) -> (bool, dict[str, Any])
+    The FilterEngine applies registered filters to records and tracks
+    why records are filtered out.
 
     Example:
-        >>> from .filters import min_length_filter, langid_filter
-        >>> engine = FilterEngine()
-        >>> engine.register_filter(min_length_filter, {"threshold": 50})
-        >>> engine.register_filter(langid_filter, {"allowed_langs": {"so"}})
-        >>> passed, reason = engine.apply_filters("Short text", cleaned_text="Short text")
-        >>> if not passed:
-        ...     print(f"Filtered: {reason}")
+        ```python
+        from somali_dialect_classifier.preprocessing.filters import (
+            min_length_filter,
+            topic_lexicon_enrichment_filter
+        )
+        from somali_dialect_classifier.pipeline.filter_engine import FilterEngine
+
+        engine = FilterEngine()
+
+        # Register filters
+        engine.register_filter(min_length_filter, {'min_length': 10})
+        engine.register_filter(topic_lexicon_enrichment_filter)
+
+        # Apply to records
+        filtered_records = engine.apply_filters(records)
+
+        # Check statistics
+        stats = engine.get_statistics()
+        print(f"Filtered: {stats['total_filtered']}")
+        print(f"Reasons: {stats['filter_reasons']}")
+        ```
+
+    **Note:** Filter import paths will change in a future release when
+    preprocessing module is reorganized. Check documentation for updates.
+
+    Attributes:
+        filters (list): List of registered filter functions
+        filter_reasons (dict): Count of records filtered by each reason
     """
 
     def __init__(self):
@@ -44,15 +64,18 @@ class FilterEngine:
 
     def register_filter(self, filter_func: Callable, kwargs: dict[str, Any] = None) -> None:
         """
-        Register a filter function.
+        Register a filter function to be applied.
 
         Args:
-            filter_func: Filter function with signature:
-                (cleaned_text: str, **kwargs) -> (bool, dict[str, Any])
-            kwargs: Keyword arguments to pass to filter function
+            filter_func: Filter function from preprocessing.filters
+            kwargs: Optional dict of filter parameters
 
         Example:
-            >>> engine.register_filter(min_length_filter, {"threshold": 50})
+            ```python
+            from somali_dialect_classifier.preprocessing.filters import min_length_filter
+
+            engine.register_filter(min_length_filter, {'min_length': 10})
+            ```
         """
         self.filters.append((filter_func, kwargs or {}))
 

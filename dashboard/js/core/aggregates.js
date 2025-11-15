@@ -182,8 +182,8 @@ const FALLBACK_FILTER_LABELS = {
     emoji_only_comment: 'Emoji-only comment',
     text_too_short_after_cleanup: 'Very short text (<3 chars)',
 
-    // Dialect/topic filters
-    dialect_heuristic_filter: 'Dialect heuristics',
+    // Topic enrichment filters
+    topic_lexicon_enrichment_filter: 'Topic lexicon enrichment',
 
     // Wikipedia-specific
     namespace_filter: 'Wikipedia namespace exclusion',

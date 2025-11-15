@@ -932,7 +932,7 @@ cat data/metrics/20251101_132706_bbc-somali_e02325d4_extraction.json | jq '.laye
 # {
 #   "min_length_filter": 45,
 #   "langid_filter": 12,
-#   "dialect_heuristic_filter": 3
+#   "topic_lexicon_enrichment_filter": 3
 # }
 ```
 

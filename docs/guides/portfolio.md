@@ -453,7 +453,7 @@ class CustomProcessor(BasePipeline):
         return [
             min_length_filter(threshold=50),
             langid_filter(target_lang="so"),
-            dialect_heuristic_filter()
+            topic_lexicon_enrichment_filter()  # Topic enrichment, NOT dialect classification
         ]
 ```
 

@@ -111,7 +111,7 @@ class BBCSomaliProcessor(BasePipeline):
 
     def _register_filters(self) -> None:
         """Register BBC-specific filters."""
-        from .filters import dialect_heuristic_filter, langid_filter, min_length_filter
+        from .filters import topic_lexicon_enrichment_filter, langid_filter, min_length_filter
 
         # Minimum length threshold for articles
         self.filter_engine.register_filter(min_length_filter, {"threshold": 50})
@@ -122,8 +122,8 @@ class BBCSomaliProcessor(BasePipeline):
             langid_filter, {"allowed_langs": {"so"}, "confidence_threshold": 0.3}
         )
 
-        # Dialect/topic heuristics for enrichment
-        # These help with downstream dialect scoring without filtering
+        # Topic lexicon enrichment (NOT dialect detection)
+        # Enriches records with topic markers for downstream analysis
         topic_lexicons = {
             "sports": ["kubadda", "ciyaaryahan", "kooxda", "tartanka", "garoonka"],
             "politics": ["xukuumad", "madaxweyne", "baarlamaan", "doorasho", "siyaasad"],
@@ -131,7 +131,7 @@ class BBCSomaliProcessor(BasePipeline):
         }
 
         self.filter_engine.register_filter(
-            dialect_heuristic_filter,
+            topic_lexicon_enrichment_filter,
             {
                 "ruleset": topic_lexicons,
                 "enrich_only": True,  # Don't filter, just enrich metadata

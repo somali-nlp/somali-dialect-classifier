@@ -144,7 +144,7 @@ function getFilterCategory(reason) {
 
     // Guard Filters (Amber): Domain-specific heuristics
     const guardFilters = [
-        'dialect_heuristic_filter',
+        'topic_lexicon_enrichment_filter',
         'min_length_filter',
         'namespace_filter',
         'profanity_filter',

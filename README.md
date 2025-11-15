@@ -221,7 +221,7 @@ high_quality = table.filter(table.column("tokens") > 500)
 - `language` - Language code (so)
 - `license` - Data license
 - `tokens` - Token count
-- `source_metadata` - Quality metrics (detected_lang, lang_confidence, dialect_markers)
+- `source_metadata` - Quality metrics (detected_lang, lang_confidence, topic_markers)
 
 See [Silver Schema Reference](docs/reference/silver-schema.md) for complete specification.
 
@@ -269,7 +269,7 @@ All pipelines include pluggable quality filters:
 
 - **min_length_filter** - Reject records below character threshold (default: 50 chars)
 - **langid_filter** - Heuristic Somali language detection
-- **dialect_heuristic_filter** - Topic/dialect marker enrichment
+- **topic_lexicon_enrichment_filter** - Topic marker enrichment (sports, politics, etc.)
 - **namespace_filter** - Wikipedia namespace validation
 
 See [Filters Reference](docs/reference/filters.md) and [Custom Filters Guide](docs/howto/custom-filters.md).

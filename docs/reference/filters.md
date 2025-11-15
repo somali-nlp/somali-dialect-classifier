@@ -35,6 +35,55 @@ Filters are stateless functions that validate and enrich records during pipeline
 
 ---
 
+## Filter Organization
+
+### Current Structure (Stage 0)
+
+Filters are organized across three locations:
+
+**1. Filter Implementations** (`preprocessing/filters.py`)
+- Contains all filter function implementations
+- Import from: `from somali_dialect_classifier.preprocessing.filters import <filter_name>`
+- **Note:** Will move to `quality/filters.py` in Stage 1 restructuring
+
+**2. Filter Catalog** (`pipeline/filters/catalog.py`)
+- Contains filter metadata and labels
+- Provides `get_filter_label()` and `load_filter_catalog()` helpers
+- Import from: `from somali_dialect_classifier.pipeline.filters.catalog import ...`
+
+**3. Filter Engine** (`pipeline/filter_engine.py`)
+- Executes filters and tracks statistics
+- Import from: `from somali_dialect_classifier.pipeline.filter_engine import FilterEngine`
+
+### Import Examples
+
+**Correct (Current):**
+```python
+from somali_dialect_classifier.preprocessing.filters import (
+    min_length_filter,
+    topic_lexicon_enrichment_filter,
+    langid_filter
+)
+from somali_dialect_classifier.pipeline.filter_engine import FilterEngine
+```
+
+**Incorrect:**
+```python
+# ❌ Don't do this - filters not exposed via pipeline.filters
+from somali_dialect_classifier.pipeline.filters import min_length_filter
+```
+
+### Future Changes (Stage 1+)
+
+In Stage 1, the preprocessing module will be reorganized:
+- `preprocessing/filters.py` → `quality/filters.py`
+- Import path will change to: `from somali_dialect_classifier.quality.filters import ...`
+- Filter catalog and engine locations unchanged
+
+We will provide migration guides when this happens.
+
+---
+
 ## Filter Signature
 
 All filters follow this signature:
@@ -267,7 +316,7 @@ The filter recognizes 120+ common Somali words including:
 
 Enriches metadata with topic markers based on lexicon matching. Previously named `dialect_heuristic_filter` (renamed in Phase B, 2025-11-13).
 
-**Important**: This filter performs **topic classification**, not dialect detection. It uses lexicon-based matching to identify subject matter (sports, politics, economy, etc.). The metadata field names include "dialect" for backward compatibility, but semantically represent topics.
+**Important**: This filter performs **topic-based enrichment using lexicon matching**, not dialect classification. It identifies subject matter (sports, politics, economy, etc.) and adds metadata about matched terms. True dialect labels will come from supervised annotation in Stage 2.
 
 #### Signature
 
@@ -659,6 +708,45 @@ assert meta["avg_word_length"] > 0
 
 ---
 
+## Topic Lexicon Enrichment vs. Dialect Classification
+
+**Important:** The `topic_lexicon_enrichment_filter` performs topic-based enrichment using lexicon matching. It does NOT perform dialect classification. True dialect labels will come from supervised annotation in Stage 2.
+
+### What This Filter Does
+
+- Matches text against lexicon terms for topics (formal, religious, sports, politics, etc.)
+- Adds metadata about matched terms to records
+- Enriches data for downstream analysis
+- Uses simple word matching against predefined lexicons
+
+### What This Filter Does NOT Do
+
+- Does NOT classify text into dialect categories (Northern, Southern, Benaadir, etc.)
+- Does NOT provide ground-truth dialect labels
+- Does NOT replace the need for supervised annotation
+- Does NOT use machine learning or linguistic analysis
+
+### Metadata Fields
+
+The filter adds the following metadata fields (note: field names use "dialect" for backward compatibility but represent **topics**, not linguistic dialects):
+
+- `topic_markers`: Dictionary mapping topic names to marker counts (e.g., `{"sports": 3, "politics": 0}`)
+- `primary_topic`: Topic name with the highest marker count (e.g., `"sports"`)
+- `total_topic_markers`: Total count of all matched markers across all topics
+
+**Note:** These are heuristic-based enrichments, not supervised labels. Use this metadata for exploratory analysis, corpus statistics, or as features for downstream ML models. Do not treat `primary_topic` as a ground-truth label.
+
+### Migration from dialect_heuristic_filter
+
+If you are upgrading from earlier versions:
+
+- **Filter name changed**: `dialect_heuristic_filter` → `topic_lexicon_enrichment_filter`
+- **Metadata keys unchanged**: Still use `dialect_markers`, `primary_dialect`, `total_dialect_markers` (for backward compatibility)
+- **Semantics clarified**: These represent **topics** (subject matter), not linguistic dialects
+- **No code changes needed**: Function signature and behavior are identical
+
+---
+
 ## Convenience Constructors
 
 Pre-configured filter chains for common source types.
@@ -751,6 +839,7 @@ from somali_dialect_classifier.preprocessing.filters import (
 class BBCSomaliProcessor(BasePipeline):
     def _register_filters(self):
         """Register filters with correct signature."""
+        # Define topic lexicons (NOT dialect markers)
         topics = {
             "sports": ["kubadda", "ciyaaraha"],
             "politics": ["dowladda", "madaxweyne"],
@@ -768,6 +857,7 @@ class BBCSomaliProcessor(BasePipeline):
             {"allowed_langs": {"so"}, "confidence_threshold": 0.6}
         )
 
+        # Topic enrichment (NOT dialect classification)
         self.filter_engine.register_filter(
             topic_lexicon_enrichment_filter,
             {"ruleset": topics, "enrich_only": True}

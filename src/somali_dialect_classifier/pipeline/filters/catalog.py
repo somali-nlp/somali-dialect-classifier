@@ -57,13 +57,7 @@ FILTER_CATALOG: dict[str, tuple[str, str, str]] = {
     # Domain-specific filters
     "topic_lexicon_enrichment_filter": (
         "Topic Lexicon Enrichment",
-        "Enriches records with topic/domain markers (sports, politics, economy) based on lexicon matching",
-        "enrichment",
-    ),
-    # DEPRECATED: Use topic_lexicon_enrichment_filter instead
-    "dialect_heuristic_filter": (
-        "Topic Lexicon Enrichment (deprecated)",
-        "DEPRECATED: This is actually topic enrichment, not dialect detection. Use topic_lexicon_enrichment_filter",
+        "Enriches records with topic/domain markers (sports, politics, economy) based on lexicon matching. NOT dialect detection - future supervised classification will be separate.",
         "enrichment",
     ),
     "namespace_filter": (

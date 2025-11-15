@@ -25,10 +25,10 @@
       "description": "Text is too short after cleanup (less than 3 characters)",
       "category": "tiktok"
     },
-    "dialect_heuristic_filter": {
-      "label": "Dialect heuristics",
-      "description": "Filtered by dialect classification heuristics",
-      "category": "dialect"
+    "topic_lexicon_enrichment_filter": {
+      "label": "Topic lexicon enrichment",
+      "description": "Enriches records with topic/domain markers (NOT dialect detection)",
+      "category": "enrichment"
     },
     "namespace_filter": {
       "label": "Wikipedia namespace exclusion",
@@ -90,8 +90,8 @@
       "emoji_only_comment",
       "text_too_short_after_cleanup"
     ],
-    "dialect": [
-      "dialect_heuristic_filter"
+    "enrichment": [
+      "topic_lexicon_enrichment_filter"
     ],
     "wikipedia": [
       "namespace_filter"

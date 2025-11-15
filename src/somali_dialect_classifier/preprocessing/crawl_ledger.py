@@ -280,6 +280,45 @@ class LedgerBackend(ABC):
         pass
 
     @abstractmethod
+    def register_pipeline_run(
+        self,
+        run_id: str,
+        source: str,
+        pipeline_type: str,
+        config: Optional[dict] = None,
+        git_commit: Optional[str] = None,
+    ) -> None:
+        """Register a new pipeline run at start."""
+        pass
+
+    @abstractmethod
+    def update_pipeline_run(
+        self,
+        run_id: str,
+        status: Optional[str] = None,
+        records_discovered: Optional[int] = None,
+        records_processed: Optional[int] = None,
+        records_failed: Optional[int] = None,
+        errors: Optional[str] = None,
+        metrics_path: Optional[str] = None,
+        end_time: Optional[datetime] = None,
+    ) -> None:
+        """Update pipeline run with new information."""
+        pass
+
+    @abstractmethod
+    def get_pipeline_run(self, run_id: str) -> Optional[dict]:
+        """Retrieve pipeline run details."""
+        pass
+
+    @abstractmethod
+    def get_pipeline_runs_history(
+        self, source: str, limit: int = 10
+    ) -> list[dict[str, Any]]:
+        """Get recent pipeline runs for a source."""
+        pass
+
+    @abstractmethod
     def get_last_successful_run(self, source: str) -> Optional[datetime]:
         """Get timestamp of last successful pipeline run for source."""
         pass
@@ -443,6 +482,27 @@ class SQLiteLedger(LedgerBackend):
             )
         """)
 
+        # Pipeline runs tracking table for accurate scheduling
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS pipeline_runs (
+                run_id TEXT PRIMARY KEY,
+                source TEXT NOT NULL,
+                pipeline_type TEXT NOT NULL,
+                start_time TIMESTAMP NOT NULL,
+                end_time TIMESTAMP,
+                status TEXT NOT NULL,
+                records_discovered INTEGER DEFAULT 0,
+                records_processed INTEGER DEFAULT 0,
+                records_failed INTEGER DEFAULT 0,
+                errors TEXT,
+                metrics_path TEXT,
+                config_snapshot TEXT,
+                git_commit TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         # Create indexes for performance
         conn.execute("CREATE INDEX IF NOT EXISTS idx_source_state ON crawl_ledger(source, state)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_text_hash ON crawl_ledger(text_hash)")
@@ -451,6 +511,11 @@ class SQLiteLedger(LedgerBackend):
         conn.execute("CREATE INDEX IF NOT EXISTS idx_discovered_at ON crawl_ledger(discovered_at)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_updated_at ON crawl_ledger(updated_at)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_quota_date ON daily_quotas(date, source)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pipeline_runs_source ON pipeline_runs(source)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pipeline_runs_status ON pipeline_runs(status)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pipeline_runs_start_time ON pipeline_runs(start_time)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pipeline_runs_end_time ON pipeline_runs(end_time)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pipeline_runs_source_status ON pipeline_runs(source, status)")
 
     def upsert_url(
         self,
@@ -941,9 +1006,164 @@ class SQLiteLedger(LedgerBackend):
 
         return remaining > 0, max(0, remaining)
 
+    def register_pipeline_run(
+        self,
+        run_id: str,
+        source: str,
+        pipeline_type: str,
+        config: Optional[dict] = None,
+        git_commit: Optional[str] = None,
+    ) -> None:
+        """
+        Register a new pipeline run at start.
+
+        Args:
+            run_id: Unique run identifier (UUID or timestamp-based)
+            source: Source name (wikipedia, bbc-somali, etc.)
+            pipeline_type: Type ('web', 'file', 'stream')
+            config: Config snapshot (will be JSON-serialized)
+            git_commit: Git commit hash at run time
+        """
+        now = datetime.now(timezone.utc)
+        config_json = json.dumps(config) if config else None
+
+        with self.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO pipeline_runs (
+                    run_id, source, pipeline_type, start_time, status,
+                    config_snapshot, git_commit, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    run_id,
+                    source,
+                    pipeline_type,
+                    now.isoformat(),
+                    "STARTED",
+                    config_json,
+                    git_commit,
+                    now.isoformat(),
+                    now.isoformat(),
+                ),
+            )
+
+    def update_pipeline_run(
+        self,
+        run_id: str,
+        status: Optional[str] = None,
+        records_discovered: Optional[int] = None,
+        records_processed: Optional[int] = None,
+        records_failed: Optional[int] = None,
+        errors: Optional[str] = None,
+        metrics_path: Optional[str] = None,
+        end_time: Optional[datetime] = None,
+    ) -> None:
+        """
+        Update pipeline run with new information.
+
+        Args:
+            run_id: Run to update
+            status: New status ('RUNNING', 'COMPLETED', 'FAILED')
+            records_discovered: Count of records discovered
+            records_processed: Count successfully processed
+            records_failed: Count failed
+            errors: Error messages (if any)
+            metrics_path: Path to metrics JSON
+            end_time: End timestamp (for completion)
+        """
+        now = datetime.now(timezone.utc)
+
+        # Build update query dynamically based on provided fields
+        updates = []
+        params = []
+
+        if status is not None:
+            updates.append("status = ?")
+            params.append(status)
+
+        if records_discovered is not None:
+            updates.append("records_discovered = ?")
+            params.append(records_discovered)
+
+        if records_processed is not None:
+            updates.append("records_processed = ?")
+            params.append(records_processed)
+
+        if records_failed is not None:
+            updates.append("records_failed = ?")
+            params.append(records_failed)
+
+        if errors is not None:
+            updates.append("errors = ?")
+            params.append(errors)
+
+        if metrics_path is not None:
+            updates.append("metrics_path = ?")
+            params.append(metrics_path)
+
+        if end_time is not None:
+            updates.append("end_time = ?")
+            params.append(end_time.isoformat())
+
+        # Always update updated_at
+        updates.append("updated_at = ?")
+        params.append(now.isoformat())
+
+        # Add run_id for WHERE clause
+        params.append(run_id)
+
+        if updates:
+            with self.transaction() as conn:
+                query = f"UPDATE pipeline_runs SET {', '.join(updates)} WHERE run_id = ?"
+                conn.execute(query, params)
+
+    def get_pipeline_run(self, run_id: str) -> Optional[dict]:
+        """
+        Retrieve pipeline run details.
+
+        Args:
+            run_id: Run identifier
+
+        Returns:
+            dict with all run fields, or None if not found
+        """
+        result = self.connection.execute(
+            "SELECT * FROM pipeline_runs WHERE run_id = ?", (run_id,)
+        ).fetchone()
+
+        if result:
+            return dict(result)
+        return None
+
+    def get_pipeline_runs_history(
+        self, source: str, limit: int = 10
+    ) -> list[dict[str, Any]]:
+        """
+        Get recent pipeline runs for a source.
+
+        Args:
+            source: Source name
+            limit: Max number of runs to return
+
+        Returns:
+            List of run dicts, most recent first
+        """
+        query = """
+            SELECT * FROM pipeline_runs
+            WHERE source = ?
+            ORDER BY start_time DESC
+            LIMIT ?
+        """
+
+        results = self.connection.execute(query, (source, limit)).fetchall()
+        return [dict(row) for row in results]
+
     def get_last_successful_run(self, source: str) -> Optional[datetime]:
         """
         Get timestamp of last successful pipeline run.
+
+        CRITICAL METHOD - Used by orchestration scheduling.
 
         Args:
             source: Data source identifier
@@ -952,12 +1172,12 @@ class SQLiteLedger(LedgerBackend):
             Datetime of last successful run, or None if never run
         """
         query = """
-            SELECT MAX(updated_at) as last_run_time
-            FROM crawl_ledger
-            WHERE source = ? AND state = ?
+            SELECT MAX(end_time) as last_run_time
+            FROM pipeline_runs
+            WHERE source = ? AND status = ?
         """
 
-        result = self.connection.execute(query, (source, CrawlState.PROCESSED.value)).fetchone()
+        result = self.connection.execute(query, (source, "COMPLETED")).fetchone()
 
         if result and result["last_run_time"]:
             return datetime.fromisoformat(result["last_run_time"].replace("Z", "+00:00"))
@@ -967,6 +1187,8 @@ class SQLiteLedger(LedgerBackend):
         """
         Get timestamp of first successful pipeline run.
 
+        CRITICAL METHOD - Used by orchestration scheduling.
+
         Args:
             source: Data source identifier
 
@@ -974,12 +1196,12 @@ class SQLiteLedger(LedgerBackend):
             Datetime of first successful run, or None if never run
         """
         query = """
-            SELECT MIN(updated_at) as first_run_time
-            FROM crawl_ledger
-            WHERE source = ? AND state = ?
+            SELECT MIN(end_time) as first_run_time
+            FROM pipeline_runs
+            WHERE source = ? AND status = ?
         """
 
-        result = self.connection.execute(query, (source, CrawlState.PROCESSED.value)).fetchone()
+        result = self.connection.execute(query, (source, "COMPLETED")).fetchone()
 
         if result and result["first_run_time"]:
             return datetime.fromisoformat(result["first_run_time"].replace("Z", "+00:00"))
@@ -1430,6 +1652,124 @@ class CrawlLedger:
             ...     print("Daily quota reached!")
         """
         return self.backend.check_quota_available(source, quota_limit, date)
+
+    def register_pipeline_run(
+        self,
+        run_id: str,
+        source: str,
+        pipeline_type: str,
+        config: Optional[dict] = None,
+        git_commit: Optional[str] = None,
+    ) -> None:
+        """
+        Register a new pipeline run at start.
+
+        Args:
+            run_id: Unique run identifier
+            source: Source name
+            pipeline_type: Type ('web', 'file', 'stream')
+            config: Config snapshot (will be JSON-serialized)
+            git_commit: Git commit hash at run time
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> ledger.register_pipeline_run(
+            ...     run_id="wikipedia_abc123",
+            ...     source="wikipedia",
+            ...     pipeline_type="web",
+            ...     config={"quota": 1000}
+            ... )
+        """
+        return self.backend.register_pipeline_run(
+            run_id=run_id,
+            source=source,
+            pipeline_type=pipeline_type,
+            config=config,
+            git_commit=git_commit,
+        )
+
+    def update_pipeline_run(
+        self,
+        run_id: str,
+        status: Optional[str] = None,
+        records_discovered: Optional[int] = None,
+        records_processed: Optional[int] = None,
+        records_failed: Optional[int] = None,
+        errors: Optional[str] = None,
+        metrics_path: Optional[str] = None,
+        end_time: Optional[datetime] = None,
+    ) -> None:
+        """
+        Update pipeline run with new information.
+
+        Args:
+            run_id: Run to update
+            status: New status ('RUNNING', 'COMPLETED', 'FAILED')
+            records_discovered: Count of records discovered
+            records_processed: Count successfully processed
+            records_failed: Count failed
+            errors: Error messages (if any)
+            metrics_path: Path to metrics JSON
+            end_time: End timestamp (for completion)
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> ledger.update_pipeline_run(
+            ...     run_id="wikipedia_abc123",
+            ...     status="COMPLETED",
+            ...     records_processed=150,
+            ...     end_time=datetime.now(timezone.utc)
+            ... )
+        """
+        return self.backend.update_pipeline_run(
+            run_id=run_id,
+            status=status,
+            records_discovered=records_discovered,
+            records_processed=records_processed,
+            records_failed=records_failed,
+            errors=errors,
+            metrics_path=metrics_path,
+            end_time=end_time,
+        )
+
+    def get_pipeline_run(self, run_id: str) -> Optional[dict]:
+        """
+        Retrieve pipeline run details.
+
+        Args:
+            run_id: Run identifier
+
+        Returns:
+            dict with all run fields, or None if not found
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> run = ledger.get_pipeline_run("wikipedia_abc123")
+            >>> if run:
+            ...     print(f"Status: {run['status']}")
+        """
+        return self.backend.get_pipeline_run(run_id)
+
+    def get_pipeline_runs_history(
+        self, source: str, limit: int = 10
+    ) -> list[dict[str, Any]]:
+        """
+        Get recent pipeline runs for a source.
+
+        Args:
+            source: Source name
+            limit: Max number of runs to return
+
+        Returns:
+            List of run dicts, most recent first
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> history = ledger.get_pipeline_runs_history("wikipedia", limit=5)
+            >>> for run in history:
+            ...     print(f"{run['run_id']}: {run['status']}")
+        """
+        return self.backend.get_pipeline_runs_history(source, limit)
 
     def get_last_successful_run(self, source: str) -> Optional[datetime]:
         """

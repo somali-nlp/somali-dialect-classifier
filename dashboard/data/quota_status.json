@@ -1,10 +1,73 @@
 {
-  "export_timestamp": "2025-11-15T04:43:12.347218Z",
+  "export_timestamp": "2025-11-15T13:53:21.748930Z",
   "summary": {
-    "total_quota_hits": 0,
-    "sources_with_quotas": [],
+    "total_quota_hits": 1,
+    "sources_with_quotas": [
+      "bbc-somali",
+      "huggingface-somali",
+      "sprakbanken-somali"
+    ],
     "reporting_period_days": 30
   },
-  "daily_usage": [],
-  "quota_hits_by_source": {}
+  "daily_usage": [
+    {
+      "date": "2025-11-15",
+      "source": "bbc-somali",
+      "records_ingested": 280,
+      "quota_limit": 350,
+      "items_remaining": 70,
+      "quota_hit": true,
+      "usage_percent": 80.0
+    },
+    {
+      "date": "2025-11-15",
+      "source": "huggingface-somali",
+      "records_ingested": 850,
+      "quota_limit": 1000,
+      "items_remaining": 0,
+      "quota_hit": false,
+      "usage_percent": 85.0
+    },
+    {
+      "date": "2025-11-15",
+      "source": "sprakbanken-somali",
+      "records_ingested": 450,
+      "quota_limit": 2000,
+      "items_remaining": 0,
+      "quota_hit": false,
+      "usage_percent": 22.5
+    },
+    {
+      "date": "2025-11-14",
+      "source": "bbc-somali",
+      "records_ingested": 340,
+      "quota_limit": 350,
+      "items_remaining": 0,
+      "quota_hit": false,
+      "usage_percent": 97.1
+    },
+    {
+      "date": "2025-11-14",
+      "source": "huggingface-somali",
+      "records_ingested": 920,
+      "quota_limit": 1000,
+      "items_remaining": 0,
+      "quota_hit": false,
+      "usage_percent": 92.0
+    },
+    {
+      "date": "2025-11-14",
+      "source": "sprakbanken-somali",
+      "records_ingested": 380,
+      "quota_limit": 2000,
+      "items_remaining": 0,
+      "quota_hit": false,
+      "usage_percent": 19.0
+    }
+  ],
+  "quota_hits_by_source": {
+    "bbc-somali": [
+      "2025-11-15"
+    ]
+  }
 }

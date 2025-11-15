@@ -130,11 +130,11 @@ function getFallbackCatalog() {
                 category: 'tiktok'
             },
 
-            // Dialect/topic filters
-            dialect_heuristic_filter: {
-                label: 'Dialect heuristics',
-                description: 'Filtered by dialect-based heuristics',
-                category: 'dialect'
+            // Topic enrichment filters
+            topic_lexicon_enrichment_filter: {
+                label: 'Topic lexicon enrichment',
+                description: 'Enriches records with topic/domain markers (NOT dialect detection)',
+                category: 'enrichment'
             },
 
             // Wikipedia-specific
@@ -193,7 +193,7 @@ function getFallbackCatalog() {
             language: ['langid_filter'],
             cleaning: ['empty_after_cleaning'],
             tiktok: ['emoji_only_comment', 'text_too_short_after_cleanup'],
-            dialect: ['dialect_heuristic_filter'],
+            enrichment: ['topic_lexicon_enrichment_filter'],
             wikipedia: ['namespace_filter'],
             quality: ['quality_score_filter', 'profanity_filter', 'toxic_filter',
                      'duplicate_filter', 'stopword_filter'],

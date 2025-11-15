@@ -214,9 +214,9 @@ def filter_func(cleaned_text: str, **kwargs) -> Tuple[bool, Dict[str, Any]]:
    # → (True, {"detected_lang": "so", "lang_confidence": 0.85})
    ```
 
-3. **dialect_heuristic_filter**: Topic marker enrichment
+3. **topic_lexicon_enrichment_filter**: Topic marker enrichment (NOT dialect classification)
    ```python
-   dialect_heuristic_filter(text, ruleset={"sports": ["kubadda", "kooxda"]})
+   topic_lexicon_enrichment_filter(text, ruleset={"sports": ["kubadda", "kooxda"]})
    # → (True, {"dialect_markers": {"sports": 2}, "primary_dialect": "sports"})
    ```
 
@@ -547,7 +547,10 @@ somali-dialect-classifier/
 3. **Register filters**:
    ```python
    def _register_filters(self):
-       from .filters import min_length_filter, langid_filter
+       from somali_dialect_classifier.preprocessing.filters import (
+           min_length_filter,
+           langid_filter
+       )
        self.record_filters.append((min_length_filter, {"threshold": 100}))
        self.record_filters.append((langid_filter, {"confidence_threshold": 0.3}))
    ```

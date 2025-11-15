@@ -571,7 +571,7 @@ The orchestrator automatically collects metrics for all pipelines:
   "quality_filters": {
     "min_length_filter": {"passed": 50, "failed": 0},
     "langid_filter": {"passed": 50, "failed": 0},
-    "dialect_heuristic_filter": {"passed": 50, "failed": 0}
+    "topic_lexicon_enrichment_filter": {"passed": 50, "failed": 0}
   }
 }
 ```

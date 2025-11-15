@@ -51,6 +51,8 @@ def should_run_source(source: str) -> tuple[bool, str]:
     """
     Determine if source should be processed based on refresh cadence.
 
+    FIXED: Now uses pipeline_runs table for accurate scheduling.
+
     Implements Phase 4 smart orchestrator logic per
     analysis-dedup-orchestration-strategy-20251109.md
 
@@ -63,16 +65,17 @@ def should_run_source(source: str) -> tuple[bool, str]:
     from ..config import get_config
 
     config = get_config()
+    ledger = _get_ledger()
 
     # Always run if in initial collection phase
     if is_initial_collection_phase():
         return True, "initial_collection"
 
-    # Get last successful run time from ledger
-    ledger = _get_ledger()
+    # Get last successful run time from pipeline_runs table
     last_run = ledger.get_last_successful_run(source)
 
     if last_run is None:
+        logger.info(f"{source}: Never run before, scheduling run")
         return True, "never_run"
 
     # Check refresh cadence
@@ -80,15 +83,25 @@ def should_run_source(source: str) -> tuple[bool, str]:
     time_since_last = (datetime.now(timezone.utc) - last_run).total_seconds() / 86400
 
     if time_since_last >= cadence_days:
+        logger.info(
+            f"{source}: Last run {time_since_last:.1f} days ago, "
+            f"cadence {cadence_days} days - scheduling run"
+        )
         return True, f"refresh_due (last_run: {time_since_last:.1f} days ago)"
     else:
         days_until_refresh = cadence_days - time_since_last
+        logger.info(
+            f"{source}: Last run {time_since_last:.1f} days ago, "
+            f"cadence {cadence_days} days - skipping"
+        )
         return False, f"refresh_not_due (next in {days_until_refresh:.1f} days)"
 
 
 def is_initial_collection_phase() -> bool:
     """
     Check if we're still in initial 6-day collection phase.
+
+    FIXED: Now uses pipeline_runs table.
 
     During initial collection, all sources run daily regardless of cadence.
     After initial collection completes, sources run per their refresh cadence.
@@ -108,7 +121,7 @@ def is_initial_collection_phase() -> bool:
 
     # Check if any source has never been run
     for source in sources:
-        if ledger.get_last_successful_run(source) is None:
+        if ledger.get_first_successful_run(source) is None:
             return True  # Still in initial collection
 
     # Check if oldest source run is within initial_collection_days window
@@ -183,6 +196,10 @@ def run_wikipedia_task(force: bool = False) -> dict[str, Any]:
     Returns:
         Dictionary with pipeline results and metrics
     """
+    import subprocess
+    import uuid
+
+    from ..config import get_config
     from ..preprocessing.crawl_ledger import CrawlLedger
     from ..preprocessing.wikipedia_somali_processor import WikipediaSomaliProcessor
 
@@ -210,13 +227,49 @@ def run_wikipedia_task(force: bool = False) -> dict[str, Any]:
             "error": str(e),
         }
 
+    # Generate run ID and get git commit
+    run_id = f"wikipedia_{uuid.uuid4().hex[:12]}"
+    try:
+        git_commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except Exception:
+        git_commit = None
+
+    # Get config for pipeline run tracking
+    config = get_config()
+    quota_config = {"quota": config.orchestration.get_quota("wikipedia")}
+
+    # Register pipeline run
+    ledger.register_pipeline_run(
+        run_id=run_id,
+        source="wikipedia",
+        pipeline_type="web",
+        config=quota_config,
+        git_commit=git_commit,
+    )
+
     try:
         # Run pipeline with lock held
+        ledger.update_pipeline_run(run_id=run_id, status="RUNNING")
+
         processor = WikipediaSomaliProcessor(force=force)
         silver_path = processor.run()
 
         # Get statistics from ledger
         stats = processor.ledger.get_statistics("wikipedia")
+        records_processed = stats.get("by_state", {}).get("processed", 0)
+
+        # Mark pipeline run as completed
+        ledger.update_pipeline_run(
+            run_id=run_id,
+            status="COMPLETED",
+            records_processed=records_processed,
+            end_time=datetime.now(timezone.utc),
+        )
 
         return {
             "source": "Wikipedia-Somali",
@@ -226,6 +279,15 @@ def run_wikipedia_task(force: bool = False) -> dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Wikipedia pipeline failed: {e}")
+
+        # Mark pipeline run as failed
+        ledger.update_pipeline_run(
+            run_id=run_id,
+            status="FAILED",
+            errors=str(e),
+            end_time=datetime.now(timezone.utc),
+        )
+
         return {
             "source": "Wikipedia-Somali",
             "status": "failed",

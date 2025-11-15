@@ -16,7 +16,7 @@ The Somali Dialect Classifier employs a comprehensive data pipeline that collect
 - **Crawl Ledger** - Persistent URL state tracking with resume capability and conditional requests
 - **Three-Phase Deduplication** - Phase 1: Discovery-stage ledger checks | Phase 2: Extraction exact+near-duplicate | Phase 3: Cross-dataset LSH persistence
 - **Continuous Streaming** - Checkpoint-based resumption with conditional marker creation (HuggingFace)
-- **Quality Filters** - Pluggable filter framework (length, language, dialect heuristics)
+- **Quality Filters** - Pluggable filter framework (length, language, topic enrichment)
 - **Unified Silver Dataset** - Consistent Parquet schema across all sources
 - **Workflow Orchestration** - Prefect-based coordination for parallel execution
 
@@ -452,7 +452,7 @@ All pipelines use pluggable filters for data quality:
 
 1. **min_length_filter** - Removes short texts
 2. **langid_filter** - Detects and filters non-Somali content
-3. **dialect_heuristic_filter** - Enriches with topic/dialect markers
+3. **topic_lexicon_enrichment_filter** - Enriches with topic markers (sports, politics, etc.)
 4. **namespace_filter** - Wikipedia-specific page filtering
 
 ### Usage Example
@@ -462,7 +462,10 @@ from somali_dialect_classifier.preprocessing.base_pipeline import BasePipeline
 
 class MyProcessor(BasePipeline):
     def _register_filters(self):
-        from .filters import min_length_filter, langid_filter
+        from somali_dialect_classifier.preprocessing.filters import (
+            min_length_filter,
+            langid_filter
+        )
 
         # Minimum length (50 characters)
         self.record_filters.append((min_length_filter, {"threshold": 50}))

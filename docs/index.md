@@ -203,7 +203,7 @@ Preparing data for dialect classification models:
 
 **Common Tasks**:
 - **Access silver data**: Read Parquet from `data/processed/silver/`
-- **Add dialect heuristics**: Use `dialect_heuristic_filter`
+- **Add topic enrichment**: Use `topic_lexicon_enrichment_filter`
 - **Enrich metadata**: Filters can add metadata without dropping records
 - **Prepare training data**: Convert Parquet to HuggingFace datasets
 
@@ -266,7 +266,7 @@ All pipelines use pluggable filters for data quality:
 
 1. **min_length_filter** - Removes short texts (<50 chars)
 2. **langid_filter** - Detects and filters non-Somali content
-3. **dialect_heuristic_filter** - Enriches with topic/dialect markers
+3. **topic_lexicon_enrichment_filter** - Enriches with topic markers (sports, politics, etc.)
 4. **namespace_filter** - Wikipedia-specific page filtering
 
 See [Custom Filters Guide](howto/custom-filters.md) for details.

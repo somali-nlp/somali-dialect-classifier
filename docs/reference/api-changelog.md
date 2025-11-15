@@ -544,7 +544,7 @@ None. All v1.0 APIs remain functional in v1.1 (backward compatible).
 
 1. **min_length_filter** - Reject short texts (< 50 chars)
 2. **langid_filter** - Heuristic Somali language detection
-3. **dialect_heuristic_filter** - Topic/dialect marker enrichment
+3. **topic_lexicon_enrichment_filter** - Topic marker enrichment (renamed from dialect_heuristic_filter)
 4. **namespace_filter** - Wikipedia namespace validation (articles only)
 
 **Filter Registration:**

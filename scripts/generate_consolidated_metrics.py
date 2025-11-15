@@ -22,6 +22,11 @@ from pathlib import Path
 from typing import Any, Optional
 
 try:
+    from somali_dialect_classifier.utils.metrics_aggregation import (
+        extract_consolidated_metric,
+        load_all_processing_metrics,
+        load_metrics_from_file,
+    )
     from somali_dialect_classifier.utils.metrics_schema import (
         ConsolidatedMetric,
         ConsolidatedMetricsOutput,
@@ -29,171 +34,20 @@ try:
         validate_processing_json,
     )
     SCHEMA_VALIDATION_AVAILABLE = True
-except ImportError:
-    print("Warning: Schema validation not available. Install with: pip install -e '.[config]'", file=sys.stderr)
+except ImportError as e:
+    print(f"Warning: Could not import utilities: {e}", file=sys.stderr)
+    print("Install with: pip install -e '.[config]'", file=sys.stderr)
     SCHEMA_VALIDATION_AVAILABLE = False
-
-
-def extract_consolidated_metric(data: dict[str, Any], source_file: str) -> Optional[dict[str, Any]]:
-    """
-    Extract consolidated metric from Phase 3 *_processing.json.
-
-    This function properly surfaces layered_metrics and computes
-    derived statistics for dashboard consumption.
-
-    Args:
-        data: Loaded JSON from *_processing.json
-        source_file: Filename for error reporting
-
-    Returns:
-        Consolidated metric dict, or None if extraction fails
-    """
-    try:
-        # Validate schema if available
-        if SCHEMA_VALIDATION_AVAILABLE:
-            validated = validate_processing_json(data)
-
-            # Guard against null sources (stale data)
-            source = validated.source
-            run_id = validated.run_id
-
-            # Access Pydantic model attributes directly
-            layered = validated.layered_metrics
-            legacy = validated.legacy_metrics
-            snapshot = legacy.snapshot
-            stats = legacy.statistics
-
-            quality = layered.quality
-            volume = layered.volume
-        else:
-            # Fallback to dict access
-            layered = data.get("layered_metrics", {})
-            legacy = data.get("legacy_metrics", {})
-            snapshot = legacy.get("snapshot", {})
-            stats = legacy.get("statistics", {})
-
-            # Guard against null sources (stale data)
-            source = data.get("_source") or snapshot.get("source")
-            if not source:
-                print(f"Warning: No source found in {source_file}, skipping", file=sys.stderr)
-                return None
-
-            run_id = data.get("_run_id") or snapshot.get("run_id")
-            if not run_id:
-                print(f"Warning: No run_id found in {source_file}, skipping", file=sys.stderr)
-                return None
-
-            layered.get("connectivity", {})
-            layered.get("extraction", {})
-            quality = layered.get("quality", {})
-            volume = layered.get("volume", {})
-
-        # Build consolidated metric (handle both Pydantic and dict access)
-        if SCHEMA_VALIDATION_AVAILABLE:
-            metric = {
-                "run_id": run_id,
-                "source": source,
-                "timestamp": validated.timestamp,
-                "duration_seconds": snapshot.duration_seconds,
-                "pipeline_type": snapshot.pipeline_type,
-
-                # Discovery metrics (from legacy for backward compatibility)
-                "urls_discovered": snapshot.urls_discovered,
-                "urls_fetched": snapshot.urls_fetched,
-                "urls_processed": snapshot.urls_processed,
-                "records_extracted": snapshot.records_extracted,
-
-                # Volume metrics (from layered_metrics.volume)
-                "records_written": volume.records_written,
-                "bytes_downloaded": volume.bytes_downloaded,
-                "total_chars": volume.total_chars,
-
-                # Quality metrics (from statistics)
-                "http_request_success_rate": stats.http_request_success_rate,
-                "content_extraction_success_rate": stats.content_extraction_success_rate,
-                "quality_pass_rate": stats.quality_pass_rate,
-                "deduplication_rate": stats.deduplication_rate,
-
-                # Throughput metrics (from statistics.throughput)
-                "urls_per_second": stats.throughput.urls_per_second,
-                "bytes_per_second": stats.throughput.bytes_per_second,
-                "records_per_minute": stats.throughput.records_per_minute,
-            }
-
-            # Optional: Include detailed stats
-            if stats.text_length_stats:
-                metric["text_length_stats"] = stats.text_length_stats.model_dump()
-
-            if stats.fetch_duration_stats:
-                metric["fetch_duration_stats"] = stats.fetch_duration_stats.model_dump()
-
-            # Include filter breakdown from quality layer
-            if quality.filter_breakdown:
-                metric["filter_breakdown"] = quality.filter_breakdown
-        else:
-            metric = {
-                "run_id": run_id,
-                "source": source,
-                "timestamp": data.get("_timestamp") or snapshot.get("timestamp", ""),
-                "duration_seconds": snapshot.get("duration_seconds", 0),
-                "pipeline_type": data.get("_pipeline_type") or snapshot.get("pipeline_type", "unknown"),
-
-                # Discovery metrics (from legacy for backward compatibility)
-                "urls_discovered": snapshot.get("urls_discovered", 0),
-                "urls_fetched": snapshot.get("urls_fetched", 0),
-                "urls_processed": snapshot.get("urls_processed", 0),
-                "records_extracted": snapshot.get("records_extracted", 0),
-
-                # Volume metrics (from layered_metrics.volume)
-                "records_written": volume.get("records_written", 0),
-                "bytes_downloaded": volume.get("bytes_downloaded", 0),
-                "total_chars": volume.get("total_chars", 0),
-
-                # Quality metrics (from statistics)
-                "http_request_success_rate": stats.get("http_request_success_rate", 0),
-                "content_extraction_success_rate": stats.get("content_extraction_success_rate", 0),
-                "quality_pass_rate": stats.get("quality_pass_rate", 0),
-                "deduplication_rate": stats.get("deduplication_rate", 0),
-
-                # Throughput metrics (from statistics.throughput)
-                "urls_per_second": stats.get("throughput", {}).get("urls_per_second", 0),
-                "bytes_per_second": stats.get("throughput", {}).get("bytes_per_second", 0),
-                "records_per_minute": stats.get("throughput", {}).get("records_per_minute", 0),
-            }
-
-            # Optional: Include detailed stats
-            if "text_length_stats" in stats and stats["text_length_stats"]:
-                metric["text_length_stats"] = stats["text_length_stats"]
-
-            if "fetch_duration_stats" in stats and stats["fetch_duration_stats"]:
-                metric["fetch_duration_stats"] = stats["fetch_duration_stats"]
-
-            # Include filter breakdown from quality layer
-            filter_breakdown = quality.get("filter_breakdown", {})
-            if filter_breakdown:
-                metric["filter_breakdown"] = filter_breakdown
-
-        # Validate consolidated metric if schema available
-        if SCHEMA_VALIDATION_AVAILABLE:
-            try:
-                ConsolidatedMetric.model_validate(metric)
-            except Exception as e:
-                print(f"Warning: Consolidated metric validation failed for {source_file}: {e}", file=sys.stderr)
-                # Continue anyway, but log the issue
-
-        return metric
-
-    except KeyError as e:
-        print(f"Error: Missing required field in {source_file}: {e}", file=sys.stderr)
-        return None
-    except Exception as e:
-        print(f"Error processing {source_file}: {e}", file=sys.stderr)
-        return None
+    # Module cannot function without utilities
+    sys.exit(1)
 
 
 def load_metrics(metrics_dir: Path) -> list[dict[str, Any]]:
     """
     Load all metrics from individual JSON files.
+
+    This is a thin wrapper around load_all_processing_metrics from the
+    centralized utilities module.
 
     Args:
         metrics_dir: Path to data/metrics directory
@@ -201,35 +55,7 @@ def load_metrics(metrics_dir: Path) -> list[dict[str, Any]]:
     Returns:
         List of consolidated metrics
     """
-    all_metrics = []
-
-    if not metrics_dir.exists():
-        print(f"Warning: Metrics directory not found: {metrics_dir}", file=sys.stderr)
-        return all_metrics
-
-    processing_files = sorted(metrics_dir.glob("*_processing.json"))
-
-    if not processing_files:
-        print(f"Warning: No *_processing.json files found in {metrics_dir}", file=sys.stderr)
-
-    for metrics_file in processing_files:
-        try:
-            with open(metrics_file, encoding='utf-8') as f:
-                data = json.load(f)
-
-            metric = extract_consolidated_metric(data, metrics_file.name)
-
-            if metric:
-                all_metrics.append(metric)
-            else:
-                print(f"Skipped {metrics_file.name} (failed extraction)", file=sys.stderr)
-
-        except json.JSONDecodeError as e:
-            print(f"Error parsing {metrics_file.name}: {e}", file=sys.stderr)
-        except Exception as e:
-            print(f"Error processing {metrics_file.name}: {e}", file=sys.stderr)
-
-    return all_metrics
+    return load_all_processing_metrics(metrics_dir)
 
 
 def generate_summary(metrics: list[dict[str, Any]]) -> dict[str, Any]:

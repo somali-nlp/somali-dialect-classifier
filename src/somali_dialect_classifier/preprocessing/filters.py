@@ -309,9 +309,14 @@ def topic_lexicon_enrichment_filter(
     """
     Enrich records with topic markers based on lexicon matching.
 
+    IMPORTANT: This filter performs TOPIC ENRICHMENT, NOT DIALECT DETECTION.
+    It identifies domain/topic indicators (sports, politics, economy) based on
+    keyword matching. Future supervised dialect classification will be implemented
+    separately in Stage 2+.
+
     Scans text for topic/domain markers from lexicon lists (e.g., sports,
     politics, economy). Primarily used for metadata enrichment rather than
-    filtering. Can be used for dialect markers but is NOT a dialect detector.
+    filtering.
 
     Args:
         cleaned_text: Cleaned text content
@@ -323,44 +328,45 @@ def topic_lexicon_enrichment_filter(
     Returns:
         (passes, metadata_updates)
         - passes: True if markers found OR enrich_only=True
-        - metadata_updates: {"dialect_markers": {...}, "primary_dialect": str}
-                            Note: Field names preserved for backward compatibility
+        - metadata_updates: {"topic_markers": {...}, "primary_topic": str, "total_topic_markers": int}
 
     Example:
         >>> ruleset = {"sports": ["kubadda"], "politics": ["xukuumad"]}
         >>> passes, meta = topic_lexicon_enrichment_filter("Kubadda waa ciyaartoy", ruleset)
         >>> passes
         True
-        >>> meta["primary_dialect"]  # Legacy field name, actually primary_topic
+        >>> meta["primary_topic"]
         'sports'
+        >>> meta["topic_markers"]
+        {'sports': 1, 'politics': 0}
     """
     if not ruleset:
         # No ruleset provided, pass through
         return True, {}
 
-    # Count matches for each dialect
-    dialect_counts = dict.fromkeys(ruleset, 0)
+    # Count matches for each topic
+    topic_counts = dict.fromkeys(ruleset, 0)
     text_lower = cleaned_text.lower()
     words = set(text_lower.split())
 
-    for dialect, markers in ruleset.items():
+    for topic, markers in ruleset.items():
         for marker in markers:
             marker_lower = marker.lower()
             # Check for whole word matches
             if marker_lower in words:
-                dialect_counts[dialect] += 1
+                topic_counts[topic] += 1
 
-    # Determine primary dialect
-    total_markers = sum(dialect_counts.values())
-    primary_dialect = "unknown"
+    # Determine primary topic
+    total_markers = sum(topic_counts.values())
+    primary_topic = "unknown"
 
     if total_markers > 0:
-        primary_dialect = max(dialect_counts, key=dialect_counts.get)
+        primary_topic = max(topic_counts, key=topic_counts.get)
 
     metadata_updates = {
-        "dialect_markers": dialect_counts,
-        "primary_dialect": primary_dialect,
-        "total_dialect_markers": total_markers,
+        "topic_markers": topic_counts,
+        "primary_topic": primary_topic,
+        "total_topic_markers": total_markers,
     }
 
     # Pass if markers found OR if enrich_only mode
@@ -536,7 +542,3 @@ def create_hf_filters(
     ]
 
 
-# Backward compatibility alias (deprecated)
-# DEPRECATED: Use topic_lexicon_enrichment_filter instead
-# This alias will be removed in a future version
-dialect_heuristic_filter = topic_lexicon_enrichment_filter

@@ -693,7 +693,7 @@ for raw_record in self._extract_records():
        "sports": ["kubadda", "ciyaaryahan", "kooxda"],
        "politics": ["xukuumad", "madaxweyne", "doorasho"]
    }
-   self.record_filters.append((dialect_heuristic_filter, {
+   self.record_filters.append((topic_lexicon_enrichment_filter, {
        "ruleset": topic_lexicons,
        "enrich_only": True  # Don't reject, just enrich
    }))
@@ -923,7 +923,7 @@ for page in dump:
            "politics": ["xukuumad", "madaxweyne", "baarlamaan"],
            "economy": ["dhaqaale", "ganacsiga", "suuq"]
        }
-       self.record_filters.append((dialect_heuristic_filter, {
+       self.record_filters.append((topic_lexicon_enrichment_filter, {
            "ruleset": topic_lexicons,
            "enrich_only": True
        }))
@@ -1189,7 +1189,7 @@ DEBUG - [Wikipedia-Somali] Built record: id=WIKI_a3f5b2c1d4e6f7a8
 
 **Quarterly**:
 - ✅ Review and update Somali word list (langid_filter)
-- ✅ Add new topic lexicons (dialect_heuristic_filter)
+- ✅ Add new topic lexicons (topic_lexicon_enrichment_filter)
 - ✅ Benchmark performance and optimize
 
 ### Data Retention Policy
