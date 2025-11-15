@@ -236,7 +236,7 @@ class TestCLIIntegration:
             WikipediaSomaliProcessor,
         )
 
-        processor = WikipediaSomaliProcessor()
+        processor = WikipediaSomaliProcessor(force=True)
 
         # Set up fixture
         processor.raw_dir.mkdir(parents=True, exist_ok=True)
