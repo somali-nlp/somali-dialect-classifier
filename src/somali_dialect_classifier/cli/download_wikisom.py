@@ -11,7 +11,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from somali_dialect_classifier.preprocessing import WikipediaSomaliProcessor
+from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import WikipediaSomaliProcessor
 
 
 def _setup_logging() -> None:

@@ -16,9 +16,9 @@ import sqlite3
 
 import pytest
 
-from somali_dialect_classifier.preprocessing.crawl_ledger import CrawlLedger
-from somali_dialect_classifier.preprocessing.dedup import DedupConfig, DedupEngine
-from somali_dialect_classifier.preprocessing.huggingface_somali_processor import (
+from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
+from somali_dialect_classifier.ingestion.processors.huggingface_somali_processor import (
     HuggingFaceSomaliProcessor,
 )
 
@@ -318,11 +318,11 @@ class TestProcessorMetrics:
     """
 
     @pytest.mark.skip(
-        reason="Module somali_dialect_classifier.preprocessing.metrics not implemented"
+        reason="Module somali_dialect_classifier.infra.metrics not implemented"
     )
     def test_discovery_dedup_metric_incremented(self):
         """Test that records_skipped_discovery_dedup metric is incremented."""
-        from somali_dialect_classifier.preprocessing.metrics import ProcessingMetrics
+        from somali_dialect_classifier.infra.metrics import ProcessingMetrics
 
         metrics = ProcessingMetrics(source="test-source", run_id="test-123")
 

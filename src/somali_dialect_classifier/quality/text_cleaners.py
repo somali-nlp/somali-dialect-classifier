@@ -22,7 +22,9 @@ class WikiMarkupCleaner:
         self.link_with_text_pattern = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
         self.simple_link_pattern = re.compile(r"\[\[([^\]]+)\]\]")
         self.external_link_pattern = re.compile(r"\[([^\]]+)\]")
-        self.template_pattern = re.compile(r"{{[^}]+}}")
+        # Match templates/infoboxes - greedy to consume entire template blocks
+        # Simple approach: match from {{ to }} greedily (handles most templates)
+        self.template_pattern = re.compile(r"{{[^}]*}}", re.DOTALL)
         self.ref_pattern = re.compile(r"<ref[^>]*>.*?</ref>", re.DOTALL)
         self.html_pattern = re.compile(r"<[^>]+>")
         self.heading_pattern = re.compile(r"={2,}.*?={2,}")

@@ -1,6 +1,49 @@
 # TikTok Apify Cost Analysis
 
-**Comprehensive cost analysis for TikTok comment scraping via Apify**
+**Comprehensive cost analysis for TikTok comment scraping via Apify, including linguistic yield realities and budget optimization strategies.**
+
+**Last Updated:** 2025-11-21
+
+---
+
+---
+
+## Table of Contents
+
+- [Executive Summary](#executive-summary)
+- [Apify Pricing (Verified)](#apify-pricing-verified)
+- [The Linguistic Comment Reality](#the-linguistic-comment-reality)
+  - [Key Discovery: 67% Emoji-Only Loss](#key-discovery-67-emoji-only-loss)
+  - [What Counts as "Linguistic"?](#what-counts-as-linguistic)
+  - [Why This Matters](#why-this-matters)
+- [Why You Can't Avoid Emoji-Only Comments](#why-you-cant-avoid-emoji-only-comments)
+- [Budget Scenarios](#budget-scenarios)
+  - [Scenario 1: Test Run (1,000 comments)](#scenario-1-test-run-1000-comments)
+  - [Scenario 2: Medium Test (5,000 comments)](#scenario-2-medium-test-5000-comments)
+  - [Scenario 3: Starter Plan Budget ($49)](#scenario-3-starter-plan-budget-49)
+  - [Scenario 4: Full 30k Linguistic Target](#scenario-4-full-30k-linguistic-target)
+- [Cost Optimization Strategies](#cost-optimization-strategies)
+  - [1. Smart Video Selection](#1-smart-video-selection)
+  - [2. Avoid Re-scraping](#2-avoid-re-scraping)
+  - [3. Batch Video Lists](#3-batch-video-lists)
+  - [4. Set Realistic Expectations](#4-set-realistic-expectations)
+- [Cost Monitoring](#cost-monitoring)
+  - [Real-Time Monitoring](#real-time-monitoring)
+  - [Post-Run Analysis](#post-run-analysis)
+- [Budget Planning Timeline](#budget-planning-timeline)
+  - [Phase 1: Testing (Week 1) - $5](#phase-1-testing-week-1-5)
+  - [Phase 2: Production (Week 2) - $44](#phase-2-production-week-2-44)
+  - [Phase 3: Validation (Week 2-3)](#phase-3-validation-week-2-3)
+- [Cost-Saving Checklist](#cost-saving-checklist)
+- [ROI Analysis](#roi-analysis)
+  - [Value Comparison](#value-comparison)
+  - [Time Savings](#time-savings)
+  - [Research Value](#research-value)
+- [Recommendations](#recommendations)
+  - [For Testing Phase](#for-testing-phase)
+  - [For Production Phase](#for-production-phase)
+  - [Budget Discipline](#budget-discipline)
+- [Conclusion](#conclusion)
 
 ---
 
@@ -518,8 +561,10 @@ The 67% emoji-only loss is **unavoidable** - it's a characteristic of TikTok soc
 
 ---
 
-**Related Documentation:**
-- [TikTok Integration Guide](../howto/tiktok-integration.md)
-- [Architecture Report](.claude/reports/arch/arch-tiktok-integration-20251031.md)
+## Related Documentation
 
-**Last Updated:** 2025-10-31
+- [TikTok Integration Guide](../howto/tiktok-integration.md) - Complete TikTok scraping setup and usage
+- [Data Pipeline Architecture](../overview/data-pipeline-architecture.md) - Overall pipeline design
+- [Budget Planning](../roadmap/future-work.md) - Project budget and resource allocation
+
+**Maintainers**: Somali NLP Contributors

@@ -1,4 +1,9 @@
 # Data Pipeline Documentation
+# Data Pipeline Architecture
+
+**Detailed architecture of the data collection and processing pipeline including medallion architecture, deduplication, and state management.**
+
+**Last Updated:** 2025-11-21
 
 Comprehensive guide to the ETL (Extract, Transform, Load) pipeline architecture, data flows, and processing stages.
 
@@ -1213,5 +1218,4 @@ rm -rf data/raw/source=Wikipedia-Somali/date_accessed=2024-12-15/
 
 ---
 
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

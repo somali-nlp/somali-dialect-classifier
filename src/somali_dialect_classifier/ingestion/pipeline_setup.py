@@ -8,14 +8,14 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from ..config import get_config
-from ..data import DataManager
-from ..pipeline.filter_engine import FilterEngine
+from ..infra.config import get_config
+from ..infra.data_manager import DataManager
+from ..quality.filter_engine import FilterEngine
 from ..schema import CURRENT_SCHEMA_VERSION
 from ..schema.validation_service import ValidationService
-from ..utils.logging_utils import StructuredLogger
-from ..utils.security import sanitize_source_name
-from .record_builder import RecordBuilder
+from ..infra.logging_utils import StructuredLogger
+from ..infra.security import sanitize_source_name
+from ..quality.record_builder import RecordBuilder
 
 logger = logging.getLogger(__name__)
 

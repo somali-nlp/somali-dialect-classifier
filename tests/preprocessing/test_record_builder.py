@@ -6,8 +6,8 @@ Verifies silver record construction.
 
 import pytest
 
-from somali_dialect_classifier.preprocessing.raw_record import RawRecord
-from somali_dialect_classifier.preprocessing.record_builder import RecordBuilder
+from somali_dialect_classifier.ingestion.raw_record import RawRecord
+from somali_dialect_classifier.quality.record_builder import RecordBuilder
 
 
 class TestRecordBuilder:

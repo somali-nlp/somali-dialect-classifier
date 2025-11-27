@@ -1,10 +1,25 @@
 # Metrics Reference
 
+**Comprehensive reference for pipeline metrics collection, reporting, and interpretation.**
+
+**Last Updated:** 2025-11-21
+
 Comprehensive reference for pipeline metrics collection, reporting, and interpretation.
 
 ## Overview
 
 All data pipelines collect detailed metrics during execution to track performance, data quality, and pipeline health. Metrics are automatically exported to JSON files and used to generate quality reports.
+
+## MLflow Headline Metrics
+
+A subset of high-level metrics is logged directly to MLflow for dashboarding and health monitoring. These are available immediately after a run completes:
+
+| Metric | Description |
+|--------|-------------|
+| `quality_pass_rate` | Percentage of records passing all quality filters |
+| `records_processed` | Total records processed in this run |
+| `records_written` | Records successfully written to silver dataset |
+| `records_filtered` | Records dropped due to quality filters |
 
 ## Pipeline-Specific Metrics
 
@@ -322,5 +337,38 @@ Quality filtering happens *after* deduplication.
 
 ---
 
-**Last Updated**: 2025-10-26
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Pipeline-Specific Metrics](#pipeline-specific-metrics)
+  - [Web Scraping Pipelines (BBC)](#web-scraping-pipelines-bbc)
+  - [File Processing Pipelines (Wikipedia, Språkbanken)](#file-processing-pipelines-wikipedia-språkbanken)
+  - [Stream Processing Pipelines (HuggingFace)](#stream-processing-pipelines-huggingface)
+- [Common Metrics](#common-metrics)
+  - [Quality Filtering](#quality-filtering)
+  - [Text Statistics](#text-statistics)
+- [Metric Semantics](#metric-semantics)
+- [Accessing Metrics](#accessing-metrics)
+  - [Programmatic Access](#programmatic-access)
+  - [Exported JSON Files](#exported-json-files)
+- [Quality Reports](#quality-reports)
+  - [Report Structure](#report-structure)
+- [Executive Summary](#executive-summary)
+- [Health Indicators](#health-indicators)
+  - [Health Status Thresholds](#health-status-thresholds)
+- [Using Metrics for Debugging](#using-metrics-for-debugging)
+  - [Identifying Issues](#identifying-issues)
+- [Best Practices](#best-practices)
+  - [1. Monitor Trends Over Time](#1-monitor-trends-over-time)
+  - [2. Set Up Alerts](#2-set-up-alerts)
+  - [3. Compare Across Sources](#3-compare-across-sources)
+- [Metric Calculation Details](#metric-calculation-details)
+  - [Success Rates](#success-rates)
+  - [Deduplication Rate](#deduplication-rate)
+  - [Quality Pass Rate](#quality-pass-rate)
+
+---
+
 **Maintainers**: Somali NLP Contributors

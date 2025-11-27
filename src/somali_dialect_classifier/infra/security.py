@@ -18,6 +18,7 @@ ALLOWED_SOURCES = {
     "sprakbanken",
     "sprakbanken-somali",  # Added to match actual processor source name
     "tiktok",
+    "tiktok-somali",  # Added to match silver schema validation requirement
     "huggingface",
     "wikipedia-somali",
 }

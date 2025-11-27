@@ -10,7 +10,7 @@ Shows before/after comparison for each pipeline type to validate:
 
 import pytest
 
-from somali_dialect_classifier.utils.metrics import (
+from somali_dialect_classifier.infra.metrics import (
     MetricsCollector,
     PipelineType,
 )

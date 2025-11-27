@@ -8,31 +8,6 @@ Provides:
 - Statistical analysis of pipeline performance
 - Layered metrics architecture for clear separation of concerns
 - Type-safe metric validation and factory functions
-
-PHASE 1 REFACTORING (2025-10-26):
-- Renamed metrics to be semantically accurate per pipeline type:
-  * Web scraping: http_request_success_rate, content_extraction_success_rate
-  * File processing: file_extraction_success_rate, record_parsing_success_rate
-  * Stream processing: stream_connection_success_rate, record_retrieval_success_rate
-- Fixed BBC test limit bug (only count attempted URLs, not discovered)
-- Added metric semantics metadata for clarity
-- Deprecated old 'fetch_success_rate' (backward compatible for 1 version)
-
-PHASE 2 REFACTORING (2025-10-26):
-- Implemented layered metrics architecture:
-  * Layer 1: Connectivity (can we reach the source?)
-  * Layer 2: Extraction (can we retrieve data? - pipeline-specific)
-  * Layer 3: Quality (does data meet standards?)
-  * Layer 4: Volume (how much data?)
-- Added pipeline-specific extraction metric classes (WebScraping, FileProcessing, Streaming)
-- Each layer has clear purpose and separation of concerns
-
-PHASE 3 REFACTORING (2025-10-26):
-- Added type safety with validation methods for each metric class
-- Created factory functions to prevent mixing metric types
-- Implemented Prometheus export format for observability
-- Added schema versioning for backward compatibility tracking
-- Validation catches logical inconsistencies before export
 """
 
 import json
@@ -62,7 +37,7 @@ class PipelineType(Enum):
 
 
 # ============================================================================
-# PHASE 2: LAYERED METRICS ARCHITECTURE
+# LAYERED METRICS ARCHITECTURE
 # ============================================================================
 # Layer 1: Connectivity - Can we reach the source?
 # Layer 2: Extraction - Can we retrieve data? (pipeline-specific)
@@ -412,7 +387,7 @@ class VolumeMetrics:
 
 
 # ============================================================================
-# PHASE 3: TYPE SAFETY & FACTORY FUNCTIONS
+# TYPE SAFETY & FACTORY FUNCTIONS
 # ============================================================================
 
 
@@ -638,18 +613,7 @@ class MetricSnapshot:
                     (self.urls_deduplicated / total_attempted) if total_attempted > 0 else 0
                 )
 
-                # DEPRECATED: Keep for backward compatibility (1 version)
-                stats["fetch_success_rate"] = stats["http_request_success_rate"]
-                stats["fetch_failure_rate"] = stats["http_request_failure_rate"]
-            else:
-                stats["http_request_success_rate"] = 0
-                stats["content_extraction_success_rate"] = 0
-                stats["http_request_failure_rate"] = 0
-                stats["quality_pass_rate"] = 0
-                stats["deduplication_rate"] = 0
-                # DEPRECATED
-                stats["fetch_success_rate"] = 0
-                stats["fetch_failure_rate"] = 0
+
 
         elif self.pipeline_type == PipelineType.FILE_PROCESSING.value:
             # ============================================================
@@ -697,9 +661,7 @@ class MetricSnapshot:
             else:
                 stats["deduplication_rate"] = 0
 
-            # DEPRECATED: Keep for backward compatibility (1 version)
-            stats["fetch_success_rate"] = stats["file_extraction_success_rate"]
-            stats["fetch_failure_rate"] = stats["file_extraction_failure_rate"]
+
 
         elif self.pipeline_type == PipelineType.STREAM_PROCESSING.value:
             # ============================================================
@@ -747,9 +709,7 @@ class MetricSnapshot:
             else:
                 stats["deduplication_rate"] = 0
 
-            # DEPRECATED: Keep for backward compatibility (1 version)
-            stats["fetch_success_rate"] = stats["stream_connection_success_rate"]
-            stats["fetch_failure_rate"] = 1.0 - stats["stream_connection_success_rate"]
+
         else:
             # Backward compatibility: default to web scraping logic
             total_attempts = self.urls_fetched
@@ -810,7 +770,7 @@ class MetricSnapshot:
 
         # Add metric semantics metadata for clarity
         stats["_metric_semantics"] = self._get_metric_semantics()
-        stats["_deprecation_warnings"] = self._get_deprecation_warnings()
+
 
         # Validate quality_pass_rate is between 0 and 1
         if "quality_pass_rate" in stats:
@@ -844,7 +804,6 @@ class MetricSnapshot:
                 "content_extraction_success_rate": "Content successfully extracted from HTTP responses",
                 "quality_pass_rate": "Records passing quality filters (after deduplication)",
                 "deduplication_rate": "Records filtered as duplicates",
-                "fetch_success_rate": "DEPRECATED: Use http_request_success_rate instead",
             }
         elif self.pipeline_type == PipelineType.FILE_PROCESSING.value:
             return {
@@ -852,7 +811,6 @@ class MetricSnapshot:
                 "record_parsing_success_rate": "Record-level parsing success from extracted files",
                 "quality_pass_rate": "Records passing quality filters (after deduplication)",
                 "deduplication_rate": "Records filtered as duplicates",
-                "fetch_success_rate": "DEPRECATED: Use file_extraction_success_rate instead",
             }
         elif self.pipeline_type == PipelineType.STREAM_PROCESSING.value:
             return {
@@ -861,35 +819,11 @@ class MetricSnapshot:
                 "dataset_coverage_rate": "Fraction of total dataset consumed (if known)",
                 "quality_pass_rate": "Records passing quality filters (after deduplication)",
                 "deduplication_rate": "Records filtered as duplicates",
-                "fetch_success_rate": "DEPRECATED: Use stream_connection_success_rate instead",
             }
         else:
-            return {"fetch_success_rate": "Generic success rate (pipeline type unknown)"}
+            return {}
 
-    def _get_deprecation_warnings(self) -> list[str]:
-        """
-        Return deprecation warnings for old metric names.
 
-        These metrics will be removed in the next major version.
-        """
-        warnings = []
-        if self.pipeline_type == PipelineType.WEB_SCRAPING.value:
-            warnings.append(
-                "fetch_success_rate is deprecated for web scraping. "
-                "Use http_request_success_rate for HTTP success and "
-                "content_extraction_success_rate for content extraction success."
-            )
-        elif self.pipeline_type == PipelineType.FILE_PROCESSING.value:
-            warnings.append(
-                "fetch_success_rate is deprecated for file processing. "
-                "Use file_extraction_success_rate instead."
-            )
-        elif self.pipeline_type == PipelineType.STREAM_PROCESSING.value:
-            warnings.append(
-                "fetch_success_rate is deprecated for stream processing. "
-                "Use stream_connection_success_rate and record_retrieval_success_rate instead."
-            )
-        return warnings
 
     def _percentile(self, data: list[float], percentile: float) -> float:
         """Calculate percentile value."""
@@ -1254,7 +1188,7 @@ class MetricsCollector:
                 metrics_data["_validation_error"] = str(e)
 
         # Add legacy metrics for backward compatibility
-        metrics_data["legacy_metrics"] = {"snapshot": snapshot.to_dict(), "statistics": stats}
+
 
         # Add custom metrics if any
         if self.custom_metrics:

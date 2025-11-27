@@ -1,4 +1,8 @@
-# Testing Documentation
+# Testing Guide
+
+**Comprehensive testing strategy including unit tests, integration tests, and end-to-end validation.**
+
+**Last Updated:** 2025-11-21
 
 Comprehensive guide to the test strategy, test suite architecture, and testing best practices for the Somali Dialect Classifier.
 
@@ -935,5 +939,4 @@ def test_filter():
 
 ---
 
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

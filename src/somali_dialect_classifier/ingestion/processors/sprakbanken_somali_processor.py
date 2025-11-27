@@ -29,14 +29,14 @@ from typing import Any, Optional
 import requests
 from tqdm import tqdm
 
-from ..config import get_config
-from ..utils.http import HTTPSessionFactory
-from ..utils.logging_utils import Timer, set_context
-from ..utils.metrics import MetricsCollector, PipelineType
-from .base_pipeline import BasePipeline, RawRecord
-from .crawl_ledger import get_ledger
-from .dedup import DedupConfig, DedupEngine
-from .text_cleaners import TextCleaningPipeline, create_html_cleaner
+from ...infra.config import get_config
+from ...infra.http import HTTPSessionFactory
+from ...infra.logging_utils import Timer, set_context
+from ...infra.metrics import MetricsCollector, PipelineType
+from ..base_pipeline import BasePipeline, RawRecord
+from ..crawl_ledger import get_ledger
+from ..dedup import DedupConfig, DedupEngine
+from ...quality.text_cleaners import TextCleaningPipeline, create_html_cleaner
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +165,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
         corpus_id: str = "all",
         force: bool = False,
         batch_size: Optional[int] = 5000,
+        run_seed: Optional[str] = None,
     ):
         """
         Initialize Språkbanken processor.
@@ -213,6 +214,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
             log_frequency=1000,
             batch_size=batch_size,
             force=force,
+            run_seed=run_seed,
         )
 
         # Note: StructuredLogger is now initialized in BasePipeline
@@ -236,7 +238,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
     def _register_filters(self) -> None:
         """Register Språkbanken-specific filters."""
-        from .filters import langid_filter, min_length_filter
+        from ...quality.filter_functions import langid_filter, min_length_filter
 
         # Minimum length threshold (from config)
         self.filter_engine.register_filter(
@@ -317,7 +319,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
         Supports multiple URL formats:
         - Korp: https://spraakbanken.gu.se/korp/?mode=somali#?corpus=CORPUS_ID
-        - Download: https://spraakbanken.gu.se/lb/resurser/meningsmangder/CORPUS_ID.xml.bz2
+        - Download: https://spraakbanken.gu.se/resurser/meningsmangder/CORPUS_ID.xml.bz2
 
         Args:
             url: Språkbanken URL
@@ -469,7 +471,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
         # Build full download URLs for filtering
         corpus_urls = [
-            f"https://spraakbanken.gu.se/lb/resurser/meningsmangder/{corpus_id}.xml.bz2"
+            f"https://spraakbanken.gu.se/resurser/meningsmangder/{corpus_id}.xml.bz2"
             for corpus_id in self.corpora_to_process
         ]
 
@@ -517,7 +519,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
             corpus_file = self.raw_dir / f"{corpus_id}.xml.bz2"
             download_url = (
-                f"https://spraakbanken.gu.se/lb/resurser/meningsmangder/{corpus_id}.xml.bz2"
+                f"https://spraakbanken.gu.se/resurser/meningsmangder/{corpus_id}.xml.bz2"
             )
 
             # Download if not exists
@@ -653,6 +655,24 @@ class SprakbankenSomaliProcessor(BasePipeline):
                     self.metrics.record_process_duration(corpus_timer.get_elapsed_ms())
                     self.metrics.increment("records_extracted", texts_count)
                     self.metrics.increment("sentences_extracted", sentences_count)
+
+                    # FIX: Mark empty corpora as processed in ledger
+                    # Empty corpora have 0 texts, so no records are created and no ledger entries
+                    # But we still need to mark them as processed so discovery phase skips them
+                    if texts_count == 0:
+                        # Create synthetic URL for this corpus (same format as in _extract_records)
+                        corpus_url = f"https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}"
+                        if hasattr(self, "ledger") and self.ledger is not None:
+                            self.ledger.mark_processed(
+                                url=corpus_url,
+                                text_hash="",  # Empty corpus has no text
+                                silver_id="",  # Empty corpus has no silver record
+                                minhash_signature=None,
+                                source="sprakbanken-somali",
+                            )
+                            self.logger.info(
+                                f"  ✓ Marked empty corpus as processed: {corpus_id}"
+                            )
 
                     # Increment quota counter (per corpus)
                     if quota_limit is not None:

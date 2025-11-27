@@ -1,5 +1,9 @@
 # Schema Versioning Guide
 
+**Working with schema versioning system for Somali dialect classifier silver layer data.**
+
+**Last Updated:** 2025-11-21
+
 ## Overview
 
 This guide explains how to work with the schema versioning system for the Somali dialect classifier silver layer data.
@@ -392,7 +396,7 @@ df["run_id"] = "legacy_migration_20250115"
 all_valid, validated_df = validator.validate_dataframe(df)
 ```
 
-## See Also
+## Related Documentation
 
 - [Silver Schema Reference](../reference/silver-schema.md) - Full schema specification
 - [Data Pipeline Architecture](../overview/data-pipeline-architecture.md) - Overall pipeline design
@@ -400,6 +404,37 @@ all_valid, validated_df = validator.validate_dataframe(df)
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2025-11-11
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Understanding Schema Versions](#understanding-schema-versions)
+- [Checking Current Schema Version](#checking-current-schema-version)
+  - [In Code](#in-code)
+  - [In Documentation](#in-documentation)
+- [Validating Records](#validating-records)
+  - [Automatic Validation](#automatic-validation)
+  - [Manual Validation](#manual-validation)
+  - [Validation Report](#validation-report)
+- [Creating a New Schema Version (For Future Developers)](#creating-a-new-schema-version-for-future-developers)
+  - [Step 1: Define New Schema Version](#step-1-define-new-schema-version)
+  - [Step 2: Create Migration](#step-2-create-migration)
+  - [Step 3: Register Migration](#step-3-register-migration)
+  - [Step 4: Write Tests](#step-4-write-tests)
+  - [Step 5: Update Documentation](#step-5-update-documentation)
+- [Running Migrations](#running-migrations)
+  - [Automatic Migration on Read](#automatic-migration-on-read)
+  - [Batch Migration Script](#batch-migration-script)
+- [Schema Evolution Best Practices](#schema-evolution-best-practices)
+  - [Non-Breaking Changes (Recommended)](#non-breaking-changes-recommended)
+  - [Breaking Changes (Use Sparingly)](#breaking-changes-use-sparingly)
+  - [Version Numbering](#version-numbering)
+- [Troubleshooting](#troubleshooting)
+  - [Validation Errors](#validation-errors)
+  - [Migration Failures](#migration-failures)
+  - [Missing schema_version Field](#missing-schemaversion-field)
+
+---
+
 **Maintainers**: Somali NLP Contributors

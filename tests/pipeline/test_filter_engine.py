@@ -6,7 +6,7 @@ Verifies filter execution and statistics tracking.
 
 import pytest
 
-from somali_dialect_classifier.pipeline.filter_engine import FilterEngine
+from somali_dialect_classifier.quality.filter_engine import FilterEngine
 
 
 def sample_filter_pass(cleaned_text: str, **kwargs) -> tuple[bool, dict]:

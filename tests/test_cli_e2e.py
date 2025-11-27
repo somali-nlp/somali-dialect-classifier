@@ -116,7 +116,7 @@ class TestCLILogging:
 
     def test_wikipedia_cli_creates_log_file(self, cli_env, capsys, monkeypatch):
         """Test that Wikipedia CLI creates log file."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -132,7 +132,7 @@ class TestCLILogging:
 
     def test_bbc_cli_creates_log_file(self, cli_env, capsys):
         """Test that BBC CLI creates log file."""
-        from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
+        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
 
         # Create processor
         processor = BBCSomaliProcessor()
@@ -147,7 +147,7 @@ class TestCLIDataDirectories:
 
     def test_wikipedia_creates_partitioned_directories(self, cli_env):
         """Test that Wikipedia processor creates partitioned directories."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -159,7 +159,7 @@ class TestCLIDataDirectories:
 
     def test_bbc_creates_partitioned_directories(self, cli_env):
         """Test that BBC processor creates partitioned directories."""
-        from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
+        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
 
         processor = BBCSomaliProcessor()
 
@@ -173,7 +173,7 @@ class TestCLIErrorHandling:
 
     def test_wikipedia_handles_missing_dump_gracefully(self, cli_env, capsys):
         """Test that processor handles missing dump file gracefully."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -188,7 +188,7 @@ class TestCLIErrorHandling:
 
     def test_bbc_handles_missing_staging_gracefully(self, cli_env):
         """Test that BBC processor handles missing staging file gracefully."""
-        from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
+        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
 
         processor = BBCSomaliProcessor()
 
@@ -205,8 +205,8 @@ class TestCLIOutput:
 
     def test_processors_have_consistent_logging_format(self, cli_env, capsys):
         """Test that both processors use consistent logging."""
-        from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -232,7 +232,7 @@ class TestCLIIntegration:
         """Test full Wikipedia pipeline with fixture data."""
         import bz2
 
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -265,7 +265,7 @@ class TestCLIIntegration:
 
     def test_bbc_cli_full_pipeline_with_fixture(self, cli_env, bbc_fixture):
         """Test full BBC pipeline with fixture data."""
-        from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
+        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
 
         processor = BBCSomaliProcessor()
 

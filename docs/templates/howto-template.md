@@ -1,8 +1,46 @@
 # How to [Task Name]
 
-**Difficulty**: Beginner | Intermediate | Advanced
+**Template for creating comprehensive how-to guides with consistent structure and best practices.**
+
+**Last Updated:** 2025-11-21
+
+**Difficulty**: Beginner | Intermediate | Advanced  
 **Time Required**: Approximately X minutes
-**Last Updated**: YYYY-MM-DD
+
+---
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Prerequisites](#prerequisites)
+  - [Required](#required)
+  - [Optional](#optional)
+  - [Assumptions](#assumptions)
+- [Quick Start](#quick-start)
+- [Step-by-Step Guide](#step-by-step-guide)
+  - [Step 1: [Action Name]](#step-1-action-name)
+  - [Step 2: [Action Name]](#step-2-action-name)
+  - [Step 3: [Action Name]](#step-3-action-name)
+- [Complete Example](#complete-example)
+- [Configuration](#configuration)
+  - [Environment Variables](#environment-variables)
+  - [Configuration File](#configuration-file)
+- [Advanced Usage](#advanced-usage)
+  - [Option 1: [Advanced Feature]](#option-1-advanced-feature)
+  - [Option 2: [Another Advanced Feature]](#option-2-another-advanced-feature)
+- [Troubleshooting](#troubleshooting)
+  - [Issue: [Common Problem 1]](#issue-common-problem-1)
+  - [Issue: [Common Problem 2]](#issue-common-problem-2)
+  - [Issue: [Common Problem 3]](#issue-common-problem-3)
+- [Performance Tips](#performance-tips)
+  - [Benchmarks](#benchmarks)
+- [Next Steps](#next-steps)
+  - [Related How-To Guides](#related-how-to-guides)
+  - [Reference Documentation](#reference-documentation)
+  - [External Resources](#external-resources)
+- [Feedback](#feedback)
 
 ---
 
@@ -290,7 +328,7 @@ After completing this guide, you might want to:
 
 ---
 
-## See Also
+## Related Documentation
 
 ### Related How-To Guides
 
@@ -319,6 +357,6 @@ Found an issue with this guide? Please:
 
 ---
 
-**Version**: 1.0
 **Author**: [Your Name]
 **Contributors**: [List contributors]
+**Maintainers**: Somali NLP Contributors

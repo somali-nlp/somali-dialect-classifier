@@ -14,15 +14,15 @@ from pathlib import Path
 
 import pytest
 
-from somali_dialect_classifier.preprocessing.base_pipeline import RawRecord
-from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
-from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+from somali_dialect_classifier.ingestion.base_pipeline import RawRecord
+from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
+from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
     WikipediaSomaliProcessor,
 )
 
 # Optional: HuggingFaceSomaliProcessor requires the datasets library
 try:
-    from somali_dialect_classifier.preprocessing.huggingface_somali_processor import (
+    from somali_dialect_classifier.ingestion.processors.huggingface_somali_processor import (
         HuggingFaceSomaliProcessor,
     )
 

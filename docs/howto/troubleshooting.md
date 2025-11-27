@@ -2,7 +2,7 @@
 
 **Common issues and solutions for the Somali Dialect Classifier project.**
 
-**Last Updated**: 2025-10-20
+**Last Updated:** 2025-11-21
 
 ---
 
@@ -1019,5 +1019,4 @@ When reporting issues, include:
 
 ---
 
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

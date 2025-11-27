@@ -1,8 +1,61 @@
 # Gold Dataset Schema
 
-**Version:** 1.0.0
+**Schema specification for gold-standard annotated datasets (Version 1.0.0).**
+
+**Last Updated:** 2025-11-21
+
 **Last Updated:** 2025-11-15
 **Status:** Specification (Not Yet Implemented)
+
+---
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+  - [Purpose](#purpose)
+  - [Gold vs. Silver](#gold-vs-silver)
+- [Dialect Classification Schema](#dialect-classification-schema)
+  - [Overview](#overview)
+  - [Fields](#fields)
+  - [Dialect Label Values](#dialect-label-values)
+  - [Annotation Method Values](#annotation-method-values)
+  - [Storage Format](#storage-format)
+  - [Example Record](#example-record)
+- [Code-Switch Detection Schema](#code-switch-detection-schema)
+  - [Overview](#overview)
+  - [Approach Options](#approach-options)
+  - [Token-Level Approach (Recommended)](#token-level-approach-recommended)
+    - [Fields](#fields)
+    - [Token Language Tag Values](#token-language-tag-values)
+    - [Example Record (Token-Level)](#example-record-token-level)
+  - [Span-Based Approach (Alternative)](#span-based-approach-alternative)
+    - [Fields](#fields)
+    - [Example Record (Span-Based)](#example-record-span-based)
+  - [Storage Format](#storage-format)
+- [Task Metadata Schema](#task-metadata-schema)
+  - [Purpose](#purpose)
+  - [Fields](#fields)
+  - [Task Name Values](#task-name-values)
+  - [Versioning Strategy](#versioning-strategy)
+- [Dataset Versioning Manifests](#dataset-versioning-manifests)
+  - [Purpose](#purpose)
+  - [Manifest File](#manifest-file)
+  - [Manifest Schema](#manifest-schema)
+  - [Manifest Fields](#manifest-fields)
+- [Data Splits](#data-splits)
+  - [Split Ratios](#split-ratios)
+  - [Split Assignment](#split-assignment)
+- [Quality Assurance](#quality-assurance)
+  - [Schema Validation](#schema-validation)
+  - [Data Quality Checks](#data-quality-checks)
+  - [Documentation Requirements](#documentation-requirements)
+- [Future Extensions](#future-extensions)
+  - [Additional Tasks](#additional-tasks)
+  - [SomaliGLUE Benchmark](#somaliglue-benchmark)
+- [References](#references)
+- [Change Log](#change-log)
 
 ---
 
@@ -453,7 +506,6 @@ Design supports future SomaliGLUE benchmark:
 
 ## References
 
-- **Audit Report:** `.claude/audit-implementation-plan-detailed.md` (§3.1, §6.1 #5)
 - **Silver Schema:** `docs/reference/silver-schema.md`
 - **Metrics Schema:** `docs/reference/metrics-schema.md`
 
@@ -462,3 +514,11 @@ Design supports future SomaliGLUE benchmark:
 ## Change Log
 
 - **2025-11-15:** Initial specification created (Stage 0.5)
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

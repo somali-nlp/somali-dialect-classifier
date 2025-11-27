@@ -1,5 +1,9 @@
 # API Reference
 
+**Comprehensive API documentation for the Somali Dialect Classifier preprocessing pipeline, classes, functions, and usage.**
+
+**Last Updated:** 2025-11-21
+
 Comprehensive API documentation for the Somali Dialect Classifier preprocessing pipeline. This reference covers all public APIs, classes, functions, and their usage.
 
 ## Table of Contents
@@ -664,7 +668,7 @@ processor = create_mc4_processor(max_records=10000)
 processor.run()
 ```
 
-#### See Also
+#### Related Documentation
 
 For comprehensive documentation on HuggingFace integration, including streaming architecture, manifest format, and resume capability, see [HuggingFace Integration Guide](../howto/huggingface-integration.md).
 
@@ -763,7 +767,7 @@ print(f"License: {info['license']}")  # "CC BY 4.0"
 - **QA** (1): kqa
 - **Historical** (4): 1971-79, 1993-94, 2001, mk-1972-79
 
-#### See Also
+#### Related Documentation
 
 For comprehensive documentation on Språkbanken integration, including all 23 corpora, domain mapping, and metadata extraction, see [Språkbanken Integration Guide](../howto/sprakbanken-integration.md).
 
@@ -1574,7 +1578,7 @@ print(df.head())
 
 ---
 
-## See Also
+## Related Documentation
 
 - [Configuration Guide](CONFIGURATION.md) - Environment variables and configuration
 - [Architecture Documentation](ARCHITECTURE.md) - System design patterns
@@ -1584,6 +1588,4 @@ print(df.head())
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

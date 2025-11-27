@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 def _get_ledger():
     """Get ledger instance for orchestrator operations."""
-    from ..preprocessing.crawl_ledger import CrawlLedger
+    from ..ingestion.crawl_ledger import CrawlLedger
 
     # Use CrawlLedger factory which respects SDC_LEDGER_BACKEND env var
     # Automatically selects PostgreSQL or SQLite based on configuration
@@ -62,7 +62,7 @@ def should_run_source(source: str) -> tuple[bool, str]:
     Returns:
         Tuple of (should_run: bool, reason: str)
     """
-    from ..config import get_config
+    from ..infra.config import get_config
 
     config = get_config()
     ledger = _get_ledger()
@@ -99,48 +99,25 @@ def should_run_source(source: str) -> tuple[bool, str]:
 
 def is_initial_collection_phase() -> bool:
     """
-    Check if we're still in initial 6-day collection phase.
+    Check if we're in the initial collection campaign.
 
-    FIXED: Now uses pipeline_runs table.
-
-    During initial collection, all sources run daily regardless of cadence.
-    After initial collection completes, sources run per their refresh cadence.
-
-    Implements Phase 4 smart orchestrator logic per
-    analysis-dedup-orchestration-strategy-20251109.md
-
-    Returns:
-        True if still in initial collection phase, False if in refresh phase
+    Uses the 'campaign_init_001' status in the ledger.
     """
-    from ..config import get_config
-
-    config = get_config()
     ledger = _get_ledger()
-
-    sources = ["bbc", "wikipedia", "tiktok", "sprakbanken", "huggingface"]
-
-    # Check if any source has never been run
-    for source in sources:
-        if ledger.get_first_successful_run(source) is None:
-            return True  # Still in initial collection
-
-    # Check if oldest source run is within initial_collection_days window
-    first_runs = []
-    for source in sources:
-        first_run = ledger.get_first_successful_run(source)
-        if first_run is not None:
-            first_runs.append(first_run)
-
-    if not first_runs:
-        return True  # No runs yet, in initial collection
-
-    oldest_run = min(first_runs)
-    days_since_oldest = (datetime.now(timezone.utc) - oldest_run).total_seconds() / 86400
-
-    if days_since_oldest < config.orchestration.initial_collection_days:
-        return True  # Still within initial collection window
-
-    return False  # Moved to refresh phase
+    status = ledger.get_campaign_status("campaign_init_001")
+    
+    # If campaign doesn't exist, start it
+    if status is None:
+        from ..infra.config import get_config
+        config = get_config()
+        ledger.start_campaign(
+            "campaign_init_001", 
+            "Initial Data Ingestion",
+            {"duration_days": config.orchestration.initial_collection_days}
+        )
+        return True
+        
+    return status == "ACTIVE"
 
 
 def _setup_orchestrator_logging() -> None:
@@ -186,7 +163,7 @@ def _setup_orchestrator_logging() -> None:
 
 
 @task(retries=2, retry_delay_seconds=10)
-def run_wikipedia_task(force: bool = False) -> dict[str, Any]:
+def run_wikipedia_task(force: bool = False, run_seed: Optional[str] = None) -> dict[str, Any]:
     """
     Task to run Wikipedia data collection pipeline.
 
@@ -199,9 +176,9 @@ def run_wikipedia_task(force: bool = False) -> dict[str, Any]:
     import subprocess
     import uuid
 
-    from ..config import get_config
-    from ..preprocessing.crawl_ledger import CrawlLedger
-    from ..preprocessing.wikipedia_somali_processor import WikipediaSomaliProcessor
+    from ..infra.config import get_config
+    from ..ingestion.crawl_ledger import CrawlLedger
+    from ..ingestion.processors.wikipedia_somali_processor import WikipediaSomaliProcessor
 
     logger.info("Starting Wikipedia pipeline...")
 
@@ -256,7 +233,7 @@ def run_wikipedia_task(force: bool = False) -> dict[str, Any]:
         # Run pipeline with lock held
         ledger.update_pipeline_run(run_id=run_id, status="RUNNING")
 
-        processor = WikipediaSomaliProcessor(force=force)
+        processor = WikipediaSomaliProcessor(force=force, run_seed=run_seed)
         silver_path = processor.run()
 
         # Get statistics from ledger
@@ -300,7 +277,9 @@ def run_wikipedia_task(force: bool = False) -> dict[str, Any]:
 
 
 @task(retries=2, retry_delay_seconds=10)
-def run_bbc_task(max_articles: Optional[int] = None, force: bool = False) -> dict[str, Any]:
+def run_bbc_task(
+    max_articles: Optional[int] = None, force: bool = False, run_seed: Optional[str] = None
+) -> dict[str, Any]:
     """
     Task to run BBC Somali data collection pipeline.
 
@@ -311,8 +290,8 @@ def run_bbc_task(max_articles: Optional[int] = None, force: bool = False) -> dic
     Returns:
         Dictionary with pipeline results and metrics
     """
-    from ..preprocessing.bbc_somali_processor import BBCSomaliProcessor
-    from ..preprocessing.crawl_ledger import CrawlLedger
+    from ..ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
+    from ..ingestion.crawl_ledger import CrawlLedger
 
     logger.info("Starting BBC pipeline...")
 
@@ -336,7 +315,7 @@ def run_bbc_task(max_articles: Optional[int] = None, force: bool = False) -> dic
 
     try:
         # Run pipeline with lock held
-        processor = BBCSomaliProcessor(max_articles=max_articles, force=force)
+        processor = BBCSomaliProcessor(max_articles=max_articles, force=force, run_seed=run_seed)
         silver_path = processor.run()
 
         # Get statistics from ledger
@@ -367,6 +346,7 @@ def run_huggingface_task(
     dataset_config: str = "so",
     max_records: Optional[int] = None,
     force: bool = False,
+    run_seed: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Task to run HuggingFace datasets collection pipeline.
@@ -380,8 +360,8 @@ def run_huggingface_task(
     Returns:
         Dictionary with pipeline results and metrics
     """
-    from ..preprocessing.crawl_ledger import CrawlLedger
-    from ..preprocessing.huggingface_somali_processor import HuggingFaceSomaliProcessor
+    from ..ingestion.crawl_ledger import CrawlLedger
+    from ..ingestion.processors.huggingface_somali_processor import HuggingFaceSomaliProcessor
 
     logger.info(f"Starting HuggingFace pipeline: {dataset_name}...")
 
@@ -415,6 +395,7 @@ def run_huggingface_task(
             url_field="url",  # Required for ledger deduplication
             max_records=max_records,
             force=force,
+            run_seed=run_seed,
         )
         silver_path = processor.run()
 
@@ -443,7 +424,9 @@ def run_huggingface_task(
 
 
 @task(retries=2, retry_delay_seconds=10)
-def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> dict[str, Any]:
+def run_sprakbanken_task(
+    corpus_id: str = "all", force: bool = False, run_seed: Optional[str] = None
+) -> dict[str, Any]:
     """
     Task to run Språkbanken corpora collection pipeline.
 
@@ -454,8 +437,8 @@ def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> dict[st
     Returns:
         Dictionary with pipeline results and metrics
     """
-    from ..preprocessing.crawl_ledger import CrawlLedger
-    from ..preprocessing.sprakbanken_somali_processor import SprakbankenSomaliProcessor
+    from ..ingestion.crawl_ledger import CrawlLedger
+    from ..ingestion.processors.sprakbanken_somali_processor import SprakbankenSomaliProcessor
 
     logger.info(f"Starting Språkbanken pipeline: {corpus_id}...")
 
@@ -483,7 +466,7 @@ def run_sprakbanken_task(corpus_id: str = "all", force: bool = False) -> dict[st
 
     try:
         # Run pipeline with lock held
-        processor = SprakbankenSomaliProcessor(corpus_id=corpus_id, force=force)
+        processor = SprakbankenSomaliProcessor(corpus_id=corpus_id, force=force, run_seed=run_seed)
         silver_path = processor.run()
 
         # Get statistics
@@ -514,6 +497,7 @@ def run_tiktok_task(
     apify_api_token: str,
     apify_user_id: Optional[str] = None,
     force: bool = False,
+    run_seed: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Task to run TikTok comments collection pipeline.
@@ -527,8 +511,8 @@ def run_tiktok_task(
     Returns:
         Dictionary with pipeline results and metrics
     """
-    from ..preprocessing.crawl_ledger import CrawlLedger
-    from ..preprocessing.tiktok_somali_processor import TikTokSomaliProcessor
+    from ..ingestion.crawl_ledger import CrawlLedger
+    from ..ingestion.processors.tiktok_somali_processor import TikTokSomaliProcessor
 
     logger.info(f"Starting TikTok pipeline for {len(video_urls)} videos...")
 
@@ -557,6 +541,7 @@ def run_tiktok_task(
             apify_user_id=apify_user_id,
             video_urls=video_urls,
             force=force,
+            run_seed=run_seed,
         )
         silver_path = processor.run()
 
@@ -742,7 +727,7 @@ def run_all_pipelines(
     import uuid
     from datetime import datetime, timezone
 
-    from ..utils.manifest_writer import ManifestWriter
+    from ..infra.manifest_writer import ManifestWriter
 
     # Generate unique run_id for this orchestration run
     run_id = f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
@@ -774,7 +759,7 @@ def run_all_pipelines(
             should_run, reason = should_run_source("wikipedia")
             if should_run:
                 logger.info(f"✅ Running Wikipedia: {reason}")
-                results.append(run_wikipedia_task.submit(force=force))
+                results.append(run_wikipedia_task.submit(force=force, run_seed=run_id))
             else:
                 logger.info(f"⏭️  Skipping Wikipedia: {reason}")
                 skipped_sources.append(("Wikipedia-Somali", reason))
@@ -783,7 +768,11 @@ def run_all_pipelines(
             should_run, reason = should_run_source("bbc")
             if should_run:
                 logger.info(f"✅ Running BBC: {reason}")
-                results.append(run_bbc_task.submit(max_articles=max_bbc_articles, force=force))
+                results.append(
+                    run_bbc_task.submit(
+                        max_articles=max_bbc_articles, force=force, run_seed=run_id
+                    )
+                )
             else:
                 logger.info(f"⏭️  Skipping BBC: {reason}")
                 skipped_sources.append(("BBC-Somali", reason))
@@ -798,6 +787,7 @@ def run_all_pipelines(
                         dataset_config="so",
                         max_records=max_hf_records,
                         force=force,
+                        run_seed=run_id,
                     )
                 )
             else:
@@ -809,7 +799,9 @@ def run_all_pipelines(
             if should_run:
                 logger.info(f"✅ Running Språkbanken: {reason}")
                 results.append(
-                    run_sprakbanken_task.submit(corpus_id=sprakbanken_corpus, force=force)
+                    run_sprakbanken_task.submit(
+                        corpus_id=sprakbanken_corpus, force=force, run_seed=run_id
+                    )
                 )
             else:
                 logger.info(f"⏭️  Skipping Språkbanken: {reason}")
@@ -825,6 +817,7 @@ def run_all_pipelines(
                         apify_api_token=tiktok_api_token,
                         apify_user_id=tiktok_user_id,
                         force=force,
+                        run_seed=run_id,
                     )
                 )
             else:
@@ -845,7 +838,7 @@ def run_all_pipelines(
             should_run, reason = should_run_source("wikipedia")
             if should_run:
                 logger.info(f"✅ Running Wikipedia: {reason}")
-                completed_results.append(run_wikipedia_task(force=force))
+                completed_results.append(run_wikipedia_task(force=force, run_seed=run_id))
             else:
                 logger.info(f"⏭️  Skipping Wikipedia: {reason}")
                 skipped_sources.append(("Wikipedia-Somali", reason))
@@ -854,7 +847,9 @@ def run_all_pipelines(
             should_run, reason = should_run_source("bbc")
             if should_run:
                 logger.info(f"✅ Running BBC: {reason}")
-                completed_results.append(run_bbc_task(max_articles=max_bbc_articles, force=force))
+                completed_results.append(
+                    run_bbc_task(max_articles=max_bbc_articles, force=force, run_seed=run_id)
+                )
             else:
                 logger.info(f"⏭️  Skipping BBC: {reason}")
                 skipped_sources.append(("BBC-Somali", reason))
@@ -869,6 +864,7 @@ def run_all_pipelines(
                         dataset_config="so",
                         max_records=max_hf_records,
                         force=force,
+                        run_seed=run_id,
                     )
                 )
             else:
@@ -880,7 +876,9 @@ def run_all_pipelines(
             if should_run:
                 logger.info(f"✅ Running Språkbanken: {reason}")
                 completed_results.append(
-                    run_sprakbanken_task(corpus_id=sprakbanken_corpus, force=force)
+                    run_sprakbanken_task(
+                        corpus_id=sprakbanken_corpus, force=force, run_seed=run_id
+                    )
                 )
             else:
                 logger.info(f"⏭️  Skipping Språkbanken: {reason}")
@@ -896,6 +894,7 @@ def run_all_pipelines(
                         apify_api_token=tiktok_api_token,
                         apify_user_id=tiktok_user_id,
                         force=force,
+                        run_seed=run_id,
                     )
                 )
             else:
@@ -1076,13 +1075,17 @@ def main():
 
         if should_run_tiktok:
             # Load configuration for TikTok
-            from ..config import get_config
+            from ..infra.config import get_config
 
             config = get_config()
 
-            # Get API token (CLI arg > env var)
-            tiktok_api_token = args.tiktok_api_token or config.scraping.tiktok.apify_api_token
-            tiktok_user_id = config.scraping.tiktok.apify_user_id
+            # Get API token (CLI arg > env var). Gracefully skip if config lacks TikTok section.
+            try:
+                tiktok_api_token = args.tiktok_api_token or config.scraping.tiktok.apify_api_token
+                tiktok_user_id = getattr(config.scraping.tiktok, "apify_user_id", None)
+            except AttributeError:
+                logger.warning("TikTok config not found; skipping TikTok pipeline.")
+                should_run_tiktok = False
 
             # Determine video URLs source (CLI arg > default file location)
             default_tiktok_urls_path = Path("data/tiktok_urls.txt")
@@ -1150,7 +1153,7 @@ def main():
         result = run_sprakbanken_pipeline(corpus_id=args.sprakbanken_corpus, force=args.force)
     elif args.pipeline == "tiktok":
         # Load configuration for TikTok
-        from ..config import get_config
+        from ..infra.config import get_config
 
         config = get_config()
 

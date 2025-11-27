@@ -1,8 +1,56 @@
 # Somali Dialect Classifier Documentation
 
-**Last Updated**: 2025-11-10
+**Comprehensive documentation hub for the Somali Dialect Classifier data pipeline, from setup through production deployment.**
+
+**Last Updated:** 2025-11-21
 
 Welcome to the Somali Dialect Classifier documentation. This project provides a comprehensive pipeline for collecting, processing, and preparing Somali language data for dialect classification and NLP research.
+
+---
+
+---
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Documentation Structure](#documentation-structure)
+  - [📘 Essential Guides](#-essential-guides)
+    - [📊 Dashboard - Metrics & Monitoring](#-dashboard-metrics-monitoring)
+  - [📖 Overview - Understanding the System](#-overview-understanding-the-system)
+  - [🛠️ How-To Guides - Practical Walkthroughs](#-how-to-guides-practical-walkthroughs)
+  - [📚 Reference - API Documentation](#-reference-api-documentation)
+  - [⚙️ Operations - Deployment & MLOps](#-operations-deployment-mlops)
+  - [🗺️ Project - Roadmap & Plans](#-project-roadmap-plans)
+  - [🧠 Decisions - Architecture Decision Records](#-decisions-architecture-decision-records)
+  - [🔮 Future Documentation - ML Pipeline Stages](#-future-documentation-ml-pipeline-stages)
+    - [Phase 2: Annotation & Labeling (Planned)](#phase-2-annotation-labeling-planned)
+    - [Phase 3: Model Training (Planned)](#phase-3-model-training-planned)
+    - [Phase 4: Evaluation (Planned)](#phase-4-evaluation-planned)
+    - [Phase 5: Deployment (Planned)](#phase-5-deployment-planned)
+- [Quick Navigation by Role](#quick-navigation-by-role)
+  - [🆕 New Users](#-new-users)
+  - [👨‍💻 Developers](#-developers)
+  - [📊 Data Engineers](#-data-engineers)
+  - [🔧 DevOps/SRE](#-devopssre)
+  - [🤖 ML Engineers](#-ml-engineers)
+- [Project Status](#project-status)
+  - [Current Phase: Data Curation (Phase 1) ✅ COMPLETE](#current-phase-data-curation-phase-1-complete)
+  - [Next Phase: Labeling & Annotation (Phase 2) 📋 Planning](#next-phase-labeling-annotation-phase-2-planning)
+- [Key Concepts](#key-concepts)
+  - [Silver Dataset](#silver-dataset)
+  - [Quality Filters](#quality-filters)
+  - [Three-Phase Pipeline](#three-phase-pipeline)
+- [Contributing to Documentation](#contributing-to-documentation)
+  - [Documentation Standards](#documentation-standards)
+  - [Templates Available](#templates-available)
+  - [Adding New Documentation](#adding-new-documentation)
+  - [Documentation Review](#documentation-review)
+- [Getting Help](#getting-help)
+  - [Documentation Issues](#documentation-issues)
+  - [Support Channels](#support-channels)
+  - [External Documentation](#external-documentation)
+  - [Data Sources](#data-sources)
+- [Version History](#version-history)
 
 ---
 
@@ -329,7 +377,7 @@ See [Documentation Guide](guides/documentation-guide.md) for comprehensive writi
 
 ---
 
-## Related Resources
+## Related Documentation
 
 ### External Documentation
 
@@ -359,5 +407,4 @@ See [Documentation Guide](guides/documentation-guide.md) for comprehensive writi
 
 ---
 
-**Last Updated**: 2025-11-10
 **Maintainers**: Somali NLP Contributors

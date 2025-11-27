@@ -1,4 +1,8 @@
-# Portfolio Guide: Showcasing the Somali Dialect Classifier
+# Portfolio Project Guide
+
+**Presenting the Somali Dialect Classifier as a portfolio project.**
+
+**Last Updated:** 2025-11-21: Showcasing the Somali Dialect Classifier
 
 **A comprehensive guide to presenting this project in your portfolio, resume, and interviews.**
 
@@ -988,5 +992,4 @@ Your project is impressive—make sure the world knows about it!
 
 ---
 
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

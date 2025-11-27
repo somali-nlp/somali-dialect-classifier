@@ -25,8 +25,8 @@ import logging
 import sys
 from pathlib import Path
 
-from ..config import get_config
-from ..preprocessing.tiktok_somali_processor import TikTokSomaliProcessor
+from ..infra.config import get_config
+from ..ingestion.processors.tiktok_somali_processor import TikTokSomaliProcessor
 
 
 def setup_logging(verbose: bool = False):

@@ -1,6 +1,8 @@
-# Backup and Restore Operations Guide
+# Backup and Restore Procedures
 
-Complete guide for backing up and restoring Somali NLP pipeline data.
+**Procedures for backing up and restoring project data, databases, and configurations.**
+
+**Last Updated:** 2025-11-21
 
 ## Table of Contents
 
@@ -629,3 +631,11 @@ sha256sum data/ledger/crawl_ledger.db
 - [Docker Deployment Guide](./docker-deployment.md)
 - [General Deployment Guide](./deployment.md)
 - [CI/CD Dashboard Guide](./cicd-dashboard.md)
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

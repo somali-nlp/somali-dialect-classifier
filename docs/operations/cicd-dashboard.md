@@ -1,5 +1,9 @@
 # CI/CD Dashboard Automation
 
+**Comprehensive guide for automated dashboard build, validation, testing, and deployment pipeline.**
+
+**Last Updated:** 2025-11-21
+
 Comprehensive guide for the automated dashboard build, validation, testing, and deployment pipeline.
 
 ## Table of Contents
@@ -726,5 +730,4 @@ For issues or questions:
 
 ---
 
-**Last Updated**: 2025-10-28
 **Maintainers**: Somali NLP Contributors

@@ -2,6 +2,8 @@
 
 **Operational guide for maintaining and troubleshooting the dashboard system.**
 
+**Last Updated:** 2025-11-21
+
 **Last Updated**: 2025-10-27
 **Audience**: DevOps engineers, maintainers, system administrators
 
@@ -596,5 +598,4 @@ Contact the maintainers or open an issue with the `dashboard` or `operations` la
 
 ---
 
-**Last Updated**: 2025-10-28
 **Maintainers**: Somali NLP Contributors

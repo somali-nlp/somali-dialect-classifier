@@ -13,7 +13,7 @@ from typing import Optional
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from ..config import get_config
+from ..infra.config import get_config
 
 logger = logging.getLogger(__name__)
 

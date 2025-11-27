@@ -25,6 +25,7 @@ dependencies = [
   "filelock>=3.13.1",  # File-based locking for concurrent access
   "aiohttp>=3.9",  # Async HTTP for 3-5x faster web scraping (P3.5)
   "aiodns>=3.1",  # Async DNS resolution for aiohttp performance (P3.5)
+  "click>=8.0",  # CLI framework for somali-tools commands
 ]
 
 [project.optional-dependencies]
@@ -91,6 +92,7 @@ tiktoksom-download = "somali_dialect_classifier.cli.download_tiktoksom:main"
 somali-orchestrate = "somali_dialect_classifier.orchestration.flows:main"
 somali-deploy-dashboard = "somali_dialect_classifier.cli.deploy_dashboard:main"
 somali-lock-status = "somali_dialect_classifier.cli.lock_status:lock_status"
+somali-tools = "somali_dialect_classifier.tools.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/somali_dialect_classifier"]

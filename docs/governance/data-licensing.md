@@ -1,7 +1,8 @@
-# Data Licensing and Usage Rights
+# Data Licensing Guide
 
-**Version:** 1.0
-**Last Updated:** 2025-11-15
+**Licensing information, compliance requirements, and terms of use for all data sources.**
+
+**Last Updated:** 2025-11-21
 **Status:** Active
 
 ## Table of Contents
@@ -407,7 +408,6 @@ licensed sources only (Wikipedia, Språkbanken, HuggingFace).
 3. Review new sources for license compatibility
 4. Update this document with any changes
 
-**Version History:**
 - 1.0 (2025-11-15): Initial version for Stage 0.6 validation
 
 ---
@@ -436,3 +436,11 @@ licensed sources only (Wikipedia, Språkbanken, HuggingFace).
 ---
 
 **End of Document**
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

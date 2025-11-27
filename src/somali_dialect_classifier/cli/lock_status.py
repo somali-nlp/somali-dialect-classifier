@@ -12,7 +12,7 @@ from pathlib import Path
 
 import click
 
-from ..preprocessing.crawl_ledger import LockManager
+from ..ingestion.crawl_ledger import LockManager
 
 
 @click.command()

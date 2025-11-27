@@ -1,6 +1,9 @@
 # Project Lifecycle & Roadmap
 
-**Last Updated**: 2025-10-16
+**Complete project lifecycle from data curation through model deployment, with milestones, timelines, and success criteria for each phase.**
+
+**Last Updated:** 2025-11-21
+
 **Current Stage**: Data Curation (Phase 1) - ✅ **COMPLETE**
 
 ## Project Overview
@@ -14,6 +17,51 @@ The Somali Dialect Classifier is a multi-phase project to build a machine learni
 - **ML Engineering**: Model development, experiment tracking
 - **MLOps**: Deployment, monitoring, model serving
 - **Research**: Annotation guidelines, evaluation metrics
+
+---
+
+---
+
+## Table of Contents
+
+- [Project Overview](#project-overview)
+- [Current Status: Phase 1 Complete ✅](#current-status-phase-1-complete-)
+  - [Phase 1: Data Curation & Preprocessing (COMPLETE)](#phase-1-data-curation-preprocessing-complete)
+    - [Completed Deliverables](#completed-deliverables)
+    - [Key Metrics](#key-metrics)
+- [Phase 2: Labeling & Annotation (NEXT - Q1 2026)](#phase-2-labeling-annotation-next-q1-2026)
+  - [Objectives](#objectives)
+  - [Deliverables](#deliverables)
+  - [Milestones](#milestones)
+  - [Key Decisions](#key-decisions)
+  - [Risks](#risks)
+- [Phase 3: Model Development (Q2 2026)](#phase-3-model-development-q2-2026)
+  - [Objectives](#objectives)
+  - [Planned Experiments](#planned-experiments)
+    - [Baseline Models](#baseline-models)
+    - [Neural Models](#neural-models)
+  - [Evaluation Metrics](#evaluation-metrics)
+  - [Deliverables](#deliverables)
+- [Phase 4: Deployment & Serving (Q3 2026)](#phase-4-deployment-serving-q3-2026)
+  - [Objectives](#objectives)
+  - [Infrastructure](#infrastructure)
+  - [Deliverables](#deliverables)
+- [Phase 5: Iteration & Improvement (Q4 2026+)](#phase-5-iteration-improvement-q4-2026)
+  - [Objectives](#objectives)
+  - [Key Activities](#key-activities)
+- [Cross-Cutting Concerns](#cross-cutting-concerns)
+  - [Data Quality](#data-quality)
+  - [Ethics & Bias](#ethics-bias)
+  - [Security & Privacy](#security-privacy)
+- [Success Criteria by Phase](#success-criteria-by-phase)
+- [Dependencies & Blockers](#dependencies-blockers)
+  - [Current Blockers (Phase 2)](#current-blockers-phase-2)
+  - [Upcoming Blockers (Phase 3-4)](#upcoming-blockers-phase-3-4)
+- [Resource Allocation](#resource-allocation)
+- [Communication Plan](#communication-plan)
+  - [Weekly Updates](#weekly-updates)
+  - [Monthly Reviews](#monthly-reviews)
+  - [Quarterly Business Reviews](#quarterly-business-reviews)
 
 ---
 
@@ -319,7 +367,7 @@ The Somali Dialect Classifier is a multi-phase project to build a machine learni
 
 ---
 
-## See Also
+## Related Documentation
 
 - [Future Work](future-work.md) - Backlog and enhancement ideas
 - [Architecture](../overview/architecture.md) - Technical design
@@ -328,5 +376,4 @@ The Somali Dialect Classifier is a multi-phase project to build a machine learni
 
 ---
 
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

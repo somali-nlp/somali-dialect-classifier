@@ -17,7 +17,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from somali_dialect_classifier.preprocessing.tiktok_somali_processor import TikTokSomaliProcessor
+from somali_dialect_classifier.ingestion.processors.tiktok_somali_processor import TikTokSomaliProcessor
 
 
 class TestTikTokFilterInstrumentation:
@@ -37,7 +37,7 @@ class TestTikTokFilterInstrumentation:
         Returns:
             TikTokSomaliProcessor instance ready for testing
         """
-        with patch("somali_dialect_classifier.config.get_config") as mock_config:
+        with patch("somali_dialect_classifier.infra.config.get_config") as mock_config:
             # Configure temporary directories
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
@@ -547,7 +547,7 @@ class TestTikTokProcessorIntegration:
         Returns:
             TikTokSomaliProcessor and Path to staging directory
         """
-        with patch("somali_dialect_classifier.config.get_config") as mock_config:
+        with patch("somali_dialect_classifier.infra.config.get_config") as mock_config:
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
             config.data.staging_dir = tmp_path / "staging"

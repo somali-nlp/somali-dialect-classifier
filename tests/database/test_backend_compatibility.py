@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from somali_dialect_classifier.preprocessing.crawl_ledger import CrawlLedger
+from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
 
 # Skip PostgreSQL tests if not available
 postgres_available = os.getenv("POSTGRES_HOST") is not None

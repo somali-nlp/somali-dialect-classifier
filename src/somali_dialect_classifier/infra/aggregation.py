@@ -96,16 +96,7 @@ def calculate_volume_weighted_quality(sources: list[dict[str, Any]]) -> dict[str
                     "quality": {"quality_pass_rate": float}
                 }
             }
-            OR (for backward compatibility with processing.json files):
-            {
-                "snapshot": {
-                    "source": str,
-                    "records_written": int
-                },
-                "statistics": {
-                    "quality_pass_rate": float
-                }
-            }
+
 
     Returns:
         {
@@ -318,10 +309,12 @@ def validate_metric_compatibility(
     pipeline_types = set()
     for source in sources:
         # Handle both formats
-        if "snapshot" in source:
-            pipeline_type = source["snapshot"].get("pipeline_type", "unknown")
-        elif "pipeline_type" in source:
+        if "pipeline_type" in source:
             pipeline_type = source["pipeline_type"]
+        elif "layered_metrics" in source:
+             # Try to infer from layered metrics if possible, or default to unknown
+             # Usually pipeline_type is at root in Phase 3
+             pipeline_type = source.get("_pipeline_type", "unknown")
         else:
             pipeline_type = "unknown"
 
@@ -359,17 +352,7 @@ def _extract_metrics(
         (weight, value, source_name)
     """
     # Determine format
-    if "snapshot" in source and "statistics" in source:
-        # Processing.json format
-        snapshot = source["snapshot"]
-        statistics = source["statistics"]
-
-        weight = snapshot.get(weight_name, 0)
-        # Try statistics first, then snapshot (for metrics like bytes_downloaded)
-        value = statistics.get(metric_name, snapshot.get(metric_name, 0.0))
-        source_name = snapshot.get("source", "unknown")
-
-    elif "layered_metrics" in source:
+    if "layered_metrics" in source:
         # Flat format with layered_metrics
         weight = source.get(weight_name, 0)
 
@@ -456,10 +439,7 @@ def calculate_aggregate_summary(sources: list[dict[str, Any]]) -> dict[str, Any]
     # Extract pipeline types
     pipeline_types = []
     for source in sources:
-        if "snapshot" in source:
-            pt = source["snapshot"].get("pipeline_type", "unknown")
-        else:
-            pt = source.get("pipeline_type", "unknown")
+        pt = source.get("pipeline_type", source.get("_pipeline_type", "unknown"))
         if pt not in pipeline_types:
             pipeline_types.append(pt)
 

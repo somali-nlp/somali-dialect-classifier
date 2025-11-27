@@ -28,7 +28,7 @@ class TestChecksumPerformance:
         test_file.write_bytes(b"x" * (5 * 1024 * 1024))
 
         # Import processor (lazy to avoid import issues)
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -65,7 +65,7 @@ class TestChecksumPerformance:
         file_size_mb = dump_file.stat().st_size / 1024 / 1024
 
         # Import processor
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -107,7 +107,7 @@ class TestChecksumPerformance:
                 f.write(b"x" * (1024 * 1024))
 
         # Import processor
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -134,7 +134,7 @@ class TestChecksumPerformance:
         """Verify metadata search scales with number of partitions."""
         # This test would require setting up mock silver partitions
         # For now, just verify the method exists and can be called
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 

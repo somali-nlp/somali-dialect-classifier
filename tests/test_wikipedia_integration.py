@@ -20,7 +20,7 @@ pytestmark = pytest.mark.skip(
     reason="Integration tests require full pipeline run with external data"
 )
 
-from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
     WikipediaSomaliProcessor,
 )
 

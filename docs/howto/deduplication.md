@@ -2,6 +2,48 @@
 
 **Comprehensive guide to discovery-stage deduplication, continuous streaming, and cross-run duplicate prevention.**
 
+**Last Updated:** 2025-11-21
+
+---
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Phase 1: Discovery-Stage Deduplication](#phase-1-discovery-stage-deduplication)
+  - [Concept](#concept)
+  - [Benefits](#benefits)
+  - [Implementation Across Sources](#implementation-across-sources)
+    - [Wikipedia](#wikipedia)
+    - [BBC News](#bbc-news)
+    - [HuggingFace Datasets](#huggingface-datasets)
+    - [Språkbanken Corpora](#språkbanken-corpora)
+    - [TikTok Comments](#tiktok-comments)
+- [Continuous Streaming (HuggingFace)](#continuous-streaming-huggingface)
+  - [Problem](#problem)
+  - [Solution](#solution)
+  - [Checkpoint Management](#checkpoint-management)
+  - [Result](#result)
+- [Phase 2: Extraction-Stage Deduplication](#phase-2-extraction-stage-deduplication)
+  - [Concept](#concept)
+  - [MinHash LSH](#minhash-lsh)
+- [Phase 3: Processing-Stage Deduplication](#phase-3-processing-stage-deduplication)
+  - [Concept](#concept)
+  - [Cross-Dataset Deduplication](#cross-dataset-deduplication)
+- [Crawl Ledger Schema](#crawl-ledger-schema)
+  - [State Transitions](#state-transitions)
+- [Testing Deduplication](#testing-deduplication)
+  - [Test 1: Discovery-Stage Deduplication](#test-1-discovery-stage-deduplication)
+  - [Test 2: Continuous Streaming](#test-2-continuous-streaming)
+  - [Test 3: Cross-Run Deduplication](#test-3-cross-run-deduplication)
+- [Force Reprocessing](#force-reprocessing)
+- [Metrics](#metrics)
+- [Troubleshooting](#troubleshooting)
+  - [Issue: HuggingFace always replays JSONL instead of streaming new records](#issue-huggingface-always-replays-jsonl-instead-of-streaming-new-records)
+  - [Issue: Ledger shows URLs as processed but silver dataset is empty](#issue-ledger-shows-urls-as-processed-but-silver-dataset-is-empty)
+  - [Issue: Discovery dedup not working, re-downloading identical data](#issue-discovery-dedup-not-working-re-downloading-identical-data)
+
 ---
 
 ## Overview
@@ -504,7 +546,7 @@ processor = HuggingFaceSomaliProcessor(
 
 ---
 
-## See Also
+## Related Documentation
 
 - [HuggingFace Integration](huggingface-integration.md) - Streaming datasets and checkpoint management
 - [Data Pipeline Guide](../guides/data-pipeline.md) - Complete pipeline overview
@@ -513,4 +555,4 @@ processor = HuggingFaceSomaliProcessor(
 
 ---
 
-**Last Updated**: 2025-11-14
+**Maintainers**: Somali NLP Contributors

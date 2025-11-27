@@ -1,4 +1,8 @@
-# Principal MLE Feedback Implementation
+# ADR 002: Filter Framework Implementation
+
+**Architectural Decision Record documenting Principal MLE feedback implementation for filter framework and processors.**
+
+**Last Updated:** 2025-11-21
 
 This document outlines the implementation of the Principal MLE's feedback on silver floor hooks, filter framework, and HuggingFace processor.
 
@@ -28,6 +32,59 @@ This document outlines the implementation of the Principal MLE's feedback on sil
 4. ✅ **RISK FIX**: Contract tests made tolerant of missing optional `datasets` library
 5. ✅ **RISK FIX**: BBC scraper hardened with semantic selectors (replaced transient CSS classes)
 6. ✅ **RISK FIX**: BBC scraper now logs warnings on empty text extraction
+
+---
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+  - [Completed Components](#completed-components)
+  - [Recent Principal MLE Review Fixes](#recent-principal-mle-review-fixes)
+- [1. Silver Floor Hooks - Filter Framework ✅](#1-silver-floor-hooks-filter-framework-)
+  - [Architecture](#architecture)
+  - [Implemented Filters](#implemented-filters)
+    - [1. `min_length_filter(cleaned_text, threshold=50)`](#1-minlengthfiltercleanedtext-threshold50)
+    - [2. `langid_filter(cleaned_text, allowed_langs={"so"}, confidence_threshold=0.5)`](#2-langidfiltercleanedtext-allowedlangsso-confidencethreshold05)
+    - [3. `topic_lexicon_enrichment_filter(cleaned_text, ruleset, enrich_only=True)`](#3-topiclexiconenrichmentfiltercleanedtext-ruleset-enrichonlytrue)
+    - [4. `namespace_filter(title, text, skip_prefixes)`](#4-namespacefiltertitle-text-skipprefixes)
+    - [5. `custom_filter(cleaned_text, predicate_func, metadata_key)`](#5-customfiltercleanedtext-predicatefunc-metadatakey)
+  - [Convenience Constructors](#convenience-constructors)
+- [2. BasePipeline Integration ✅](#2-basepipeline-integration-)
+  - [Hook Interface](#hook-interface)
+  - [Execution Flow in `process()`](#execution-flow-in-process)
+  - [Logging Output](#logging-output)
+- [3. Retrofitted Processors ✅](#3-retrofitted-processors-)
+  - [Wikipedia Processor](#wikipedia-processor)
+  - [BBC Processor](#bbc-processor)
+- [4. HuggingFace Datasets Processor ⏳](#4-huggingface-datasets-processor-)
+  - [Architecture](#architecture)
+  - [Method Implementations](#method-implementations)
+    - [`download()` - Manifest Generation](#download-manifest-generation)
+    - [`extract()` - Streaming Materialization](#extract-streaming-materialization)
+    - [`_extract_records()` - Replay JSONL](#extractrecords-replay-jsonl)
+    - [`_register_filters()` - Standard HF Filters](#registerfilters-standard-hf-filters)
+  - [Usage Example](#usage-example)
+- [5. Testing Strategy ⏳](#5-testing-strategy-)
+  - [Unit Tests for Filters](#unit-tests-for-filters)
+  - [Integration Tests](#integration-tests)
+  - [HF Processor Smoke Tests](#hf-processor-smoke-tests)
+- [6. Configuration & Best Practices](#6-configuration-best-practices)
+  - [Externalizing Filter Thresholds](#externalizing-filter-thresholds)
+  - [MLflow Integration](#mlflow-integration)
+  - [Data Quality Assertions](#data-quality-assertions)
+- [7. Documentation Updates](#7-documentation-updates)
+  - [README Section (to be added)](#readme-section-to-be-added)
+- [Data Quality Filters](#data-quality-filters)
+  - [Default Filters](#default-filters)
+  - [Custom Filters](#custom-filters)
+  - [Filter Statistics](#filter-statistics)
+  - [Configuration](#configuration)
+- [Summary](#summary)
+  - [✅ All Tasks Complete](#-all-tasks-complete)
+  - [Key Achievements](#key-achievements)
+  - [Outstanding Items (Future Work)](#outstanding-items-future-work)
 
 ---
 
@@ -783,3 +840,11 @@ export SDC_FILTERING__LANG_CONFIDENCE_THRESHOLD=0.7
 
 **Date**: 2025-10-20
 **Status**: Accepted
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

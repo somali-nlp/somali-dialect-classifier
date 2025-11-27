@@ -21,7 +21,7 @@ class TestFileChecksumComputation:
 
     def test_checksum_deterministic(self, tmp_path):
         """Verify checksum is deterministic for same file."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -40,7 +40,7 @@ class TestFileChecksumComputation:
 
     def test_checksum_different_content(self, tmp_path):
         """Verify different content produces different checksums."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -60,7 +60,7 @@ class TestFileChecksumComputation:
 
     def test_checksum_large_file_chunks(self, tmp_path):
         """Verify checksum works correctly with chunk-based reading."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -93,7 +93,7 @@ class TestDumpAlreadyProcessedCheck:
     @pytest.mark.skip(reason="Method _check_if_dump_already_processed not implemented")
     def test_dump_not_found_returns_none(self, tmp_path):
         """Verify returns None when no previous processing found."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -110,8 +110,8 @@ class TestDumpAlreadyProcessedCheck:
     @pytest.mark.skip(reason="Method _check_if_dump_already_processed not implemented")
     def test_dump_already_processed_found(self, tmp_path, monkeypatch):
         """Verify returns silver path when dump already processed."""
-        from somali_dialect_classifier.config import get_config
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.infra.config import get_config
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -164,8 +164,8 @@ class TestDumpAlreadyProcessedCheck:
     @pytest.mark.skip(reason="Method _check_if_dump_already_processed not implemented")
     def test_checksum_mismatch_triggers_reprocess(self, tmp_path, monkeypatch):
         """Verify changed file triggers reprocessing."""
-        from somali_dialect_classifier.config import get_config
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.infra.config import get_config
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -224,7 +224,7 @@ class TestMetadataValidation:
     )
     def test_validate_complete_metadata(self, tmp_path):
         """Verify valid metadata passes validation."""
-        from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
+        from somali_dialect_classifier.quality.silver_writer import SilverDatasetWriter
 
         writer = SilverDatasetWriter()
 
@@ -248,7 +248,7 @@ class TestMetadataValidation:
     )
     def test_validate_missing_fields(self, tmp_path):
         """Verify incomplete metadata fails validation."""
-        from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
+        from somali_dialect_classifier.quality.silver_writer import SilverDatasetWriter
 
         writer = SilverDatasetWriter()
 
@@ -269,7 +269,7 @@ class TestMetadataValidation:
     )
     def test_validate_corrupted_json(self, tmp_path):
         """Verify corrupted JSON fails validation."""
-        from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
+        from somali_dialect_classifier.quality.silver_writer import SilverDatasetWriter
 
         writer = SilverDatasetWriter()
 
@@ -295,7 +295,7 @@ class TestSprakbankenBatchSignature:
     )
     def test_batch_signature_deterministic(self, tmp_path):
         """Verify batch signature is deterministic."""
-        from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.sprakbanken_somali_processor import (
             SprakbankenSomaliProcessor,
         )
 
@@ -320,7 +320,7 @@ class TestSprakbankenBatchSignature:
     )
     def test_batch_signature_order_independent(self, tmp_path):
         """Verify batch signature is independent of file order."""
-        from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.sprakbanken_somali_processor import (
             SprakbankenSomaliProcessor,
         )
 
@@ -344,8 +344,8 @@ class TestConcurrentRunCoordination:
 
     def test_lock_prevents_concurrent_processing(self, tmp_path, monkeypatch):
         """Verify file lock prevents duplicate processing."""
-        from somali_dialect_classifier.config import get_config
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.infra.config import get_config
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -384,7 +384,7 @@ class TestConcurrentRunCoordination:
 
     def test_stale_lock_removed(self, tmp_path):
         """Verify stale locks (>1 hour) are removed."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 

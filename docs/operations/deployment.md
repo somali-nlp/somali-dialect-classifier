@@ -1,5 +1,9 @@
 # Production Deployment Guide
 
+**Comprehensive guide for deploying the Somali Dialect Classifier to production environments.**
+
+**Last Updated:** 2025-11-21
+
 Comprehensive guide to deploying the Somali Dialect Classifier preprocessing pipeline in production environments.
 
 ## Table of Contents
@@ -1174,7 +1178,7 @@ tail -f /var/log/somali-nlp/pipeline.log | grep ERROR
 
 ---
 
-## See Also
+## Related Documentation
 
 - [Configuration Guide](../howto/configuration.md) - Environment variables and settings
 - [API Reference](../reference/api.md) - Programmatic APIs
@@ -1184,5 +1188,4 @@ tail -f /var/log/somali-nlp/pipeline.log | grep ERROR
 
 ---
 
-**Last Updated**: 2025-10-27
 **Maintainers**: Somali NLP Contributors

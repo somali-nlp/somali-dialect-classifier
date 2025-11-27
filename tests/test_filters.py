@@ -4,7 +4,7 @@ Unit tests for record filters.
 Tests all filter functions to ensure correct behavior for quality control.
 """
 
-from somali_dialect_classifier.preprocessing.filters import (
+from somali_dialect_classifier.quality.filter_functions import (
     create_hf_filters,
     create_news_filters,
     create_wikipedia_filters,
@@ -213,7 +213,7 @@ class TestTopicLexiconEnrichmentFilter:
 
     def test_dialect_heuristic_filter_alias_removed(self):
         """Ensure legacy dialect_heuristic_filter alias has been completely removed."""
-        from somali_dialect_classifier.preprocessing import filters
+        from somali_dialect_classifier.quality import filter_functions as filters
 
         assert not hasattr(filters, 'dialect_heuristic_filter'), \
             "dialect_heuristic_filter alias should be completely removed (Stage 0.1)"

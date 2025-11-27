@@ -1,4 +1,8 @@
-# MADLAD-400 Dataset - Decision and Rationale
+# ADR 003: MADLAD-400 Dataset Exclusion
+
+**Architectural Decision Record documenting the exclusion of MADLAD-400 from data sources.**
+
+**Last Updated:** 2025-11-21 and Rationale
 
 ## Decision: **NOT USING MADLAD-400**
 
@@ -9,6 +13,46 @@ Date: October 16, 2025
 **MADLAD-400 is incompatible with modern HuggingFace datasets library (v3.0+) and there's no timeline for a fix.**
 
 **Use MC4 instead** - it has more data, works perfectly, and requires zero workarounds.
+
+---
+
+---
+
+## Table of Contents
+
+- [Decision: **NOT USING MADLAD-400**](#decision-not-using-madlad-400)
+- [TL;DR](#tldr)
+- [Analysis](#analysis)
+  - [MC4 (allenai/c4) - CHOSEN ✅](#mc4-allenaic4-chosen-)
+  - [MADLAD-400 - REJECTED ❌](#madlad-400-rejected-)
+- [Technical Root Cause](#technical-root-cause)
+  - [Why MADLAD-400 Doesn't Work](#why-madlad-400-doesnt-work)
+  - [Investigation Timeline](#investigation-timeline)
+- [Key Reasons for Rejecting MADLAD-400](#key-reasons-for-rejecting-madlad-400)
+  - [1. **Broken with Modern Datasets Library** 🔴](#1-broken-with-modern-datasets-library-)
+  - [2. **No Fix Timeline**](#2-no-fix-timeline)
+  - [3. **MC4 Has More Data Anyway**](#3-mc4-has-more-data-anyway)
+  - [4. **Workarounds Are Unsustainable**](#4-workarounds-are-unsustainable)
+  - [5. **MC4 Already Working Perfectly**](#5-mc4-already-working-perfectly)
+- [What We Use Instead](#what-we-use-instead)
+  - [Primary Dataset: MC4 (Multilingual C4) ✅](#primary-dataset-mc4-multilingual-c4-)
+- [Code Changes](#code-changes)
+  - [Removed from Codebase](#removed-from-codebase)
+  - [Updated Documentation](#updated-documentation)
+- [Data Sources Summary (Updated)](#data-sources-summary-updated)
+  - [✅ Active Data Sources](#-active-data-sources)
+  - [❌ Excluded Data Sources](#-excluded-data-sources)
+- [Recommended Workflow](#recommended-workflow)
+  - [For Development](#for-development)
+  - [For Production](#for-production)
+  - [Combined Data Collection](#combined-data-collection)
+- [If You Really Want MADLAD-400 (Not Recommended)](#if-you-really-want-madlad-400-not-recommended)
+  - [Temporary Workaround (For Exploration Only)](#temporary-workaround-for-exploration-only)
+  - [Long-Term Alternative: Wait and Monitor](#long-term-alternative-wait-and-monitor)
+- [Comparison: MC4 vs MADLAD-400](#comparison-mc4-vs-madlad-400)
+- [Related Decisions](#related-decisions)
+- [References](#references)
+- [Changelog](#changelog)
 
 ---
 
@@ -362,3 +406,11 @@ If MADLAD-400 is critical to your use case:
 
 **Date**: 2025-10-20
 **Status**: Accepted
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

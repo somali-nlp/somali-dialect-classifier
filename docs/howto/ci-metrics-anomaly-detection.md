@@ -1,5 +1,39 @@
 # CI Metrics Anomaly Detection
 
+**Automated monitoring of metrics files for calculation anomalies in CI pipeline.**
+
+**Last Updated:** 2025-11-21
+
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [What is a Metrics Anomaly?](#what-is-a-metrics-anomaly)
+- [How Detection Works](#how-detection-works)
+  - [1. Local Detection](#1-local-detection)
+  - [2. CI Pipeline Detection](#2-ci-pipeline-detection)
+  - [3. GitHub Issue Creation](#3-github-issue-creation)
+- [Configuration Options](#configuration-options)
+  - [Environment Variables (CI)](#environment-variables-ci)
+  - [Script Arguments](#script-arguments)
+  - [Threshold Tuning](#threshold-tuning)
+- [Responding to Anomaly Alerts](#responding-to-anomaly-alerts)
+  - [When an Issue is Created](#when-an-issue-is-created)
+  - [False Positives](#false-positives)
+- [Output Format](#output-format)
+- [Integration with Existing Workflows](#integration-with-existing-workflows)
+  - [Pre-commit Hook (Optional)](#pre-commit-hook-optional)
+  - [Pipeline Orchestration](#pipeline-orchestration)
+- [Troubleshooting](#troubleshooting)
+  - [Issue: Script fails with "ModuleNotFoundError"](#issue-script-fails-with-modulenotfounderror)
+  - [Issue: "Metrics directory not found"](#issue-metrics-directory-not-found)
+  - [Issue: Too many false positive warnings](#issue-too-many-false-positive-warnings)
+  - [Issue: GitHub Issue not created in CI](#issue-github-issue-not-created-in-ci)
+- [Change Log](#change-log)
+
+---
 ## Overview
 
 The CI pipeline automatically monitors metrics files for calculation anomalies that indicate bugs in the data processing logic. This prevents metrics calculation errors from reaching production by detecting them early in the development cycle.
@@ -372,7 +406,6 @@ python scripts/check_metrics_anomalies.py --metrics-dir /path/to/metrics
 
 ## Related Documentation
 
-- **Architecture:** `.claude/reports/arch/arch-filter-enhancements-20251102.md` (Enhancement #2)
 - **Metrics Schema:** `docs/reference/metrics-schema.md`
 - **Processing Pipelines:** `docs/howto/processing-pipelines.md`
 - **CI Configuration:** `.github/workflows/ci.yml`
@@ -384,3 +417,4 @@ python scripts/check_metrics_anomalies.py --metrics-dir /path/to/metrics
   - Integrated into `.github/workflows/ci.yml` with GitHub Issue automation
   - Configured thresholds: 3+ warnings OR 1+ errors triggers issue
   - Added artifact upload for anomaly reports (30-day retention)
+**Maintainers**: Somali NLP Contributors

@@ -12,7 +12,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from somali_dialect_classifier.preprocessing import BBCSomaliProcessor
+from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
 
 
 def _setup_logging() -> None:

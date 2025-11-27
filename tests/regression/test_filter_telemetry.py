@@ -23,7 +23,7 @@ from typing import Any
 import pytest
 
 # Import filter catalog for validation
-from somali_dialect_classifier.pipeline.filters.catalog import FILTER_CATALOG
+from somali_dialect_classifier.quality.filters.catalog import FILTER_CATALOG
 
 # Test data locations
 FIXTURES_DIR = Path(__file__).parent / "fixtures"

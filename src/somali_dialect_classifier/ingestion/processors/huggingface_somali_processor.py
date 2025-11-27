@@ -31,14 +31,14 @@ except ImportError:
     IterableDataset = None
     DownloadConfig = None
 
-from ..config import get_config
-from ..utils.logging_utils import Timer, set_context
-from ..utils.metrics import MetricsCollector, PipelineType, QualityReporter
-from .base_pipeline import BasePipeline, RawRecord
-from .crawl_ledger import get_ledger
-from .dedup import DedupConfig, DedupEngine
-from .schema_mappers import get_schema_mapper
-from .text_cleaners import create_html_cleaner
+from ...infra.config import get_config
+from ...infra.logging_utils import Timer, set_context
+from ...infra.metrics import MetricsCollector, PipelineType, QualityReporter
+from ..base_pipeline import BasePipeline, RawRecord
+from ..crawl_ledger import get_ledger
+from ..dedup import DedupConfig, DedupEngine
+from ...quality.schema_mappers import get_schema_mapper
+from ...quality.text_cleaners import create_html_cleaner
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +78,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         streaming_batch_size: int = 5000,
         max_records: Optional[int] = None,
         force: bool = False,
+        run_seed: Optional[str] = None,
     ):
         """
         Initialize HuggingFace datasets processor.
@@ -160,6 +161,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             log_frequency=1000,
             batch_size=streaming_batch_size,
             force=force,
+            run_seed=run_seed,
         )
 
         # Note: StructuredLogger is now initialized in BasePipeline
@@ -328,9 +330,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         dataset_slug = self.dataset_name.split("/")[-1]
         # Pattern: {dataset_slug}_{run_id}_raw_manifest.json or old {dataset_slug}_manifest.json
         manifest_files = list(self.raw_dir.glob(f"{dataset_slug}_*_raw_manifest.json"))
-        if not manifest_files:
-            # Fallback to old naming for backward compatibility
-            manifest_files = list(self.raw_dir.glob(f"{dataset_slug}_manifest.json"))
+
 
         if not manifest_files:
             raise FileNotFoundError(f"Manifest not found in {self.raw_dir}. Run download() first.")
@@ -714,7 +714,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         """
         from collections import Counter
 
-        from .record_utils import build_silver_record
+        from ...quality.record_utils import build_silver_record
 
         # Check that extraction has been performed
         staging_dir = self.staging_dir
@@ -768,32 +768,18 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                     self.metrics.record_filter_reason("empty_after_cleaning")
                 continue
 
-            # Execute record filters
-            filter_metadata = {}
-            passed_all_filters = True
+            # Execute record filters using FilterEngine API
+            passed, failed_filter, filter_metadata = self.filter_engine.apply_filters(
+                cleaned, raw_record.title
+            )
 
-            for filter_func, filter_kwargs in self.record_filters:
-                try:
-                    passes, metadata_updates = filter_func(cleaned, **filter_kwargs)
+            if not passed:
+                records_filtered += 1
+                filter_stats[f"filtered_by_{failed_filter}"] += 1
 
-                    if not passes:
-                        filter_name = filter_func.__name__
-                        filter_stats[f"filtered_by_{filter_name}"] += 1
-                        records_filtered += 1
-                        passed_all_filters = False
-
-                        # Record filter reason in metrics if available
-                        if hasattr(self, "metrics") and self.metrics is not None:
-                            self.metrics.record_filter_reason(filter_name)
-                        break
-
-                    filter_metadata.update(metadata_updates)
-
-                except Exception as e:
-                    self.logger.warning(f"Filter {filter_func.__name__} raised error: {e}")
-                    continue
-
-            if not passed_all_filters:
+                # Record filter reason in metrics if available
+                if hasattr(self, "metrics") and self.metrics is not None:
+                    self.metrics.record_filter_reason(failed_filter)
                 continue
 
             # Merge metadata
@@ -894,7 +880,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             self.metrics.export_json(metrics_path)
             self.logger.info(f"Processing metrics exported: {metrics_path}")
 
-            from ..utils.metrics import QualityReporter
+            from ...infra.metrics import QualityReporter
 
             report_path = Path("data/reports") / f"{self.run_id}_final_quality_report.md"
             report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1004,7 +990,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
     def _register_filters(self) -> None:
         """Register quality filters for HF datasets."""
-        from .filters import langid_filter, min_length_filter
+        from ...quality.filter_functions import langid_filter, min_length_filter
 
         # Load filter config
         min_length = self.hf_config.min_length_threshold
@@ -1134,7 +1120,8 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             # Get processed URLs for this source from ledger
             # Use source name that matches what's stored in ledger
             processed_urls_list = self.ledger.get_processed_urls(source=self.source)
-            processed_urls = set(processed_urls_list)
+            # FIX: get_processed_urls returns list[dict], extract 'url' field
+            processed_urls = {record['url'] for record in processed_urls_list}
             self.logger.info(
                 f"Loaded {len(processed_urls)} processed URLs from ledger for source '{self.source}'"
             )

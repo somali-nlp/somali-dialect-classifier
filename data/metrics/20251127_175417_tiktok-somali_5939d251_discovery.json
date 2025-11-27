@@ -1,0 +1,33 @@
+{
+  "_schema_version": "3.0",
+  "_pipeline_type": "stream_processing",
+  "_timestamp": "2025-11-27T17:54:18.240077+00:00",
+  "_run_id": "20251127_175417_tiktok-somali_5939d251",
+  "_source": "tiktok",
+  "layered_metrics": {
+    "connectivity": {
+      "connection_attempted": true,
+      "connection_successful": false,
+      "connection_duration_ms": 0.0,
+      "connection_error": null
+    },
+    "extraction": {
+      "stream_opened": false,
+      "total_records_available": null,
+      "batches_attempted": 0,
+      "batches_completed": 0,
+      "batches_failed": 0,
+      "records_fetched": 0
+    },
+    "quality": {
+      "records_received": 0,
+      "records_passed_filters": 0,
+      "filter_breakdown": {}
+    },
+    "volume": {
+      "records_written": 0,
+      "bytes_downloaded": 0,
+      "total_chars": 0
+    }
+  }
+}

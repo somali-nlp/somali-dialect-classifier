@@ -1,6 +1,8 @@
 # Configuration Management Guide
 
-Comprehensive guide to configuring the Somali Dialect Classifier project using environment variables, `.env` files, and programmatic configuration.
+**Comprehensive guide to configuring the Somali Dialect Classifier using environment variables, .env files, and programmatic configuration.**
+
+**Last Updated:** 2025-11-21
 
 ## Table of Contents
 
@@ -709,7 +711,7 @@ def test_custom_config():
     assert config.logging.level == 'DEBUG'
 ```
 
-## See Also
+## Related Documentation
 
 - [Architecture Documentation](ARCHITECTURE.md) - System design and patterns
 - [API Reference](API_REFERENCE.md) - Programmatic APIs
@@ -718,5 +720,4 @@ def test_custom_config():
 
 ---
 
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

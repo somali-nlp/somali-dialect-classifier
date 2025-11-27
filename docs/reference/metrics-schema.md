@@ -1,5 +1,9 @@
 # Metrics Schema Specification
 
+**Schema specification for metrics files in the Somali NLP data pipeline ensuring data integrity and reliable dashboard aggregation.**
+
+**Last Updated:** 2025-11-21
+
 This document defines the schema specification for metrics files in the Somali NLP data pipeline. All metrics files must conform to this schema to ensure data integrity and reliable dashboard aggregation.
 
 ## Schema Version: 3.0
@@ -539,6 +543,66 @@ These fields may still appear in legacy_metrics sections for backward compatibil
 
 ---
 
+---
+
+## Table of Contents
+
+- [Schema Version: 3.0](#schema-version-30)
+- [Overview](#overview)
+- [File Types](#file-types)
+  - [1. Processing Files (`*_processing.json`)](#1-processing-files-processingjson)
+  - [2. Consolidated Metrics (`all_metrics.json`)](#2-consolidated-metrics-allmetricsjson)
+  - [3. Dashboard Summary (`summary.json`)](#3-dashboard-summary-summaryjson)
+- [Layered Metrics Details](#layered-metrics-details)
+  - [Connectivity Layer](#connectivity-layer)
+  - [Extraction Layer](#extraction-layer)
+  - [Quality Layer](#quality-layer)
+  - [Volume Layer](#volume-layer)
+- [Statistics Section](#statistics-section)
+  - [Success Rates (0.0 - 1.0)](#success-rates-00-10)
+  - [Throughput Metrics (≥0)](#throughput-metrics-0)
+  - [Statistical Distributions (optional)](#statistical-distributions-optional)
+- [Validation](#validation)
+  - [Automatic Validation](#automatic-validation)
+  - [Schema Enforcement](#schema-enforcement)
+  - [CI Integration](#ci-integration)
+- [Migration Guide](#migration-guide)
+  - [Upgrading from Version 2.0](#upgrading-from-version-20)
+  - [Example Migration](#example-migration)
+- [Deprecated Metrics](#deprecated-metrics)
+- [Best Practices](#best-practices)
+- [Schema Field Reference](#schema-field-reference)
+  - [Metadata Fields (Required)](#metadata-fields-required)
+  - [Connectivity Layer Fields](#connectivity-layer-fields)
+  - [Extraction Layer Fields](#extraction-layer-fields)
+  - [Quality Layer Fields](#quality-layer-fields)
+  - [Volume Layer Fields](#volume-layer-fields)
+- [Examples](#examples)
+  - [Complete Example: Web Scraping Pipeline](#complete-example-web-scraping-pipeline)
+  - [Example: File Processing Pipeline](#example-file-processing-pipeline)
+- [Filter Telemetry](#filter-telemetry)
+  - [Overview](#overview)
+  - [Field Specification](#field-specification)
+  - [Filter Keys and Labels](#filter-keys-and-labels)
+  - [Validation Rules](#validation-rules)
+  - [Examples by Source](#examples-by-source)
+    - [Web Scraping (BBC-Somali)](#web-scraping-bbc-somali)
+    - [Encyclopedia (Wikipedia-Somali)](#encyclopedia-wikipedia-somali)
+    - [Social Media (TikTok-Somali)](#social-media-tiktok-somali)
+    - [Streaming Dataset (HuggingFace MC4)](#streaming-dataset-huggingface-mc4)
+  - [Complete Example with Context](#complete-example-with-context)
+  - [Interpretation Guide](#interpretation-guide)
+  - [Dashboard Integration](#dashboard-integration)
+  - [Adding New Filters](#adding-new-filters)
+  - [Catalog Versioning (New in v2.0)](#catalog-versioning-new-in-v20)
+  - [Historical Export to Parquet (New in v2.0)](#historical-export-to-parquet-new-in-v20)
+  - [Cross-References](#cross-references)
+- [Support](#support)
+- [Support](#support)
+- [Version History](#version-history)
+
+---
+
 ## Filter Telemetry
 
 ### Overview
@@ -865,5 +929,4 @@ For questions or issues with the schema:
 
 ---
 
-**Last Updated**: 2025-10-28
 **Maintainers**: Somali NLP Contributors

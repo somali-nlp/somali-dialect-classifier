@@ -1,6 +1,5 @@
 # Operational Runbook - Somali NLP Data Pipeline
 
-**Version:** 1.0
 **Last Updated:** 2025-11-15
 **Status:** Production Ready
 
@@ -16,7 +15,7 @@
 
 ## Overview
 
-This runbook provides operational procedures for the Somali NLP data ingestion pipeline. The system runs on a 7-day initial collection phase, followed by source-specific refresh cadences.
+The system runs on a 7-day initial collection phase, followed by source-specific refresh cadences.
 
 ### System Architecture
 
@@ -52,7 +51,11 @@ This runbook provides operational procedures for the Somali NLP data ingestion p
    cat logs/<latest_log_file>
    ```
 
-2. **Identify failure point:**
+2. **Check MLflow Status:**
+   - Look for `status="failed"` tag in MLflow UI.
+   - Check `error_type` and `error_message` tags for immediate diagnosis.
+
+3. **Identify failure point:**
    - Download failure: Check network/API errors
    - Processing failure: Check filter/transformation errors
    - Silver write failure: Check disk space/permissions
@@ -350,6 +353,97 @@ python -m somali_dialect_classifier.pipeline.run \
 
 ---
 
+### Campaigns
+
+**Type:** Orchestration phasing
+**Purpose:** Track collection phases (initial vs. refresh)
+
+**Overview:**
+
+Campaigns provide structured phase management for the data collection lifecycle. The primary campaign is `campaign_init_001`, which tracks the initial 6-day collection period.
+
+**Campaign Lifecycle:**
+
+1. **Creation (First Run)**
+   - Automatically created on first pipeline execution
+   - Status: `ACTIVE`
+   - Duration: 6 days (configurable)
+
+2. **Active Phase**
+   - All sources run daily regardless of cadence
+   - Builds baseline dataset quickly
+   - Monitored via ledger queries
+
+3. **Completion**
+   - Automatically marked `COMPLETED` after duration
+   - Or manually completed via ledger
+   - Triggers switch to cadence-based scheduling
+
+**Check Campaign Status:**
+
+```bash
+# Via SQLite
+sqlite3 data/ledger/crawl_ledger.db <<'EOF'
+SELECT campaign_id, name, status, start_date, end_date
+FROM campaigns
+ORDER BY start_date DESC;
+EOF
+
+# Via Python
+python3 <<'EOF'
+from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+from pathlib import Path
+
+ledger = CrawlLedger(db_path=Path('data/ledger/crawl_ledger.db'))
+status = ledger.get_campaign_status("campaign_init_001")
+print(f"Campaign status: {status}")
+EOF
+```
+
+**Manual Campaign Completion:**
+
+```bash
+# Complete initial campaign early
+python3 <<'EOF'
+from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+from pathlib import Path
+
+ledger = CrawlLedger(db_path=Path('data/ledger/crawl_ledger.db'))
+ledger.complete_campaign("campaign_init_001")
+print("Campaign completed manually")
+EOF
+```
+
+**Common Issues:**
+
+1. **Campaign Stuck in ACTIVE**
+   - **Symptom**: Sources still running daily after 6 days
+   - **Cause**: Campaign not auto-completed
+   - **Solution**: Manually complete campaign (see above)
+
+2. **No Campaign Found**
+   - **Symptom**: `get_campaign_status` returns `None`
+   - **Cause**: First run hasn't occurred yet
+   - **Solution**: Run any pipeline to initialize campaign
+
+3. **Restart Initial Collection**
+   - **Use Case**: Want to restart 6-day daily collection phase
+   - **Solution**:
+     ```bash
+     sqlite3 data/ledger/crawl_ledger.db <<'EOF'
+     UPDATE campaigns 
+     SET status = 'ACTIVE', end_date = NULL
+     WHERE campaign_id = 'campaign_init_001';
+     EOF
+     ```
+
+**Expected Output:**
+- Campaign tracking in `campaigns` table
+- Orchestrator logs show "initial_collection" or "refresh" phase
+- Behavior switches at campaign completion
+
+
+
 ## Common Error Scenarios
 
 ### Error: "No module named 'somali_dialect_classifier'"
@@ -568,3 +662,11 @@ sqlite3 data/ledger/crawl_ledger.db "SELECT * FROM pipeline_runs ORDER BY start_
 ---
 
 **End of Runbook**
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

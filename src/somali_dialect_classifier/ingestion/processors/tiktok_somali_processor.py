@@ -15,9 +15,9 @@ from pathlib import Path
 from typing import Any, Optional
 
 # Import our Apify client
-from .apify_tiktok_client import ApifyTikTokClient
-from .base_pipeline import BasePipeline, RawRecord
-from .text_cleaners import TextCleaningPipeline
+from ..apify_tiktok_client import ApifyTikTokClient
+from ..base_pipeline import BasePipeline, RawRecord
+from ...quality.text_cleaners import TextCleaningPipeline
 
 
 class TikTokSomaliProcessor(BasePipeline):
@@ -46,6 +46,7 @@ class TikTokSomaliProcessor(BasePipeline):
         apify_user_id: Optional[str] = None,
         video_urls: Optional[list[str]] = None,
         force: bool = False,
+        run_seed: Optional[str] = None,
     ):
         """
         Initialize TikTok Somali processor.
@@ -69,8 +70,8 @@ class TikTokSomaliProcessor(BasePipeline):
         self.video_urls = video_urls or []
 
         # Initialize deduplication and ledger BEFORE BasePipeline
-        from somali_dialect_classifier.preprocessing.crawl_ledger import get_ledger
-        from somali_dialect_classifier.preprocessing.dedup import DedupConfig, DedupEngine
+        from somali_dialect_classifier.ingestion.crawl_ledger import get_ledger
+        from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
 
         # IMPORTANT: Only remove EXACT duplicates, not similar comments
         # User pays for every comment Apify scrapes, so we keep ALL of them
@@ -84,7 +85,7 @@ class TikTokSomaliProcessor(BasePipeline):
         self.metrics = None  # Will be initialized in download()
 
         # Initialize BasePipeline (generates run_id and logger)
-        super().__init__(source="tiktok", log_frequency=50, force=force)
+        super().__init__(source="tiktok-somali", log_frequency=50, force=force, run_seed=run_seed)
 
         # File paths (TikTok-specific naming)
         self.video_urls_file = self.raw_dir / f"tiktok-somali_{self.run_id}_raw_video-urls.json"
@@ -113,7 +114,7 @@ class TikTokSomaliProcessor(BasePipeline):
 
     def _create_cleaner(self) -> TextCleaningPipeline:
         """Create text cleaner for TikTok comments."""
-        from somali_dialect_classifier.preprocessing.text_cleaners import (
+        from somali_dialect_classifier.quality.text_cleaners import (
             TextCleaningPipeline,
             WhitespaceCleaner,
         )
@@ -178,13 +179,13 @@ class TikTokSomaliProcessor(BasePipeline):
         Raises:
             ValueError: If no video URLs provided
         """
-        from somali_dialect_classifier.utils.logging_utils import set_context
-        from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+        from somali_dialect_classifier.infra.logging_utils import set_context
+        from somali_dialect_classifier.infra.metrics import MetricsCollector, PipelineType
 
         self.raw_dir.mkdir(parents=True, exist_ok=True)
 
         # Set context
-        set_context(run_id=self.run_id, source="tiktok", phase="discovery")
+        set_context(run_id=self.run_id, source="tiktok-somali", phase="discovery")
 
         # Initialize metrics collector
         # Using STREAM_PROCESSING as TikTok Apify acts like an API stream
@@ -214,6 +215,46 @@ class TikTokSomaliProcessor(BasePipeline):
         self.logger.info("=" * 60)
         self.logger.info("PHASE 1: TikTok Video URL Discovery")
         self.logger.info("=" * 60)
+
+        # FIX: Filter out already-processed video URLs from ledger
+        processed_video_urls = set()
+        if not self.force and hasattr(self, 'ledger') and self.ledger is not None:
+            try:
+                processed_records = self.ledger.get_processed_urls(source="tiktok-somali")
+                processed_video_urls = {record['url'] for record in processed_records}
+                self.logger.info(
+                    f"Loaded {len(processed_video_urls)} already-processed video URLs from ledger"
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to load processed video URLs: {e}")
+
+        # Filter to only new videos
+        new_video_urls = [url for url in self.video_urls if url not in processed_video_urls]
+
+        if not new_video_urls:
+            self.logger.info(
+                f"All {len(self.video_urls)} video URLs already processed - skipping Apify call"
+            )
+            # Save empty file and return to skip extraction
+            with open(self.video_urls_file, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "video_urls": [],
+                        "discovered_at": self.date_accessed,
+                        "run_id": self.run_id,
+                        "note": "All videos already processed - skipped",
+                    },
+                    f,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            return self.video_urls_file
+
+        self.logger.info(
+            f"Filtered {len(self.video_urls) - len(new_video_urls)} already-processed videos, "
+            f"{len(new_video_urls)} new videos to scrape"
+        )
+        self.video_urls = new_video_urls
         self.logger.info(f"Videos to scrape: {len(self.video_urls)}")
 
         # Save video URLs
@@ -251,7 +292,7 @@ class TikTokSomaliProcessor(BasePipeline):
         Returns:
             Path to scraped comments file
         """
-        from somali_dialect_classifier.utils.logging_utils import set_context
+        from somali_dialect_classifier.infra.logging_utils import set_context
 
         if not self.video_urls_file.exists():
             raise FileNotFoundError(f"Video URLs not found: {self.video_urls_file}")
@@ -273,7 +314,7 @@ class TikTokSomaliProcessor(BasePipeline):
             self.video_urls = data["video_urls"]
 
         # Set context for extraction phase
-        set_context(run_id=self.run_id, source="tiktok", phase="extraction")
+        set_context(run_id=self.run_id, source="tiktok-somali", phase="extraction")
 
         self.logger.info("")
         self.logger.info("=" * 60)
@@ -383,7 +424,7 @@ class TikTokSomaliProcessor(BasePipeline):
         self.logger.info("=" * 60)
 
         # Export metrics
-        from somali_dialect_classifier.utils.metrics import QualityReporter
+        from somali_dialect_classifier.infra.metrics import QualityReporter
 
         metrics_path = Path("data/metrics") / f"{self.run_id}_extraction.json"
         metrics_path.parent.mkdir(parents=True, exist_ok=True)
@@ -461,6 +502,17 @@ class TikTokSomaliProcessor(BasePipeline):
             author_id_str = str(author_id) if author_id else ""
             comment_id_str = str(comment_id) if comment_id else ""
 
+            # Convert Unix timestamp to ISO 8601 format for silver schema compatibility
+            # Apify returns createTime as Unix timestamp (e.g., 1759998757)
+            # RecordBuilder expects date_published in ISO 8601 format
+            created_at_unix = item.get("createTime", 0)
+            if created_at_unix:
+                from datetime import datetime, timezone
+                created_at_iso = datetime.fromtimestamp(created_at_unix, tz=timezone.utc).isoformat()
+            else:
+                # Try ISO format from createTimeISO field as fallback
+                created_at_iso = item.get("createTimeISO", "")
+
             return {
                 "url": comment_url,
                 "video_url": video_url,
@@ -468,7 +520,7 @@ class TikTokSomaliProcessor(BasePipeline):
                 # FIXED: Apify returns 'uniqueId' at top level, not in 'user' object
                 "author": item.get("uniqueId", "unknown"),
                 "author_id": author_id_str,
-                "created_at": item.get("createTime", ""),
+                "created_at": created_at_iso,  # Now in ISO 8601 format
                 "likes": item.get("diggCount", 0),
                 "replies": item.get("replyCommentTotal", 0),
                 "comment_id": comment_id_str,

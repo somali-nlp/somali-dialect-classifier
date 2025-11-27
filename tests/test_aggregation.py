@@ -11,7 +11,7 @@ This test suite validates:
 
 import pytest
 
-from somali_dialect_classifier.utils.aggregation import (
+from somali_dialect_classifier.infra.aggregation import (
     AggregationMethod,
     _extract_metrics,
     aggregate_compatible_metrics,

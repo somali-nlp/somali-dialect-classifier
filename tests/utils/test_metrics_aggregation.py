@@ -2,7 +2,7 @@
 import json
 import pytest
 from pathlib import Path
-from somali_dialect_classifier.utils.metrics_aggregation import (
+from somali_dialect_classifier.infra.metrics_aggregation import (
     extract_consolidated_metric,
     load_metrics_from_file,
     load_all_processing_metrics,

@@ -1,5 +1,9 @@
 # Pipeline Orchestration Guide
 
+**Comprehensive guide to pipeline coordination, scheduling, cadences, campaigns, and incremental processing.**
+
+**Last Updated:** 2025-11-21
+
 **Last Updated**: 2025-11-11
 
 ## Overview
@@ -71,14 +75,44 @@ Each data source has a configured refresh cadence based on its update frequency:
 - If cadence not met, pipeline is skipped with informative message
 - Cadences are configurable via environment variables
 
+### Campaigns
+
+**Campaigns** are named phases in the data collection lifecycle tracked in the ledger's `campaigns` table. They provide explicit markers for different collection strategies:
+
+**Campaign Structure:**
+- `campaign_id`: Unique identifier (e.g., `campaign_init_001`)
+- `name`: Human-readable name (e.g., "Initial Data Ingestion")
+- `status`: Current state (`ACTIVE` or `COMPLETED`)
+- `start_date`: When the campaign began
+- `end_date`: When the campaign completed (null if active)
+
+**Current Campaign: Initial Collection**
+
+The orchestrator automatically creates and manages `campaign_init_001` for the initial collection phase. This campaign:
+- Starts on first pipeline run
+- Remains `ACTIVE` for the configured duration (default: 6 days)
+- Switches to `COMPLETED` when the initial collection period ends
+- Triggers the transition from daily runs to cadence-based scheduling
+
+**Query Campaign Status:**
+
+```python
+from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+
+ledger = CrawlLedger()
+status = ledger.get_campaign_status("campaign_init_001")
+print(f"Campaign status: {status}")  # ACTIVE or COMPLETED
+```
+
 ### Initial Collection Phase
 
-The **initial collection phase** is the first 6 days after project initialization. During this phase:
+The **initial collection phase** is the first 6 days after project initialization, tracked via the `campaign_init_001` campaign. During this phase:
 
 1. **All sources run daily** regardless of their configured cadence
 2. **Purpose**: Quickly build a comprehensive baseline dataset
 3. **Duration**: 6 days (configurable via `SDC_ORCHESTRATION__INITIAL_COLLECTION_DAYS`)
-4. **Transition**: After 6 days, sources switch to their individual cadences
+4. **Campaign Tracking**: The `campaign_init_001` status determines whether we're in this phase
+5. **Transition**: After 6 days, campaign is marked `COMPLETED` and sources switch to individual cadences
 
 **Example Timeline:**
 
@@ -100,10 +134,33 @@ Day 15: BBC, TikTok, Wikipedia (all cadences met)
 ```python
 from somali_dialect_classifier.orchestration.flows import is_initial_collection_phase
 
+# Check campaign status
 if is_initial_collection_phase():
     print("In initial collection phase - all sources run daily")
 else:
     print("In refresh phase - sources run per cadence")
+
+# Or check campaign directly
+from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+ledger = CrawlLedger()
+campaign_status = ledger.get_campaign_status("campaign_init_001")
+if campaign_status == "ACTIVE":
+    print("Campaign active - initial collection ongoing")
+elif campaign_status == "COMPLETED":
+    print("Campaign completed - now using cadence-based scheduling")
+else:
+    print("Campaign not started yet - will be created on first run")
+```
+
+**Complete Initial Campaign Manually:**
+
+```python
+from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+
+ledger = CrawlLedger()
+ledger.complete_campaign("campaign_init_001")
+print("Initial collection campaign marked as completed")
+print("Subsequent runs will use cadence-based scheduling")
 ```
 
 ### Incremental Processing
@@ -867,6 +924,60 @@ Look for:
 
 ---
 
-**Version**: 1.0
-**Last Updated**: 2025-11-11
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Quick Start](#quick-start)
+  - [Run All Pipelines](#run-all-pipelines)
+  - [Run Specific Pipeline](#run-specific-pipeline)
+  - [Skip Specific Sources](#skip-specific-sources)
+- [Orchestration Concepts](#orchestration-concepts)
+  - [Refresh Cadences](#refresh-cadences)
+  - [Campaigns](#campaigns)
+  - [Initial Collection Phase](#initial-collection-phase)
+  - [Incremental Processing](#incremental-processing)
+  - [Three-Tier Deduplication](#three-tier-deduplication)
+- [Configuration](#configuration)
+  - [Environment Variables](#environment-variables)
+  - [Daily Quotas (New in Phase C)](#daily-quotas-new-in-phase-c)
+  - [Programmatic Configuration](#programmatic-configuration)
+- [Common Commands](#common-commands)
+  - [Production Workflows](#production-workflows)
+    - [Daily Automated Run](#daily-automated-run)
+    - [Quarterly Refresh](#quarterly-refresh)
+    - [Force Full Re-Processing](#force-full-re-processing)
+  - [Testing Workflows](#testing-workflows)
+    - [Smoke Test (Quick Validation)](#smoke-test-quick-validation)
+    - [Source-Specific Testing](#source-specific-testing)
+- [Advanced Workflows](#advanced-workflows)
+  - [Quarterly Refresh Strategy](#quarterly-refresh-strategy)
+  - [CI/CD Integration](#cicd-integration)
+    - [GitHub Actions Workflow](#github-actions-workflow)
+    - [Docker Orchestration](#docker-orchestration)
+  - [Custom Pipelines](#custom-pipelines)
+- [Monitoring & Observability](#monitoring-observability)
+  - [Metrics Collection](#metrics-collection)
+  - [Quality Reports](#quality-reports)
+  - [Ledger Tracking](#ledger-tracking)
+  - [Logging](#logging)
+- [Troubleshooting](#troubleshooting)
+  - [Pipeline Skipped (Cadence Not Met)](#pipeline-skipped-cadence-not-met)
+  - [Duplicate Detection Issues](#duplicate-detection-issues)
+  - [Out of Memory Errors](#out-of-memory-errors)
+  - [Concurrent Run Detected](#concurrent-run-detected)
+- [Best Practices](#best-practices)
+  - [1. Monitor Initial Collection Phase](#1-monitor-initial-collection-phase)
+  - [2. Backup Ledger Regularly](#2-backup-ledger-regularly)
+  - [3. Use Force Sparingly](#3-use-force-sparingly)
+  - [4. Set Appropriate Cadences](#4-set-appropriate-cadences)
+  - [5. Monitor Quality Metrics](#5-monitor-quality-metrics)
+- [References](#references)
+  - [Source-Specific Guides](#source-specific-guides)
+  - [API References](#api-references)
+
+---
+
 **Maintainer**: DevOps Infrastructure Team
+**Maintainers**: Somali NLP Contributors

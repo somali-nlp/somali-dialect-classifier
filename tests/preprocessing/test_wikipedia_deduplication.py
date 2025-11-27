@@ -14,12 +14,13 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from somali_dialect_classifier.preprocessing.crawl_ledger import (
+from somali_dialect_classifier.ingestion.crawl_ledger import (
     CrawlLedger,
 )
-from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
     WikipediaSomaliProcessor,
 )
+print(f"DEBUG: Module name: {WikipediaSomaliProcessor.__module__}")
 
 
 @pytest.fixture
@@ -36,12 +37,12 @@ def temp_ledger():
 def mock_processor(temp_ledger):
     """Create Wikipedia processor with mocked dependencies."""
     with patch(
-        "somali_dialect_classifier.preprocessing.wikipedia_somali_processor.get_ledger"
+        "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
     ) as mock_get_ledger:
         mock_get_ledger.return_value = temp_ledger
 
         with patch(
-            "somali_dialect_classifier.preprocessing.wikipedia_somali_processor.get_config"
+            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_config"
         ) as mock_config:
             # Mock config to avoid file system dependencies
             config = Mock()
@@ -212,16 +213,16 @@ class TestFilterAlreadyProcessed:
         assert mock_processor.metrics.increment.call_count == 500
 
 
-class TestLedgerGetLastSuccessfulRun:
-    """Test get_last_successful_run method."""
+class TestLedgerGetLastProcessingTime:
+    """Test get_last_processing_time method."""
 
     def test_returns_none_for_new_source(self, temp_ledger):
-        """Test returns None when source never run."""
-        result = temp_ledger.get_last_successful_run("never-run-source")
+        """Test returns None when source never processed."""
+        result = temp_ledger.get_last_processing_time("never-processed-source")
         assert result is None
 
     def test_returns_timestamp_after_processing(self, temp_ledger):
-        """Test returns correct timestamp after processing."""
+        """Test returns timestamp after successful processing."""
         datetime.now(timezone.utc)
 
         url = "https://example.com/test"
@@ -230,7 +231,7 @@ class TestLedgerGetLastSuccessfulRun:
             url=url, text_hash="hash123", silver_id="silver_001", source="test-source"
         )
 
-        result = temp_ledger.get_last_successful_run("test-source")
+        result = temp_ledger.get_last_processing_time("test-source")
 
         assert result is not None
         assert isinstance(result, datetime)
@@ -251,7 +252,7 @@ class TestLedgerGetLastSuccessfulRun:
             url=url1, text_hash="hash1", silver_id="silver_001", source=source
         )
 
-        first_time = temp_ledger.get_last_successful_run(source)
+        first_time = temp_ledger.get_last_processing_time(source)
 
         # Wait a bit
         time.sleep(0.2)
@@ -263,7 +264,7 @@ class TestLedgerGetLastSuccessfulRun:
             url=url2, text_hash="hash2", silver_id="silver_002", source=source
         )
 
-        second_time = temp_ledger.get_last_successful_run(source)
+        second_time = temp_ledger.get_last_processing_time(source)
 
         # Second timestamp should be more recent
         assert second_time > first_time
@@ -282,7 +283,7 @@ class TestLedgerGetLastSuccessfulRun:
         temp_ledger.mark_duplicate(url_duplicate, "https://example.com/original", source=source)
 
         # Should return None because no PROCESSED records
-        result = temp_ledger.get_last_successful_run(source)
+        result = temp_ledger.get_last_processing_time(source)
         assert result is None
 
 

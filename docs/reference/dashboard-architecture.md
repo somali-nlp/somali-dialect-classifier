@@ -2,6 +2,8 @@
 
 **Technical reference for the Somali Dialect Classifier dashboard architecture, metrics pipeline, and data flow.**
 
+**Last Updated:** 2025-11-21
+
 **Last Updated**: 2025-10-28
 **Audience**: Software engineers, DevOps engineers, system architects, contributors
 
@@ -1642,5 +1644,4 @@ class RunComparator {
 
 ---
 
-**Last Updated**: 2025-10-27
 **Maintainers**: Somali NLP Contributors

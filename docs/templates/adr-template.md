@@ -1,9 +1,42 @@
 # ADR-XXX: [Decision Title]
 
-**Status**: Proposed | Accepted | Deprecated | Superseded
-**Date**: YYYY-MM-DD
-**Deciders**: [List team members involved in the decision]
+**Template for Architecture Decision Records documenting important technical and design decisions.**
+
+**Last Updated:** 2025-11-21
+
+**Status**: Proposed | Accepted | Deprecated | Superseded  
+**Date**: YYYY-MM-DD  
+**Deciders**: [List team members involved in the decision]  
 **Supersedes**: [ADR-XXX if applicable]
+
+---
+
+---
+
+## Table of Contents
+
+- [Context](#context)
+  - [Background](#background)
+  - [Problem Statement](#problem-statement)
+- [Decision](#decision)
+  - [Implementation Details](#implementation-details)
+- [Rationale](#rationale)
+  - [Key Benefits](#key-benefits)
+  - [Trade-offs Accepted](#trade-offs-accepted)
+- [Alternatives Considered](#alternatives-considered)
+  - [Alternative 1: [Name]](#alternative-1-name)
+  - [Alternative 2: [Name]](#alternative-2-name)
+- [Consequences](#consequences)
+  - [Positive Consequences](#positive-consequences)
+  - [Negative Consequences](#negative-consequences)
+  - [Neutral Consequences](#neutral-consequences)
+- [Implementation Plan](#implementation-plan)
+  - [Phase 1: [Description]](#phase-1-description)
+  - [Phase 2: [Description]](#phase-2-description)
+  - [Success Criteria](#success-criteria)
+- [References](#references)
+- [Revision History](#revision-history)
+- [Notes](#notes)
 
 ---
 
@@ -156,4 +189,11 @@ Additional context, links to related issues, or implementation notes.
 ---
 
 **Template Version**: 1.0
-**Last Updated**: 2025-10-18
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

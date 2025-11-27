@@ -1,5 +1,48 @@
 # PostgreSQL Setup Guide
 
+**Setting up PostgreSQL database for production crawl ledger.**
+
+**Last Updated:** 2025-11-21
+
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Quick Start](#quick-start)
+  - [Development (SQLite - Default)](#development-sqlite-default)
+  - [Production (PostgreSQL)](#production-postgresql)
+- [Architecture](#architecture)
+  - [SQLite (Development)](#sqlite-development)
+  - [PostgreSQL (Production)](#postgresql-production)
+- [Configuration](#configuration)
+  - [Environment Variables](#environment-variables)
+  - [Docker Compose](#docker-compose)
+- [Migration](#migration)
+  - [Migrate from SQLite to PostgreSQL](#migrate-from-sqlite-to-postgresql)
+- [Performance](#performance)
+  - [Benchmarks](#benchmarks)
+  - [Scaling](#scaling)
+- [Troubleshooting](#troubleshooting)
+  - [PostgreSQL container won't start](#postgresql-container-wont-start)
+  - [Connection refused](#connection-refused)
+  - [Schema not initialized](#schema-not-initialized)
+  - [Slow query performance](#slow-query-performance)
+- [Best Practices](#best-practices)
+  - [Development](#development)
+  - [Production](#production)
+  - [Quarterly Refresh](#quarterly-refresh)
+- [Schema](#schema)
+  - [Tables](#tables)
+  - [Indexes](#indexes)
+- [Security](#security)
+  - [Credentials](#credentials)
+  - [Network](#network)
+  - [Backups](#backups)
+- [References](#references)
+
+---
 ## Overview
 
 This guide covers PostgreSQL setup for the Somali NLP data pipeline. PostgreSQL provides production-scale performance with row-level locking for concurrent writes.
@@ -247,3 +290,11 @@ All indexes are created automatically on schema initialization:
 - PostgreSQL Documentation: https://www.postgresql.org/docs/16/
 - Connection pooling: https://www.psycopg.org/docs/pool.html
 - Docker Compose: https://docs.docker.com/compose/
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

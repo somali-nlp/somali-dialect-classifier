@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from somali_dialect_classifier.preprocessing.crawl_ledger import CrawlLedger, CrawlState
+from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger, CrawlState
 
 
 @pytest.fixture

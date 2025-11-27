@@ -15,7 +15,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from somali_dialect_classifier.utils.metrics_schema import (
+from somali_dialect_classifier.infra.metrics_schema import (
     validate_processing_json,
 )
 

@@ -2,6 +2,8 @@
 
 **Complete API reference for built-in data quality filters.**
 
+**Last Updated:** 2025-11-21
+
 **Last Updated**: 2025-10-20
 
 ---
@@ -1031,6 +1033,4 @@ def test_my_custom_filter_parametrized(text, expected):
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

@@ -1,8 +1,8 @@
 # Understanding Filter Statistics
 
-**How to interpret quality filter impact and optimize thresholds**
+**Guide to interpreting quality filter metrics and optimizing data processing pipelines.**
 
-**Last Updated**: 2025-10-27
+**Last Updated:** 2025-11-21**
 **Audience**: Data scientists, ML engineers, pipeline developers
 
 ---
@@ -753,5 +753,4 @@ Open an issue with the `filters` label or consult the [Troubleshooting Guide](..
 
 ---
 
-**Last Updated**: 2025-10-28
 **Maintainers**: Somali NLP Contributors

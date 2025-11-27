@@ -1,6 +1,8 @@
 # Processing Pipelines Guide
 
-**Last Updated**: 2025-11-01
+**Step-by-step walkthroughs for processing data from each supported source.**
+
+**Last Updated:** 2025-11-21
 
 This guide provides step-by-step walkthroughs for processing data from each supported source.
 
@@ -71,6 +73,86 @@ somali-orchestrate --pipeline all \
 **Note:** TikTok pipeline requires:
 - Apify API token (set via `SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN` env var)
 - Video URLs file (default: `data/tiktok_urls.txt`)
+
+---
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Quick Start](#quick-start)
+  - [Run Individual Pipelines](#run-individual-pipelines)
+  - [Orchestrate Multiple Pipelines](#orchestrate-multiple-pipelines)
+- [Wikipedia-Somali Pipeline](#wikipedia-somali-pipeline)
+  - [Quick Start](#quick-start)
+  - [Step-by-Step](#step-by-step)
+  - [Output Structure](#output-structure)
+  - [Filters Applied](#filters-applied)
+  - [MLOps Outputs](#mlops-outputs)
+  - [Common Issues](#common-issues)
+- [BBC-Somali Pipeline](#bbc-somali-pipeline)
+  - [Quick Start](#quick-start)
+  - [Step-by-Step](#step-by-step)
+  - [Performance Expectations](#performance-expectations)
+  - [Filters Applied](#filters-applied)
+  - [Topic Lexicons](#topic-lexicons)
+  - [Scraping Best Practices](#scraping-best-practices)
+  - [MLOps Outputs](#mlops-outputs)
+  - [Common Issues](#common-issues)
+- [HuggingFace Datasets Pipeline](#huggingface-datasets-pipeline)
+  - [Quick Start](#quick-start)
+  - [Available Datasets](#available-datasets)
+    - [MC4 (Multilingual C4)](#mc4-multilingual-c4)
+    - [OSCAR-2301](#oscar-2301)
+    - [MADLAD-400](#madlad-400)
+  - [Step-by-Step (MC4 Example)](#step-by-step-mc4-example)
+  - [Manifest Format](#manifest-format)
+  - [Resume Capability](#resume-capability)
+  - [Filters Applied](#filters-applied)
+  - [Authentication (OSCAR)](#authentication-oscar)
+  - [Performance Tuning](#performance-tuning)
+  - [MLOps Outputs](#mlops-outputs)
+- [Språkbanken-Somali Pipeline](#språkbanken-somali-pipeline)
+  - [Quick Start](#quick-start)
+  - [Available Corpora (23 total)](#available-corpora-23-total)
+  - [Step-by-Step](#step-by-step)
+  - [Filters Applied](#filters-applied)
+  - [Domain Enrichment](#domain-enrichment)
+  - [MLOps Outputs](#mlops-outputs)
+  - [Common Issues](#common-issues)
+- [TikTok Comments Pipeline](#tiktok-comments-pipeline)
+  - [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Step-by-Step](#step-by-step)
+  - [Performance Expectations](#performance-expectations)
+  - [Filters Applied](#filters-applied)
+  - [Data Preservation Strategy](#data-preservation-strategy)
+  - [Cost Management](#cost-management)
+  - [Orchestration Integration](#orchestration-integration)
+  - [MLOps Outputs](#mlops-outputs)
+  - [Common Issues](#common-issues)
+- [CLI Usage](#cli-usage)
+  - [Wikipedia](#wikipedia)
+  - [BBC](#bbc)
+  - [HuggingFace](#huggingface)
+  - [Språkbanken](#språkbanken)
+  - [TikTok](#tiktok)
+- [Silver Dataset Schema](#silver-dataset-schema)
+- [Filter Telemetry](#filter-telemetry)
+  - [Overview](#overview)
+  - [Finding Filter Breakdowns](#finding-filter-breakdowns)
+    - [In Metrics JSON](#in-metrics-json)
+    - [In Consolidated Dashboard Data](#in-consolidated-dashboard-data)
+  - [Filter Catalog](#filter-catalog)
+  - [Filter Registration](#filter-registration)
+  - [Adding New Filters](#adding-new-filters)
+  - [Example Filter Breakdown JSON](#example-filter-breakdown-json)
+  - [Historical Analytics (New in v2.0)](#historical-analytics-new-in-v20)
+  - [Regression Testing (New in v2.0)](#regression-testing-new-in-v20)
+- [Comparison by Source](#comparison-by-source)
+  - [Integration Guides (Comprehensive Documentation)](#integration-guides-comprehensive-documentation)
+  - [Other Documentation](#other-documentation)
 
 ---
 
@@ -1158,7 +1240,7 @@ git commit -m "test: update filter baselines after adding profanity_filter"
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md#regression-tests) for complete testing guide.
 
-### See Also
+### Related Documentation
 
 - **[Metrics Schema Reference](../reference/metrics-schema.md#filter-telemetry)** - Complete `filter_breakdown` field specification
 - **[Filter Catalog Reference](../reference/filters.md)** - All available filters with descriptions
@@ -1184,7 +1266,7 @@ See [CONTRIBUTING.md](../../CONTRIBUTING.md#regression-tests) for complete testi
 
 ---
 
-## See Also
+## Related Documentation
 
 ### Integration Guides (Comprehensive Documentation)
 
@@ -1204,5 +1286,4 @@ See [CONTRIBUTING.md](../../CONTRIBUTING.md#regression-tests) for complete testi
 
 ---
 
-**Last Updated**: 2025-11-01
 **Maintainers**: Somali NLP Contributors

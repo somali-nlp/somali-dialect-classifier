@@ -1,0 +1,64 @@
+{
+  "manifest_version": "1.0",
+  "run_id": "run_20251127_175417_5939d251",
+  "timestamp": "2025-11-27T17:54:17.859357+00:00",
+  "orchestrator_version": "1.1.0",
+  "sources": {
+    "wikipedia": {
+      "status": "success",
+      "records_ingested": 0,
+      "records_skipped": 0,
+      "partitions": [
+        "2025-11-27"
+      ],
+      "quota_hit": false,
+      "processing_time_seconds": 0.0
+    },
+    "bbc": {
+      "status": "success",
+      "records_ingested": 0,
+      "records_skipped": 0,
+      "partitions": [
+        "2025-11-27"
+      ],
+      "quota_hit": false,
+      "processing_time_seconds": 0.0
+    },
+    "huggingface": {
+      "status": "failed",
+      "records_ingested": 0,
+      "records_skipped": 0,
+      "partitions": [
+        "2025-11-27"
+      ],
+      "quota_hit": false,
+      "processing_time_seconds": 0.0
+    },
+    "sprakbanken": {
+      "status": "success",
+      "records_ingested": 0,
+      "records_skipped": 0,
+      "partitions": [
+        "2025-11-27"
+      ],
+      "quota_hit": false,
+      "processing_time_seconds": 0.0
+    },
+    "tiktok": {
+      "status": "failed",
+      "records_ingested": 0,
+      "records_skipped": 0,
+      "partitions": [
+        "2025-11-27"
+      ],
+      "quota_hit": false,
+      "processing_time_seconds": 0.0
+    }
+  },
+  "totals": {
+    "total_records": 0,
+    "total_partitions": 1,
+    "total_processing_time_seconds": 0.0,
+    "sources_with_quota_hit": []
+  }
+}

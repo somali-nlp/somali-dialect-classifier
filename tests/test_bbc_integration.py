@@ -14,7 +14,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
+from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
 
 
 def read_parquet_file_safely(path):
@@ -286,7 +286,7 @@ class TestBBCIntegration:
         table = pq.ParquetFile(parquet_files[0]).read()
 
         # Verify schema matches expected (same as Wikipedia)
-        from somali_dialect_classifier.preprocessing.silver_writer import SilverDatasetWriter
+        from somali_dialect_classifier.quality.silver_writer import SilverDatasetWriter
 
         writer = SilverDatasetWriter()
 

@@ -1,4 +1,8 @@
-# OSCAR Dataset - Decision and Rationale
+# ADR 001: OSCAR Dataset Exclusion
+
+**Architectural Decision Record documenting the exclusion of OSCAR dataset from data sources.**
+
+**Last Updated:** 2025-11-21
 
 ## Decision: **NOT USING OSCAR**
 
@@ -162,5 +166,41 @@ But honestly? **MC4 is enough.** You have quantity AND your own quality filters.
 
 ---
 
+---
+
+## Table of Contents
+
+- [Decision: **NOT USING OSCAR**](#decision-not-using-oscar)
+- [Analysis](#analysis)
+  - [MC4 (allenai/c4) - CHOSEN ✅](#mc4-allenaic4-chosen-)
+  - [OSCAR-2301 - REJECTED ❌](#oscar-2301-rejected-)
+- [Key Reasons for Rejecting OSCAR](#key-reasons-for-rejecting-oscar)
+  - [1. **MC4 Has MORE Data**](#1-mc4-has-more-data)
+  - [2. **We Already Have Quality Filters**](#2-we-already-have-quality-filters)
+  - [3. **MC4 is Working NOW**](#3-mc4-is-working-now)
+  - [4. **Authentication is Ongoing Maintenance**](#4-authentication-is-ongoing-maintenance)
+  - [5. **Our Filters Are Effective**](#5-our-filters-are-effective)
+- [What We Keep](#what-we-keep)
+  - [Primary Dataset: MC4](#primary-dataset-mc4)
+  - [Secondary Dataset: MADLAD-400 (if accessible)](#secondary-dataset-madlad-400-if-accessible)
+  - [Combined Command](#combined-command)
+- [Code Changes](#code-changes)
+  - [Keep in Code (Commented)](#keep-in-code-commented)
+  - [Why Keep It?](#why-keep-it)
+  - [Remove from Active Use](#remove-from-active-use)
+- [Recommendation](#recommendation)
+- [If You Really Want OSCAR Later](#if-you-really-want-oscar-later)
+- [Final Summary](#final-summary)
+
+---
+
 **Date**: 2025-10-16
 **Status**: Accepted
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

@@ -1,0 +1,44 @@
+{
+  "_schema_version": "3.0",
+  "_pipeline_type": "file_processing",
+  "_timestamp": "2025-11-27T18:01:06.222217+00:00",
+  "_run_id": "20251127_175417_sprakbanken-somali_5939d251",
+  "_source": "sprakbanken-somali",
+  "layered_metrics": {
+    "connectivity": {
+      "connection_attempted": true,
+      "connection_successful": true,
+      "connection_duration_ms": 0.0,
+      "connection_error": null
+    },
+    "extraction": {
+      "files_discovered": 66,
+      "files_processed": 66,
+      "files_failed": 0,
+      "records_extracted": 16039,
+      "extraction_errors": {}
+    },
+    "quality": {
+      "records_received": 16039,
+      "records_passed_filters": 13134,
+      "filter_breakdown": {
+        "langid_filter": 2044,
+        "empty_after_cleaning": 114,
+        "min_length_filter": 747
+      }
+    },
+    "volume": {
+      "records_written": 13134,
+      "bytes_downloaded": 0,
+      "total_chars": 73444
+    }
+  },
+  "custom_metrics": {
+    "incremental_filtering": {
+      "total": 66,
+      "new": 66,
+      "skipped": 0,
+      "processed_corpus_ids": []
+    }
+  }
+}

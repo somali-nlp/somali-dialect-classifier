@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from somali_dialect_classifier.preprocessing.crawl_ledger import LockManager
+from somali_dialect_classifier.ingestion.crawl_ledger import LockManager
 
 
 @pytest.fixture

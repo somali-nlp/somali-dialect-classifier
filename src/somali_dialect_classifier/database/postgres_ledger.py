@@ -22,7 +22,7 @@ from typing import Any, Optional
 from psycopg2.extras import Json, RealDictCursor
 from psycopg2.pool import ThreadedConnectionPool
 
-from ..preprocessing.crawl_ledger import CrawlState, LedgerBackend
+from ..ingestion.crawl_ledger import CrawlState, LedgerBackend
 
 logger = logging.getLogger(__name__)
 

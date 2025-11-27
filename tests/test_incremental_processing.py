@@ -16,11 +16,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from somali_dialect_classifier.preprocessing.crawl_ledger import CrawlLedger
-from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import (
+from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+from somali_dialect_classifier.ingestion.processors.sprakbanken_somali_processor import (
     SprakbankenSomaliProcessor,
 )
-from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
     WikipediaSomaliProcessor,
 )
 
@@ -38,7 +38,7 @@ def temp_ledger():
 @pytest.fixture
 def mock_wikipedia_processor():
     """Create mock Wikipedia processor."""
-    with patch("somali_dialect_classifier.preprocessing.wikipedia_somali_processor.get_config"):
+    with patch("somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_config"):
         processor = WikipediaSomaliProcessor(force=False)
         return processor
 
@@ -46,7 +46,7 @@ def mock_wikipedia_processor():
 @pytest.fixture
 def mock_sprakbanken_processor():
     """Create mock Språkbanken processor."""
-    with patch("somali_dialect_classifier.preprocessing.sprakbanken_somali_processor.get_config"):
+    with patch("somali_dialect_classifier.ingestion.processors.sprakbanken_somali_processor.get_config"):
         processor = SprakbankenSomaliProcessor(corpus_id="somali-cilmi", force=False)
         return processor
 

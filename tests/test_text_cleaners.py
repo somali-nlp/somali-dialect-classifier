@@ -4,7 +4,7 @@ Unit tests for text cleaning utilities.
 These tests demonstrate how separation of concerns improves testability.
 """
 
-from somali_dialect_classifier.preprocessing.text_cleaners import (
+from somali_dialect_classifier.quality.text_cleaners import (
     HTMLCleaner,
     TextCleaningPipeline,
     WhitespaceCleaner,

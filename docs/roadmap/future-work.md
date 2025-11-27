@@ -1,8 +1,42 @@
 # Future Work & Backlog
 
-**Last Updated**: 2025-10-16
+**Enhancement ideas, technical debt, and future improvements organized by priority level.**
+
+**Last Updated:** 2025-11-21
 
 This document tracks enhancement ideas, technical debt, and future improvements for the Somali Dialect Classifier project.
+
+---
+
+---
+
+## Table of Contents
+
+- [High Priority](#high-priority)
+  - [1. MLflow Integration](#1-mlflow-integration)
+  - [2. Orchestration with Prefect/Dagster](#2-orchestration-with-prefectdagster)
+  - [3. Precision/Recall Evaluation of Filters](#3-precisionrecall-evaluation-of-filters)
+- [Medium Priority](#medium-priority)
+  - [4. Great Expectations Data Quality](#4-great-expectations-data-quality)
+  - [5. Deduplication Pipeline](#5-deduplication-pipeline)
+  - [6. Additional Data Sources](#6-additional-data-sources)
+- [Low Priority / Nice-to-Have](#low-priority-nice-to-have)
+  - [7. Incremental Updates](#7-incremental-updates)
+  - [8. Data Versioning with DVC](#8-data-versioning-with-dvc)
+  - [9. Streaming Processing](#9-streaming-processing)
+  - [10. Multi-language Support](#10-multi-language-support)
+- [Technical Debt](#technical-debt)
+  - [11. Refactor BasePipeline.process()](#11-refactor-basepipelineprocess)
+  - [12. Improve Error Messages](#12-improve-error-messages)
+  - [13. Logging Levels](#13-logging-levels)
+- [Research & Experimentation](#research-experimentation)
+  - [14. Dialect Taxonomy Research](#14-dialect-taxonomy-research)
+  - [15. Active Learning Strategy](#15-active-learning-strategy)
+  - [16. Multilingual Model Fine-tuning](#16-multilingual-model-fine-tuning)
+- [Documentation Improvements](#documentation-improvements)
+  - [17. Video Tutorials](#17-video-tutorials)
+  - [18. API Reference Generation](#18-api-reference-generation)
+  - [19. Contribution Guide](#19-contribution-guide)
 
 ---
 
@@ -443,7 +477,7 @@ raise FileNotFoundError(
 
 ---
 
-## See Also
+## Related Documentation
 
 - [Lifecycle & Roadmap](lifecycle.md) - Project phases and milestones
 - [Architecture](../overview/architecture.md) - System design
@@ -451,5 +485,4 @@ raise FileNotFoundError(
 
 ---
 
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

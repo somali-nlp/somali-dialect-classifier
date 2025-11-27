@@ -1,5 +1,9 @@
 # Local vs Docker Development Guide
 
+**Complete guide for choosing between local and Docker development workflows.**
+
+**Last Updated:** 2025-11-21
+
 Complete guide for choosing between local and Docker development workflows.
 
 ## Quick Decision Guide
@@ -18,6 +22,46 @@ Complete guide for choosing between local and Docker development workflows.
 - Sharing work with team members
 - Deploying to production
 - CI/CD pipelines
+
+---
+
+---
+
+## Table of Contents
+
+- [Quick Decision Guide](#quick-decision-guide)
+- [Local Development Setup](#local-development-setup)
+  - [Prerequisites](#prerequisites)
+  - [Running Pipelines Locally](#running-pipelines-locally)
+  - [Local Development Benefits](#local-development-benefits)
+  - [Configuration](#configuration)
+- [Docker Development Setup](#docker-development-setup)
+  - [Prerequisites](#prerequisites)
+  - [Running Pipelines with Docker](#running-pipelines-with-docker)
+  - [Docker Development Benefits](#docker-development-benefits)
+  - [Configuration](#configuration)
+- [Hybrid Workflow (Recommended)](#hybrid-workflow-recommended)
+  - [Day-to-Day Development](#day-to-day-development)
+  - [Integration Testing](#integration-testing)
+  - [Production Deployment](#production-deployment)
+- [Common Commands](#common-commands)
+  - [Local Development](#local-development)
+  - [Docker Development](#docker-development)
+- [Switching Between Environments](#switching-between-environments)
+  - [From Local to Docker](#from-local-to-docker)
+  - [From Docker to Local](#from-docker-to-local)
+- [Database Differences](#database-differences)
+  - [SQLite (Local)](#sqlite-local)
+  - [PostgreSQL (Docker)](#postgresql-docker)
+- [Troubleshooting](#troubleshooting)
+  - [Local Development Issues](#local-development-issues)
+  - [Docker Issues](#docker-issues)
+- [Best Practices](#best-practices)
+  - [For Data Ingestion Phase (Current)](#for-data-ingestion-phase-current)
+  - [For Model Training Phase (Future)](#for-model-training-phase-future)
+  - [For Production Deployment](#for-production-deployment)
+- [Summary](#summary)
+- [Next Steps](#next-steps)
 
 ---
 
@@ -333,3 +377,11 @@ docker compose restart postgres
 - [Docker Deployment Guide](../operations/docker-deployment.md) - Full Docker deployment instructions
 - [Configuration Guide](configuration.md) - Environment variable reference
 - [Troubleshooting Guide](troubleshooting.md) - Common issues and solutions
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

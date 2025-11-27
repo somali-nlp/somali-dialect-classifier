@@ -20,7 +20,7 @@ import pytest
 from pydantic import ValidationError
 
 try:
-    from somali_dialect_classifier.utils.metrics_schema import (
+    from somali_dialect_classifier.infra.metrics_schema import (
         ConsolidatedMetric,
         validate_consolidated_metrics,
         validate_dashboard_summary,

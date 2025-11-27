@@ -1,5 +1,9 @@
 # CI/CD Quick Reference Guide
 
+**Quick commands and workflows for common dashboard CI/CD operations.**
+
+**Last Updated:** 2025-11-21
+
 Quick commands and workflows for common dashboard operations.
 
 ## Table of Contents
@@ -417,5 +421,4 @@ alias dash-logs='gh run list --workflow=deploy-dashboard-v2.yml --limit 1 | tail
 
 ---
 
-**Last Updated**: 2025-10-28
 **Maintainers**: Somali NLP Contributors

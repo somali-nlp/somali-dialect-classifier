@@ -1,7 +1,8 @@
 # Wikipedia-Somali Integration Guide
 
-**Status**: Production-ready
-**Last Updated**: 2025-11-14
+**Integrating and processing Somali Wikipedia content for dialect classification.**
+
+**Last Updated:** 2025-11-21
 
 This guide explains how to integrate and process Somali Wikipedia articles into your Somali Dialect Classifier pipeline.
 
@@ -953,7 +954,7 @@ After processing Wikipedia data:
 
 ---
 
-## See Also
+## Related Documentation
 
 - [Data Pipeline Overview](../overview/data-pipeline-architecture.md) - ETL architecture
 - [Processing Pipelines Guide](processing-pipelines.md) - Walkthroughs for all sources
@@ -965,5 +966,4 @@ After processing Wikipedia data:
 
 ---
 
-**Last Updated**: 2025-11-14
 **Maintainers**: Somali NLP Contributors

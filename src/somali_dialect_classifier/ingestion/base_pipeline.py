@@ -11,17 +11,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from ..config import get_config
-from ..data import DataManager
-from ..pipeline.filter_engine import FilterEngine
+from ..infra.config import get_config
+from ..infra.data_manager import DataManager
+from ..quality.filter_engine import FilterEngine
 from ..schema.validation_service import ValidationService
-from ..utils.logging_utils import generate_run_id
+from ..infra.logging_utils import generate_run_id
 from .data_processor import DataProcessor
 from .pipeline_setup import PipelineSetup
 from .raw_record import RawRecord
-from .record_builder import RecordBuilder
-from .silver_writer import SilverDatasetWriter
-from .text_cleaners import TextCleaningPipeline
+from ..quality.record_builder import RecordBuilder
+from ..quality.silver_writer import SilverDatasetWriter
+from ..quality.text_cleaners import TextCleaningPipeline
+from ..infra.tracking import MLFlowTracker
 
 
 class BasePipeline(DataProcessor, ABC):
@@ -38,6 +39,7 @@ class BasePipeline(DataProcessor, ABC):
         log_frequency: int = 100,
         batch_size: Optional[int] = None,
         force: bool = False,
+        run_seed: Optional[str] = None,
         data_manager: Optional[DataManager] = None,
         filter_engine: Optional[FilterEngine] = None,
         record_builder: Optional[RecordBuilder] = None,
@@ -46,15 +48,22 @@ class BasePipeline(DataProcessor, ABC):
         """Initialize pipeline with dependency injection for services."""
         # Sanitize source and generate IDs
         self.source = PipelineSetup.sanitize_and_validate_source(source)
-        self.run_id = generate_run_id(self.source)
+        self.run_id = self._build_run_id_from_seed(run_seed) if run_seed else generate_run_id(
+            self.source
+        )
         self.date_accessed = datetime.now(timezone.utc).date().isoformat()
+        
+        # Context gathering
+        self.git_commit = self._get_git_commit()
+        self.config_hash = self._get_config_hash()
+        self.system_context = self._get_system_context()
 
         # Configuration
         self.log_frequency = log_frequency
         self.batch_size = batch_size
         self.force = force
 
-        # Setup services (P3.1: dependency injection with sensible defaults)
+        # Setup services (dependency injection with sensible defaults)
         self.logger = PipelineSetup.create_logger(self.source, self.run_id)
         self.data_manager = PipelineSetup.create_data_manager(
             self.source, self.run_id, data_manager
@@ -77,6 +86,7 @@ class BasePipeline(DataProcessor, ABC):
         # Shared utilities
         self.text_cleaner = self._create_cleaner()
         self.silver_writer = SilverDatasetWriter()
+        self.mlflow = MLFlowTracker()
 
         # Subclasses set these paths
         self.staging_file: Optional[Path] = None
@@ -143,53 +153,105 @@ class BasePipeline(DataProcessor, ABC):
         self.logger.info("\n" + "=" * 60)
         self.logger.info("PHASE 3: Text Processing & Silver Dataset Creation")
         self.logger.info("=" * 60)
+        
+        # Start MLFlow run
+        self.mlflow.start_run(run_name=self.run_id)
+        
+        # Log context tags
+        tags = {
+            "source": self.source,
+            "run_id": self.run_id,
+            "git_commit": self.git_commit or "unknown",
+            "config_hash": self.config_hash,
+            "date_accessed": self.date_accessed,
+            **self.system_context
+        }
+        self.mlflow.set_tags(tags)
+        
+        self.mlflow.log_params({
+            "source": self.source,
+            "run_id": self.run_id,
+            "force": self.force,
+            "batch_size": self.batch_size
+        })
+
         records_processed = 0
         records_filtered = 0
         records = []
-        with open(self.processed_file, "w", encoding="utf-8") as fout:
-            for raw_record in self._extract_records():
-                cleaned = self.text_cleaner.clean(raw_record.text)
-                if not cleaned:
-                    records_filtered += 1
-                    self._record_filter_metric("empty_after_cleaning")
-                    continue
-                passed, failed_filter, filter_metadata = self.filter_engine.apply_filters(
-                    cleaned, raw_record.title
-                )
-                if not passed:
-                    records_filtered += 1
-                    self._record_filter_metric(failed_filter)
-                    continue
-                fout.write(f"=== {raw_record.title} ===\n{cleaned}\n\n")
-                record = self.record_builder.build_silver_record(
-                    raw_record=raw_record,
-                    cleaned_text=cleaned,
-                    filter_metadata=filter_metadata,
-                    source_type=self._get_source_type(),
-                    license_str=self._get_license(),
-                    domain=self._get_domain(),
-                    register=self._get_register(),
-                    language=self._get_language(),
-                    source_metadata=self._get_source_metadata(),
-                )
-                metrics = self.metrics if hasattr(self, "metrics") else None
-                is_valid, errors = self.validation_service.validate_record(
-                    record, self.source, metrics
-                )
-                if not is_valid:
-                    records_filtered += 1
-                    continue
-                records.append(record)
-                records_processed += 1
-                self._mark_url_processed(raw_record, record)
-                if records_processed % self.log_frequency == 0:
-                    self.logger.info(f"Progress: {records_processed} records processed...")
-                if self.batch_size and len(records) >= self.batch_size:
-                    self._write_batch(records)
-                    records = []
-        self._log_processing_summary(records_processed, records_filtered)
-        self._write_final_batch(records)
-        self._export_metrics(records_processed, records_filtered)
+        
+        try:
+            with open(self.processed_file, "w", encoding="utf-8") as fout:
+                for raw_record in self._extract_records():
+                    cleaned = self.text_cleaner.clean(raw_record.text)
+                    if not cleaned:
+                        records_filtered += 1
+                        self._record_filter_metric("empty_after_cleaning")
+                        continue
+                    passed, failed_filter, filter_metadata = self.filter_engine.apply_filters(
+                        cleaned, raw_record.title
+                    )
+                    if not passed:
+                        records_filtered += 1
+                        self._record_filter_metric(failed_filter)
+                        continue
+                    fout.write(f"=== {raw_record.title} ===\n{cleaned}\n\n")
+                    record = self.record_builder.build_silver_record(
+                        raw_record=raw_record,
+                        cleaned_text=cleaned,
+                        filter_metadata=filter_metadata,
+                        source_type=self._get_source_type(),
+                        license_str=self._get_license(),
+                        domain=self._get_domain(),
+                        register=self._get_register(),
+                        language=self._get_language(),
+                        source_metadata=self._get_source_metadata(),
+                    )
+                    metrics = self.metrics if hasattr(self, "metrics") else None
+                    is_valid, errors = self.validation_service.validate_record(
+                        record, self.source, metrics
+                    )
+                    if not is_valid:
+                        records_filtered += 1
+                        continue
+                    records.append(record)
+                    records_processed += 1
+                    self._mark_url_processed(raw_record, record)
+                    if records_processed % self.log_frequency == 0:
+                        self.logger.info(f"Progress: {records_processed} records processed...")
+                    if self.batch_size and len(records) >= self.batch_size:
+                        self._write_batch(records)
+                        records = []
+            
+            self._log_processing_summary(records_processed, records_filtered)
+            self._write_final_batch(records)
+            self._export_metrics(records_processed, records_filtered)
+            
+            # Log headline metrics to MLFlow
+            quality_pass_rate = 0.0
+            if records_processed + records_filtered > 0:
+                quality_pass_rate = records_processed / (records_processed + records_filtered)
+                
+            self.mlflow.log_metrics({
+                "records_processed": records_processed,
+                "records_written": records_processed,
+                "records_filtered": records_filtered,
+                "quality_pass_rate": quality_pass_rate
+            })
+            
+            self.mlflow.set_tag("status", "success")
+            
+        except Exception as e:
+            self.logger.error(f"Pipeline failed: {e}")
+            self.mlflow.set_tags({
+                "status": "failed",
+                "error_type": type(e).__name__,
+                "error_message": str(e)
+            })
+            raise
+        finally:
+            # End MLFlow run
+            self.mlflow.end_run()
+        
         return self.silver_path if self.silver_path else self.processed_file
 
     def _record_filter_metric(self, filter_reason: str) -> None:
@@ -252,8 +314,16 @@ class BasePipeline(DataProcessor, ABC):
             self.metrics.export_json(metrics_path)
             self.logger.info(f"Processing metrics exported: {metrics_path}")
 
+            # Log metrics to MLFlow
+            self.mlflow.log_metrics({
+                "records_processed": records_processed,
+                "records_written": records_processed,
+                "records_filtered": records_filtered
+            })
+            self.mlflow.log_artifact(str(metrics_path))
+
             # Generate final quality report with complete stats
-            from ..utils.metrics import QualityReporter
+            from ..infra.metrics import QualityReporter
 
             report_path = Path("data/reports") / f"{self.run_id}_final_quality_report.md"
             report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -282,6 +352,64 @@ class BasePipeline(DataProcessor, ABC):
         import uuid
 
         return f"{self.source}_{uuid.uuid4().hex[:12]}"
+
+    def _build_run_id_from_seed(self, run_seed: str) -> str:
+        """
+        Build a run_id using a shared orchestrator seed when provided.
+
+        Supports seeds like:
+          - run_YYYYMMDD_HHMMSS_uuid
+          - YYYYMMDD_HHMMSS_uuid
+        Falls back to generate_run_id if parsing fails.
+        """
+        try:
+            seed = run_seed
+            if seed.startswith("run_"):
+                seed = seed[len("run_") :]
+            parts = seed.split("_")
+            if len(parts) >= 3 and parts[0].isdigit() and parts[1].isdigit():
+                timestamp = f"{parts[0]}_{parts[1]}"
+                unique = parts[2]
+                return f"{timestamp}_{self.source}_{unique}"
+        except Exception:
+            pass
+        return generate_run_id(self.source)
+
+    def _get_config_hash(self) -> str:
+        """Generate hash of current configuration state."""
+        import hashlib
+        import json
+        from ..infra.config import get_config
+
+        try:
+            config = get_config()
+            # Serialize config to JSON string (handling non-serializable types if any)
+            # Using default=str to handle Path objects etc.
+            if hasattr(config, "model_dump_json"):
+                config_str = config.model_dump_json()
+            else:
+                # Fallback for dataclass
+                from dataclasses import asdict
+                config_str = json.dumps(asdict(config), default=str, sort_keys=True)
+            
+            return hashlib.sha256(config_str.encode("utf-8")).hexdigest()[:12]
+        except Exception as e:
+            self.logger.warning(f"Failed to hash config: {e}")
+            return "unknown"
+
+    def _get_system_context(self) -> dict[str, str]:
+        """Get system context (hostname, OS, python version)."""
+        import platform
+        import socket
+        import sys
+
+        return {
+            "hostname": socket.gethostname(),
+            "os": platform.system(),
+            "os_release": platform.release(),
+            "python_version": sys.version.split()[0],
+            "platform": platform.platform(),
+        }
 
     def _get_git_commit(self) -> Optional[str]:
         """Get current git commit hash."""
@@ -341,13 +469,10 @@ class BasePipeline(DataProcessor, ABC):
             return
 
         try:
-            from ..config import get_config
+            from ..infra.config import get_config
 
             config = get_config()
-            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-            metrics_path = (
-                config.data.metrics_dir / f"{timestamp}_{self.source}_{self.run_id}_{stage}.json"
-            )
+            metrics_path = config.data.metrics_dir / f"{self.run_id}_{stage}.json"
 
             self.metrics.export_json(output_path=metrics_path)
 
@@ -366,15 +491,11 @@ class BasePipeline(DataProcessor, ABC):
         if not hasattr(self, "metrics") or self.metrics is None:
             return
 
-        from ..config import get_config
-        from ..utils.metrics import QualityReporter
+        from ..infra.config import get_config
+        from ..infra.metrics import QualityReporter
 
         config = get_config()
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        report_path = (
-            config.data.reports_dir
-            / f"{timestamp}_{self.source}_{self.run_id}_{stage}_quality_report.md"
-        )
+        report_path = config.data.reports_dir / f"{self.run_id}_{stage}_quality_report.md"
 
         QualityReporter(self.metrics).generate_markdown_report(report_path)
 

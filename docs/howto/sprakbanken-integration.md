@@ -1,5 +1,9 @@
 # Språkbanken Somali Corpora Integration Guide
 
+**Integrating and processing 66 Somali language corpora from University of Gothenburg's Språkbanken repository.**
+
+**Last Updated:** 2025-11-21
+
 ## Overview
 
 This guide explains how to integrate and process the 66 Somali language corpora from University of Gothenburg's Språkbanken repository into your Somali Dialect Classifier pipeline.
@@ -578,7 +582,64 @@ See also:
 
 ---
 
-**Last Updated**: 2025-10-29
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [What is Språkbanken?](#what-is-språkbanken)
+  - [Key Features](#key-features)
+  - [Available Corpora](#available-corpora)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+  - [List Available Corpora](#list-available-corpora)
+  - [View Corpus Information](#view-corpus-information)
+  - [Download and Process Single Corpus](#download-and-process-single-corpus)
+  - [Download and Process All Corpora](#download-and-process-all-corpora)
+  - [Force Reprocessing](#force-reprocessing)
+- [Python API Usage](#python-api-usage)
+  - [Basic Usage](#basic-usage)
+  - [Process All Corpora](#process-all-corpora)
+  - [Custom Processing](#custom-processing)
+- [MLOps Infrastructure Integration](#mlops-infrastructure-integration)
+  - [Query Corpus Metadata](#query-corpus-metadata)
+- [Data Flow](#data-flow)
+  - [1. Download Phase](#1-download-phase)
+  - [2. Extract Phase](#2-extract-phase)
+  - [3. Process Phase](#3-process-phase)
+- [Output Structure](#output-structure)
+  - [Silver Dataset Schema](#silver-dataset-schema)
+  - [Directory Structure](#directory-structure)
+- [Domain Mapping](#domain-mapping)
+- [Quality Filters](#quality-filters)
+  - [Minimum Length Filter](#minimum-length-filter)
+  - [Language Identification Filter](#language-identification-filter)
+- [Performance Considerations](#performance-considerations)
+  - [Download Speed](#download-speed)
+  - [Processing Speed](#processing-speed)
+  - [Memory Usage](#memory-usage)
+- [Troubleshooting](#troubleshooting)
+  - [Download Failures](#download-failures)
+  - [XML Parsing Errors](#xml-parsing-errors)
+  - [Empty Output](#empty-output)
+  - [Metadata Extraction](#metadata-extraction)
+- [Best Practices](#best-practices)
+  - [1. Start with Single Corpus](#1-start-with-single-corpus)
+  - [2. Monitor Logs](#2-monitor-logs)
+  - [3. Incremental Processing](#3-incremental-processing)
+  - [4. Validate Output](#4-validate-output)
+  - [5. Backup Downloaded Files](#5-backup-downloaded-files)
+- [Integration with Other Processors](#integration-with-other-processors)
+- [Advanced Usage](#advanced-usage)
+  - [Custom Filters](#custom-filters)
+  - [Domain-Specific Processing](#domain-specific-processing)
+- [References](#references)
+- [Next Steps](#next-steps)
+- [Changelog](#changelog)
+  - [2025-10-29](#2025-10-29)
+
+---
+
 **Maintainers**: Somali NLP Contributors
 
 ## Changelog

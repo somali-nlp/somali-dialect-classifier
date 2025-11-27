@@ -16,8 +16,8 @@ import time
 import pytest
 from datasketch import MinHash
 
-from somali_dialect_classifier.data.data_manager import DataManager
-from somali_dialect_classifier.preprocessing.dedup import (
+from somali_dialect_classifier.infra.data_manager import DataManager
+from somali_dialect_classifier.ingestion.dedup import (
     DedupConfig,
     MinHashDeduplicator,
     ShardedLSH,

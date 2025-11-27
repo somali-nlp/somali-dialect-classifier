@@ -31,7 +31,7 @@ from typing import Optional
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from somali_dialect_classifier.preprocessing.sprakbanken_somali_processor import (
+from somali_dialect_classifier.ingestion.processors.sprakbanken_somali_processor import (
     CORPUS_INFO,
     SprakbankenSomaliProcessor,
     list_available_corpora,

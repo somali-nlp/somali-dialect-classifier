@@ -32,15 +32,15 @@ except ImportError:
     AIOHTTP_AVAILABLE = False
     aiohttp = None
 
-from ..config import get_config
-from ..utils.http import HTTPSessionFactory
-from ..utils.logging_utils import set_context
-from ..utils.metrics import MetricsCollector, PipelineType, QualityReporter
-from ..utils.rate_limiter import AdaptiveRateLimiter, RateLimitConfig, TimedRequest
-from .base_pipeline import BasePipeline, RawRecord
-from .crawl_ledger import get_ledger
-from .dedup import DedupConfig, DedupEngine
-from .text_cleaners import TextCleaningPipeline, create_html_cleaner
+from ...infra.config import get_config
+from ...infra.http import HTTPSessionFactory
+from ...infra.logging_utils import set_context
+from ...infra.metrics import MetricsCollector, PipelineType, QualityReporter
+from ...infra.rate_limiter import AdaptiveRateLimiter, RateLimitConfig, TimedRequest
+from ..base_pipeline import BasePipeline, RawRecord
+from ..crawl_ledger import get_ledger
+from ..dedup import DedupConfig, DedupEngine
+from ...quality.text_cleaners import TextCleaningPipeline, create_html_cleaner
 
 
 class BBCSomaliProcessor(BasePipeline):
@@ -52,7 +52,11 @@ class BBCSomaliProcessor(BasePipeline):
     """
 
     def __init__(
-        self, max_articles: Optional[int] = None, delay_range: tuple = (1, 3), force: bool = False
+        self,
+        max_articles: Optional[int] = None,
+        delay_range: tuple = (1, 3),
+        force: bool = False,
+        run_seed: Optional[str] = None,
     ):
         """
         Initialize BBC Somali processor.
@@ -75,7 +79,7 @@ class BBCSomaliProcessor(BasePipeline):
         self.metrics = None  # Will be initialized in download()
 
         # Initialize BasePipeline with source name (this generates run_id and StructuredLogger)
-        super().__init__(source="bbc-somali", log_frequency=10, force=force)
+        super().__init__(source="bbc-somali", log_frequency=10, force=force, run_seed=run_seed)
 
         # Note: StructuredLogger is now initialized in BasePipeline
         # Use self.logger for all logging (it's now a structured logger with JSON output)
@@ -111,7 +115,11 @@ class BBCSomaliProcessor(BasePipeline):
 
     def _register_filters(self) -> None:
         """Register BBC-specific filters."""
-        from .filters import topic_lexicon_enrichment_filter, langid_filter, min_length_filter
+        from ...quality.filter_functions import (
+            langid_filter,
+            min_length_filter,
+            topic_lexicon_enrichment_filter,
+        )
 
         # Minimum length threshold for articles
         self.filter_engine.register_filter(min_length_filter, {"threshold": 50})

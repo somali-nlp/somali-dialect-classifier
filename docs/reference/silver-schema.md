@@ -1,5 +1,32 @@
 # Silver Dataset Schema Reference
 
+**Complete schema reference for silver-layer processed datasets.**
+
+**Last Updated:** 2025-11-21
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Schema Versioning System](#schema-versioning-system)
+- [Schema Version Fields Clarification](#schema-version-fields-clarification)
+- [Current Schema Version: 1.0](#current-schema-version-10)
+- [Full Schema](#full-schema)
+- [Field Descriptions](#field-descriptions)
+- [Metadata JSON Sidecars](#metadata-json-sidecars)
+- [Domain Taxonomy](#domain-taxonomy)
+- [Backward Compatibility](#backward-compatibility)
+- [Complete Record Examples by Source](#complete-record-examples-by-source)
+- [Partitioning](#partitioning)
+- [Usage Examples](#usage-examples)
+- [Best Practices](#best-practices)
+- [Future Enhancements](#future-enhancements)
+- [Schema Version History](#schema-version-history)
+- [Related Documentation](#related-documentation)
+
+---
+
 ## Overview
 
 The silver dataset uses a standardized Parquet schema for all data sources with formal schema versioning starting at v1.0. Every record includes `schema_version` and `run_id` fields for tracking provenance and enabling schema evolution.
@@ -1173,7 +1200,7 @@ Planned for future schema versions:
 - **Core fields**: id, text, title, source, source_type, url, license, etc.
 - **Purpose**: Basic data collection and standardization
 
-## See Also
+## Related Documentation
 
 - [Data Pipeline Overview](../overview/data-pipeline-architecture.md)
 - [Språkbanken Integration](../howto/sprakbanken-integration.md)
@@ -1182,6 +1209,4 @@ Planned for future schema versions:
 
 ---
 
-**Version**: 2.1.0
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

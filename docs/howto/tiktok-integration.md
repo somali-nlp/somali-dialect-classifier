@@ -1,6 +1,66 @@
 # TikTok Integration Guide
 
+**Collecting Somali comments from TikTok videos using Apify API.**
+
+**Last Updated:** 2025-11-21
+
 **Collect Somali comments from TikTok videos using Apify**
+
+---
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+  - [What is TikTok as a Data Source?](#what-is-tiktok-as-a-data-source)
+  - [Why Collect TikTok Comments?](#why-collect-tiktok-comments)
+  - [Data Collection via Apify](#data-collection-via-apify)
+- [Prerequisites](#prerequisites)
+  - [1. Apify Account Setup](#1-apify-account-setup)
+  - [2. Video URL Collection](#2-video-url-collection)
+- [Installation](#installation)
+  - [1. Install Integration](#1-install-integration)
+  - [2. Verify Installation](#2-verify-installation)
+  - [3. Configure Environment Variables](#3-configure-environment-variables)
+- [Basic Usage](#basic-usage)
+  - [Step 1: Create Video URLs File](#step-1-create-video-urls-file)
+  - [Step 2: Run TikTok Scraper](#step-2-run-tiktok-scraper)
+  - [Step 3: Check Outputs](#step-3-check-outputs)
+- [Advanced Usage](#advanced-usage)
+  - [Setting Comment Limits](#setting-comment-limits)
+  - [Cost Management Strategies](#cost-management-strategies)
+  - [Orchestration with Other Sources](#orchestration-with-other-sources)
+  - [Video URL Curation Best Practices](#video-url-curation-best-practices)
+- [Filter Telemetry](#filter-telemetry)
+  - [Filter Stages](#filter-stages)
+  - [Viewing Filter Metrics](#viewing-filter-metrics)
+  - [Filter Impact Analysis](#filter-impact-analysis)
+  - [Cross-References](#cross-references)
+- [Troubleshooting](#troubleshooting)
+  - [Error: "Apify API token not provided"](#error-apify-api-token-not-provided)
+  - [Error: "No valid URLs found in file"](#error-no-valid-urls-found-in-file)
+  - [Error: "Run FAILED"](#error-run-failed)
+  - [Warning: "Empty dataset"](#warning-empty-dataset)
+  - [Error: "APIConnectionError" or Timeout](#error-apiconnectionerror-or-timeout)
+- [Data Pipeline Details](#data-pipeline-details)
+  - [Pipeline Stages](#pipeline-stages)
+  - [Data Preservation Strategy](#data-preservation-strategy)
+  - [Silver Dataset Schema](#silver-dataset-schema)
+- [Cost Management](#cost-management)
+- [Best Practices](#best-practices)
+  - [Video Selection](#video-selection)
+  - [Collection Strategy](#collection-strategy)
+  - [Data Quality](#data-quality)
+- [Additional Resources](#additional-resources)
+- [Filter Telemetry](#filter-telemetry)
+  - [TikTok's 3-Stage Filtering](#tiktoks-3-stage-filtering)
+  - [Viewing Filter Breakdown](#viewing-filter-breakdown)
+    - [Command-line Examples](#command-line-examples)
+  - [Expected Filter Breakdown Output](#expected-filter-breakdown-output)
+  - [Cost Analysis](#cost-analysis)
+- [Next Steps](#next-steps)
+  - [Cross-Links](#cross-links)
 
 ---
 
@@ -467,7 +527,6 @@ See detailed cost analysis in [Cost Analysis Guide](../cost-analysis/tiktok-apif
 - **Apify TikTok Scraper:** https://apify.com/clockworks/tiktok-comments-scraper
 - **Apify Documentation:** https://docs.apify.com
 - **Cost Analysis:** `docs/cost-analysis/tiktok-apify-costs.md`
-- **Integration Architecture:** `.claude/reports/arch/arch-tiktok-integration-20251031.md`
 
 
 ## Filter Telemetry
@@ -577,3 +636,11 @@ After processing TikTok data:
 **Integration Date:** 2025-10-31
 **Code Quality:** 9.3/10
 **Status:** Production-ready ✅
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

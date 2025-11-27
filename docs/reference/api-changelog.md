@@ -1,8 +1,54 @@
 # API Changelog
 
-**Last Updated**: 2025-11-11
+
+**Last Updated:** 2025-11-21
 
 This document tracks all API changes, additions, deprecations, and breaking changes across project versions. Use this guide to understand what changed between versions and how to migrate your code.
+
+---
+
+---
+
+## Table of Contents
+
+- [Version 1.1.0 (2025-11-11) - Production Scale Infrastructure](#version-110-2025-11-11-production-scale-infrastructure)
+  - [Added](#added)
+    - [Database Backend](#database-backend)
+    - [Service Classes (P3.1 Refactoring)](#service-classes-p31-refactoring)
+    - [HTTP Utilities](#http-utilities)
+    - [Orchestration Enhancements](#orchestration-enhancements)
+    - [Incremental Processing](#incremental-processing)
+  - [Changed](#changed)
+    - [BasePipeline Refactoring (P3.1)](#basepipeline-refactoring-p31)
+    - [Metrics Export Centralization](#metrics-export-centralization)
+    - [Configuration Schema Updates](#configuration-schema-updates)
+  - [Deprecated](#deprecated)
+    - [Direct File I/O in Processors](#direct-file-io-in-processors)
+    - [Manual Metrics Export](#manual-metrics-export)
+  - [Removed](#removed)
+- [Version 1.0.0 (2025-11-02) - Initial Production Release](#version-100-2025-11-02-initial-production-release)
+  - [Added](#added)
+    - [Core Pipeline Architecture](#core-pipeline-architecture)
+    - [Data Source Processors](#data-source-processors)
+    - [Deduplication System](#deduplication-system)
+    - [Filter Framework](#filter-framework)
+    - [Metrics Collection](#metrics-collection)
+    - [Schema System](#schema-system)
+    - [Crawl Ledger](#crawl-ledger)
+    - [Configuration Management](#configuration-management)
+- [Migration Guides](#migration-guides)
+  - [Migrating from v1.0 to v1.1](#migrating-from-v10-to-v11)
+    - [1. PostgreSQL Migration (Optional but Recommended)](#1-postgresql-migration-optional-but-recommended)
+    - [2. Service-Based Architecture (Automatic)](#2-service-based-architecture-automatic)
+    - [3. Orchestration Configuration (Required for Smart Scheduling)](#3-orchestration-configuration-required-for-smart-scheduling)
+    - [4. Update File I/O (Recommended)](#4-update-file-io-recommended)
+- [Breaking Changes](#breaking-changes)
+  - [v1.1.0](#v110)
+  - [v1.0.0](#v100)
+- [Deprecation Timeline](#deprecation-timeline)
+- [Version Support Policy](#version-support-policy)
+- [API Stability Guarantees](#api-stability-guarantees)
+- [References](#references)
 
 ---
 
@@ -785,6 +831,4 @@ self.data_manager.write_staging(data, stage="extracted", format="jsonl")
 
 ---
 
-**Version**: 1.0
-**Last Updated**: 2025-11-11
 **Maintainer**: API Documentation Team

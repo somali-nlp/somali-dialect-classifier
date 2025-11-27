@@ -11,7 +11,7 @@ import pytest
 import requests
 import responses
 
-from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
+from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
 
 
 @pytest.fixture
@@ -180,7 +180,7 @@ class TestBBCArticleScraping:
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
         # Initialize minimal metrics to avoid NoneType errors
-        from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+        from somali_dialect_classifier.infra.metrics import MetricsCollector, PipelineType
 
         processor.metrics = MetricsCollector(
             run_id=processor.run_id, source="bbc-somali", pipeline_type=PipelineType.WEB_SCRAPING
@@ -208,7 +208,7 @@ class TestBBCArticleScraping:
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
         # Initialize minimal metrics
-        from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+        from somali_dialect_classifier.infra.metrics import MetricsCollector, PipelineType
 
         processor.metrics = MetricsCollector(
             run_id=processor.run_id, source="bbc-somali", pipeline_type=PipelineType.WEB_SCRAPING
@@ -346,7 +346,7 @@ class TestBBCMetricsCollection:
         """Test metrics track article discovery and processing."""
         processor = BBCSomaliProcessor()
         # Initialize metrics
-        from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+        from somali_dialect_classifier.infra.metrics import MetricsCollector, PipelineType
 
         processor.metrics = MetricsCollector(
             run_id=processor.run_id, source="bbc-somali", pipeline_type=PipelineType.WEB_SCRAPING
@@ -372,7 +372,7 @@ class TestBBCErrorHandling:
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
         # Initialize minimal metrics
-        from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+        from somali_dialect_classifier.infra.metrics import MetricsCollector, PipelineType
 
         processor.metrics = MetricsCollector(
             run_id=processor.run_id, source="bbc-somali", pipeline_type=PipelineType.WEB_SCRAPING
@@ -400,7 +400,7 @@ class TestBBCErrorHandling:
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
         # Initialize minimal metrics
-        from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+        from somali_dialect_classifier.infra.metrics import MetricsCollector, PipelineType
 
         processor.metrics = MetricsCollector(
             run_id=processor.run_id, source="bbc-somali", pipeline_type=PipelineType.WEB_SCRAPING
@@ -430,7 +430,7 @@ class TestBBCErrorHandling:
         processor = BBCSomaliProcessor()
         session = processor._get_http_session()
         # Initialize minimal metrics
-        from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+        from somali_dialect_classifier.infra.metrics import MetricsCollector, PipelineType
 
         processor.metrics = MetricsCollector(
             run_id=processor.run_id, source="bbc-somali", pipeline_type=PipelineType.WEB_SCRAPING

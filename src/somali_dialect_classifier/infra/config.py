@@ -309,7 +309,7 @@ if PYDANTIC_AVAILABLE:
         quota_limits: dict[str, int] = Field(
             default_factory=lambda: {
                 "bbc": 350,  # 350 articles/day - respects rate limits
-                "huggingface": 10000,  # 10k records/day - large dataset throttling
+                "huggingface": 20000,  # 20k records/day - large dataset throttling
                 "sprakbanken": 10,  # 10 corpora/day - academic corpus pacing
                 # wikipedia: No quota (file-based, efficient)
                 # tiktok: Manual scheduling with cost gating (no automatic quota)
@@ -490,7 +490,7 @@ else:
         Fallback implementation when Pydantic is unavailable.
         """
 
-        initial_collection_days: int = 7
+        initial_collection_days: int = 6
         default_cadence_days: int = 7
         cadence_days: dict[str, int] = field(
             default_factory=lambda: {
@@ -502,7 +502,7 @@ else:
             }
         )
         quota_limits: dict[str, int] = field(
-            default_factory=lambda: {"bbc": 350, "huggingface": 10000, "sprakbanken": 10}
+            default_factory=lambda: {"bbc": 350, "huggingface": 20000, "sprakbanken": 10}
         )
 
         def get_cadence(self, source: str) -> int:

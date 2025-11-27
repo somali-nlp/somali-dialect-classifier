@@ -3,7 +3,6 @@
 **Complete guide to deploying, using, and mastering the Somali Dialect Classifier data pipeline dashboard.**
 
 **Last Updated**: 2025-10-28
-**Version**: 3.2.0
 
 ---
 
@@ -253,6 +252,10 @@ somali-deploy-dashboard --min-sources 4
 ## Manual Deployment
 
 ### Dashboard Architecture
+
+#### Analytics Dashboard Guide
+
+**Interactive analytics dashboard for monitoring pipeline health, data quality, and source statistics.**
 
 The project includes a modern ES6 modular dashboard:
 
@@ -2377,5 +2380,4 @@ Contributions to improve the dashboard are welcome! See [CONTRIBUTING.md](../../
 
 ---
 
-**Last Updated**: 2025-10-28
 **Maintainers**: Somali NLP Contributors

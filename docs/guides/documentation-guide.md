@@ -1,5 +1,9 @@
 # Documentation Guide
 
+**Best practices and standards for writing project documentation.**
+
+**Last Updated:** 2025-11-21
+
 **Purpose**: Establish documentation standards and guidelines for the Somali Dialect Classifier project
 **Audience**: Contributors, maintainers, and documentation writers
 **Last Updated**: 2025-10-18
@@ -217,7 +221,7 @@ What you should see
 ## Troubleshooting
 Common issues and solutions
 
-## See Also
+## Related Documentation
 Related guides
 ```
 
@@ -343,13 +347,6 @@ Common issues and solutions.
 
 ## Next Steps
 What to do next.
-
-## See Also
-- Related guide 1
-- Related guide 2
-```
-
----
 
 ## Style Guide
 
@@ -624,49 +621,6 @@ processor.run()
 2025-10-18 10:45:00 - INFO - ✓ Processed 15,432 articles
 \```
 
-## See Also
-- [BBC Somali Processing](bbc-processing.md)
-- [Configuration Guide](configuration.md)
-```
-
-### Anti-Patterns to Avoid
-
-#### ❌ No Context
-
-```markdown
-# Process
-Run this:
-\```
-processor.run()
-\```
-```
-
-#### ❌ Vague Language
-
-```markdown
-The system might fail if you don't configure things properly.
-```
-
-#### ✅ Better
-
-```markdown
-The processor raises `FileNotFoundError` if the raw directory doesn't exist. Ensure you've run `download()` before `extract()`.
-```
-
-#### ❌ Broken or Absolute Links
-
-```markdown
-See [Architecture](/Users/ilyas/docs/architecture.md)
-```
-
-#### ✅ Better
-
-```markdown
-See [Architecture](../overview/architecture.md)
-```
-
----
-
 ## Getting Help
 
 ### Documentation Questions
@@ -708,5 +662,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
 ---
 
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

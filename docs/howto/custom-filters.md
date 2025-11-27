@@ -1,6 +1,8 @@
 # Custom Filters Guide
 
-**Last Updated**: 2025-10-16
+**How to write and register custom quality filters for your data pipelines.**
+
+**Last Updated:** 2025-11-21
 
 This guide shows you how to write and register custom quality filters for your data pipelines.
 
@@ -34,6 +36,43 @@ def my_filter(cleaned_text: str, **kwargs) -> Tuple[bool, Dict[str, Any]]:
 2. **Fast**: Filters run on every record, optimize for performance
 3. **Two-mode**: Can reject records OR enrich metadata (or both)
 4. **Error-tolerant**: Exceptions are caught and logged, don't crash pipeline
+
+---
+
+---
+
+## Table of Contents
+
+- [Filter Basics](#filter-basics)
+  - [Filter Signature](#filter-signature)
+  - [Key Principles](#key-principles)
+- [Example 1: Length Filter](#example-1-length-filter)
+  - [Basic Implementation](#basic-implementation)
+  - [Usage](#usage)
+- [Example 2: Keyword Filter](#example-2-keyword-filter)
+  - [Implementation](#implementation)
+  - [Usage](#usage)
+- [Example 3: Date Range Filter](#example-3-date-range-filter)
+  - [Implementation](#implementation)
+  - [Usage](#usage)
+- [Example 4: Regex Pattern Filter](#example-4-regex-pattern-filter)
+  - [Implementation](#implementation)
+  - [Usage](#usage)
+- [Example 5: Enrichment-Only Filter](#example-5-enrichment-only-filter)
+  - [Implementation](#implementation)
+  - [Usage](#usage)
+- [Example 6: Chained Filters](#example-6-chained-filters)
+- [Advanced: Configurable Filters](#advanced-configurable-filters)
+  - [Externalize Configuration](#externalize-configuration)
+  - [Use in Processor](#use-in-processor)
+  - [Override via Environment](#override-via-environment)
+- [Testing Filters](#testing-filters)
+  - [Unit Test Template](#unit-test-template)
+- [Best Practices](#best-practices)
+  - [1. Keep Filters Fast](#1-keep-filters-fast)
+  - [2. Handle Edge Cases](#2-handle-edge-cases)
+  - [3. Provide Useful Metadata](#3-provide-useful-metadata)
+  - [4. Document Your Filters](#4-document-your-filters)
 
 ---
 
@@ -512,7 +551,7 @@ def well_documented_filter(
 
 ---
 
-## See Also
+## Related Documentation
 
 - [Filter Reference](../reference/filters.md) - API docs for built-in filters
 - [Processing Pipelines](processing-pipelines.md) - How to use filters in pipelines
@@ -521,5 +560,4 @@ def well_documented_filter(
 
 ---
 
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

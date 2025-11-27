@@ -329,6 +329,21 @@ class LedgerBackend(ABC):
         pass
 
     @abstractmethod
+    def get_campaign_status(self, campaign_id: str) -> Optional[str]:
+        """Get status of a campaign."""
+        pass
+
+    @abstractmethod
+    def start_campaign(self, campaign_id: str, name: str, config: Optional[dict] = None) -> None:
+        """Start a new campaign."""
+        pass
+
+    @abstractmethod
+    def complete_campaign(self, campaign_id: str) -> None:
+        """Mark a campaign as completed."""
+        pass
+
+    @abstractmethod
     def close(self) -> None:
         """Close database connection."""
         pass
@@ -343,6 +358,41 @@ class SQLiteLedger(LedgerBackend):
     """
 
     SCHEMA_VERSION = 1
+
+    def get_campaign_status(self, campaign_id: str) -> Optional[str]:
+        """Get status of a campaign."""
+        result = self.connection.execute(
+            "SELECT status FROM campaigns WHERE campaign_id = ?", (campaign_id,)
+        ).fetchone()
+        return result["status"] if result else None
+
+    def start_campaign(self, campaign_id: str, name: str, config: Optional[dict] = None) -> None:
+        """Start a new campaign."""
+        now = datetime.now(timezone.utc)
+        config_json = json.dumps(config) if config else None
+        
+        with self.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO campaigns (campaign_id, name, status, start_date, config, created_at, updated_at)
+                VALUES (?, ?, 'ACTIVE', ?, ?, ?, ?)
+                ON CONFLICT(campaign_id) DO NOTHING
+                """,
+                (campaign_id, name, now, config_json, now, now)
+            )
+
+    def complete_campaign(self, campaign_id: str) -> None:
+        """Mark a campaign as completed."""
+        now = datetime.now(timezone.utc)
+        with self.transaction() as conn:
+            conn.execute(
+                """
+                UPDATE campaigns 
+                SET status = 'COMPLETED', end_date = ?, updated_at = ?
+                WHERE campaign_id = ?
+                """,
+                (now, now, campaign_id)
+            )
 
     def __init__(self, db_path: Path, check_same_thread: bool = False):
         """
@@ -498,6 +548,21 @@ class SQLiteLedger(LedgerBackend):
                 metrics_path TEXT,
                 config_snapshot TEXT,
                 git_commit TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Campaign tracking table for explicit phase management
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaigns (
+                campaign_id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                status TEXT NOT NULL,
+                start_date TIMESTAMP NOT NULL,
+                end_date TIMESTAMP,
+                config TEXT,
+                metadata TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -1269,7 +1334,7 @@ class CrawlLedger:
                     if db_path_env:
                         db_path = Path(db_path_env)
                     else:
-                        from ..config import get_config
+                        from ..infra.config import get_config
 
                         config = get_config()
                         db_path = config.data.raw_dir.parent / "ledger" / "crawl_ledger.db"
@@ -1806,6 +1871,53 @@ class CrawlLedger:
             ...     print(f"First run: {first_run.isoformat()}")
         """
         return self.backend.get_first_successful_run(source)
+    def get_campaign_status(self, campaign_id: str) -> Optional[str]:
+        """
+        Get status of a campaign.
+
+        Args:
+            campaign_id: Campaign identifier
+
+        Returns:
+            Campaign status ('ACTIVE', 'COMPLETED'), or None if not found
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> status = ledger.get_campaign_status("campaign_init_001")
+            >>> if status == "ACTIVE":
+            ...     print("Campaign is active")
+        """
+        return self.backend.get_campaign_status(campaign_id)
+
+    def start_campaign(self, campaign_id: str, name: str, config: Optional[dict] = None) -> None:
+        """
+        Start a new campaign.
+
+        Args:
+            campaign_id: Unique campaign identifier
+            name: Human-readable campaign name
+            config: Optional configuration dictionary
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> ledger.start_campaign("campaign_init_001", "Initial Data Collection", {"duration_days": 30})
+        """
+        return self.backend.start_campaign(campaign_id, name, config)
+
+    def complete_campaign(self, campaign_id: str) -> None:
+        """
+        Mark a campaign as completed.
+
+        Args:
+            campaign_id: Campaign identifier
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> ledger.complete_campaign("campaign_init_001")
+        """
+        return self.backend.complete_campaign(campaign_id)
+
+
 
     def close(self) -> None:
         """Close ledger connection."""

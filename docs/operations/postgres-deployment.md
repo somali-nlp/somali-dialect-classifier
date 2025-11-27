@@ -1,9 +1,72 @@
-# PostgreSQL Production Deployment Guide
+# PostgreSQL Deployment Guide
+
+**Guide for deploying and configuring PostgreSQL as the crawl ledger backend.**
+
+**Last Updated:** 2025-11-21
 
 **Status:** Production-Ready (95% Complete)
 **Target Environment:** Production
 **Estimated Deployment Time:** 1-4 hours (depending on dataset size)
-**Last Updated:** 2025-11-11
+
+---
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Prerequisites](#prerequisites)
+  - [Required Software](#required-software)
+  - [Verification Commands](#verification-commands)
+  - [System Requirements](#system-requirements)
+  - [Access Requirements](#access-requirements)
+- [Pre-Deployment Checklist](#pre-deployment-checklist)
+  - [1. Backup Existing Data](#1-backup-existing-data)
+  - [2. Review Environment Configuration](#2-review-environment-configuration)
+  - [3. Verify Network Connectivity](#3-verify-network-connectivity)
+  - [4. Test Docker Setup](#4-test-docker-setup)
+- [Deployment Steps](#deployment-steps)
+  - [Step 1: Configure Environment Variables](#step-1-configure-environment-variables)
+  - [Step 2: Start PostgreSQL Container](#step-2-start-postgresql-container)
+  - [Step 3: Verify Database Health](#step-3-verify-database-health)
+  - [Step 4: Run Migration Script (Dry-Run)](#step-4-run-migration-script-dry-run)
+  - [Step 5: Execute Migration](#step-5-execute-migration)
+  - [Step 6: Validate Migration](#step-6-validate-migration)
+  - [Step 7: Performance Validation](#step-7-performance-validation)
+  - [Step 8: Switch Application to PostgreSQL](#step-8-switch-application-to-postgresql)
+- [Configuration Guide](#configuration-guide)
+  - [Environment Variables Explained](#environment-variables-explained)
+  - [Connection Pooling Settings](#connection-pooling-settings)
+  - [Docker Resource Limits](#docker-resource-limits)
+- [Migration Validation](#migration-validation)
+  - [Data Integrity Verification](#data-integrity-verification)
+  - [Performance Validation](#performance-validation)
+  - [Rollback Procedure](#rollback-procedure)
+- [Post-Deployment](#post-deployment)
+  - [Connection Pool Monitoring](#connection-pool-monitoring)
+  - [Query Performance Benchmarks](#query-performance-benchmarks)
+  - [Backup Strategy](#backup-strategy)
+- [Troubleshooting](#troubleshooting)
+  - [Connection Pool Exhaustion](#connection-pool-exhaustion)
+  - [Migration Failures](#migration-failures)
+  - [Performance Issues](#performance-issues)
+  - [Docker Container Issues](#docker-container-issues)
+  - [Rollback to SQLite](#rollback-to-sqlite)
+- [Production Monitoring](#production-monitoring)
+  - [Key Metrics to Monitor](#key-metrics-to-monitor)
+  - [Recommended Monitoring Tools](#recommended-monitoring-tools)
+  - [Alerting Thresholds](#alerting-thresholds)
+- [Deployment Summary](#deployment-summary)
+  - [Estimated Deployment Timeline](#estimated-deployment-timeline)
+  - [Critical Success Criteria](#critical-success-criteria)
+  - [Rollback Strategy](#rollback-strategy)
+- [References](#references)
+  - [Documentation Files](#documentation-files)
+  - [Implementation Reports](#implementation-reports)
+  - [External Resources](#external-resources)
+- [Support](#support)
+  - [Common Questions](#common-questions)
+  - [Issue Reporting](#issue-reporting)
 
 ---
 
@@ -1026,8 +1089,6 @@ watch -n 5 'docker stats somali-nlp-postgres --no-stream'
 
 ### Implementation Reports
 
-- **P2.1 Implementation:** `.claude/reports/implementation/impl-p2-postgres-migration-20251111.md`
-- **P2.1 Assessment:** `.claude/reports/review/P2.1_PostgreSQL_Migration_Assessment_20251111.md`
 
 ### External Resources
 
@@ -1094,5 +1155,12 @@ cat .env | grep -v PASSWORD > env_sanitized.txt
 ---
 
 **Document Version:** 1.0
-**Last Updated:** 2025-11-11
 **Maintained By:** DevOps Infrastructure Team
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

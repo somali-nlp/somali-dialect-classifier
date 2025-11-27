@@ -22,7 +22,7 @@ See [Filter Analytics Guide](docs/howto/filter-analytics.md) and [CI Monitoring 
 ## Key Features
 
 - **Multi-source data collection** - Wikipedia (~50k articles), BBC Somali news, HuggingFace MC4 (~100k-200k web docs), Språkbanken (66 academic corpora), TikTok comments (social media)
-- **Production-grade MLOps** - Structured logging, automated metrics, quality reports, crawl ledger for resume capability
+- **Production-grade MLOps** - Structured logging, **MLFlow experiment tracking**, automated metrics, quality reports, crawl ledger for resume capability
 - **Quality-first architecture** - Two-tier deduplication (exact + near-duplicate), pluggable quality filters, unified silver dataset schema
 - **Advanced filter telemetry** - Per-filter breakdown tracking, historical analytics, regression prevention, automated anomaly detection
 - **Ethical web scraping** - Rate limiting, robots.txt compliance, conditional requests, configurable scraping policies

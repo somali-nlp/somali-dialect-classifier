@@ -1,8 +1,47 @@
 # How to Set Up Secret Scanning with Gitleaks
 
-**Difficulty**: Beginner
-**Time Required**: Approximately 5 minutes
-**Last Updated**: 2025-11-13
+**Setting up automated secret scanning to prevent credential leaks in version control.**
+
+**Last Updated:** 2025-11-21
+
+---
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Prerequisites](#prerequisites)
+  - [Required](#required)
+  - [Optional](#optional)
+  - [Assumptions](#assumptions)
+- [Quick Start](#quick-start)
+- [Step-by-Step Guide](#step-by-step-guide)
+  - [Step 1: Install the Pre-Commit Hook](#step-1-install-the-pre-commit-hook)
+  - [Step 2: Test the Hook](#step-2-test-the-hook)
+  - [Step 3: Manual Scanning](#step-3-manual-scanning)
+- [Complete Example](#complete-example)
+- [Configuration](#configuration)
+  - [Gitleaks Configuration File](#gitleaks-configuration-file)
+  - [Supported Secret Types](#supported-secret-types)
+  - [Excluding Directories](#excluding-directories)
+- [Advanced Usage](#advanced-usage)
+  - [Option 1: Bypassing the Hook (Emergency Only)](#option-1-bypassing-the-hook-emergency-only)
+  - [Option 2: Creating a Baseline](#option-2-creating-a-baseline)
+  - [Option 3: Scanning Specific Commits](#option-3-scanning-specific-commits)
+  - [Option 4: Custom Rules](#option-4-custom-rules)
+- [Troubleshooting](#troubleshooting)
+  - [Issue: False Positives](#issue-false-positives)
+  - [Issue: Hook Not Running](#issue-hook-not-running)
+  - [Issue: Slow Scans](#issue-slow-scans)
+  - [Issue: CI/CD Failing on Secrets](#issue-cicd-failing-on-secrets)
+- [Performance Tips](#performance-tips)
+  - [Benchmarks](#benchmarks)
+- [Next Steps](#next-steps)
+  - [Related How-To Guides](#related-how-to-guides)
+  - [Reference Documentation](#reference-documentation)
+  - [External Resources](#external-resources)
+- [Feedback](#feedback)
 
 ---
 
@@ -564,7 +603,7 @@ After setting up secret scanning, you might want to:
 
 ---
 
-## See Also
+## Related Documentation
 
 ### Related How-To Guides
 
@@ -593,5 +632,4 @@ Found an issue with this guide? Please:
 
 ---
 
-**Version**: 1.0
-**Last Updated**: 2025-11-13
+**Maintainers**: Somali NLP Contributors

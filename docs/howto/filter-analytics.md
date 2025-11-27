@@ -1,7 +1,8 @@
 # Filter Analytics with Historical Data
 
-**Added in:** v2.0
-**Last Updated:** 2025-11-02
+**Analyzing filter performance and trends using historical metrics data.**
+
+**Last Updated:** 2025-11-21
 
 ## Overview
 
@@ -484,7 +485,7 @@ LIMIT 10;
 5. **Document insights** - Save Jupyter notebooks with findings for future reference
 6. **Share queries** - Create a SQL cookbook for common analytical questions
 
-## See Also
+## Related Documentation
 
 - **[Processing Pipelines Guide](processing-pipelines.md#filter-telemetry)** - Filter telemetry overview
 - **[Metrics Schema Reference](../reference/metrics-schema.md#filter-telemetry)** - `filter_breakdown` field specification
@@ -493,5 +494,50 @@ LIMIT 10;
 
 ---
 
-**Last Updated:** 2025-11-02
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Quick Start](#quick-start)
+- [Data Location](#data-location)
+- [Exporting Metrics](#exporting-metrics)
+  - [Basic Export](#basic-export)
+  - [Advanced Options](#advanced-options)
+  - [Incremental Mode](#incremental-mode)
+  - [Automation](#automation)
+- [Data Schema](#data-schema)
+  - [Parquet Table Schema](#parquet-table-schema)
+  - [Example Record](#example-record)
+- [Querying Data](#querying-data)
+  - [Option 1: DuckDB (SQL)](#option-1-duckdb-sql)
+  - [Option 2: Pandas](#option-2-pandas)
+  - [Option 3: Pre-built Queries](#option-3-pre-built-queries)
+- [Common Analytical Queries](#common-analytical-queries)
+  - [1. Filter Effectiveness Over Time](#1-filter-effectiveness-over-time)
+  - [2. Source Quality Comparison](#2-source-quality-comparison)
+  - [3. Filter Trends (Weekly)](#3-filter-trends-weekly)
+  - [4. Wikipedia Namespace Filter Analysis](#4-wikipedia-namespace-filter-analysis)
+  - [5. TikTok Emoji Filter Impact](#5-tiktok-emoji-filter-impact)
+- [Jupyter Notebook](#jupyter-notebook)
+  - [Opening the Notebook](#opening-the-notebook)
+  - [Notebook Contents](#notebook-contents)
+  - [Example Visualization Code](#example-visualization-code)
+- [Data Warehouse Integration](#data-warehouse-integration)
+  - [Export to BigQuery](#export-to-bigquery)
+  - [Export to Snowflake](#export-to-snowflake)
+  - [Export to PostgreSQL](#export-to-postgresql)
+- [Storage and Performance](#storage-and-performance)
+  - [Storage Efficiency](#storage-efficiency)
+  - [Query Performance](#query-performance)
+- [Troubleshooting](#troubleshooting)
+  - [Issue: No Parquet files generated](#issue-no-parquet-files-generated)
+  - [Issue: "Module not found: pyarrow"](#issue-module-not-found-pyarrow)
+  - [Issue: Duplicate records in Parquet](#issue-duplicate-records-in-parquet)
+  - [Issue: Query returns empty results](#issue-query-returns-empty-results)
+- [Best Practices](#best-practices)
+
+---
+
 **Maintainers:** Somali NLP Contributors
+**Maintainers**: Somali NLP Contributors

@@ -2,6 +2,60 @@
 
 **Production-ready infrastructure for collecting, processing, and curating Somali language data from multiple sources.**
 
+**Last Updated:** 2025-11-21
+
+---
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+  - [Key Features](#key-features)
+- [Architecture](#architecture)
+  - [Data Flow](#data-flow)
+  - [Core Infrastructure](#core-infrastructure)
+    - [1. Crawl Ledger](#1-crawl-ledger)
+    - [2. Campaigns](#2-campaigns)
+    - [3. Deduplication Engine](#3-deduplication-engine)
+    - [3. Structured Logging](#3-structured-logging)
+    - [4. Metrics Collection](#4-metrics-collection)
+- [Data Sources](#data-sources)
+  - [1. Wikipedia Somali (~50,000 articles)](#1-wikipedia-somali-50000-articles)
+  - [2. BBC Somali News (Variable, news articles)](#2-bbc-somali-news-variable-news-articles)
+  - [3. HuggingFace Datasets (~100K-200K records)](#3-huggingface-datasets-100k-200k-records)
+  - [4. Språkbanken Corpora (23 corpora)](#4-språkbanken-corpora-23-corpora)
+  - [5. TikTok Comments (Social Media)](#5-tiktok-comments-social-media)
+- [Unified Silver Dataset](#unified-silver-dataset)
+- [Quality Filters](#quality-filters)
+  - [Built-in Filters](#built-in-filters)
+  - [Usage Example](#usage-example)
+  - [Custom Filters](#custom-filters)
+- [Workflow Orchestration](#workflow-orchestration)
+  - [Running Individual Pipelines](#running-individual-pipelines)
+  - [Orchestrated Execution (All Pipelines)](#orchestrated-execution-all-pipelines)
+  - [Prefect Workflows](#prefect-workflows)
+- [Configuration](#configuration)
+  - [Environment Variables](#environment-variables)
+  - [Configuration File (.env)](#configuration-file-env)
+  - [Programmatic Configuration](#programmatic-configuration)
+- [Monitoring and Quality](#monitoring-and-quality)
+  - [Metrics Files](#metrics-files)
+  - [Quality Reports](#quality-reports)
+- [Metrics Summary](#metrics-summary)
+- [Health Indicators](#health-indicators)
+  - [Ledger Statistics](#ledger-statistics)
+- [Troubleshooting](#troubleshooting)
+  - [Common Issues](#common-issues)
+  - [Debug Logging](#debug-logging)
+  - [Testing Individual Components](#testing-individual-components)
+- [Performance Optimization](#performance-optimization)
+  - [Parallel Execution](#parallel-execution)
+  - [Incremental Processing](#incremental-processing)
+  - [Resource Management](#resource-management)
+- [Next Steps](#next-steps)
+- [References](#references)
+
 ---
 
 ## Overview
@@ -108,7 +162,63 @@ print(stats)
 # }
 ```
 
-#### 2. Deduplication Engine
+#### 2. Campaigns
+
+Persistent phase tracking for collection lifecycle management:
+
+- **Purpose**: Track named data collection phases (initial vs. refresh)
+- **Table**: `campaigns` in SQLite ledger
+- **Primary Use**: `campaign_init_001` for initial 6-day collection phase
+- **States**: `ACTIVE` (ongoing) or `COMPLETED` (finished)
+
+**Campaign Schema:**
+
+```sql
+CREATE TABLE campaigns (
+    campaign_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL,           -- ACTIVE or COMPLETED
+    start_date TIMESTAMP NOT NULL,
+    end_date TIMESTAMP,              -- NULL if still active
+    config TEXT,                     -- JSON config snapshot
+    metadata TEXT,                   -- Additional metadata
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+**Campaign Lifecycle:**
+
+1. **Initial Collection (`campaign_init_001`)**:
+   - Created on first pipeline run
+   - Lasts 6 days (configurable)
+   - All sources run daily during this phase
+   - Automatically marked `COMPLETED` after duration
+
+2. **Refresh Phase**:
+   - After campaign completion
+   - Sources run per individual cadence schedules
+   - BBC: 1 day, Wikipedia: 7 days, etc.
+
+**Campaign Integration:**
+
+```python
+from somali_dialect_classifier.orchestration.flows import is_initial_collection_phase
+
+# Orchestrator checks campaign status
+if is_initial_collection_phase():
+    # Run all sources (initial collection)
+    run_all_sources()
+else:
+    # Run sources per cadence (refresh phase)
+    run_due_sources()
+```
+
+**See Also:**
+- [Orchestration Guide](../howto/orchestration.md#campaigns) - Campaign workflows and usage
+- [Runbook](../operations/runbook.md#campaigns) - Campaign operations and troubleshooting
+
+#### 3. Deduplication Engine
 
 **Three-phase deduplication strategy** to eliminate duplicates across pipeline runs:
 
@@ -847,5 +957,4 @@ After data collection:
 
 ---
 
-**Last Updated**: 2025-10-27
 **Maintainers**: Somali NLP Contributors

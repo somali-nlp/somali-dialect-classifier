@@ -19,7 +19,7 @@ import logging
 import sys
 from pathlib import Path
 
-from somali_dialect_classifier.preprocessing.huggingface_somali_processor import (
+from somali_dialect_classifier.ingestion.processors.huggingface_somali_processor import (
     HuggingFaceSomaliProcessor,
     create_mc4_processor,
 )

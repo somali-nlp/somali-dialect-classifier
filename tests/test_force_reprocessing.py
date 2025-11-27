@@ -17,7 +17,7 @@ pytestmark = pytest.mark.skip(
     reason="Integration tests require full pipeline run with external data"
 )
 
-from somali_dialect_classifier.preprocessing.bbc_somali_processor import BBCSomaliProcessor
+from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
 
 
 @pytest.fixture
@@ -252,7 +252,7 @@ class TestForceParameter:
 
     def test_all_processors_support_force_parameter(self, temp_work_dir):
         """Test that all processors accept force parameter."""
-        from somali_dialect_classifier.preprocessing.wikipedia_somali_processor import (
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 

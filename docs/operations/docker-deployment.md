@@ -1,4 +1,8 @@
-# Docker Deployment Guide
+# Docker-Based Deployment Guide
+
+**Production deployment using Docker and Docker Compose.**
+
+**Last Updated:** 2025-11-21
 
 Complete guide for deploying the Somali NLP data pipeline using Docker containers.
 
@@ -596,3 +600,11 @@ See `.github/workflows/` for automated deployment examples.
 - [Backup and Restore Guide](./backup-restore.md)
 - [General Deployment Guide](./deployment.md)
 - [Monitoring and Observability](deployment.md#monitoring-and-alerting)
+
+---
+
+## Related Documentation
+
+- [Project Documentation](../index.md) - Main documentation index
+
+**Maintainers**: Somali NLP Contributors

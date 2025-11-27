@@ -19,7 +19,7 @@ class TestSQLInjectionPrevention:
 
     def test_get_statistics_sql_injection(self, tmp_path):
         """Test that get_statistics uses parameterized queries."""
-        from somali_dialect_classifier.preprocessing.crawl_ledger import (
+        from somali_dialect_classifier.ingestion.crawl_ledger import (
             CrawlState,
             SQLiteLedger,
         )
@@ -55,7 +55,7 @@ class TestSQLInjectionPrevention:
 
     def test_get_statistics_drop_table_injection(self, tmp_path):
         """Test that DROP TABLE injection is prevented."""
-        from somali_dialect_classifier.preprocessing.crawl_ledger import (
+        from somali_dialect_classifier.ingestion.crawl_ledger import (
             CrawlState,
             SQLiteLedger,
         )
@@ -89,7 +89,7 @@ class TestSQLInjectionPrevention:
 
     def test_get_statistics_union_injection(self, tmp_path):
         """Test that UNION-based injection is prevented."""
-        from somali_dialect_classifier.preprocessing.crawl_ledger import SQLiteLedger
+        from somali_dialect_classifier.ingestion.crawl_ledger import SQLiteLedger
 
         db_path = tmp_path / "test.db"
         ledger = SQLiteLedger(db_path)
@@ -109,7 +109,7 @@ class TestPathTraversalPrevention:
 
     def test_sanitize_source_name_basic(self):
         """Test basic path traversal prevention."""
-        from somali_dialect_classifier.utils.security import sanitize_source_name
+        from somali_dialect_classifier.infra.security import sanitize_source_name
 
         # Valid sources should work
         assert sanitize_source_name("wikipedia") == "wikipedia"
@@ -128,14 +128,14 @@ class TestPathTraversalPrevention:
 
     def test_sanitize_source_name_null_bytes(self):
         """Test null byte injection is prevented."""
-        from somali_dialect_classifier.utils.security import sanitize_source_name
+        from somali_dialect_classifier.infra.security import sanitize_source_name
 
         with pytest.raises(ValueError, match="Invalid source"):
             sanitize_source_name("wikipedia\x00/etc/passwd")
 
     def test_sanitize_source_name_mixed_case(self):
         """Test case-insensitive validation."""
-        from somali_dialect_classifier.utils.security import sanitize_source_name
+        from somali_dialect_classifier.infra.security import sanitize_source_name
 
         # Should normalize to lowercase
         assert sanitize_source_name("WIKIPEDIA") == "wikipedia"
@@ -144,7 +144,7 @@ class TestPathTraversalPrevention:
 
     def test_sanitize_source_name_unknown_source(self):
         """Test unknown sources are rejected."""
-        from somali_dialect_classifier.utils.security import sanitize_source_name
+        from somali_dialect_classifier.infra.security import sanitize_source_name
 
         with pytest.raises(ValueError, match="Invalid source"):
             sanitize_source_name("unknown-source")
@@ -154,8 +154,8 @@ class TestPathTraversalPrevention:
 
     def test_base_pipeline_sanitizes_source(self):
         """Test that BasePipeline sanitizes source names."""
-        from somali_dialect_classifier.preprocessing.base_pipeline import BasePipeline
-        from somali_dialect_classifier.preprocessing.text_cleaners import (
+        from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
+        from somali_dialect_classifier.quality.text_cleaners import (
             create_html_cleaner,
         )
 
@@ -208,7 +208,7 @@ class TestSecretsMasking:
 
     def test_mask_secret_basic(self):
         """Test basic secret masking."""
-        from somali_dialect_classifier.utils.security import mask_secret
+        from somali_dialect_classifier.infra.security import mask_secret
 
         # Normal secret
         assert mask_secret("sk_live_abc123def456") == "***f456"
@@ -222,7 +222,7 @@ class TestSecretsMasking:
 
     def test_mask_secret_custom_visible_chars(self):
         """Test custom visible character count."""
-        from somali_dialect_classifier.utils.security import mask_secret
+        from somali_dialect_classifier.infra.security import mask_secret
 
         assert mask_secret("abcdef123456", visible_chars=6) == "***123456"
         assert mask_secret("abcdef123456", visible_chars=2) == "***56"
@@ -230,7 +230,7 @@ class TestSecretsMasking:
 
     def test_mask_secret_edge_cases(self):
         """Test edge cases."""
-        from somali_dialect_classifier.utils.security import mask_secret
+        from somali_dialect_classifier.infra.security import mask_secret
 
         # Short secret (below min_length default of 8)
         assert mask_secret("1234", visible_chars=4) == "***"
@@ -246,14 +246,14 @@ class TestFilenameeSanitization:
 
     def test_sanitize_filename_basic(self):
         """Test basic filename sanitization."""
-        from somali_dialect_classifier.utils.security import sanitize_filename
+        from somali_dialect_classifier.infra.security import sanitize_filename
 
         assert sanitize_filename("document.txt") == "document.txt"
         assert sanitize_filename("my_file.json") == "my_file.json"
 
     def test_sanitize_filename_path_traversal(self):
         """Test path traversal prevention."""
-        from somali_dialect_classifier.utils.security import sanitize_filename
+        from somali_dialect_classifier.infra.security import sanitize_filename
 
         # Should extract only the filename
         assert sanitize_filename("../../etc/passwd") == "passwd"
@@ -266,14 +266,14 @@ class TestFilenameeSanitization:
 
     def test_sanitize_filename_null_bytes(self):
         """Test null byte removal."""
-        from somali_dialect_classifier.utils.security import sanitize_filename
+        from somali_dialect_classifier.infra.security import sanitize_filename
 
         assert sanitize_filename("file\x00.txt") == "file.txt"
         assert sanitize_filename("test\x00") == "test"
 
     def test_sanitize_filename_empty_result(self):
         """Test invalid filenames."""
-        from somali_dialect_classifier.utils.security import sanitize_filename
+        from somali_dialect_classifier.infra.security import sanitize_filename
 
         with pytest.raises(ValueError, match="Invalid filename"):
             sanitize_filename("../../")
@@ -287,7 +287,7 @@ class TestURLSanitization:
 
     def test_is_safe_url_valid(self):
         """Test valid URLs are allowed."""
-        from somali_dialect_classifier.utils.security import is_safe_url
+        from somali_dialect_classifier.infra.security import is_safe_url
 
         assert is_safe_url("https://example.com/page") is True
         assert is_safe_url("http://example.com/api") is True
@@ -295,7 +295,7 @@ class TestURLSanitization:
 
     def test_is_safe_url_localhost(self):
         """Test localhost is blocked."""
-        from somali_dialect_classifier.utils.security import is_safe_url
+        from somali_dialect_classifier.infra.security import is_safe_url
 
         assert is_safe_url("http://localhost:8080") is False
         assert is_safe_url("http://127.0.0.1") is False
@@ -304,14 +304,14 @@ class TestURLSanitization:
 
     def test_is_safe_url_file_protocol(self):
         """Test file:// protocol is blocked."""
-        from somali_dialect_classifier.utils.security import is_safe_url
+        from somali_dialect_classifier.infra.security import is_safe_url
 
         assert is_safe_url("file:///etc/passwd") is False
         assert is_safe_url("file:///C:/Windows/System32") is False
 
     def test_is_safe_url_private_ips(self):
         """Test private IP ranges are blocked."""
-        from somali_dialect_classifier.utils.security import is_safe_url
+        from somali_dialect_classifier.infra.security import is_safe_url
 
         # 10.0.0.0/8
         assert is_safe_url("http://10.0.0.1") is False
@@ -334,7 +334,7 @@ class TestXSSPrevention:
 
     def test_dashboard_has_security_utilities(self):
         """Verify security.js exists with XSS prevention functions."""
-        security_js = Path("dashboard/js/utils/security.js")
+        security_js = Path("src/dashboard/js/utils/security.js")
         assert security_js.exists(), "security.js utility file not found"
 
         content = security_js.read_text()
@@ -348,7 +348,7 @@ class TestSecurityIntegration:
 
     def test_sql_injection_in_real_scenario(self, tmp_path):
         """Test SQL injection prevention in realistic usage."""
-        from somali_dialect_classifier.preprocessing.crawl_ledger import (
+        from somali_dialect_classifier.ingestion.crawl_ledger import (
             CrawlLedger,
             CrawlState,
         )
@@ -393,7 +393,7 @@ class TestSecurityIntegration:
 
     def test_path_traversal_in_pipeline_init(self):
         """Test path traversal is prevented during pipeline initialization."""
-        from somali_dialect_classifier.preprocessing.base_pipeline import BasePipeline
+        from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
 
         class DummyPipeline(BasePipeline):
             def download(self):
@@ -406,7 +406,7 @@ class TestSecurityIntegration:
                 return iter([])
 
             def _create_cleaner(self):
-                from somali_dialect_classifier.preprocessing.text_cleaners import (
+                from somali_dialect_classifier.quality.text_cleaners import (
                     TextCleaningPipeline,
                 )
 

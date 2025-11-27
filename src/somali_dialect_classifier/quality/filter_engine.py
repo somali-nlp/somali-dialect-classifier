@@ -28,7 +28,7 @@ class FilterEngine:
 
     Example:
         ```python
-        from somali_dialect_classifier.preprocessing.filters import (
+        from somali_dialect_classifier.quality.filter_functions import (
             min_length_filter,
             topic_lexicon_enrichment_filter
         )
@@ -72,7 +72,7 @@ class FilterEngine:
 
         Example:
             ```python
-            from somali_dialect_classifier.preprocessing.filters import min_length_filter
+            from somali_dialect_classifier.quality.filter_functions import min_length_filter
 
             engine.register_filter(min_length_filter, {'min_length': 10})
             ```

@@ -1,5 +1,9 @@
 # System Architecture
 
+**Comprehensive overview of the Somali Dialect Classifier's architecture, design patterns, and technical decisions.**
+
+**Last Updated:** 2025-11-21
+
 This document provides a comprehensive overview of the Somali Dialect Classifier's architecture, design patterns, and technical decisions.
 
 ## Table of Contents
@@ -118,18 +122,38 @@ All runtime behavior configurable via:
 
 ## Component Architecture
 
-### 1. Base Pipeline (`base_pipeline.py`)
+The system is organized into **four logical packages** following clean architecture principles:
 
-**Purpose**: Template Method pattern for ETL orchestration
+### Package Structure Overview
+
+```
+src/somali_dialect_classifier/
+├── ingestion/          # Data collection from external sources
+├── quality/            # Data quality enforcement and validation
+├── infra/              # Cross-cutting infrastructure services
+└── ml/                 # Machine learning (Stage 3)
+```
+
+### 1. Ingestion Layer (`ingestion/`)
+
+**Purpose**: Acquire raw data from external sources and track ingestion state
+
+**Key Components**:
+- `base_pipeline.py` - Template Method pattern for ETL orchestration
+- `processors/` - Source-specific implementations (Wikipedia, BBC, etc.)
+- `crawl_ledger.py` - State tracking and quota management
+- `dedup.py` - URL-based deduplication engine
 
 **Key Responsibilities**:
 - Define processing workflow (extract → clean → filter → write)
 - Manage logging and progress tracking
 - Provide hook points for subclasses (`_register_filters`, `_extract_records`)
 - Handle force reprocessing logic
+- Track crawl state and quotas
 
 **Key Methods**:
 ```python
+# From base_pipeline.py
 def process(self) -> Path:
     """Main entry point - orchestrates full pipeline."""
 
@@ -138,6 +162,19 @@ def _extract_records(self) -> Iterator[RawRecord]:
 
 def _register_filters(self) -> None:
     """Hook: Subclasses register quality filters."""
+```
+
+**Entry Points**:
+```python
+from somali_dialect_classifier.ingestion import (
+    BasePipeline,
+    CrawlLedger,
+    DedupEngine,
+)
+from somali_dialect_classifier.ingestion.processors import (
+    WikipediaSomaliProcessor,
+    BBCSomaliProcessor,
+)
 ```
 
 **Design Pattern**: **Template Method** - Defines skeleton, subclasses fill in steps
@@ -485,29 +522,96 @@ def _extract_records(self) -> Iterator[RawRecord]:
 somali-dialect-classifier/
 ├── src/somali_dialect_classifier/
 │   ├── __init__.py
-│   ├── config.py                          # Configuration management
 │   │
-│   ├── cli/                               # Command-line interfaces
+│   ├── ingestion/                         # Data collection layer
+│   │   ├── __init__.py
+│   │   ├── base_pipeline.py              # Template method orchestration
+│   │   ├── crawl_ledger.py               # State tracking and quotas
+│   │   ├── dedup.py                      # Deduplication engine
+│   │   ├── data_processor.py             # Abstract processor interface
+│   │   ├── pipeline_setup.py             # Pipeline utilities
+│   │   ├── raw_record.py                 # Raw data model
+│   │   ├── apify_tiktok_client.py        # TikTok API client
+│   │   └── processors/                   # Source-specific implementations
+│   │       ├── bbc_somali_processor.py
+│   │       ├── wikipedia_somali_processor.py
+│   │       ├── huggingface_somali_processor.py
+│   │       ├── sprakbanken_somali_processor.py
+│   │       └── tiktok_somali_processor.py
+│   │
+│   ├── quality/                           # Data quality layer
+│   │   ├── __init__.py
+│   │   ├── filters.py                    # Quality validation filters
+│   │   ├── filter_engine.py              # Filter orchestration
+│   │   ├── record_builder.py             # Schema enforcement
+│   │   ├── record_utils.py               # Record utilities
+│   │   ├── silver_writer.py              # Schema enforcement & I/O
+│   │   ├── text_cleaners.py              # Text transformation pipeline
+│   │   ├── schema_mappers.py             # Schema version mapping
+│   │   └── filters/
+│   │       └── catalog.py                # Dynamic filter registry
+│   │
+│   ├── infra/                             # Infrastructure layer
+│   │   ├── __init__.py
+│   │   ├── config.py                     # Configuration management
+│   │   ├── data_manager.py               # Data path management
+│   │   ├── http.py                       # HTTP utilities
+│   │   ├── logging_utils.py              # Logging utilities
+│   │   ├── metrics.py                    # Core metrics collection
+│   │   ├── metrics_schema.py             # Metrics schema
+│   │   ├── metrics_aggregation.py        # Metrics aggregation
+│   │   ├── metrics_comparison.py         # Metrics comparison
+│   │   ├── metrics_filters.py            # Metrics filtering
+│   │   ├── rate_limiter.py               # Rate limiting
+│   │   ├── security.py                   # Security utilities
+│   │   ├── manifest_writer.py            # Manifest generation
+│   │   ├── aggregation.py                # General aggregation
+│   │   ├── filter_analysis.py            # Filter analytics
+│   │   └── visualization_aggregator.py   # Viz aggregation
+│   │
+│   ├── ml/                                # Machine learning layer (scaffolded)
+│   │   ├── __init__.py
+│   │   └── README.md                     # Stage 3 implementation plan
+│   │
+│   ├── cli/                               # CLI entry points
 │   │   ├── download_wikisom.py
-│   │   └── download_bbcsom.py
+│   │   ├── download_bbcsom.py
+│   │   ├── download_hfsom.py
+│   │   ├── download_spraksom.py
+│   │   └── download_tiktoksom.py
 │   │
-│   └── preprocessing/                     # Core ETL pipeline
-│       ├── __init__.py
-│       ├── base_pipeline.py              # Template method orchestration
-│       ├── filters.py                    # Quality validation strategies
-│       ├── text_cleaners.py              # Text transformation pipeline
-│       ├── record_utils.py               # Data structure utilities
-│       ├── silver_writer.py              # Schema enforcement & I/O
-│       ├── wikipedia_somali_processor.py # Wikipedia implementation
-│       └── bbc_somali_processor.py       # BBC implementation
+│   ├── tools/                             # Unified CLI (somali-tools)
+│   │   ├── __init__.py
+│   │   └── cli.py                        # Click-based CLI framework
+│   │
+│   ├── orchestration/                     # Orchestration flows
+│   │   └── flows.py
+│   │
+│   ├── database/                          # Database backends
+│   │   ├── ledger_backend.py
+│   │   └── postgres_backend.py
+│   │
+│   ├── deployment/                        # Deployment utilities
+│   │   └── deploy.py
+│   │
+│   ├── schema/                            # Schema management
+│   │   └── validation_service.py
+│   │
+│   └── DEPRECATED (backward-compat only):
+│       ├── preprocessing/                 # Re-exports to ingestion + quality
+│       ├── pipeline/                      # Re-exports to quality
+│       └── utils/                         # Re-exports to infra
 │
 ├── tests/                                 # Test suite
 │   ├── fixtures/                         # Test data
-│   ├── test_filters.py                   # Filter unit tests (35 tests)
-│   ├── test_force_reprocessing.py        # Force flag tests
+│   ├── ingestion/                        # Ingestion tests
+│   ├── quality/                          # Quality tests
+│   ├── infra/                            # Infrastructure tests
+│   ├── tools/                            # CLI tests
+│   ├── test_filters.py                   # Filter unit tests
 │   ├── test_bbc_integration.py           # BBC end-to-end
 │   ├── test_wikipedia_integration.py     # Wikipedia end-to-end
-│   └── ...                               # 137 tests total
+│   └── ...                               # 530+ tests passing
 │
 ├── data/                                  # Data lakehouse (gitignored)
 │   ├── raw/                              # Bronze layer
@@ -515,7 +619,7 @@ somali-dialect-classifier/
 │   └── processed/silver/                 # Silver layer (Parquet)
 │
 ├── logs/                                  # Runtime logs (gitignored)
-├── scripts/                               # Utility scripts
+├── scripts/                               # Utility scripts (deprecated)
 ├── docs/                                  # Technical documentation
 └── .archive/                              # Dev artifacts (gitignored)
 ```
@@ -649,5 +753,4 @@ Current API is **stable** for:
 
 ---
 
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

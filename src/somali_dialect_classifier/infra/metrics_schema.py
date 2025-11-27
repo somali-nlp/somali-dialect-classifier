@@ -169,9 +169,7 @@ class Statistics(BaseModel):
     text_length_stats: Optional[TextLengthStats] = None
     throughput: ThroughputMetrics
 
-    # Legacy field for backward compatibility (deprecated)
-    fetch_success_rate: Optional[float] = Field(default=None, ge=0, le=1)
-    fetch_failure_rate: Optional[float] = Field(default=None, ge=0, le=1)
+
 
     # Metadata fields (optional, informational) - use aliases for underscore-prefixed
     metric_semantics: Optional[dict[str, str]] = Field(default=None, alias="_metric_semantics")
@@ -180,62 +178,7 @@ class Statistics(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
 
-class Snapshot(BaseModel):
-    """Legacy snapshot section for backward compatibility."""
 
-    timestamp: str
-    run_id: str
-    source: str
-    duration_seconds: float = Field(ge=0)
-    pipeline_type: str
-
-    # URL-based metrics
-    urls_discovered: int = Field(ge=0)
-    urls_fetched: int = Field(ge=0)
-    urls_processed: int = Field(ge=0)
-    urls_failed: int = Field(ge=0, default=0)
-    urls_skipped: int = Field(ge=0, default=0)
-    urls_deduplicated: int = Field(ge=0, default=0)
-
-    # File-based metrics (for dataset sources)
-    files_discovered: int = Field(ge=0, default=0)
-    files_processed: int = Field(ge=0, default=0)
-    records_extracted: int = Field(ge=0, default=0)
-    datasets_opened: int = Field(ge=0, default=0)
-    records_fetched: int = Field(ge=0, default=0)
-    records_processed: int = Field(ge=0, default=0)
-    batches_completed: int = Field(ge=0, default=0)
-
-    # Volume metrics
-    bytes_downloaded: int = Field(ge=0)
-    records_written: int = Field(ge=0)
-    records_filtered: int = Field(ge=0, default=0)
-
-    # Status codes and errors
-    http_status_codes: dict[str, int] = Field(default_factory=dict)
-    filter_reasons: dict[str, int] = Field(default_factory=dict)
-    error_types: dict[str, int] = Field(default_factory=dict)
-
-    # Raw timing data
-    fetch_durations_ms: list[float] = Field(default_factory=list)
-    process_durations_ms: list[float] = Field(default_factory=list)
-    text_lengths: list[int] = Field(default_factory=list)
-
-    # Deduplication
-    unique_hashes: int = Field(ge=0, default=0)
-    duplicate_hashes: int = Field(ge=0, default=0)
-    near_duplicates: int = Field(ge=0, default=0)
-
-    model_config = ConfigDict(extra="allow")
-
-
-class LegacyMetrics(BaseModel):
-    """Legacy metrics wrapper for backward compatibility."""
-
-    snapshot: Snapshot
-    statistics: Statistics
-
-    model_config = ConfigDict(extra="forbid")
 
 
 class IncrementalFilteringMetrics(BaseModel):
@@ -274,7 +217,7 @@ class Phase3MetricsSchema(BaseModel):
     validation_warnings: Optional[list[str]] = Field(default=None, alias="_validation_warnings")
 
     layered_metrics: LayeredMetrics
-    legacy_metrics: LegacyMetrics
+
     custom_metrics: Optional[CustomMetrics] = None
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)

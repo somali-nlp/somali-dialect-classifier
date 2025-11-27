@@ -1,7 +1,8 @@
 # BBC-Somali Integration Guide
 
-**Status**: Production-ready
-**Last Updated**: 2025-10-19
+**Comprehensive guide to integrating and processing BBC Somali news articles through ethical web scraping.**
+
+**Last Updated:** 2025-11-21
 
 This guide explains how to integrate and process BBC Somali news articles into your Somali Dialect Classifier pipeline through ethical web scraping.
 
@@ -1276,7 +1277,7 @@ After processing BBC data:
 
 ---
 
-## See Also
+## Related Documentation
 
 - [Data Pipeline Overview](../overview/data-pipeline-architecture.md) - ETL architecture
 - [Processing Pipelines Guide](processing-pipelines.md) - Walkthroughs for all sources
@@ -1288,5 +1289,4 @@ After processing BBC data:
 
 ---
 
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors

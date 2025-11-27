@@ -1,5 +1,46 @@
 # Incremental Processing
 
+**Efficient quarterly refresh runs by skipping unchanged data and only processing new or updated records.**
+
+**Last Updated:** 2025-11-21
+
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Benefits](#benefits)
+- [How It Works](#how-it-works)
+  - [Core Strategy](#core-strategy)
+  - [Implementation Patterns](#implementation-patterns)
+    - [Pattern 1: Timestamp-Based Filtering (Wikipedia)](#pattern-1-timestamp-based-filtering-wikipedia)
+    - [Pattern 2: Resource ID-Based Filtering (Språkbanken)](#pattern-2-resource-id-based-filtering-språkbanken)
+- [First Run vs Subsequent Runs](#first-run-vs-subsequent-runs)
+  - [First Run Behavior](#first-run-behavior)
+  - [Subsequent Run Behavior](#subsequent-run-behavior)
+- [Configuration](#configuration)
+  - [Forcing Full Re-Processing](#forcing-full-re-processing)
+- [Fail-Safe Design](#fail-safe-design)
+  - [Missing Timestamps](#missing-timestamps)
+  - [Ledger Unavailable](#ledger-unavailable)
+  - [Unknown Corpus IDs](#unknown-corpus-ids)
+- [Metrics Interpretation](#metrics-interpretation)
+  - [Wikipedia Incremental Metrics](#wikipedia-incremental-metrics)
+  - [Språkbanken Incremental Metrics](#språkbanken-incremental-metrics)
+- [Troubleshooting](#troubleshooting)
+  - [Issue: All records filtered on first run](#issue-all-records-filtered-on-first-run)
+  - [Issue: Too many records processed on subsequent run](#issue-too-many-records-processed-on-subsequent-run)
+  - [Issue: Incremental filtering not working](#issue-incremental-filtering-not-working)
+- [Performance Benchmarks](#performance-benchmarks)
+  - [Wikipedia (14MB dump, 9,960 articles)](#wikipedia-14mb-dump-9960-articles)
+  - [Språkbanken (66 corpora, 196KB)](#språkbanken-66-corpora-196kb)
+- [Advanced Usage](#advanced-usage)
+  - [Query Processing History](#query-processing-history)
+  - [Custom Filtering Logic](#custom-filtering-logic)
+- [Summary](#summary)
+
+---
 ## Overview
 
 Incremental processing enables efficient quarterly refresh runs by skipping unchanged data and only processing new or updated records. This feature achieves 90%+ efficiency gains by tracking processing history in the ledger and filtering records based on timestamps or resource identifiers.
@@ -362,3 +403,4 @@ Incremental processing provides:
 - **Full metrics tracking** for visibility
 
 The system is designed to be transparent, efficient, and safe - defaulting to processing records when in doubt to ensure no data loss.
+**Maintainers**: Somali NLP Contributors

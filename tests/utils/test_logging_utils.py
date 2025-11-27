@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from somali_dialect_classifier.utils.logging_utils import (
+from somali_dialect_classifier.infra.logging_utils import (
     ColoredFormatter,
     LogEvent,
     StructuredFormatter,

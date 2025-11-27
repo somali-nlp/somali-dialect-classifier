@@ -5,7 +5,7 @@ import time
 import pytest
 import requests
 
-from somali_dialect_classifier.utils.http import HTTPSessionFactory, RateLimiter
+from somali_dialect_classifier.infra.http import HTTPSessionFactory, RateLimiter
 
 
 class TestHTTPSessionFactory:

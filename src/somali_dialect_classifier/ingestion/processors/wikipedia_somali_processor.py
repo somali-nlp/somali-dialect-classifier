@@ -15,14 +15,14 @@ from typing import Any, Optional
 import requests
 from tqdm import tqdm
 
-from ..config import get_config
-from ..utils.http import HTTPSessionFactory
-from ..utils.logging_utils import Timer, set_context
-from ..utils.metrics import MetricsCollector, PipelineType
-from .base_pipeline import BasePipeline, RawRecord
-from .crawl_ledger import get_ledger
-from .dedup import DedupConfig, DedupEngine
-from .text_cleaners import TextCleaningPipeline, create_wikipedia_cleaner
+from ...infra.config import get_config
+from ...infra.http import HTTPSessionFactory
+from ...infra.logging_utils import Timer, set_context
+from ...infra.metrics import MetricsCollector, PipelineType
+from ..base_pipeline import BasePipeline, RawRecord
+from ..crawl_ledger import get_ledger
+from ..dedup import DedupConfig, DedupEngine
+from ...quality.text_cleaners import TextCleaningPipeline, create_wikipedia_cleaner
 
 # Constants for buffer management
 BUFFER_CHUNK_SIZE_MB = 1  # Read 1MB chunks from compressed file
@@ -39,7 +39,7 @@ class WikipediaSomaliProcessor(BasePipeline):
     Wikipedia-specific logic (XML parsing, URL resolution).
     """
 
-    def __init__(self, force: bool = False):
+    def __init__(self, force: bool = False, run_seed: Optional[str] = None):
         # Load config FIRST
         config = get_config()
         self.config = config
@@ -53,7 +53,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.metrics = None  # Will be initialized in download()
 
         # Initialize BasePipeline with source name (this generates run_id and StructuredLogger)
-        super().__init__(source="wikipedia-somali", force=force)
+        super().__init__(source="wikipedia-somali", force=force, run_seed=run_seed)
 
         # Note: StructuredLogger is now initialized in BasePipeline
         # Use self.logger for all logging (it's now a structured logger with JSON output)
@@ -65,7 +65,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.dump_base = f"https://dumps.wikimedia.org/{self.current_code}/latest/"
         # Default attempt; will auto-resolve if 404
         self.dump_url = self.dump_base + f"{self.current_code}-latest-pages-articles.xml.bz2"
-        self.dump_file = self.raw_dir / f"{self.current_code}-latest-pages-articles.xml.bz2"
+        self.dump_file = self.raw_dir / f"wikipedia-somali_{self.run_id}_raw_dump.xml.bz2"
 
         # Override staging and processed file paths for Wikipedia-specific naming
         # Pattern: {source_slug}_{run_id}_{layer}_{descriptive_name}.{ext}
@@ -97,7 +97,7 @@ class WikipediaSomaliProcessor(BasePipeline):
 
     def _register_filters(self) -> None:
         """Register Wikipedia-specific filters."""
-        from .filters import langid_filter, min_length_filter
+        from ...quality.filter_functions import langid_filter, min_length_filter
 
         # Minimum length threshold for articles
         self.filter_engine.register_filter(min_length_filter, {"threshold": 50})
@@ -244,10 +244,10 @@ class WikipediaSomaliProcessor(BasePipeline):
                     "Default dump URL returned 404. Resolving correct filename from index..."
                 )
                 self.current_code, self.dump_url = self._resolve_dump_url(session)
-                # Update base and output filename to match the resolved URL
+                # Update base (but keep standard naming for dump_file)
                 self.dump_base = f"https://dumps.wikimedia.org/{self.current_code}/latest/"
-                resolved_name = self.dump_url.rstrip("/").split("/")[-1]
-                self.dump_file = self.raw_dir / resolved_name
+                # Keep standard naming pattern: wikipedia-somali_{run_id}_raw_dump.xml.bz2
+                # (self.dump_file already set in __init__)
                 response = session.get(self.dump_url, stream=True, timeout=30)
             response.raise_for_status()
 

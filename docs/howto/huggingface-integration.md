@@ -1,7 +1,8 @@
 # HuggingFace Datasets Integration Guide
 
-**Status**: Using **MC4 only** for HuggingFace data sources
-**Last Updated**: 2025-10-18
+**Integrating HuggingFace datasets (MC4) for Somali language data collection.**
+
+**Last Updated:** 2025-11-21
 
 This guide explains how to use HuggingFace datasets as data sources for the Somali Dialect Classifier.
 
@@ -584,7 +585,7 @@ After processing HuggingFace data:
 
 ---
 
-## See Also
+## Related Documentation
 
 - [Processing Pipelines Guide](processing-pipelines.md) - Step-by-step guides for all sources
 - [Configuration Guide](configuration.md) - Environment setup and config management
@@ -594,5 +595,4 @@ After processing HuggingFace data:
 
 ---
 
-**Last Updated**: 2025-10-20
 **Maintainers**: Somali NLP Contributors
