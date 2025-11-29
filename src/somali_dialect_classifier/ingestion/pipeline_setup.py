@@ -1,7 +1,5 @@
 """
 Pipeline setup utilities for BasePipeline initialization.
-
-Extracted from BasePipeline (P3.1 God Object Refactoring) to reduce line count.
 """
 
 import logging

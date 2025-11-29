@@ -3,12 +3,6 @@ Metrics command implementations for somali-tools CLI.
 
 This module contains testable library code for metrics operations.
 Separated from CLI to enable unit testing without Click framework.
-
-Functions are extracted from scripts:
-- generate_consolidated_metrics.py
-- generate_enhanced_metrics.py
-- check_metrics_anomalies.py
-- validate_metrics_schema.py
 """
 
 import json

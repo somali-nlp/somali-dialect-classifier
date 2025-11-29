@@ -134,6 +134,9 @@ services:
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Mount database migrations for auto-initialization
+      # Note: Uses SQL files for backward compatibility
+      # For Alembic migrations, use: docker exec somali-postgres alembic upgrade head
       - ./migrations:/docker-entrypoint-initdb.d
 
     ports:

@@ -470,7 +470,16 @@ class SQLiteLedger(LedgerBackend):
                 logger.info("Applied schema version 1")
 
     def _apply_schema_v1(self, conn: sqlite3.Connection) -> None:
-        """Apply version 1 schema."""
+        """
+        Apply version 1 schema (SQLite only - for development).
+
+        IMPORTANT: For production PostgreSQL, schema is managed via:
+        - migrations/database/alembic/versions/001_initial_schema.py
+        - migrations/database/alembic/versions/002_pipeline_runs_table.py
+
+        This SQLite schema must stay in sync with PostgreSQL migrations.
+        Any schema changes must be made in both places.
+        """
         # Main crawl ledger table
         conn.execute("""
             CREATE TABLE IF NOT EXISTS crawl_ledger (

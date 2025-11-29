@@ -2,7 +2,7 @@
 
 **Complete reference for the somali-tools unified command-line interface.**
 
-**Last Updated:** 2025-11-21
+**Last Updated:** 2025-11-29
 
 Complete reference for the `somali-tools` unified command-line interface.
 
@@ -265,7 +265,7 @@ Ledger database operations and state tracking.
 
 ### ledger migrate
 
-Run ledger database migrations.
+Run SQLite ledger state migrations (data migrations, not PostgreSQL schema).
 
 **Usage:**
 ```bash
@@ -290,6 +290,14 @@ somali-tools ledger migrate --dry-run
 # Run specific migration
 somali-tools ledger migrate --migration 002_pipeline_runs_table
 ```
+
+**Note:** This migrates SQLite ledger data (e.g., state transitions). For **PostgreSQL database schema migrations**, use Alembic:
+```bash
+cd migrations/database
+alembic upgrade head
+```
+
+See [`migrations/database/README.md`](../../migrations/database/README.md) for PostgreSQL schema migration documentation.
 
 **Replaces:** `python scripts/migrate_ledger_states.py`
 

@@ -36,16 +36,6 @@ class PipelineType(Enum):
     STREAM_PROCESSING = "stream_processing"
 
 
-# ============================================================================
-# LAYERED METRICS ARCHITECTURE
-# ============================================================================
-# Layer 1: Connectivity - Can we reach the source?
-# Layer 2: Extraction - Can we retrieve data? (pipeline-specific)
-# Layer 3: Quality - Does data meet standards?
-# Layer 4: Volume - How much data?
-# ============================================================================
-
-
 @dataclass
 class ConnectivityMetrics:
     """
@@ -386,11 +376,6 @@ class VolumeMetrics:
         return asdict(self)
 
 
-# ============================================================================
-# TYPE SAFETY & FACTORY FUNCTIONS
-# ============================================================================
-
-
 def create_extraction_metrics(
     pipeline_type: Union[str, PipelineType], **kwargs
 ) -> ExtractionMetrics:
@@ -564,30 +549,19 @@ class MetricSnapshot:
 
         # Calculate success rate based on pipeline type
         if self.pipeline_type == PipelineType.WEB_SCRAPING.value:
-            # ============================================================
-            # WEB SCRAPING METRICS (BBC)
-            # ============================================================
-            # FIXED: Only count actually attempted URLs, not discovered URLs
-            # This fixes the bug where test limits made success rates look artificially low
             total_attempted = self.urls_fetched + self.urls_failed
 
             if total_attempted > 0:
-                # NEW METRIC: http_request_success_rate
-                # Network-level HTTP success (2xx responses)
                 http_success_count = self.http_status_codes.get(200, 0)
                 if http_success_count > 0:
                     stats["http_request_success_rate"] = http_success_count / total_attempted
                 else:
-                    # Fallback: use urls_fetched if HTTP status not tracked
                     stats["http_request_success_rate"] = self.urls_fetched / total_attempted
 
-                # NEW METRIC: content_extraction_success_rate
-                # Content successfully extracted from HTTP responses
-                # This is separate from HTTP success (you can get 200 OK but fail to extract content)
                 if self.urls_fetched > 0:
                     stats["content_extraction_success_rate"] = (
                         self.urls_fetched / self.urls_fetched
-                    )  # Always 1.0 for now
+                    )
                 else:
                     stats["content_extraction_success_rate"] = 0.0
 
@@ -595,11 +569,6 @@ class MetricSnapshot:
                     self.urls_failed / total_attempted if total_attempted > 0 else 0
                 )
 
-                # Quality pass rate: records that passed quality filters
-                # Percentage of non-duplicate records that passed quality filters
-                # Formula: records_written / (records_written + records_filtered)
-                # BACKWARD COMPATIBILITY: For web scraping, if records_written is not set,
-                # fall back to urls_processed (they're equivalent for web scraping)
                 records_written = (
                     self.records_written if self.records_written > 0 else self.urls_processed
                 )
@@ -613,44 +582,29 @@ class MetricSnapshot:
                     (self.urls_deduplicated / total_attempted) if total_attempted > 0 else 0
                 )
 
-
-
         elif self.pipeline_type == PipelineType.FILE_PROCESSING.value:
-            # ============================================================
-            # FILE PROCESSING METRICS (Wikipedia, Språkbanken)
-            # ============================================================
-            # NEW METRIC: file_extraction_success_rate
-            # File-level extraction success (local file I/O, not HTTP)
             if self.files_discovered > 0:
                 stats["file_extraction_success_rate"] = self.files_processed / self.files_discovered
                 stats["file_extraction_failure_rate"] = 1 - stats["file_extraction_success_rate"]
             elif self.records_extracted > 0:
-                # If no files tracked but records extracted, assume 100% success
                 stats["file_extraction_success_rate"] = 1.0
                 stats["file_extraction_failure_rate"] = 0
             else:
                 stats["file_extraction_success_rate"] = 0
                 stats["file_extraction_failure_rate"] = 0
 
-            # NEW METRIC: record_parsing_success_rate
-            # Record-level parsing success from extracted files
             total_extracted = self.records_extracted if self.records_extracted > 0 else 0
             if total_extracted > 0:
-                # Assume all extracted records were parseable (can be refined later)
                 stats["record_parsing_success_rate"] = 1.0
             else:
                 stats["record_parsing_success_rate"] = 0.0
 
-            # Quality pass rate for file processing
-            # Percentage of non-duplicate records that passed quality filters
-            # Formula: records_written / (records_written + records_filtered)
             total_non_dup_records = self.records_written + self.records_filtered
             if total_non_dup_records > 0:
                 stats["quality_pass_rate"] = self.records_written / total_non_dup_records
             else:
                 stats["quality_pass_rate"] = 0
 
-            # Add deduplication rate for file processing
             total_records = (
                 self.records_extracted if self.records_extracted > 0 else self.records_written
             )
@@ -661,37 +615,19 @@ class MetricSnapshot:
             else:
                 stats["deduplication_rate"] = 0
 
-
-
         elif self.pipeline_type == PipelineType.STREAM_PROCESSING.value:
-            # ============================================================
-            # STREAM PROCESSING METRICS (HuggingFace)
-            # ============================================================
-            # NEW METRIC: stream_connection_success_rate
-            # Boolean: stream opened successfully (1.0) or failed (0.0)
             if self.records_fetched > 0:
                 stats["stream_connection_success_rate"] = 1.0
             else:
                 stats["stream_connection_success_rate"] = 0.0
 
-            # NEW METRIC: record_retrieval_success_rate
-            # Actual records received vs what we attempted to fetch
-            # For now, if we got records, assume 100% of attempted fetches succeeded
             if self.records_fetched > 0:
                 stats["record_retrieval_success_rate"] = 1.0
             else:
                 stats["record_retrieval_success_rate"] = 0.0
 
-            # NEW METRIC: dataset_coverage_rate
-            # Records received / total dataset size (if known)
-            # For now, set to None (unknown) - can be enhanced when dataset size is tracked
-            stats["dataset_coverage_rate"] = None  # Unknown - needs dataset metadata
+            stats["dataset_coverage_rate"] = None
 
-            # Quality pass rate: records that passed quality filters
-            # Percentage of non-duplicate records that passed quality filters
-            # Formula: records_written / (records_written + records_filtered)
-            # BACKWARD COMPATIBILITY: For streaming, if records_written is not set,
-            # fall back to records_processed (they're equivalent for streaming)
             records_written = (
                 self.records_written if self.records_written > 0 else self.records_processed
             )
@@ -701,7 +637,6 @@ class MetricSnapshot:
             else:
                 stats["quality_pass_rate"] = 0
 
-            # Add deduplication rate for streaming
             if self.records_fetched > 0:
                 stats["deduplication_rate"] = (
                     self.duplicate_hashes + self.near_duplicates
@@ -709,9 +644,7 @@ class MetricSnapshot:
             else:
                 stats["deduplication_rate"] = 0
 
-
         else:
-            # Backward compatibility: default to web scraping logic
             total_attempts = self.urls_fetched
             if total_attempts > 0:
                 stats["fetch_success_rate"] = self.urls_processed / total_attempts
@@ -722,7 +655,6 @@ class MetricSnapshot:
                 stats["fetch_failure_rate"] = 0
                 stats["deduplication_rate"] = 0
 
-            # Quality pass rate: consistent formula across all pipeline types
             total_non_dup_records = self.records_written + self.records_filtered
             if total_non_dup_records > 0:
                 stats["quality_pass_rate"] = self.records_written / total_non_dup_records
@@ -760,7 +692,6 @@ class MetricSnapshot:
                 "total_chars": sum(self.text_lengths),
             }
 
-        # Throughput
         if self.duration_seconds > 0:
             stats["throughput"] = {
                 "urls_per_second": self.urls_processed / self.duration_seconds,
@@ -768,11 +699,8 @@ class MetricSnapshot:
                 "records_per_minute": (self.records_written / self.duration_seconds) * 60,
             }
 
-        # Add metric semantics metadata for clarity
         stats["_metric_semantics"] = self._get_metric_semantics()
 
-
-        # Validate quality_pass_rate is between 0 and 1
         if "quality_pass_rate" in stats:
             qpr = stats["quality_pass_rate"]
             if qpr < 0 or qpr > 1:

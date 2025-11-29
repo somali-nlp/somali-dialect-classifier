@@ -2,7 +2,7 @@
 
 **Guide for deploying and configuring PostgreSQL as the crawl ledger backend.**
 
-**Last Updated:** 2025-11-21
+**Last Updated:** 2025-11-29
 
 **Status:** Production-Ready (95% Complete)
 **Target Environment:** Production
@@ -779,8 +779,14 @@ docker compose exec postgres psql -U somali -d somali_nlp -c "\di"
 # - idx_crawl_ledger_updated_at
 # - idx_crawl_ledger_metadata (GIN)
 
-# If missing, recreate from schema
+# If missing, recreate from schema (choose one method)
+
+# Method 1: Alembic (recommended)
+cd migrations/database && alembic upgrade head
+
+# Method 2: Legacy SQL
 docker exec -i somali-nlp-postgres psql -U somali -d somali_nlp < migrations/001_initial_schema.sql
+docker exec -i somali-nlp-postgres psql -U somali -d somali_nlp < migrations/002_pipeline_runs_table.sql
 ```
 
 **Connection Leaks:**
@@ -1082,10 +1088,13 @@ watch -n 5 'docker stats somali-nlp-postgres --no-stream'
 
 ### Documentation Files
 
-- **Setup Guide:** `/Users/ilyas/Desktop/Computer Programming/somali-nlp-projects/somali-dialect-classifier/docs/operations/postgres-setup.md`
-- **Schema Migration:** `/Users/ilyas/Desktop/Computer Programming/somali-nlp-projects/somali-dialect-classifier/migrations/001_initial_schema.sql`
-- **Migration Script:** `/Users/ilyas/Desktop/Computer Programming/somali-nlp-projects/somali-dialect-classifier/scripts/migrate_sqlite_to_postgres.py`
-- **PostgreSQL Backend:** `/Users/ilyas/Desktop/Computer Programming/somali-nlp-projects/somali-dialect-classifier/src/somali_dialect_classifier/database/postgres_ledger.py`
+- **Setup Guide:** `docs/operations/postgres-setup.md`
+- **Migration Guide:** `migrations/database/README.md` (Alembic migrations)
+- **Schema Migrations (Alembic):** `migrations/database/alembic/versions/`
+- **Schema Migrations (Legacy SQL):** `migrations/001_initial_schema.sql`, `migrations/002_pipeline_runs_table.sql`
+- **Migration Script:** `scripts/migrate_sqlite_to_postgres.py`
+- **PostgreSQL Backend:** `src/somali_dialect_classifier/database/postgres_ledger.py`
+- **Migration Utilities:** `src/somali_dialect_classifier/database/migrations.py`
 
 ### Implementation Reports
 

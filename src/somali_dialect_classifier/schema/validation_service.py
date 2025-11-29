@@ -6,8 +6,6 @@ Responsibilities:
 - Track validation failures
 - Provide detailed error messages
 - Support metrics integration
-
-Extracted from BasePipeline (P3.1 God Object Refactoring).
 """
 
 import logging

@@ -6,8 +6,6 @@ Responsibilities:
 - Merge metadata from multiple sources
 - Add schema versioning fields
 - Ensure consistent record structure
-
-Extracted from BasePipeline (P3.1 God Object Refactoring).
 """
 
 import logging

@@ -6,8 +6,6 @@ Responsibilities:
 - Track filter execution statistics
 - Provide filter pass/fail reasons
 - Support extensible filter registration
-
-Extracted from BasePipeline (P3.1 God Object Refactoring).
 """
 
 import logging

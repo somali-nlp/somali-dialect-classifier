@@ -1,8 +1,5 @@
 """
-Silver dataset writer - enhanced with domain, embedding, and register fields.
-
-Version 2.1: Adds register field for linguistic formality classification.
-Version 2.0: Added domain classification and embedding placeholder.
+Silver dataset writer with domain, embedding, and register fields.
 """
 
 import json
@@ -23,14 +20,10 @@ class SilverDatasetWriter:
     Writes records to silver dataset in Parquet format.
 
     Handles partitioning, schema validation, and file I/O.
-    Version 2.1 adds register field for linguistic formality.
-    Version 2.0 added domain and embedding fields.
     """
 
-    # Enhanced schema with domain, embedding, and register fields
     SCHEMA = pa.schema(
         [
-            # Original fields
             ("id", pa.string()),
             ("text", pa.string()),
             ("title", pa.string()),
@@ -46,16 +39,13 @@ class SilverDatasetWriter:
             ("tokens", pa.int64()),
             ("text_hash", pa.string()),
             ("pipeline_version", pa.string()),
-            ("source_metadata", pa.string()),  # JSON string
-            # Fields added in v2.0
-            ("domain", pa.string()),  # Content domain (news, literature, science, etc.)
-            ("embedding", pa.string()),  # Placeholder for future embeddings (JSON string)
-            # Fields added in v2.1
-            ("register", pa.string()),  # Linguistic register: "formal", "informal", "colloquial"
+            ("source_metadata", pa.string()),
+            ("domain", pa.string()),
+            ("embedding", pa.string()),
+            ("register", pa.string()),
         ]
     )
 
-    # Schema for reading v2.0 files (without register field)
     SCHEMA_V2_0 = pa.schema(
         [
             ("id", pa.string()),
@@ -79,7 +69,6 @@ class SilverDatasetWriter:
         ]
     )
 
-    # Schema for reading v1.0 files (original schema)
     SCHEMA_V1_0 = pa.schema(
         [
             ("id", pa.string()),
@@ -101,27 +90,25 @@ class SilverDatasetWriter:
         ]
     )
 
-    # Valid register values
     VALID_REGISTERS = {"formal", "informal", "colloquial"}
 
-    # Standard domain taxonomy
     DOMAINS = {
-        "news",  # News articles
-        "encyclopedia",  # Encyclopedia/reference (Wikipedia)
-        "literature",  # Fiction, poetry, stories
-        "science",  # Scientific texts
-        "health",  # Health-related content
-        "children",  # Children's content
-        "radio",  # Radio transcripts
-        "social_media",  # Social media posts
-        "web",  # General web content
-        "academic",  # Academic papers
-        "translation",  # Translated content
-        "qa",  # Question-answer format
-        "historical",  # Historical documents
-        "general",  # Unclassified/mixed
-        "news_regional",  # Regional news (e.g., Ogaden)
-        "literature_translation",  # Translated literature
+        "news",
+        "encyclopedia",
+        "literature",
+        "science",
+        "health",
+        "children",
+        "radio",
+        "social_media",
+        "web",
+        "academic",
+        "translation",
+        "qa",
+        "historical",
+        "general",
+        "news_regional",
+        "literature_translation",
     }
 
     def __init__(self, base_dir: Optional[Path] = None):

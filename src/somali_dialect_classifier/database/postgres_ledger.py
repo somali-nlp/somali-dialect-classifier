@@ -10,8 +10,13 @@ Features:
 - Proper indexes for query performance
 - JSONB support for metadata
 - Backward compatible with SQLiteLedger API
-- Automatic schema initialization
+- Schema verification (requires migrations to be run)
 - Transaction support with rollback
+
+Schema Management:
+- Database schema is defined in migrations/database/alembic/versions/
+- Tables are created via Alembic migrations or Docker init scripts
+- This code verifies tables exist but does NOT create them
 """
 
 import logging
@@ -23,6 +28,7 @@ from psycopg2.extras import Json, RealDictCursor
 from psycopg2.pool import ThreadedConnectionPool
 
 from ..ingestion.crawl_ledger import CrawlState, LedgerBackend
+from .migrations import verify_schema_initialized, get_migration_instructions
 
 logger = logging.getLogger(__name__)
 
@@ -105,89 +111,31 @@ class PostgresLedger(LedgerBackend):
 
     def initialize_schema(self, schema_version: int = 1) -> None:
         """
-        Initialize or migrate database schema.
+        Verify database schema is initialized.
 
-        This method is idempotent - safe to run multiple times.
+        IMPORTANT: This method does NOT create tables. Tables must be created via:
+        - Docker: docker-compose up (runs migrations automatically)
+        - Manual: cd migrations/database && alembic upgrade head
+
+        This is a verification step to ensure migrations have been run.
+
+        Raises:
+            RuntimeError: If required tables are missing
         """
-        schema_sql = """
-        -- Schema version table
-        CREATE TABLE IF NOT EXISTS schema_version (
-            version INTEGER PRIMARY KEY,
-            applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        );
+        with self._get_connection() as conn:
+            all_exist, missing_tables = verify_schema_initialized(conn)
 
-        -- URLs table
-        CREATE TABLE IF NOT EXISTS crawl_ledger (
-            id SERIAL PRIMARY KEY,
-            url TEXT NOT NULL UNIQUE,
-            source TEXT NOT NULL,
-            discovered_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-            last_fetched_at TIMESTAMP WITH TIME ZONE,
-            http_status INTEGER,
+            if not all_exist:
+                instructions = get_migration_instructions("postgresql")
+                error_msg = (
+                    f"PostgreSQL database schema not initialized.\n"
+                    f"Missing tables: {', '.join(missing_tables)}\n"
+                    f"\n{instructions}"
+                )
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
 
-            -- Deduplication fields
-            text_hash TEXT,
-            minhash_signature TEXT,
-
-            -- Record linkage
-            silver_id TEXT,
-
-            -- State tracking
-            state TEXT NOT NULL,
-            retry_count INTEGER DEFAULT 0,
-            error_message TEXT,
-
-            -- HTTP metadata
-            etag TEXT,
-            last_modified TEXT,
-            content_length INTEGER,
-
-            -- Generic metadata (JSONB)
-            metadata JSONB,
-
-            -- Audit fields
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        );
-
-        -- Performance indexes
-        CREATE INDEX IF NOT EXISTS idx_crawl_ledger_source ON crawl_ledger(source);
-        CREATE INDEX IF NOT EXISTS idx_crawl_ledger_state ON crawl_ledger(state);
-        CREATE INDEX IF NOT EXISTS idx_crawl_ledger_source_state ON crawl_ledger(source, state);
-        CREATE INDEX IF NOT EXISTS idx_crawl_ledger_text_hash ON crawl_ledger(text_hash) WHERE text_hash IS NOT NULL;
-        CREATE INDEX IF NOT EXISTS idx_crawl_ledger_minhash ON crawl_ledger(minhash_signature) WHERE minhash_signature IS NOT NULL;
-        CREATE INDEX IF NOT EXISTS idx_crawl_ledger_silver_id ON crawl_ledger(silver_id) WHERE silver_id IS NOT NULL;
-        CREATE INDEX IF NOT EXISTS idx_crawl_ledger_discovered_at ON crawl_ledger(discovered_at);
-        CREATE INDEX IF NOT EXISTS idx_crawl_ledger_updated_at ON crawl_ledger(updated_at);
-        CREATE INDEX IF NOT EXISTS idx_crawl_ledger_metadata ON crawl_ledger USING GIN (metadata);
-
-        -- RSS feeds table
-        CREATE TABLE IF NOT EXISTS rss_feeds (
-            id SERIAL PRIMARY KEY,
-            feed_url TEXT NOT NULL UNIQUE,
-            source TEXT NOT NULL,
-            last_fetched_at TIMESTAMP WITH TIME ZONE,
-            items_found INTEGER,
-            fetch_count INTEGER DEFAULT 0,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_rss_feeds_source ON rss_feeds(source);
-        CREATE INDEX IF NOT EXISTS idx_rss_feeds_last_fetched ON rss_feeds(last_fetched_at);
-
-        -- Mark schema as initialized
-        INSERT INTO schema_version (version) VALUES (1)
-        ON CONFLICT (version) DO NOTHING;
-        """
-
-        try:
-            with self.transaction() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(schema_sql)
-            logger.info("PostgreSQL schema initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize schema: {e}")
-            raise
+            logger.info("PostgreSQL schema verification passed")
 
     def upsert_url(
         self,

@@ -116,13 +116,11 @@ class DataManager:
         if not filepath.exists():
             raise FileNotFoundError(f"File not found: {filepath}")
 
-        # Create hasher instance based on algorithm
         try:
             hasher = hashlib.new(algorithm)
         except ValueError as err:
             raise ValueError(f"Unsupported hash algorithm: {algorithm}") from err
 
-        # Read file in 4KB chunks for memory efficiency
         with open(filepath, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
                 hasher.update(chunk)
@@ -526,7 +524,6 @@ class DataManager:
                 batch = records[i : i + batch_size]
                 for record in batch:
                     f.write(json.dumps(record, ensure_ascii=False) + "\n")
-                # Flush only after each batch, not every record
                 f.flush()
 
         self.logger.info(f"Wrote {len(records)} records to {filepath} (batch-optimized)")
@@ -564,7 +561,6 @@ class DataManager:
                 f.write(json.dumps(record, ensure_ascii=False) + "\n")
                 count += 1
 
-                # Periodic flush
                 if count % flush_interval == 0:
                     f.flush()
 

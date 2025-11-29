@@ -2,7 +2,7 @@
 
 **Setting up PostgreSQL database for production crawl ledger.**
 
-**Last Updated:** 2025-11-21
+**Last Updated:** 2025-11-29
 
 
 ---
@@ -211,12 +211,23 @@ docker-compose --profile prod up -d postgres
 
 ### Schema not initialized
 
-Schema is auto-initialized on first connection. If issues occur:
+Schema is auto-initialized via migrations when using Docker. If issues occur:
 
 ```bash
-# Manually apply schema
+# Option 1: Fresh restart (recommended for Docker)
+docker-compose down -v
+docker-compose up -d postgres
+
+# Option 2: Alembic migrations (production)
+cd migrations/database
+alembic upgrade head
+
+# Option 3: Legacy SQL (backward compatibility)
 docker exec -i somali-nlp-postgres psql -U somali -d somali_nlp < migrations/001_initial_schema.sql
+docker exec -i somali-nlp-postgres psql -U somali -d somali_nlp < migrations/002_pipeline_runs_table.sql
 ```
+
+**Note:** As of 2025-11-29, the project uses Alembic for production-grade migrations. See [`migrations/database/README.md`](../../migrations/database/README.md) for details.
 
 ### Slow query performance
 
@@ -244,6 +255,48 @@ docker exec -i somali-nlp-postgres psql -U somali -d somali_nlp < migrations/001
 - Monitor for connection pool exhaustion
 - Check logs for deadlock warnings (should be none)
 
+## Schema Management
+
+As of 2025-11-29, database schema is managed via **Alembic migrations** (single source of truth):
+
+### Migration Systems
+
+**1. Alembic (Production - Recommended)**
+- Full version control with rollback support
+- Location: `migrations/database/alembic/versions/`
+- Usage: `cd migrations/database && alembic upgrade head`
+
+**2. Docker Init (Development - Auto-runs)**
+- SQL files auto-execute on first `docker-compose up`
+- Location: `migrations/*.sql`
+- Backward compatible with existing setups
+
+**3. Legacy SQL (Deprecated)**
+- Direct SQL execution (no rollback support)
+- Still supported for backward compatibility
+- Use Alembic for new deployments
+
+### Current Schema Version
+
+- **Version 1:** Initial schema (crawl_ledger, rss_feeds)
+- **Version 2:** Pipeline runs tracking table
+
+### Managing Migrations
+
+```bash
+# Check current version
+cd migrations/database
+alembic current
+
+# Upgrade to latest
+alembic upgrade head
+
+# Rollback one version
+alembic downgrade -1
+```
+
+For complete migration documentation, see [`migrations/database/README.md`](../../migrations/database/README.md).
+
 ## Schema
 
 ### Tables
@@ -257,9 +310,13 @@ docker exec -i somali-nlp-postgres psql -U somali -d somali_nlp < migrations/001
 - Tracks RSS feed fetch times for ethical scraping
 - Prevents excessive polling (BBC Somali)
 
+**pipeline_runs**
+- Tracks each pipeline execution for scheduling
+- Links to metrics and logs via run_id
+
 **schema_version**
 - Migration version tracking
-- Current version: 1
+- Current version: 2
 
 ### Indexes
 

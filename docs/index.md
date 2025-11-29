@@ -2,7 +2,7 @@
 
 **Comprehensive documentation hub for the Somali Dialect Classifier data pipeline, from setup through production deployment.**
 
-**Last Updated:** 2025-11-21
+**Last Updated:** 2025-11-29
 
 Welcome to the Somali Dialect Classifier documentation. This project provides a comprehensive pipeline for collecting, processing, and preparing Somali language data for dialect classification and NLP research.
 
@@ -132,6 +132,7 @@ Production deployment and operations:
 - **[Deployment](operations/deployment.md)** - Production deployment guide
 - **[PostgreSQL Deployment](operations/postgres-deployment.md)** - PostgreSQL setup for 10x concurrent scale
 - **[PostgreSQL Setup](operations/postgres-setup.md)** - PostgreSQL configuration and migration
+- **[Database Migrations](../migrations/database/README.md)** - **⭐ Alembic migration guide** (schema versioning, rollback)
 - **[Docker Deployment](operations/docker-deployment.md)** - Docker-based deployment
 - **[Backup & Restore](operations/backup-restore.md)** - Data backup and disaster recovery
 - **[Testing](operations/testing.md)** - Testing strategies and patterns

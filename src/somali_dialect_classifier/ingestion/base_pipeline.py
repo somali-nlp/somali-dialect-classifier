@@ -1,7 +1,7 @@
 """
-Base pipeline orchestrator with dependency injection (P3.1 refactoring).
+Base pipeline orchestrator with dependency injection.
 
-Injects: DataManager (P2.2), FilterEngine, RecordBuilder, ValidationService (P3.1).
+Injects: DataManager, FilterEngine, RecordBuilder, ValidationService.
 Subclasses implement source-specific logic (download, extract, _extract_records, _create_cleaner).
 """
 
@@ -28,9 +28,6 @@ from ..infra.tracking import MLFlowTracker
 class BasePipeline(DataProcessor, ABC):
     """
     Base orchestrator for data pipelines with dependency injection.
-
-    Subclasses implement: download, extract, _extract_records, _create_cleaner,
-    _get_source_type, _get_license, _get_language, _get_domain, _get_register.
     """
 
     def __init__(
@@ -46,24 +43,20 @@ class BasePipeline(DataProcessor, ABC):
         validation_service: Optional[ValidationService] = None,
     ):
         """Initialize pipeline with dependency injection for services."""
-        # Sanitize source and generate IDs
         self.source = PipelineSetup.sanitize_and_validate_source(source)
         self.run_id = self._build_run_id_from_seed(run_seed) if run_seed else generate_run_id(
             self.source
         )
         self.date_accessed = datetime.now(timezone.utc).date().isoformat()
-        
-        # Context gathering
+
         self.git_commit = self._get_git_commit()
         self.config_hash = self._get_config_hash()
         self.system_context = self._get_system_context()
 
-        # Configuration
         self.log_frequency = log_frequency
         self.batch_size = batch_size
         self.force = force
 
-        # Setup services (dependency injection with sensible defaults)
         self.logger = PipelineSetup.create_logger(self.source, self.run_id)
         self.data_manager = PipelineSetup.create_data_manager(
             self.source, self.run_id, data_manager
@@ -74,21 +67,17 @@ class BasePipeline(DataProcessor, ABC):
         )
         self.validation_service = PipelineSetup.create_validation_service(validation_service)
 
-        # Register filters (subclass hook)
         if filter_engine is None:
             self._register_filters()
 
-        # Directory structure (backward compatibility)
         self.raw_dir, self.staging_dir, self.processed_dir = PipelineSetup.get_directory_paths(
             self.source, self.date_accessed
         )
 
-        # Shared utilities
         self.text_cleaner = self._create_cleaner()
         self.silver_writer = SilverDatasetWriter()
         self.mlflow = MLFlowTracker()
 
-        # Subclasses set these paths
         self.staging_file: Optional[Path] = None
         self.processed_file: Optional[Path] = None
         self.silver_path: Optional[Path] = None
@@ -455,7 +444,7 @@ class BasePipeline(DataProcessor, ABC):
                 self.logger.warning(f"Failed to delete {old_file.name}: {e}")
 
     def _compute_file_checksum(self, filepath: Path, algorithm: str = "sha256") -> str:
-        """Compute file checksum (delegates to DataManager). P2.2 refactoring."""
+        """Compute file checksum (delegates to DataManager)."""
         return self.data_manager.compute_file_checksum(filepath, algorithm)
 
     def _export_stage_metrics(self, stage: str):
