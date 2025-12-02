@@ -120,7 +120,7 @@ See: [`.github/workflows/deploy-dashboard.yml`](../.github/workflows/deploy-dash
 ### Adding Metrics
 
 1. Update `MetricsCollector` in `src/somali_dialect_classifier/utils/metrics.py`
-2. Add metric to export script `scripts/export_dashboard_data.py`
+2. Add metric to export script `scripts/ops/export_dashboard_data.py`
 3. Create chart function in `dashboard/js/core/charts.js`
 4. Add canvas element to `dashboard/index.html`
 5. Initialize chart in `dashboard/js/main.js`
@@ -381,7 +381,7 @@ Dashboard automatically deploys via GitHub Actions on push to `main`.
 
 ```bash
 # Export static dashboard data
-python scripts/export_dashboard_data.py
+python scripts/ops/export_dashboard_data.py
 
 # Deploy static files to hosting service
 # (S3, Netlify, Vercel, etc.)
@@ -464,7 +464,7 @@ chmod +x build-site.sh
 bash -x build-site.sh
 
 # Verify Python script works
-python3 ../scripts/export_dashboard_data.py
+python3 ../scripts/ops/export_dashboard_data.py
 ```
 
 ---

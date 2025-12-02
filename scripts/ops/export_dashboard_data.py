@@ -13,7 +13,7 @@ Schema Contract:
     - Output: _site/data/reports.json (optional)
 
 Usage:
-    python scripts/export_dashboard_data.py [--github-pages|--local]
+    python scripts/ops/export_dashboard_data.py [--github-pages|--local]
 """
 
 import json

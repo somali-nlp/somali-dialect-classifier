@@ -14,7 +14,7 @@ Schema Contract:
     - Output: dashboard/data/quality_waivers.json
 
 Usage:
-    python scripts/generate_quality_feed.py
+    python scripts/ops/generate_quality_feed.py
 """
 
 import json

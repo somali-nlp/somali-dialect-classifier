@@ -122,7 +122,7 @@ npx playwright test --debug
 
 ```bash
 # Build dashboard locally
-./dashboard/build-site.sh
+./src/dashboard/build-site.sh
 
 # Serve locally
 python -m http.server 8000 --directory _site
@@ -386,7 +386,7 @@ Add these to your shell profile (`.bashrc`, `.zshrc`, etc.):
 alias dash-status='gh run list --workflow=deploy-dashboard-v2.yml --limit 5'
 alias dash-deploy='gh workflow run deploy-dashboard-v2.yml'
 alias dash-test='npm test'
-alias dash-build='./dashboard/build-site.sh'
+alias dash-build='./src/dashboard/build-site.sh'
 alias dash-serve='python -m http.server 8000 --directory _site'
 alias dash-health='gh workflow run deployment-health-check.yml'
 alias dash-validate='python scripts/validate_metrics.py'
@@ -405,7 +405,7 @@ alias dash-logs='gh run list --workflow=deploy-dashboard-v2.yml --limit 1 | tail
 | Deploy dashboard | `gh workflow run deploy-dashboard-v2.yml` |
 | Run tests | `npm test` |
 | Validate metrics | `python scripts/validate_metrics.py` |
-| Build locally | `./dashboard/build-site.sh` |
+| Build locally | `./src/dashboard/build-site.sh` |
 | Serve locally | `python -m http.server 8000 --directory _site` |
 | Check health | `curl -I <dashboard-url>` |
 | View logs | `gh run view <run-id> --log` |

@@ -126,7 +126,7 @@ def main():
     """
     Build dashboard site.
 
-    Wrapper around dashboard/build-site.sh that generates static dashboard
+    Wrapper around src/dashboard/build-site.sh that generates static dashboard
     files from metrics and data exports.
 
     \\b

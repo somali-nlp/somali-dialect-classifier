@@ -11,6 +11,7 @@ set -e
 # Resolve important paths relative to this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+SCRIPTS_DIR="${PROJECT_ROOT}/scripts/ops"
 SITE_DIR="${PROJECT_ROOT}/_site"
 DASHBOARD_DIR="${SCRIPT_DIR}"
 
@@ -118,9 +119,9 @@ if [ -d "${PROJECT_ROOT}/data/reports" ]; then
 fi
 
 # Export quota and manifest data for dashboard
-if [ -f "${PROJECT_ROOT}/scripts/export_quota_dashboard_data.py" ]; then
+if [ -f "${SCRIPTS_DIR}/export_quota_dashboard_data.py" ]; then
     echo "Exporting quota and manifest data..."
-    python3 "${PROJECT_ROOT}/scripts/export_quota_dashboard_data.py" \
+    python3 "${SCRIPTS_DIR}/export_quota_dashboard_data.py" \
         --ledger "${PROJECT_ROOT}/data/ledger/crawl_ledger.db" \
         --manifests "${PROJECT_ROOT}/data/manifests" \
         --output-dir "${DASHBOARD_DIR}/data" \
@@ -141,16 +142,16 @@ if [ -f "${PROJECT_ROOT}/scripts/export_quota_dashboard_data.py" ]; then
         echo "⚠ Warning: Failed to export dashboard data"
     fi
 else
-    echo "⚠ Warning: scripts/export_quota_dashboard_data.py not found"
+    echo "⚠ Warning: export_quota_dashboard_data.py not found in ${SCRIPTS_DIR}"
 fi
 
 # Generate advanced visualization data (Sankey flow, text distributions)
 # Note: This script expects _site/data to exist and will create the files there
-if [ -f "${PROJECT_ROOT}/scripts/generate_advanced_viz_data.py" ]; then
+if [ -f "${SCRIPTS_DIR}/generate_advanced_viz_data.py" ]; then
     echo "Generating advanced visualization data..."
-    (cd "${PROJECT_ROOT}" && python scripts/generate_advanced_viz_data.py) || echo "⚠ Warning: Advanced viz data generation failed"
+    (cd "${PROJECT_ROOT}" && python "scripts/ops/generate_advanced_viz_data.py") || echo "⚠ Warning: Advanced viz data generation failed"
 else
-    echo "⚠ Warning: scripts/generate_advanced_viz_data.py not found"
+    echo "⚠ Warning: generate_advanced_viz_data.py not found in ${SCRIPTS_DIR}"
 fi
 
 echo "✓ Site built successfully in ${SITE_DIR}/"

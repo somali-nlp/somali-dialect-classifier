@@ -185,7 +185,7 @@ The dashboard CI/CD pipeline automates the complete lifecycle of metrics data ge
 **Purpose**: Builds and deploys dashboard to GitHub Pages
 
 **Build Process**:
-1. Run `dashboard/build-site.sh` (creates structure, copies assets)
+1. Run `src/dashboard/build-site.sh` (creates structure, copies assets)
 2. Generate `all_metrics.json` from processing files
 3. Verify build (check all required files exist)
 4. Upload artifact to GitHub Pages
@@ -294,7 +294,7 @@ The dashboard CI/CD pipeline automates the complete lifecycle of metrics data ge
 
    Build dashboard:
    ```bash
-   ./dashboard/build-site.sh
+   ./src/dashboard/build-site.sh
    ```
 
    Run visual tests:
@@ -504,7 +504,7 @@ npx playwright test --last-failed
 **Solutions**:
 ```bash
 # Verify build locally
-./dashboard/build-site.sh
+./src/dashboard/build-site.sh
 ls -la _site/
 ls -la _site/data/
 

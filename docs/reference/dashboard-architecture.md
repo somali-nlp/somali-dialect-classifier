@@ -287,7 +287,7 @@ Examples:
 
 #### export_dashboard_data.py
 
-Located: `scripts/export_dashboard_data.py`
+Located: `scripts/ops/export_dashboard_data.py`
 
 **Purpose**: Aggregate individual metric files into dashboard-ready format
 
@@ -868,7 +868,7 @@ print(snapshot.my_metric)  # Should not raise AttributeError
 **Check**:
 ```python
 # Test export script locally
-python scripts/export_dashboard_data.py
+python scripts/ops/export_dashboard_data.py
 cat _site/data/all_metrics.json | jq '.[0].my_metric'
 ```
 
@@ -896,7 +896,7 @@ latest_file=$(ls -t data/metrics/*_processing.json | head -1)
 jq '.legacy_metrics.snapshot.my_metric' "$latest_file"
 
 # 3. Test aggregation
-python scripts/export_dashboard_data.py
+python scripts/ops/export_dashboard_data.py
 jq '.[0].my_metric' _site/data/all_metrics.json
 
 # 4. Build dashboard locally

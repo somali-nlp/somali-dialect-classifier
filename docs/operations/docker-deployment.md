@@ -561,7 +561,7 @@ docker exec somali-dialect-pipeline-prod \
 
 # Export metrics
 docker exec somali-dialect-pipeline-prod \
-  python scripts/export_dashboard_data.py
+  python scripts/ops/export_dashboard_data.py
 ```
 
 ### Multi-Container Deployment

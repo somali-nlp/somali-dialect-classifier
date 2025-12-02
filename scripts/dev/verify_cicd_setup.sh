@@ -92,9 +92,9 @@ echo ""
 
 echo "5. Checking Dashboard Files"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-check_dir "dashboard"
-check_file "dashboard/build-site.sh"
-check_executable "dashboard/build-site.sh"
+check_dir "src/dashboard"
+check_file "src/dashboard/build-site.sh"
+check_executable "src/dashboard/build-site.sh"
 echo ""
 
 echo "6. Checking Dependencies"

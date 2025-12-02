@@ -111,7 +111,7 @@ db-migrate:
 
 # Dashboard
 dashboard-export:
-	python scripts/export_dashboard_data.py
+	python scripts/ops/export_dashboard_data.py
 
 dashboard-serve:
 	cd _site && python -m http.server 8000

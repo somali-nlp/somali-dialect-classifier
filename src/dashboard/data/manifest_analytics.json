@@ -1,11 +1,44 @@
 {
-  "export_timestamp": "2025-11-15T13:53:21.749423Z",
-  "manifest_count": 0,
+  "export_timestamp": "2025-12-02T09:45:32.203929Z",
+  "manifest_count": 1,
   "summary": {
     "total_records_ingested": 0,
-    "total_runs": 0,
+    "total_runs": 1,
     "quota_hit_runs": 0
   },
-  "per_source_totals": {},
-  "recent_manifests": []
+  "per_source_totals": {
+    "wikipedia": {
+      "runs": 1,
+      "total_records": 0,
+      "quota_hits": 0
+    },
+    "bbc": {
+      "runs": 1,
+      "total_records": 0,
+      "quota_hits": 0
+    },
+    "huggingface": {
+      "runs": 1,
+      "total_records": 0,
+      "quota_hits": 0
+    },
+    "sprakbanken": {
+      "runs": 1,
+      "total_records": 0,
+      "quota_hits": 0
+    },
+    "tiktok": {
+      "runs": 1,
+      "total_records": 0,
+      "quota_hits": 0
+    }
+  },
+  "recent_manifests": [
+    {
+      "run_id": "run_20251127_175417_5939d251",
+      "timestamp": "2025-11-27T17:54:17.859357+00:00",
+      "total_records": 0,
+      "sources_with_quota_hit": []
+    }
+  ]
 }

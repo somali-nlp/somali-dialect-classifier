@@ -917,7 +917,7 @@ The dashboard is built with ES6 modules and requires:
 
 ```bash
 # 1. Build the site (aggregates metrics)
-./dashboard/build-site.sh
+./src/dashboard/build-site.sh
 
 # 2. Start HTTP server in the _site directory
 cd _site && python3 -m http.server 8000
@@ -945,7 +945,7 @@ ruby -run -e httpd _site -p 8000
 python -m somali_dialect_classifier.cli.download_bbcsom --max-articles 100
 
 # 2. Rebuild dashboard with new data
-./dashboard/build-site.sh
+./src/dashboard/build-site.sh
 
 # 3. Refresh browser (no need to restart server)
 # The dashboard will load the updated data automatically
@@ -1010,7 +1010,7 @@ collector.increment("custom_metric", value)
 #### Step 2: Update Export Script
 
 ```python
-# In scripts/export_dashboard_data.py
+# In scripts/ops/export_dashboard_data.py
 # Add to metric entry dictionary
 metric_entry = {
     # ... existing fields ...
@@ -1068,7 +1068,7 @@ initCustomMetricChart();
 
 ```bash
 # Test locally
-./dashboard/build-site.sh
+./src/dashboard/build-site.sh
 cd _site && python3 -m http.server 8000
 # Open http://localhost:8000 and verify chart appears
 
@@ -2299,7 +2299,7 @@ A: Yes, multiple ways:
 1. **Individual charts**: Click "Export PNG" button on any chart
 2. **Raw data**: Use the export script:
    ```bash
-   python scripts/export_dashboard_data.py
+   python scripts/ops/export_dashboard_data.py
    ```
    Data is saved to `_site/data/all_metrics.json`
 3. **CSV export**: Click "Export CSV" in the data table (planned)

@@ -53,7 +53,7 @@
   - `dashboard/js/` - ES6 modules (core, data, ui, viz)
   - `dashboard/index.html` - Main entry point
   - `_site/` - Built artifacts (generated, not source)
-- **Build:** `somali-tools dashboard build` (CLI) or `dashboard/build-site.sh` (shell)
+- **Build:** `somali-tools dashboard build` (CLI) or `src/dashboard/build-site.sh` (shell)
 - **Tests:** `tests/dashboard/`
 - **Docs:** `dashboard/README.md`, `docs/guides/dashboard.md`
 

@@ -565,7 +565,7 @@ somali-tools dashboard build --clean
 somali-tools dashboard build --verbose
 ```
 
-**Replaces:** `dashboard/build-site.sh`
+**Replaces:** `src/dashboard/build-site.sh`
 
 ---
 

@@ -29,13 +29,13 @@
 cd /path/to/somali-dialect-classifier
 
 # Option 1: Regenerate for GitHub Pages
-python scripts/export_dashboard_data.py --github-pages
+    python scripts/ops/export_dashboard_data.py --github-pages
 
 # Option 2: Regenerate for local development
-python scripts/export_dashboard_data.py --local
+    python scripts/ops/export_dashboard_data.py --local
 
 # Option 3: Regenerate both
-python scripts/export_dashboard_data.py
+    python scripts/ops/export_dashboard_data.py
 ```
 
 **Output**:
@@ -181,7 +181,7 @@ curl -I https://YOUR-USERNAME.github.io/somali-dialect-classifier/data/all_metri
 3. **Export script failed**:
    ```bash
    # Run export manually
-   python scripts/export_dashboard_data.py
+   python scripts/ops/export_dashboard_data.py
    # Check for errors in output
    ```
 
@@ -352,12 +352,12 @@ fetch('/somali-dialect-classifier/data/all_metrics.json')
 
 4. **Generate dashboard data**
    ```yaml
-   - run: python scripts/export_dashboard_data.py --github-pages
+   - run: python scripts/ops/export_dashboard_data.py --github-pages
    ```
 
 5. **Build static site**
    ```yaml
-   - run: bash dashboard/build-site.sh
+   - run: bash src/dashboard/build-site.sh
    ```
 
 6. **Deploy to GitHub Pages**
@@ -377,7 +377,7 @@ fetch('/somali-dialect-classifier/data/all_metrics.json')
 python -m somali_dialect_classifier.cli.download_wikisom
 
 # 2. Generate dashboard data
-python scripts/export_dashboard_data.py
+python scripts/ops/export_dashboard_data.py
 
 # 3. Build site
 cd dashboard && bash build-site.sh && cd ..
@@ -406,7 +406,7 @@ git push --force origin main
 
 # Option 3: Deploy specific commit
 git checkout <commit-hash>
-bash dashboard/build-site.sh
+bash src/dashboard/build-site.sh
 git checkout main
 # Manually copy _site/ to gh-pages branch
 ```
@@ -549,8 +549,8 @@ cp -r metrics-20251027/data/metrics/* data/metrics/
 cp -r metrics-20251027/data/reports/* data/reports/
 
 # Regenerate dashboard
-python scripts/export_dashboard_data.py
-bash dashboard/build-site.sh
+python scripts/ops/export_dashboard_data.py
+bash src/dashboard/build-site.sh
 ```
 
 **Scenario 2: Corrupted dashboard data**
@@ -560,10 +560,10 @@ bash dashboard/build-site.sh
 rm -rf _site/data/*
 
 # Regenerate from source metrics
-python scripts/export_dashboard_data.py
+python scripts/ops/export_dashboard_data.py
 
 # Rebuild and redeploy
-bash dashboard/build-site.sh
+bash src/dashboard/build-site.sh
 git add _site/
 git commit -m "fix(dashboard): regenerate corrupted data"
 git push origin main
@@ -575,7 +575,7 @@ git push origin main
 # Deploy to alternative hosting (Netlify/Vercel)
 
 # 1. Build site
-bash dashboard/build-site.sh
+bash src/dashboard/build-site.sh
 
 # 2. Deploy to Netlify
 netlify deploy --prod --dir=_site

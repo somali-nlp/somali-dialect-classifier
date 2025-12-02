@@ -14,7 +14,7 @@ Schema Contract:
     - Output: _site/data/text_distributions.json
 
 Usage:
-    python scripts/generate_advanced_viz_data.py
+    python scripts/ops/generate_advanced_viz_data.py
 """
 
 import json
