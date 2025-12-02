@@ -258,8 +258,8 @@ jobs:
 
       - name: Build dashboard
         run: |
-          chmod +x dashboard/build-site.sh
-          ./dashboard/build-site.sh
+          chmod +x src/dashboard/build-site.sh
+          ./src/dashboard/build-site.sh
 
       - name: Generate test metrics data
         run: |

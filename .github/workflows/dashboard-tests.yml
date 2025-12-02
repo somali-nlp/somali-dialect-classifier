@@ -95,7 +95,7 @@ jobs:
 
       - name: Build dashboard site
         run: |
-          bash dashboard/build-site.sh
+          bash src/dashboard/build-site.sh
 
       - name: Generate test metrics
         run: |

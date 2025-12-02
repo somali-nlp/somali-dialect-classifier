@@ -44,9 +44,15 @@ def build_dashboard(
         FileNotFoundError: If build script doesn't exist
         subprocess.CalledProcessError: If build fails
     """
-    # Find build script
+    # Find project root and build script.
+    #
+    # Note: After the codebase restructuring, the dashboard lives under
+    # src/dashboard, but we continue to emit the built site to the project
+    # root _site/ directory so that GitHub Pages workflows and local tooling
+    # can keep their existing assumptions.
     project_root = Path(__file__).parent.parent.parent.parent
-    build_script = project_root / "dashboard" / "build-site.sh"
+    dashboard_dir = project_root / "src" / "dashboard"
+    build_script = dashboard_dir / "build-site.sh"
 
     if not build_script.exists():
         raise FileNotFoundError(f"Build script not found: {build_script}")

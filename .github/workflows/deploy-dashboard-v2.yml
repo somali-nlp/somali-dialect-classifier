@@ -5,11 +5,11 @@ on:
     branches:
       - main
     paths:
-      - 'data/metrics/**'
-      - 'data/reports/**'
-      - 'dashboard/**'
-      - 'scripts/**'
-      - '.github/workflows/deploy-dashboard-v2.yml'
+      - "data/metrics/**"
+      - "data/reports/**"
+      - "src/dashboard/**"
+      - "scripts/**"
+      - ".github/workflows/deploy-dashboard-v2.yml"
   workflow_dispatch:  # Allow manual trigger
 
 permissions:
@@ -47,8 +47,8 @@ jobs:
           # - Copies index.html template
           # - Copies favicon, metrics/, and reports/ directories
           # - Does NOT generate all_metrics.json (done in next step)
-          chmod +x dashboard/build-site.sh
-          ./dashboard/build-site.sh
+          chmod +x src/dashboard/build-site.sh
+          ./src/dashboard/build-site.sh
 
       - name: Generate metrics data
         run: |
