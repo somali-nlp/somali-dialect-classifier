@@ -8,7 +8,7 @@ Will be removed in Stage 2.
 Legacy wrapper that calls the unified somali-tools CLI.
 
 Usage:
-    python scripts/generate_consolidated_metrics.py
+    python scripts/ops/generate_consolidated_metrics.py
 
 Recommended:
     somali-tools metrics consolidate
@@ -23,7 +23,8 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
 warnings.warn(
-    "scripts/generate_consolidated_metrics.py is deprecated. "
+    "scripts/ops/generate_consolidated_metrics.py is a compatibility wrapper "
+    "for the legacy scripts/generate_consolidated_metrics.py entrypoint. "
     "Use: somali-tools metrics consolidate",
     DeprecationWarning,
     stacklevel=2

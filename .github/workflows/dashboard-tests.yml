@@ -106,7 +106,7 @@ jobs:
             python tests/fixtures/create_sample_metrics.py
           fi
 
-          python scripts/generate_consolidated_metrics.py
+          python scripts/ops/generate_consolidated_metrics.py
 
       - name: Verify build artifacts
         run: |

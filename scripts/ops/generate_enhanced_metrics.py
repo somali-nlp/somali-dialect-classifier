@@ -10,9 +10,9 @@ This script extends generate_consolidated_metrics.py to include:
 - Performance optimizations (caching, compression)
 
 Usage:
-    python scripts/generate_enhanced_metrics.py
-    python scripts/generate_enhanced_metrics.py --skip-visualizations
-    python scripts/generate_enhanced_metrics.py --force-refresh
+    python scripts/ops/generate_enhanced_metrics.py
+    python scripts/ops/generate_enhanced_metrics.py --skip-visualizations
+    python scripts/ops/generate_enhanced_metrics.py --force-refresh
 """
 
 import argparse

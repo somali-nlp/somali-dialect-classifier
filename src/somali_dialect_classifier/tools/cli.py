@@ -211,7 +211,7 @@ def enhance(metrics_dir: Path, output: Path):
     """
     click.echo(
         "Not yet implemented in Wave 1. Logic will be added in Wave 3.\n"
-        "For now, use: python scripts/generate_enhanced_metrics.py"
+        "For now, use: python scripts/ops/generate_enhanced_metrics.py"
     )
 
 

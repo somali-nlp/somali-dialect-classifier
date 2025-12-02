@@ -448,7 +448,7 @@ Old scripts remain as compatibility stubs:
 
 ```bash
 # OLD (deprecated, but still works)
-python scripts/generate_consolidated_metrics.py
+python scripts/ops/generate_consolidated_metrics.py
 
 # NEW (preferred)
 somali-tools metrics consolidate

@@ -122,7 +122,7 @@ somali-tools metrics consolidate -s wikipedia-somali -s bbc-somali
 somali-tools metrics consolidate --output /tmp/metrics.json
 ```
 
-**Replaces:** `python scripts/generate_consolidated_metrics.py`
+**Replaces:** `python scripts/ops/generate_consolidated_metrics.py`
 
 ---
 
@@ -150,7 +150,7 @@ somali-tools metrics enhance
 somali-tools metrics enhance -d custom/metrics -o custom/output.json
 ```
 
-**Replaces:** `python scripts/generate_enhanced_metrics.py`
+**Replaces:** `python scripts/ops/generate_enhanced_metrics.py`
 
 ---
 
@@ -639,7 +639,7 @@ Old scripts remain as compatibility stubs during transition:
 
 ```bash
 # OLD (deprecated, but still works with warning)
-python scripts/generate_consolidated_metrics.py
+python scripts/ops/generate_consolidated_metrics.py
 
 # NEW (preferred)
 somali-tools metrics consolidate
