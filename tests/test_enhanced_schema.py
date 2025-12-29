@@ -138,51 +138,40 @@ class TestEnhancedSchema:
 
         assert df.iloc[0]["domain"] == "general"
 
-    @pytest.mark.skip(
-        reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter"
-    )
-    def test_backward_compatibility_reading(self, tmp_path):
-        """Test reading legacy silver data without domain field."""
-        # Create legacy data without domain/embedding fields
-        legacy_records = [
-            {
-                "id": "1",
-                "text": "Legacy text",
-                "title": "Legacy Title",
-                "source": "Legacy-Source",
-                "source_type": "wiki",
-                "url": "https://legacy.com",
-                "source_id": None,
-                "date_published": None,
-                "date_accessed": "2025-01-01",
-                "language": "so",
-                "license": "CC-BY",
-                "topic": None,
-                "tokens": 2,
-                "text_hash": "hash1",
-                "pipeline_version": "1.0.0",
-                "source_metadata": "{}",
-            }
-        ]
-
-        # Write with legacy schema
-        silver_dir = tmp_path / "source=Legacy-Source" / "date_accessed=2025-01-01"
-        silver_dir.mkdir(parents=True)
-        legacy_path = silver_dir / "part-0000.parquet"
-
-        table = pa.Table.from_pylist(legacy_records, schema=SilverDatasetWriter.LEGACY_SCHEMA)
-        pq.write_table(table, legacy_path)
-
-        # Read with new writer (should add default fields)
+    def test_strict_validation_rejects_missing_fields(self, tmp_path):
+        """Test that missing required fields cause immediate failure."""
         writer = SilverDatasetWriter(base_dir=tmp_path)
-        table = writer.read("Legacy-Source", "2025-01-01")
-        df = table.to_pandas()
 
-        assert len(df) == 1
-        assert "domain" in df.columns
-        assert "embedding" in df.columns
-        assert df.iloc[0]["domain"] == "general"
-        assert pd.isna(df.iloc[0]["embedding"])
+        # Record missing 'register' field
+        incomplete_record = {
+            "id": "1",
+            "text": "Test text",
+            "title": "Test Title",
+            "source": "Test-Source",
+            "source_type": "wiki",
+            "url": "https://example.com",
+            "source_id": None,
+            "date_published": None,
+            "date_accessed": "2025-01-01",
+            "language": "so",
+            "license": "CC-BY",
+            "topic": None,
+            "tokens": 2,
+            "text_hash": "hash1",
+            "pipeline_version": "2.1.0",
+            "source_metadata": "{}",
+            "domain": "encyclopedia",
+            "embedding": None,
+            "run_id": "test_run_missing_register",
+            # Missing 'register' field
+        }
+
+        # Write should fail with clear error
+        with pytest.raises(ValueError) as exc_info:
+            writer.write([incomplete_record], "Test-Source", "2025-01-01", "test_run_010")
+
+        assert "missing required fields" in str(exc_info.value).lower()
+        assert "register" in str(exc_info.value)
 
     @pytest.mark.skip(
         reason="Schema incompatibility with dictionary encoding - requires fix in SilverDatasetWriter"
@@ -274,63 +263,98 @@ class TestEnhancedSchema:
         assert embedding_list == mock_embedding
 
 
-class TestDomainInference:
-    """Test domain inference logic."""
+class TestStrictValidation:
+    """Test strict validation logic (no inference, fail fast)."""
 
-    def test_infer_domain_bbc(self):
-        """Test domain inference for BBC source."""
-        writer = SilverDatasetWriter()
+    def test_invalid_domain_rejected(self, tmp_path):
+        """Test that invalid domain values are rejected."""
+        writer = SilverDatasetWriter(base_dir=tmp_path)
 
-        record = {"source": "BBC-Somali", "source_type": "news"}
-        domain = writer._infer_domain(record)
-        assert domain == "news"
-
-    def test_infer_domain_wikipedia(self):
-        """Test domain inference for Wikipedia source."""
-        writer = SilverDatasetWriter()
-
-        record = {"source": "Wikipedia-Somali", "source_type": "wiki"}
-        domain = writer._infer_domain(record)
-        assert domain == "encyclopedia"
-
-    def test_infer_domain_huggingface(self):
-        """Test domain inference for HuggingFace source."""
-        writer = SilverDatasetWriter()
-
-        record = {"source": "HuggingFace-Somali_mc4", "source_type": "web"}
-        domain = writer._infer_domain(record)
-        assert domain == "web"
-
-    def test_infer_domain_sprakbankensom(self):
-        """Test domain inference for Språkbanken sources."""
-        writer = SilverDatasetWriter()
-
-        # Test with corpus_id in metadata
         record = {
-            "source": "Sprakbanken-Somali",
-            "source_type": "corpus",
-            "source_metadata": json.dumps({"corpus_id": "sheekooyin-carruureed"}),
+            "id": "1",
+            "text": "Test text",
+            "title": "Test",
+            "source": "Test-Source",
+            "source_type": "web",
+            "url": "https://example.com",
+            "source_id": None,
+            "date_published": None,
+            "date_accessed": "2025-01-01",
+            "language": "so",
+            "license": "CC0",
+            "topic": None,
+            "tokens": 2,
+            "text_hash": "hash1",
+            "pipeline_version": "2.1.0",
+            "source_metadata": "{}",
+            "domain": "invalid_domain_xyz",  # Invalid domain
+            "embedding": None,
+            "register": "formal",
+            "run_id": "test_run_invalid_domain",
         }
-        domain = writer._infer_domain(record)
-        assert domain == "children"
 
-        # Test news corpus
-        record["source_metadata"] = json.dumps({"corpus_id": "as-2016"})
-        domain = writer._infer_domain(record)
-        assert domain == "news"
+        # Should raise ValueError for invalid domain
+        with pytest.raises(ValueError) as exc_info:
+            writer.write([record], "Test-Source", "2025-01-01", "test_run_011")
 
-        # Test regional news
-        record["source_metadata"] = json.dumps({"corpus_id": "ogaden"})
-        domain = writer._infer_domain(record)
-        assert domain == "news_regional"
+        assert "invalid domain" in str(exc_info.value).lower()
 
-    def test_infer_domain_unknown(self):
-        """Test domain inference for unknown source."""
-        writer = SilverDatasetWriter()
+    def test_invalid_register_rejected(self, tmp_path):
+        """Test that invalid register values are rejected."""
+        writer = SilverDatasetWriter(base_dir=tmp_path)
 
-        record = {"source": "Unknown-Source", "source_type": "unknown"}
-        domain = writer._infer_domain(record)
-        assert domain == "general"
+        record = {
+            "id": "1",
+            "text": "Test text",
+            "title": "Test",
+            "source": "Test-Source",
+            "source_type": "web",
+            "url": "https://example.com",
+            "source_id": None,
+            "date_published": None,
+            "date_accessed": "2025-01-01",
+            "language": "so",
+            "license": "CC0",
+            "topic": None,
+            "tokens": 2,
+            "text_hash": "hash1",
+            "pipeline_version": "2.1.0",
+            "source_metadata": "{}",
+            "domain": "web",
+            "embedding": None,
+            "register": "super_informal",  # Invalid register
+            "run_id": "test_run_invalid_register",
+        }
+
+        # Should raise ValueError for invalid register
+        with pytest.raises(ValueError) as exc_info:
+            writer.write([record], "Test-Source", "2025-01-01", "test_run_012")
+
+        assert "invalid register" in str(exc_info.value).lower()
+
+    def test_schema_version_hardcoded(self, tmp_path):
+        """Test that schema_version is always set to '1.0'."""
+        writer = SilverDatasetWriter(base_dir=tmp_path)
+
+        record = build_silver_record(
+            text="Test text",
+            title="Test",
+            source="Test-Source",
+            url="https://example.com",
+            date_accessed="2025-01-01",
+            domain="web",
+            register="formal",
+        )
+        record["run_id"] = "test_run_schema_version"
+        # Note: schema_version not provided
+
+        path = writer.write([record], "Test-Source", "2025-01-01", "test_run_013")
+
+        # Read back and verify schema_version is "1.0"
+        table = pq.read_table(path)
+        df = table.to_pandas()
+
+        assert df.iloc[0]["schema_version"] == "1.0"
 
 
 # Add pandas import for tests

@@ -31,6 +31,28 @@ except ImportError:
     HuggingFaceSomaliProcessor = None
     HF_AVAILABLE = False
 
+# Optional: SprakbankenSomaliProcessor
+try:
+    from somali_dialect_classifier.ingestion.processors.sprakbanken_somali_processor import (
+        SprakbankenSomaliProcessor,
+    )
+
+    SPRAKBANKEN_AVAILABLE = True
+except ImportError:
+    SprakbankenSomaliProcessor = None
+    SPRAKBANKEN_AVAILABLE = False
+
+# Optional: TikTokSomaliProcessor (requires apify_api_token)
+try:
+    from somali_dialect_classifier.ingestion.processors.tiktok_somali_processor import (
+        TikTokSomaliProcessor,
+    )
+
+    TIKTOK_AVAILABLE = True
+except ImportError:
+    TikTokSomaliProcessor = None
+    TIKTOK_AVAILABLE = False
+
 
 # List of all processor classes to test
 # Add new processors here to automatically validate them
@@ -43,6 +65,14 @@ PROCESSOR_CLASSES = [
 if HF_AVAILABLE:
     PROCESSOR_CLASSES.append(HuggingFaceSomaliProcessor)
 
+# Add Sprakbanken processor
+if SPRAKBANKEN_AVAILABLE:
+    PROCESSOR_CLASSES.append(SprakbankenSomaliProcessor)
+
+# Add TikTok processor
+if TIKTOK_AVAILABLE:
+    PROCESSOR_CLASSES.append(TikTokSomaliProcessor)
+
 
 def _instantiate_processor(processor_class):
     """
@@ -52,11 +82,17 @@ def _instantiate_processor(processor_class):
     - WikipediaSomaliProcessor: no required args
     - BBCSomaliProcessor: requires max_articles
     - HuggingFaceSomaliProcessor: requires dataset_name and text_field
+    - SprakbankenSomaliProcessor: requires corpus_id (defaults to "all")
+    - TikTokSomaliProcessor: requires apify_api_token
     """
     if processor_class == BBCSomaliProcessor:
         return processor_class(max_articles=10)
     elif processor_class == HuggingFaceSomaliProcessor:
         return processor_class(dataset_name="test/dataset", text_field="text")
+    elif processor_class == SprakbankenSomaliProcessor:
+        return processor_class(corpus_id="somali-cilmi")
+    elif processor_class == TikTokSomaliProcessor:
+        return processor_class(apify_api_token="test_token_123")
     else:
         return processor_class()
 
@@ -98,6 +134,12 @@ class TestBasePipelineContract:
         )
         assert hasattr(processor, "_get_source_metadata"), (
             f"{processor_class.__name__} missing _get_source_metadata()"
+        )
+        assert hasattr(processor, "_get_domain"), (
+            f"{processor_class.__name__} missing _get_domain()"
+        )
+        assert hasattr(processor, "_get_register"), (
+            f"{processor_class.__name__} missing _get_register()"
         )
 
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
@@ -155,8 +197,8 @@ class TestBasePipelineContract:
         )
         assert source_type, f"{processor_class.__name__}._get_source_type() returned empty string"
 
-        # Should be one of the known types
-        valid_types = ["wiki", "news", "social_media", "book", "transcript", "web"]
+        # Should be one of the known types (matching SourceType enum from schema/registry.py)
+        valid_types = ["wiki", "news", "corpus", "web", "social"]
         assert source_type in valid_types, (
             f"{processor_class.__name__}._get_source_type() returned '{source_type}', "
             f"expected one of {valid_types}"
@@ -213,6 +255,25 @@ class TestBasePipelineContract:
             pytest.fail(
                 f"{processor_class.__name__}._get_source_metadata() returned non-JSON-serializable dict: {e}"
             )
+
+    @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
+    def test_get_domain_returns_string(self, processor_class):
+        """Test that _get_domain returns a non-empty string."""
+        processor = _instantiate_processor(processor_class)
+        domain = processor._get_domain()
+        assert isinstance(domain, str), f"{processor_class.__name__}._get_domain() must return str"
+        assert domain, f"{processor_class.__name__}._get_domain() returned empty string"
+
+    @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
+    def test_get_register_returns_valid_value(self, processor_class):
+        """Test that _get_register returns valid register value."""
+        processor = _instantiate_processor(processor_class)
+        register = processor._get_register()
+        valid_registers = ["formal", "informal", "colloquial"]
+        assert register in valid_registers, (
+            f"{processor_class.__name__}._get_register() returned '{register}', "
+            f"expected one of {valid_registers}"
+        )
 
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)
     def test_create_cleaner_returns_pipeline(self, processor_class):
@@ -316,6 +377,8 @@ class TestProcessorAdditionGuide:
         - _get_license() -> str
         - _get_language() -> str
         - _get_source_metadata() -> Dict[str, Any]
+        - _get_domain() -> str
+        - _get_register() -> str
 
     3. Add to PROCESSOR_CLASSES list above
 

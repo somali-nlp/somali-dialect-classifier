@@ -5,6 +5,8 @@ Injects: DataManager, FilterEngine, RecordBuilder, ValidationService.
 Subclasses implement source-specific logic (download, extract, _extract_records, _create_cleaner).
 """
 
+import json
+import tempfile
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from datetime import datetime, timezone
@@ -13,16 +15,19 @@ from typing import Any, Optional
 
 from ..infra.config import get_config
 from ..infra.data_manager import DataManager
-from ..quality.filter_engine import FilterEngine
-from ..schema.validation_service import ValidationService
 from ..infra.logging_utils import generate_run_id
-from .data_processor import DataProcessor
-from .pipeline_setup import PipelineSetup
-from .raw_record import RawRecord
+from ..infra.tracking import MLFlowTracker
+from ..quality.filter_engine import FilterEngine
 from ..quality.record_builder import RecordBuilder
 from ..quality.silver_writer import SilverDatasetWriter
 from ..quality.text_cleaners import TextCleaningPipeline
-from ..infra.tracking import MLFlowTracker
+from ..schema.validation_service import ValidationService
+from .data_processor import DataProcessor
+from .pipeline_setup import PipelineSetup
+from .raw_record import RawRecord
+
+# Checkpoint configuration
+CHECKPOINT_INTERVAL = 1000  # Records between checkpoints
 
 
 class BasePipeline(DataProcessor, ABC):
@@ -44,8 +49,8 @@ class BasePipeline(DataProcessor, ABC):
     ):
         """Initialize pipeline with dependency injection for services."""
         self.source = PipelineSetup.sanitize_and_validate_source(source)
-        self.run_id = self._build_run_id_from_seed(run_seed) if run_seed else generate_run_id(
-            self.source
+        self.run_id = (
+            self._build_run_id_from_seed(run_seed) if run_seed else generate_run_id(self.source)
         )
         self.date_accessed = datetime.now(timezone.utc).date().isoformat()
 
@@ -126,6 +131,52 @@ class BasePipeline(DataProcessor, ABC):
         """Return linguistic register (formal, informal, colloquial)."""
         pass
 
+    def _load_checkpoint(self, checkpoint_path: Path) -> int:
+        """Load last processed index from checkpoint file."""
+        if checkpoint_path.exists():
+            try:
+                data = json.loads(checkpoint_path.read_text())
+                self.logger.info(f"Resuming from checkpoint: record {data['last_index']}")
+                return data["last_index"]
+            except (json.JSONDecodeError, KeyError) as e:
+                self.logger.warning(f"Corrupt checkpoint file, starting fresh: {e}")
+                return 0
+        return 0
+
+    def _save_checkpoint(self, checkpoint_path: Path, index: int) -> None:
+        """Save checkpoint with current progress using atomic write."""
+        checkpoint_data = {
+            "last_index": index,
+            "run_id": self.run_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Atomic write: write to temp file, then rename
+        try:
+            # Ensure checkpoint directory exists
+            checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Create temp file in same directory as checkpoint for atomic rename
+            temp_fd, temp_path = tempfile.mkstemp(
+                dir=checkpoint_path.parent, prefix=".checkpoint_", suffix=".tmp"
+            )
+            temp_file = Path(temp_path)
+
+            try:
+                # Write to temp file
+                with open(temp_fd, "w", encoding="utf-8") as f:
+                    json.dump(checkpoint_data, f)
+
+                # Atomic rename
+                temp_file.replace(checkpoint_path)
+                self.logger.debug(f"Checkpoint saved at record {index}")
+            finally:
+                # Clean up temp file if rename failed
+                if temp_file.exists():
+                    temp_file.unlink()
+        except Exception as e:
+            self.logger.warning(f"Failed to save checkpoint: {e}")
+
     def process(self) -> Path:
         """Orchestrate processing: extract→clean→filter→build→validate→write. Returns silver Parquet path."""
         if not self.staging_file or not self.staging_file.exists():
@@ -142,10 +193,10 @@ class BasePipeline(DataProcessor, ABC):
         self.logger.info("\n" + "=" * 60)
         self.logger.info("PHASE 3: Text Processing & Silver Dataset Creation")
         self.logger.info("=" * 60)
-        
+
         # Start MLFlow run
         self.mlflow.start_run(run_name=self.run_id)
-        
+
         # Log context tags
         tags = {
             "source": self.source,
@@ -153,24 +204,37 @@ class BasePipeline(DataProcessor, ABC):
             "git_commit": self.git_commit or "unknown",
             "config_hash": self.config_hash,
             "date_accessed": self.date_accessed,
-            **self.system_context
+            **self.system_context,
         }
         self.mlflow.set_tags(tags)
-        
-        self.mlflow.log_params({
-            "source": self.source,
-            "run_id": self.run_id,
-            "force": self.force,
-            "batch_size": self.batch_size
-        })
+
+        self.mlflow.log_params(
+            {
+                "source": self.source,
+                "run_id": self.run_id,
+                "force": self.force,
+                "batch_size": self.batch_size,
+            }
+        )
+
+        # Checkpoint setup
+        checkpoint_path = self.processed_dir / f"{self.run_id}_checkpoint.json"
+        last_processed_index = self._load_checkpoint(checkpoint_path)
 
         records_processed = 0
         records_filtered = 0
         records = []
-        
+        current_index = 0
+
         try:
             with open(self.processed_file, "w", encoding="utf-8") as fout:
                 for raw_record in self._extract_records():
+                    # Skip already processed records when resuming from checkpoint
+                    if current_index < last_processed_index:
+                        current_index += 1
+                        continue
+
+                    current_index += 1
                     cleaned = self.text_cleaner.clean(raw_record.text)
                     if not cleaned:
                         records_filtered += 1
@@ -207,40 +271,49 @@ class BasePipeline(DataProcessor, ABC):
                     self._mark_url_processed(raw_record, record)
                     if records_processed % self.log_frequency == 0:
                         self.logger.info(f"Progress: {records_processed} records processed...")
+
+                    # Save checkpoint every CHECKPOINT_INTERVAL records
+                    if current_index % CHECKPOINT_INTERVAL == 0:
+                        self._save_checkpoint(checkpoint_path, current_index)
+
                     if self.batch_size and len(records) >= self.batch_size:
                         self._write_batch(records)
                         records = []
-            
+
             self._log_processing_summary(records_processed, records_filtered)
             self._write_final_batch(records)
             self._export_metrics(records_processed, records_filtered)
-            
+
             # Log headline metrics to MLFlow
             quality_pass_rate = 0.0
             if records_processed + records_filtered > 0:
                 quality_pass_rate = records_processed / (records_processed + records_filtered)
-                
-            self.mlflow.log_metrics({
-                "records_processed": records_processed,
-                "records_written": records_processed,
-                "records_filtered": records_filtered,
-                "quality_pass_rate": quality_pass_rate
-            })
-            
+
+            self.mlflow.log_metrics(
+                {
+                    "records_processed": records_processed,
+                    "records_written": records_processed,
+                    "records_filtered": records_filtered,
+                    "quality_pass_rate": quality_pass_rate,
+                }
+            )
+
             self.mlflow.set_tag("status", "success")
-            
+
+            # Clean up checkpoint on successful completion
+            checkpoint_path.unlink(missing_ok=True)
+            self.logger.info("Pipeline completed successfully, checkpoint removed")
+
         except Exception as e:
             self.logger.error(f"Pipeline failed: {e}")
-            self.mlflow.set_tags({
-                "status": "failed",
-                "error_type": type(e).__name__,
-                "error_message": str(e)
-            })
+            self.mlflow.set_tags(
+                {"status": "failed", "error_type": type(e).__name__, "error_message": str(e)}
+            )
             raise
         finally:
             # End MLFlow run
             self.mlflow.end_run()
-        
+
         return self.silver_path if self.silver_path else self.processed_file
 
     def _record_filter_metric(self, filter_reason: str) -> None:
@@ -304,11 +377,13 @@ class BasePipeline(DataProcessor, ABC):
             self.logger.info(f"Processing metrics exported: {metrics_path}")
 
             # Log metrics to MLFlow
-            self.mlflow.log_metrics({
-                "records_processed": records_processed,
-                "records_written": records_processed,
-                "records_filtered": records_filtered
-            })
+            self.mlflow.log_metrics(
+                {
+                    "records_processed": records_processed,
+                    "records_written": records_processed,
+                    "records_filtered": records_filtered,
+                }
+            )
             self.mlflow.log_artifact(str(metrics_path))
 
             # Generate final quality report with complete stats
@@ -368,6 +443,7 @@ class BasePipeline(DataProcessor, ABC):
         """Generate hash of current configuration state."""
         import hashlib
         import json
+
         from ..infra.config import get_config
 
         try:
@@ -379,8 +455,9 @@ class BasePipeline(DataProcessor, ABC):
             else:
                 # Fallback for dataclass
                 from dataclasses import asdict
+
                 config_str = json.dumps(asdict(config), default=str, sort_keys=True)
-            
+
             return hashlib.sha256(config_str.encode("utf-8")).hexdigest()[:12]
         except Exception as e:
             self.logger.warning(f"Failed to hash config: {e}")

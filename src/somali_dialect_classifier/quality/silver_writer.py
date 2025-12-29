@@ -22,6 +22,7 @@ class SilverDatasetWriter:
     Handles partitioning, schema validation, and file I/O.
     """
 
+    # Current schema version: 1.0 (hard-coded, no backward compatibility)
     SCHEMA = pa.schema(
         [
             ("id", pa.string()),
@@ -43,50 +44,8 @@ class SilverDatasetWriter:
             ("domain", pa.string()),
             ("embedding", pa.string()),
             ("register", pa.string()),
-        ]
-    )
-
-    SCHEMA_V2_0 = pa.schema(
-        [
-            ("id", pa.string()),
-            ("text", pa.string()),
-            ("title", pa.string()),
-            ("source", pa.string()),
-            ("source_type", pa.string()),
-            ("url", pa.string()),
-            ("source_id", pa.string()),
-            ("date_published", pa.string()),
-            ("date_accessed", pa.string()),
-            ("language", pa.string()),
-            ("license", pa.string()),
-            ("topic", pa.string()),
-            ("tokens", pa.int64()),
-            ("text_hash", pa.string()),
-            ("pipeline_version", pa.string()),
-            ("source_metadata", pa.string()),
-            ("domain", pa.string()),
-            ("embedding", pa.string()),
-        ]
-    )
-
-    SCHEMA_V1_0 = pa.schema(
-        [
-            ("id", pa.string()),
-            ("text", pa.string()),
-            ("title", pa.string()),
-            ("source", pa.string()),
-            ("source_type", pa.string()),
-            ("url", pa.string()),
-            ("source_id", pa.string()),
-            ("date_published", pa.string()),
-            ("date_accessed", pa.string()),
-            ("language", pa.string()),
-            ("license", pa.string()),
-            ("topic", pa.string()),
-            ("tokens", pa.int64()),
-            ("text_hash", pa.string()),
-            ("pipeline_version", pa.string()),
-            ("source_metadata", pa.string()),
+            ("run_id", pa.string()),  # Provenance: links record to metrics/logs
+            ("schema_version", pa.string()),  # Always "1.0" (hard-coded)
         ]
     )
 
@@ -157,158 +116,71 @@ class SilverDatasetWriter:
 
         return max(partition_nums) + 1 if partition_nums else 0
 
-    def _ensure_schema_compatibility(self, records: list[dict]) -> list[dict]:
+    def _validate_and_enrich_records(self, records: list[dict]) -> list[dict]:
         """
-        Ensure records have all required fields for the current schema.
+        Validate records and enrich with computed fields.
 
-        Adds default values for new fields if missing.
+        STRICT VALIDATION: Fails fast on missing required fields.
+        NO backward compatibility: All required fields must be present.
 
         Args:
             records: List of record dictionaries
 
         Returns:
-            Records with all required fields
+            Validated and enriched records
+
+        Raises:
+            ValueError: If required fields are missing or invalid
         """
-        enhanced_records = []
+        # Define required fields from IngestionOutputV1 contract
+        required_fields = {
+            "id", "text", "title", "source", "source_type", "url",
+            "date_accessed", "language", "license", "tokens", "text_hash",
+            "pipeline_version", "source_metadata", "domain", "register", "run_id"
+        }
 
-        for record in records:
-            # Add domain field if missing
-            if "domain" not in record:
-                # Try to infer domain from source or source_type
-                record["domain"] = self._infer_domain(record)
+        enriched_records = []
 
-            # Validate domain value
-            if record["domain"] not in self.DOMAINS:
-                logger.warning(
-                    f"Unknown domain '{record['domain']}' for record {record.get('id')}, "
-                    f"using 'general'"
+        for idx, record in enumerate(records):
+            # STRICT VALIDATION: Check for missing required fields
+            missing_fields = required_fields - set(record.keys())
+            if missing_fields:
+                raise ValueError(
+                    f"Record {idx} (id={record.get('id', 'unknown')}) missing required fields: "
+                    f"{sorted(missing_fields)}. All fields must be provided by pipeline."
                 )
-                record["domain"] = "general"
 
-            # Add embedding field if missing (placeholder for now)
-            if "embedding" not in record:
-                record["embedding"] = None  # Will be converted to null in Parquet
+            # Validate domain value (fail on invalid, don't patch)
+            if record["domain"] not in self.DOMAINS:
+                raise ValueError(
+                    f"Record {idx} (id={record['id']}) has invalid domain '{record['domain']}'. "
+                    f"Valid domains: {sorted(self.DOMAINS)}"
+                )
+
+            # Validate register value (fail on invalid, don't patch)
+            if record["register"] not in self.VALID_REGISTERS:
+                raise ValueError(
+                    f"Record {idx} (id={record['id']}) has invalid register '{record['register']}'. "
+                    f"Valid registers: {sorted(self.VALID_REGISTERS)}"
+                )
 
             # Handle embedding field - ensure it's a string or None
-            if record["embedding"] is not None and not isinstance(record["embedding"], str):
+            if record.get("embedding") is not None and not isinstance(record["embedding"], str):
                 # Convert embeddings to JSON string if provided as list/dict
                 try:
                     record["embedding"] = json.dumps(record["embedding"])
-                except (TypeError, ValueError):
-                    record["embedding"] = None
+                except (TypeError, ValueError) as e:
+                    raise ValueError(
+                        f"Record {idx} (id={record['id']}) has invalid embedding format: {e}"
+                    )
 
-            # Add register field if missing (v2.1)
-            if "register" not in record:
-                # Default to formal for all current sources
-                record["register"] = self._infer_register(record)
+            # HARD-CODE schema_version to "1.0" (no version detection)
+            record["schema_version"] = "1.0"
 
-            # Validate register value
-            if record["register"] not in self.VALID_REGISTERS:
-                logger.warning(
-                    f"Invalid register '{record['register']}' for record {record.get('id')}, "
-                    f"using 'formal'"
-                )
-                record["register"] = "formal"
+            enriched_records.append(record)
 
-            enhanced_records.append(record)
+        return enriched_records
 
-        return enhanced_records
-
-    def _infer_domain(self, record: dict) -> str:
-        """
-        Infer domain from record metadata when not explicitly provided.
-
-        Args:
-            record: Record dictionary
-
-        Returns:
-            Inferred domain string
-        """
-        source = record.get("source", "").lower()
-        source_type = record.get("source_type", "").lower()
-
-        # Source-based inference
-        if "bbc" in source or "news" in source_type:
-            return "news"
-        elif "wikipedia" in source or "wiki" in source_type:
-            return "encyclopedia"
-        elif "huggingface" in source or "mc4" in source:
-            return "web"
-        elif "sprakbanken" in source or "språkbanken" in source:
-            # Try to get more specific domain from source_metadata
-            try:
-                metadata = json.loads(record.get("source_metadata", "{}"))
-                corpus_id = metadata.get("corpus_id", "")
-                return self._infer_sprakbanken_domain(corpus_id)
-            except (json.JSONDecodeError, TypeError):
-                return "general"
-        else:
-            return "general"
-
-    def _infer_sprakbanken_domain(self, corpus_id: str) -> str:
-        """
-        Infer domain for Språkbanken corpus based on corpus ID.
-
-        Args:
-            corpus_id: Språkbanken corpus identifier
-
-        Returns:
-            Domain string
-        """
-        corpus_id = corpus_id.lower()
-
-        if "news" in corpus_id or "as-" in corpus_id or "ah-" in corpus_id or "cb" in corpus_id:
-            return "news"
-        elif "ogaden" in corpus_id:
-            return "news_regional"
-        elif "sheekooyin-carruureed" in corpus_id:
-            return "children"
-        elif "sheekooyin" in corpus_id or "suugaan" in corpus_id:
-            return "literature"
-        elif "turjuman" in corpus_id:
-            if "suugaan" in corpus_id:
-                return "literature_translation"
-            else:
-                return "translation"
-        elif "cilmi" in corpus_id or "saynis" in corpus_id:
-            return "science"
-        elif "caafimaad" in corpus_id:
-            return "health"
-        elif "radio" in corpus_id:
-            return "radio"
-        elif "kqa" in corpus_id:
-            return "qa"
-        else:
-            return "general"
-
-    def _infer_register(self, record: dict) -> str:
-        """
-        Infer linguistic register from record metadata.
-
-        Maps source types to register values:
-        - "formal": Wikipedia, BBC, HuggingFace MC4, Språkbanken (all current sources)
-        - "informal": TikTok, social media (future sources)
-        - "colloquial": Informal conversational content (future sources)
-
-        Args:
-            record: Record dictionary
-
-        Returns:
-            Inferred register string ("formal", "informal", or "colloquial")
-        """
-        record.get("source", "").lower()
-        source_type = record.get("source_type", "").lower()
-
-        # Map source types to register
-        # All current sources are formal
-        if source_type in {"wiki", "news", "corpus", "web"}:
-            return "formal"
-        elif source_type == "social":
-            # Future TikTok integration
-            return "informal"
-        else:
-            # Default to formal for unknown types
-            return "formal"
 
     def write(
         self,
@@ -344,8 +216,8 @@ class SilverDatasetWriter:
             logger.warning("No records to write to silver dataset.")
             return None
 
-        # Ensure schema compatibility
-        records = self._ensure_schema_compatibility(records)
+        # Validate records and enrich (strict validation, no backward compatibility)
+        records = self._validate_and_enrich_records(records)
 
         # Create partitioned directory structure
         silver_dir = self.base_dir / f"source={source}" / f"date_accessed={date_accessed}"
@@ -513,14 +385,18 @@ class SilverDatasetWriter:
         """
         Read silver dataset for a given source and date.
 
-        Handles v1.0, v2.0, and v2.1 schema formats.
+        STRICT MODE: No backward compatibility. All files must have current schema.
 
         Args:
             source: Source name
             date_accessed: ISO date
 
         Returns:
-            PyArrow table with all records (enhanced with default values if older version)
+            PyArrow table with all records
+
+        Raises:
+            FileNotFoundError: If dataset not found
+            ValueError: If dataset schema doesn't match current schema
         """
         silver_dir = self.base_dir / f"source={source}" / f"date_accessed={date_accessed}"
 
@@ -530,34 +406,17 @@ class SilverDatasetWriter:
         # Read all parquet files in partition
         table = pq.read_table(silver_dir)
 
-        # Check for missing fields and add defaults
-        missing_fields = []
-
-        if "domain" not in table.column_names:
-            missing_fields.append("domain (v1.0 detected)")
-        if "embedding" not in table.column_names:
-            missing_fields.append("embedding (v1.0 detected)")
-        if "register" not in table.column_names:
-            missing_fields.append("register (v2.0 detected)")
+        # STRICT VALIDATION: All required fields must be present
+        required_fields = {field.name for field in self.SCHEMA}
+        actual_fields = set(table.column_names)
+        missing_fields = required_fields - actual_fields
 
         if missing_fields:
-            logger.info(
-                f"Reading older silver dataset from {silver_dir}, adding: {', '.join(missing_fields)}"
+            raise ValueError(
+                f"Dataset at {silver_dir} has missing required fields: {sorted(missing_fields)}. "
+                f"This indicates legacy data that is not supported. All data must be regenerated "
+                f"with the current schema version (1.0)."
             )
-
-            # Convert to pandas for easier manipulation
-            df = table.to_pandas()
-
-            # Add missing fields with defaults
-            if "domain" not in df.columns:
-                df["domain"] = "general"
-            if "embedding" not in df.columns:
-                df["embedding"] = None
-            if "register" not in df.columns:
-                df["register"] = "formal"
-
-            # Convert back to PyArrow table with current schema
-            table = pa.Table.from_pandas(df, schema=self.SCHEMA)
 
         return table
 

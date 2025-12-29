@@ -4,7 +4,6 @@ Schema versioning system for silver layer data.
 This module provides:
 - Schema registry with versioned Pydantic models
 - Schema validation
-- Migration framework for schema evolution
 """
 
 from .registry import (
