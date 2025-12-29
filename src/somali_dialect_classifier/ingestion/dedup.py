@@ -11,7 +11,9 @@ Integrated with crawl ledger for state tracking.
 import hashlib
 import json
 import logging
+import os
 import pickle
+from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -27,6 +29,94 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
+
+
+class LRUHashSet:
+    """
+    Memory-bounded hash set with LRU eviction policy.
+
+    Uses OrderedDict to maintain insertion/access order. When at capacity,
+    evicts the least recently accessed entry. This bounds memory usage
+    regardless of document count while accepting false negatives (missed
+    duplicates due to eviction).
+
+    Critical Property: NO false positives - never marks unique items as duplicate.
+
+    Performance:
+    - add(): O(1) amortized
+    - __contains__(): O(1) with access order update
+    - Memory: Bounded to maxsize entries (~100 bytes per hash = ~10MB for 100k entries)
+
+    Example:
+        >>> cache = LRUHashSet(maxsize=1000)
+        >>> cache.add("hash1")
+        >>> "hash1" in cache  # True, moves to end
+        >>> cache.add("hash2")
+        >>> len(cache)  # 2
+    """
+
+    def __init__(self, maxsize: int = 100_000):
+        """
+        Initialize LRU hash set.
+
+        Args:
+            maxsize: Maximum number of hashes to store before eviction
+        """
+        if maxsize <= 0:
+            raise ValueError("maxsize must be positive")
+
+        self.maxsize = maxsize
+        self._store = OrderedDict()  # hash -> True (value unused, only keys matter)
+
+    def add(self, hash_value: str) -> None:
+        """
+        Add hash to set, evicting oldest if at capacity.
+
+        Args:
+            hash_value: Hash string to store
+        """
+        # If already exists, move to end (mark as recently used)
+        if hash_value in self._store:
+            self._store.move_to_end(hash_value)
+            return
+
+        # At capacity, evict oldest (FIFO from beginning)
+        if len(self._store) >= self.maxsize:
+            oldest_key = next(iter(self._store))
+            del self._store[oldest_key]
+            logger.debug(
+                f"LRU eviction: removed {oldest_key[:16]}... "
+                f"(cache size: {len(self._store)}/{self.maxsize})"
+            )
+
+        # Add new hash at end (most recently used)
+        self._store[hash_value] = True
+
+    def __contains__(self, hash_value: str) -> bool:
+        """
+        Check if hash exists in set and update access order.
+
+        CRITICAL: This updates access order by moving to end (LRU semantics).
+
+        Args:
+            hash_value: Hash to check
+
+        Returns:
+            True if hash exists
+        """
+        if hash_value in self._store:
+            # Move to end to mark as recently accessed
+            self._store.move_to_end(hash_value)
+            return True
+        return False
+
+    def __len__(self) -> int:
+        """Return number of hashes stored."""
+        return len(self._store)
+
+    def clear(self) -> None:
+        """Remove all hashes."""
+        self._store.clear()
 
 
 class ShardedLSH:
@@ -695,10 +785,14 @@ class DedupEngine:
                 "Only exact deduplication will be used."
             )
 
-        # Track seen hashes for exact dedup
-        self.seen_hashes = set()
+        # Track seen hashes for exact dedup with LRU eviction
+        cache_size = int(os.environ.get("DEDUP_CACHE_SIZE", 100_000))
+        self.seen_hashes = LRUHashSet(maxsize=cache_size)
+        logger.info(f"Initialized dedup engine with LRU cache size: {cache_size:,}")
+
         # Track hash→URL mapping for exact duplicate traceability
         self.hash_to_url = {}  # text_hash -> canonical_url
+        self._hash_to_url_maxsize = cache_size  # Match seen_hashes capacity
 
     def process_document(
         self, text: str, url: str, **kwargs
@@ -744,6 +838,17 @@ class DedupEngine:
 
         # Record hash as seen and store canonical URL
         self.seen_hashes.add(text_hash)
+
+        # Bound hash_to_url dict to same capacity as seen_hashes
+        if len(self.hash_to_url) >= self._hash_to_url_maxsize:
+            # Remove oldest entry (FIFO)
+            oldest_key = next(iter(self.hash_to_url))
+            del self.hash_to_url[oldest_key]
+            logger.debug(
+                f"Evicted hash_to_url entry: {oldest_key[:16]}... "
+                f"(dict size: {len(self.hash_to_url)}/{self._hash_to_url_maxsize})"
+            )
+
         self.hash_to_url[text_hash] = url  # Map hash to first URL seen
 
         return (False, None, None, text_hash, minhash_signature)
