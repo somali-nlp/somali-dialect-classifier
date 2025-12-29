@@ -19,10 +19,10 @@ from ...infra.config import get_config
 from ...infra.http import HTTPSessionFactory
 from ...infra.logging_utils import Timer, set_context
 from ...infra.metrics import MetricsCollector, PipelineType
+from ...quality.text_cleaners import TextCleaningPipeline, create_wikipedia_cleaner
 from ..base_pipeline import BasePipeline, RawRecord
 from ..crawl_ledger import get_ledger
 from ..dedup import DedupConfig, DedupEngine
-from ...quality.text_cleaners import TextCleaningPipeline, create_wikipedia_cleaner
 
 # Constants for buffer management
 BUFFER_CHUNK_SIZE_MB = 1  # Read 1MB chunks from compressed file

@@ -1,4 +1,5 @@
 """Tests for pipeline run tracking in crawl ledger."""
+
 import tempfile
 import threading
 import time
@@ -59,9 +60,7 @@ class TestPipelineRunRegistration:
         source = "bbc"
         pipeline_type = "web"
 
-        temp_ledger.register_pipeline_run(
-            run_id=run_id, source=source, pipeline_type=pipeline_type
-        )
+        temp_ledger.register_pipeline_run(run_id=run_id, source=source, pipeline_type=pipeline_type)
 
         run = temp_ledger.get_pipeline_run(run_id)
         assert run is not None
@@ -78,9 +77,7 @@ class TestPipelineRunUpdates:
     def test_update_pipeline_run_status(self, temp_ledger):
         """Test updating run status progression."""
         run_id = "test_run_status"
-        temp_ledger.register_pipeline_run(
-            run_id=run_id, source="wikipedia", pipeline_type="web"
-        )
+        temp_ledger.register_pipeline_run(run_id=run_id, source="wikipedia", pipeline_type="web")
 
         # Update to RUNNING
         temp_ledger.update_pipeline_run(run_id=run_id, status="RUNNING")
@@ -95,14 +92,10 @@ class TestPipelineRunUpdates:
     def test_update_pipeline_run_metrics(self, temp_ledger):
         """Test updating run metrics."""
         run_id = "test_run_metrics"
-        temp_ledger.register_pipeline_run(
-            run_id=run_id, source="wikipedia", pipeline_type="web"
-        )
+        temp_ledger.register_pipeline_run(run_id=run_id, source="wikipedia", pipeline_type="web")
 
         # Update with discovery metrics
-        temp_ledger.update_pipeline_run(
-            run_id=run_id, status="RUNNING", records_discovered=100
-        )
+        temp_ledger.update_pipeline_run(run_id=run_id, status="RUNNING", records_discovered=100)
         run = temp_ledger.get_pipeline_run(run_id)
         assert run["records_discovered"] == 100
 
@@ -123,9 +116,7 @@ class TestPipelineRunUpdates:
     def test_update_pipeline_run_with_error(self, temp_ledger):
         """Test updating run with error information."""
         run_id = "test_run_error"
-        temp_ledger.register_pipeline_run(
-            run_id=run_id, source="bbc", pipeline_type="web"
-        )
+        temp_ledger.register_pipeline_run(run_id=run_id, source="bbc", pipeline_type="web")
 
         error_msg = "Connection timeout while fetching RSS feed"
         temp_ledger.update_pipeline_run(
@@ -143,9 +134,7 @@ class TestPipelineRunUpdates:
     def test_update_pipeline_run_partial_fields(self, temp_ledger):
         """Test updating only specific fields without affecting others."""
         run_id = "test_run_partial"
-        temp_ledger.register_pipeline_run(
-            run_id=run_id, source="wikipedia", pipeline_type="web"
-        )
+        temp_ledger.register_pipeline_run(run_id=run_id, source="wikipedia", pipeline_type="web")
 
         # Update only records_discovered
         temp_ledger.update_pipeline_run(run_id=run_id, records_discovered=50)
@@ -179,9 +168,7 @@ class TestLastSuccessfulRun:
 
         # Run 2: Failed 2 days ago (should be ignored)
         temp_ledger.register_pipeline_run("run_2", source, "web")
-        temp_ledger.update_pipeline_run(
-            "run_2", status="FAILED", end_time=now - timedelta(days=2)
-        )
+        temp_ledger.update_pipeline_run("run_2", status="FAILED", end_time=now - timedelta(days=2))
 
         # Run 3: Completed 1 day ago (most recent successful)
         temp_ledger.register_pipeline_run("run_3", source, "web")
@@ -262,9 +249,7 @@ class TestFirstSuccessfulRun:
 
         # Run 2: Failed 4 days ago (should be ignored)
         temp_ledger.register_pipeline_run("run_2", source, "web")
-        temp_ledger.update_pipeline_run(
-            "run_2", status="FAILED", end_time=now - timedelta(days=4)
-        )
+        temp_ledger.update_pipeline_run("run_2", status="FAILED", end_time=now - timedelta(days=4))
 
         # Run 3: Completed 3 days ago (later success)
         temp_ledger.register_pipeline_run("run_3", source, "web")
@@ -345,9 +330,7 @@ class TestConcurrentRunUpdates:
             for _ in range(10):
                 run = temp_ledger.get_pipeline_run(run_id)
                 current = run["records_discovered"] if run else 0
-                temp_ledger.update_pipeline_run(
-                    run_id, records_discovered=current + 1
-                )
+                temp_ledger.update_pipeline_run(run_id, records_discovered=current + 1)
                 time.sleep(0.001)
 
         def update_processed():

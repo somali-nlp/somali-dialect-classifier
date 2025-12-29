@@ -540,5 +540,3 @@ def create_hf_filters(
         (min_length_filter, {"threshold": min_length}),
         (langid_filter, {"allowed_langs": allowed_langs, "confidence_threshold": 0.5}),
     ]
-
-

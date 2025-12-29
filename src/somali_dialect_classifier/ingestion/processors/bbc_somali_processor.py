@@ -37,10 +37,10 @@ from ...infra.http import HTTPSessionFactory
 from ...infra.logging_utils import set_context
 from ...infra.metrics import MetricsCollector, PipelineType, QualityReporter
 from ...infra.rate_limiter import AdaptiveRateLimiter, RateLimitConfig, TimedRequest
+from ...quality.text_cleaners import TextCleaningPipeline, create_html_cleaner
 from ..base_pipeline import BasePipeline, RawRecord
 from ..crawl_ledger import get_ledger
 from ..dedup import DedupConfig, DedupEngine
-from ...quality.text_cleaners import TextCleaningPipeline, create_html_cleaner
 
 
 class BBCSomaliProcessor(BasePipeline):

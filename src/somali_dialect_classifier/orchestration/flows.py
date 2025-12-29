@@ -105,18 +105,19 @@ def is_initial_collection_phase() -> bool:
     """
     ledger = _get_ledger()
     status = ledger.get_campaign_status("campaign_init_001")
-    
+
     # If campaign doesn't exist, start it
     if status is None:
         from ..infra.config import get_config
+
         config = get_config()
         ledger.start_campaign(
-            "campaign_init_001", 
+            "campaign_init_001",
             "Initial Data Ingestion",
-            {"duration_days": config.orchestration.initial_collection_days}
+            {"duration_days": config.orchestration.initial_collection_days},
         )
         return True
-        
+
     return status == "ACTIVE"
 
 
@@ -290,8 +291,8 @@ def run_bbc_task(
     Returns:
         Dictionary with pipeline results and metrics
     """
-    from ..ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
     from ..ingestion.crawl_ledger import CrawlLedger
+    from ..ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
 
     logger.info("Starting BBC pipeline...")
 
@@ -769,9 +770,7 @@ def run_all_pipelines(
             if should_run:
                 logger.info(f"✅ Running BBC: {reason}")
                 results.append(
-                    run_bbc_task.submit(
-                        max_articles=max_bbc_articles, force=force, run_seed=run_id
-                    )
+                    run_bbc_task.submit(max_articles=max_bbc_articles, force=force, run_seed=run_id)
                 )
             else:
                 logger.info(f"⏭️  Skipping BBC: {reason}")
@@ -876,9 +875,7 @@ def run_all_pipelines(
             if should_run:
                 logger.info(f"✅ Running Språkbanken: {reason}")
                 completed_results.append(
-                    run_sprakbanken_task(
-                        corpus_id=sprakbanken_corpus, force=force, run_seed=run_id
-                    )
+                    run_sprakbanken_task(corpus_id=sprakbanken_corpus, force=force, run_seed=run_id)
                 )
             else:
                 logger.info(f"⏭️  Skipping Språkbanken: {reason}")

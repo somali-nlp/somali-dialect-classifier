@@ -1,15 +1,16 @@
 """Tests for metrics aggregation utilities."""
+
 import json
+
 import pytest
-from pathlib import Path
+
 from somali_dialect_classifier.infra.metrics_aggregation import (
-    extract_consolidated_metric,
-    load_metrics_from_file,
-    load_all_processing_metrics,
     aggregate_metrics_across_sources,
     calculate_metric_statistics,
+    extract_consolidated_metric,
+    load_all_processing_metrics,
+    load_metrics_from_file,
 )
-
 
 # Sample Phase 3 processing JSON for testing (without schema validation)
 # This matches the fallback structure the function handles
@@ -19,27 +20,14 @@ SAMPLE_PHASE3_DATA = {
     "_timestamp": "2025-11-15T10:00:00Z",
     "_pipeline_type": "web_scraping",
     "layered_metrics": {
-        "connectivity": {
-            "connection_attempted": True,
-            "connection_successful": True
-        },
-        "extraction": {
-            "stream_opened": True
-        },
+        "connectivity": {"connection_attempted": True, "connection_successful": True},
+        "extraction": {"stream_opened": True},
         "quality": {
             "records_received": 100,
             "records_passed_filters": 80,
-            "filter_breakdown": {
-                "length_filter": 10,
-                "language_filter": 5,
-                "empty_filter": 5
-            }
+            "filter_breakdown": {"length_filter": 10, "language_filter": 5, "empty_filter": 5},
         },
-        "volume": {
-            "records_written": 80,
-            "bytes_downloaded": 1024000,
-            "total_chars": 50000
-        }
+        "volume": {"records_written": 80, "bytes_downloaded": 1024000, "total_chars": 50000},
     },
     "legacy_metrics": {
         "snapshot": {
@@ -53,7 +41,7 @@ SAMPLE_PHASE3_DATA = {
             "records_extracted": 90,
             "duration_seconds": 300,
             "bytes_downloaded": 1024000,
-            "records_written": 80
+            "records_written": 80,
         },
         "statistics": {
             "http_request_success_rate": 0.95,
@@ -63,31 +51,17 @@ SAMPLE_PHASE3_DATA = {
             "throughput": {
                 "urls_per_second": 0.4,
                 "bytes_per_second": 3413.33,
-                "records_per_minute": 16.0
+                "records_per_minute": 16.0,
             },
-            "text_length_stats": {
-                "mean": 625.0,
-                "median": 600.0,
-                "min": 100,
-                "max": 2000
-            },
-            "fetch_duration_stats": {
-                "mean": 2.5,
-                "median": 2.0,
-                "min": 0.5,
-                "max": 10.0
-            }
-        }
-    }
+            "text_length_stats": {"mean": 625.0, "median": 600.0, "min": 100, "max": 2000},
+            "fetch_duration_stats": {"mean": 2.5, "median": 2.0, "min": 0.5, "max": 10.0},
+        },
+    },
 }
 
 
 # Sample Phase 2 (flat) data for backward compatibility testing
-SAMPLE_PHASE2_DATA = {
-    "records_processed": 100,
-    "records_failed": 20,
-    "quality_pass_rate": 0.80
-}
+SAMPLE_PHASE2_DATA = {"records_processed": 100, "records_failed": 20, "quality_pass_rate": 0.80}
 
 
 class TestExtractConsolidatedMetric:
@@ -195,18 +169,14 @@ class TestLoadAllProcessingMetrics:
     def test_load_multiple_files(self, tmp_path):
         """Test loading multiple processing JSON files."""
         # Create test files
-        (tmp_path / "source1_20251115_processing.json").write_text(
-            json.dumps(SAMPLE_PHASE3_DATA)
-        )
+        (tmp_path / "source1_20251115_processing.json").write_text(json.dumps(SAMPLE_PHASE3_DATA))
 
         data2 = SAMPLE_PHASE3_DATA.copy()
         data2["_source"] = "source2"
         data2["_run_id"] = "run-456"
         data2["legacy_metrics"]["snapshot"]["source"] = "source2"
         data2["legacy_metrics"]["snapshot"]["run_id"] = "run-456"
-        (tmp_path / "source2_20251115_processing.json").write_text(
-            json.dumps(data2)
-        )
+        (tmp_path / "source2_20251115_processing.json").write_text(json.dumps(data2))
 
         metrics = load_all_processing_metrics(tmp_path)
 
@@ -228,14 +198,10 @@ class TestLoadAllProcessingMetrics:
     def test_load_ignores_invalid_files(self, tmp_path):
         """Test that invalid files are skipped gracefully."""
         # Create valid file
-        (tmp_path / "valid_20251115_processing.json").write_text(
-            json.dumps(SAMPLE_PHASE3_DATA)
-        )
+        (tmp_path / "valid_20251115_processing.json").write_text(json.dumps(SAMPLE_PHASE3_DATA))
 
         # Create invalid file
-        (tmp_path / "invalid_20251115_processing.json").write_text(
-            "{ invalid json }"
-        )
+        (tmp_path / "invalid_20251115_processing.json").write_text("{ invalid json }")
 
         metrics = load_all_processing_metrics(tmp_path)
 
@@ -250,9 +216,7 @@ class TestLoadAllProcessingMetrics:
         incomplete_data["_source"] = None
         incomplete_data["legacy_metrics"]["snapshot"]["source"] = None
 
-        (tmp_path / "incomplete_20251115_processing.json").write_text(
-            json.dumps(incomplete_data)
-        )
+        (tmp_path / "incomplete_20251115_processing.json").write_text(json.dumps(incomplete_data))
 
         metrics = load_all_processing_metrics(tmp_path)
         assert metrics == []
@@ -268,9 +232,7 @@ class TestAggregateMetricsAcrossSources:
         data1["_source"] = "wikipedia"
         data1["legacy_metrics"]["snapshot"]["source"] = "wikipedia"
         data1["layered_metrics"]["volume"]["records_written"] = 100
-        (tmp_path / "wikipedia_20251115_processing.json").write_text(
-            json.dumps(data1)
-        )
+        (tmp_path / "wikipedia_20251115_processing.json").write_text(json.dumps(data1))
 
         data2 = SAMPLE_PHASE3_DATA.copy()
         data2["_source"] = "bbc-somali"
@@ -278,30 +240,20 @@ class TestAggregateMetricsAcrossSources:
         data2["legacy_metrics"]["snapshot"]["source"] = "bbc-somali"
         data2["legacy_metrics"]["snapshot"]["run_id"] = "run-456"
         data2["layered_metrics"]["volume"]["records_written"] = 50
-        (tmp_path / "bbc-somali_20251115_processing.json").write_text(
-            json.dumps(data2)
-        )
+        (tmp_path / "bbc-somali_20251115_processing.json").write_text(json.dumps(data2))
 
-        sources = ['wikipedia', 'bbc-somali']
-        result = aggregate_metrics_across_sources(
-            tmp_path,
-            sources,
-            'records_written'
-        )
+        sources = ["wikipedia", "bbc-somali"]
+        result = aggregate_metrics_across_sources(tmp_path, sources, "records_written")
 
-        assert result['wikipedia'] == 100
-        assert result['bbc-somali'] == 50
+        assert result["wikipedia"] == 100
+        assert result["bbc-somali"] == 50
 
     def test_aggregate_missing_source(self, tmp_path):
         """Test aggregating when source file is missing."""
-        sources = ['missing-source']
-        result = aggregate_metrics_across_sources(
-            tmp_path,
-            sources,
-            'records_written'
-        )
+        sources = ["missing-source"]
+        result = aggregate_metrics_across_sources(tmp_path, sources, "records_written")
 
-        assert result['missing-source'] is None
+        assert result["missing-source"] is None
 
     def test_aggregate_uses_most_recent_file(self, tmp_path):
         """Test that most recent file is used when multiple exist."""
@@ -310,28 +262,20 @@ class TestAggregateMetricsAcrossSources:
         data1["_source"] = "test"
         data1["legacy_metrics"]["snapshot"]["source"] = "test"
         data1["layered_metrics"]["volume"]["records_written"] = 100
-        (tmp_path / "test_20251101_processing.json").write_text(
-            json.dumps(data1)
-        )
+        (tmp_path / "test_20251101_processing.json").write_text(json.dumps(data1))
 
         # Create newer file (alphabetically later = more recent)
         data2 = SAMPLE_PHASE3_DATA.copy()
         data2["_source"] = "test"
         data2["legacy_metrics"]["snapshot"]["source"] = "test"
         data2["layered_metrics"]["volume"]["records_written"] = 200
-        (tmp_path / "test_20251115_processing.json").write_text(
-            json.dumps(data2)
-        )
+        (tmp_path / "test_20251115_processing.json").write_text(json.dumps(data2))
 
-        sources = ['test']
-        result = aggregate_metrics_across_sources(
-            tmp_path,
-            sources,
-            'records_written'
-        )
+        sources = ["test"]
+        result = aggregate_metrics_across_sources(tmp_path, sources, "records_written")
 
         # Should use the most recent file (20251115)
-        assert result['test'] == 200
+        assert result["test"] == 200
 
 
 class TestCalculateMetricStatistics:
@@ -342,56 +286,56 @@ class TestCalculateMetricStatistics:
         values = [100, 200, 150, 300]
         stats = calculate_metric_statistics(values)
 
-        assert stats['mean'] == 187.5
-        assert stats['median'] == 175.0
-        assert stats['min'] == 100
-        assert stats['max'] == 300
-        assert stats['sum'] == 750
-        assert stats['count'] == 4
+        assert stats["mean"] == 187.5
+        assert stats["median"] == 175.0
+        assert stats["min"] == 100
+        assert stats["max"] == 300
+        assert stats["sum"] == 750
+        assert stats["count"] == 4
 
     def test_calculate_with_none_values(self):
         """Test that None values are filtered out."""
         values = [100, None, 200, None, 300]
         stats = calculate_metric_statistics(values)
 
-        assert stats['count'] == 3  # None values filtered
-        assert stats['mean'] == 200.0
-        assert stats['sum'] == 600
+        assert stats["count"] == 3  # None values filtered
+        assert stats["mean"] == 200.0
+        assert stats["sum"] == 600
 
     def test_calculate_empty_list(self):
         """Test statistics with empty list."""
         stats = calculate_metric_statistics([])
 
-        assert stats['count'] == 0
-        assert stats['sum'] == 0.0
-        assert stats['mean'] == 0.0
+        assert stats["count"] == 0
+        assert stats["sum"] == 0.0
+        assert stats["mean"] == 0.0
 
     def test_calculate_all_none_values(self):
         """Test statistics with all None values."""
         values = [None, None, None]
         stats = calculate_metric_statistics(values)
 
-        assert stats['count'] == 0
-        assert stats['sum'] == 0.0
+        assert stats["count"] == 0
+        assert stats["sum"] == 0.0
 
     def test_calculate_single_value(self):
         """Test statistics with single value."""
         values = [42]
         stats = calculate_metric_statistics(values)
 
-        assert stats['count'] == 1
-        assert stats['mean'] == 42
-        assert stats['median'] == 42
-        assert stats['min'] == 42
-        assert stats['max'] == 42
-        assert stats['sum'] == 42
+        assert stats["count"] == 1
+        assert stats["mean"] == 42
+        assert stats["median"] == 42
+        assert stats["min"] == 42
+        assert stats["max"] == 42
+        assert stats["sum"] == 42
 
     def test_calculate_with_floats(self):
         """Test statistics with floating point values."""
         values = [1.5, 2.5, 3.5]
         stats = calculate_metric_statistics(values)
 
-        assert stats['mean'] == 2.5
-        assert stats['median'] == 2.5
-        assert stats['sum'] == 7.5
-        assert stats['count'] == 3
+        assert stats["mean"] == 2.5
+        assert stats["median"] == 2.5
+        assert stats["sum"] == 7.5
+        assert stats["count"] == 3

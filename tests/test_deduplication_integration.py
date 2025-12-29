@@ -317,9 +317,7 @@ class TestProcessorMetrics:
     NOTE: The metrics module doesn't exist yet. This test is skipped until implemented.
     """
 
-    @pytest.mark.skip(
-        reason="Module somali_dialect_classifier.infra.metrics not implemented"
-    )
+    @pytest.mark.skip(reason="Module somali_dialect_classifier.infra.metrics not implemented")
     def test_discovery_dedup_metric_incremented(self):
         """Test that records_skipped_discovery_dedup metric is incremented."""
         from somali_dialect_classifier.infra.metrics import ProcessingMetrics

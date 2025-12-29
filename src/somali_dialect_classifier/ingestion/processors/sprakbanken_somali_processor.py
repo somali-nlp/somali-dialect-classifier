@@ -33,10 +33,10 @@ from ...infra.config import get_config
 from ...infra.http import HTTPSessionFactory
 from ...infra.logging_utils import Timer, set_context
 from ...infra.metrics import MetricsCollector, PipelineType
+from ...quality.text_cleaners import TextCleaningPipeline, create_html_cleaner
 from ..base_pipeline import BasePipeline, RawRecord
 from ..crawl_ledger import get_ledger
 from ..dedup import DedupConfig, DedupEngine
-from ...quality.text_cleaners import TextCleaningPipeline, create_html_cleaner
 
 logger = logging.getLogger(__name__)
 
@@ -518,9 +518,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
             self.metrics.increment("files_discovered")
 
             corpus_file = self.raw_dir / f"{corpus_id}.xml.bz2"
-            download_url = (
-                f"https://spraakbanken.gu.se/resurser/meningsmangder/{corpus_id}.xml.bz2"
-            )
+            download_url = f"https://spraakbanken.gu.se/resurser/meningsmangder/{corpus_id}.xml.bz2"
 
             # Download if not exists
             if not corpus_file.exists() or self.force:
@@ -661,7 +659,9 @@ class SprakbankenSomaliProcessor(BasePipeline):
                     # But we still need to mark them as processed so discovery phase skips them
                     if texts_count == 0:
                         # Create synthetic URL for this corpus (same format as in _extract_records)
-                        corpus_url = f"https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}"
+                        corpus_url = (
+                            f"https://spraakbanken.gu.se/korp/?mode=somali#?corpus={corpus_id}"
+                        )
                         if hasattr(self, "ledger") and self.ledger is not None:
                             self.ledger.mark_processed(
                                 url=corpus_url,
@@ -670,9 +670,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
                                 minhash_signature=None,
                                 source="sprakbanken-somali",
                             )
-                            self.logger.info(
-                                f"  ✓ Marked empty corpus as processed: {corpus_id}"
-                            )
+                            self.logger.info(f"  ✓ Marked empty corpus as processed: {corpus_id}")
 
                     # Increment quota counter (per corpus)
                     if quota_limit is not None:

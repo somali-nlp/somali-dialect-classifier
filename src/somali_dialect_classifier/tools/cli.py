@@ -160,9 +160,7 @@ def consolidate(metrics_dir: Path, output: Path, source: tuple[str, ...]):
 
         # Run consolidation
         result_path = consolidate_metrics(
-            metrics_dir=metrics_dir,
-            output_path=output,
-            source_filter=source_filter
+            metrics_dir=metrics_dir, output_path=output, source_filter=source_filter
         )
 
         click.echo(f"✓ Consolidated metrics written to: {result_path}")
@@ -254,28 +252,28 @@ def validate(metrics_dir: Path, strict: bool):
     try:
         result = validate_metrics(metrics_dir=metrics_dir, strict=strict)
 
-        click.echo(f"\nValidation Results:")
+        click.echo("\nValidation Results:")
         click.echo(f"  Total Files: {result['total_files']}")
         click.echo(f"  Valid: {result['valid']}")
         click.echo(f"  Errors: {result['errors']}")
         click.echo(f"  Warnings: {result['warnings']}")
 
         # Show details if errors/warnings
-        if result['errors'] > 0 or result['warnings'] > 0:
+        if result["errors"] > 0 or result["warnings"] > 0:
             click.echo("\nDetails:")
-            for file_result in result['files']:
-                if file_result['status'] != 'valid':
+            for file_result in result["files"]:
+                if file_result["status"] != "valid":
                     click.echo(f"  [{file_result['status'].upper()}] {file_result['file']}")
                     click.echo(f"    {file_result['message']}")
 
         # Exit with appropriate code
-        if result['total_files'] == 0:
+        if result["total_files"] == 0:
             click.echo("\n⚠ Warning: No metrics files found")
             sys.exit(2)
-        elif result['errors'] > 0:
+        elif result["errors"] > 0:
             click.echo(f"\n✗ Validation failed with {result['errors']} errors")
             sys.exit(1)
-        elif result['warnings'] > 0 and strict:
+        elif result["warnings"] > 0 and strict:
             click.echo(f"\n✗ Validation failed with {result['warnings']} warnings (strict mode)")
             sys.exit(1)
         else:
@@ -338,38 +336,39 @@ def check_anomalies(metrics_dir: Path, output: Path | None, threshold: int):
       # Custom warning threshold
       somali-tools metrics check-anomalies --threshold 5
     """
-    from .metrics_commands import check_anomalies as check_anomalies_fn
     import json
+
+    from .metrics_commands import check_anomalies as check_anomalies_fn
 
     try:
         result = check_anomalies_fn(metrics_dir=metrics_dir, threshold=threshold)
 
-        click.echo(f"\nAnomaly Check Results:")
+        click.echo("\nAnomaly Check Results:")
         click.echo(f"  Files Checked: {result['total_files']}")
         click.echo(f"  Total Anomalies: {result['total_anomalies']}")
         click.echo(f"  Errors: {result['error_anomalies']}")
         click.echo(f"  Warnings: {result['warning_anomalies']}")
 
         # Show anomalies
-        if result['total_anomalies'] > 0:
+        if result["total_anomalies"] > 0:
             click.echo("\nAnomalies Found:")
-            for anomaly in result['anomalies']:
-                level_marker = "✗" if anomaly['level'] == 'error' else "⚠"
+            for anomaly in result["anomalies"]:
+                level_marker = "✗" if anomaly["level"] == "error" else "⚠"
                 click.echo(f"  {level_marker} [{anomaly['level'].upper()}] {anomaly['file']}")
                 click.echo(f"    {anomaly['message']}")
 
         # Write report if output specified
         if output:
             output.parent.mkdir(parents=True, exist_ok=True)
-            with open(output, 'w', encoding='utf-8') as f:
+            with open(output, "w", encoding="utf-8") as f:
                 json.dump(result, f, indent=2)
             click.echo(f"\n✓ Anomaly report written to: {output}")
 
         # Exit with appropriate code
-        if result['error_anomalies'] > 0:
+        if result["error_anomalies"] > 0:
             click.echo(f"\n✗ Found {result['error_anomalies']} error-level anomalies")
             sys.exit(2)
-        elif result['warning_anomalies'] >= threshold:
+        elif result["warning_anomalies"] >= threshold:
             click.echo(f"\n⚠ Found {result['warning_anomalies']} warnings (threshold: {threshold})")
             sys.exit(1)
         else:
@@ -424,11 +423,7 @@ def export(metrics_dir: Path, format: str, output: Path):
     from .metrics_commands import export_metrics
 
     try:
-        result_path = export_metrics(
-            metrics_dir=metrics_dir,
-            output_path=output,
-            format=format
-        )
+        result_path = export_metrics(metrics_dir=metrics_dir, output_path=output, format=format)
 
         click.echo(f"✓ Exported metrics to: {result_path} ({format.upper()})")
 
@@ -518,29 +513,27 @@ def migrate(ledger_path: Path, migration: str | None, dry_run: bool):
       # Run specific migration
       somali-tools ledger migrate --migration 002_pipeline_runs_table
     """
+
     from .ledger_commands import migrate_ledger_database
-    import json
 
     try:
         result = migrate_ledger_database(
-            ledger_path=ledger_path,
-            migration_name=migration,
-            dry_run=dry_run
+            ledger_path=ledger_path, migration_name=migration, dry_run=dry_run
         )
 
-        click.echo(f"\nMigration Results:")
+        click.echo("\nMigration Results:")
         click.echo(f"  Total Migrations: {result['total']}")
         click.echo(f"  Dry Run: {result['dry_run']}")
 
-        if result['applied']:
+        if result["applied"]:
             click.echo("\nMigrations:")
-            for mig in result['applied']:
-                status_marker = "→" if mig['status'] == 'would_apply' else "✓"
+            for mig in result["applied"]:
+                status_marker = "→" if mig["status"] == "would_apply" else "✓"
                 click.echo(f"  {status_marker} {mig['migration']}: {mig['status']}")
 
-        if not dry_run and result['total'] > 0:
+        if not dry_run and result["total"] > 0:
             click.echo("\n✓ Migrations applied successfully")
-        elif dry_run and result['total'] > 0:
+        elif dry_run and result["total"] > 0:
             click.echo("\n[DRY RUN] No changes made")
         else:
             click.echo("\n✓ No pending migrations")
@@ -630,26 +623,26 @@ def status(ledger_path: Path, verbose: bool):
       # Custom ledger path
       somali-tools ledger status --ledger-path /custom/path/ledger.db
     """
+
     from .ledger_commands import get_ledger_status
-    import json
 
     try:
         result = get_ledger_status(ledger_path=ledger_path, verbose=verbose)
 
-        click.echo(f"\nLedger Database Status:")
+        click.echo("\nLedger Database Status:")
         click.echo(f"  Database: {result['database']}")
         click.echo(f"  Size: {result['size_mb']} MB")
         click.echo(f"  Schema Version: {result['schema_version']}")
 
-        click.echo(f"\nTable Counts:")
-        for table_name, table_info in result['tables'].items():
+        click.echo("\nTable Counts:")
+        for table_name, table_info in result["tables"].items():
             click.echo(f"  {table_name}: {table_info['count']:,} records")
-            if verbose and 'columns' in table_info:
+            if verbose and "columns" in table_info:
                 click.echo(f"    Columns: {', '.join(table_info['columns'][:5])}")
 
-        if result['recent_activity']:
-            click.echo(f"\nRecent Activity:")
-            for key, value in result['recent_activity'].items():
+        if result["recent_activity"]:
+            click.echo("\nRecent Activity:")
+            for key, value in result["recent_activity"].items():
                 if isinstance(value, dict):
                     click.echo(f"  {key}: {value.get('source')} at {value.get('timestamp')}")
 
@@ -958,7 +951,7 @@ def build(clean: bool, verbose: bool):
     try:
         result = build_dashboard(clean=clean, verbose=verbose)
 
-        click.echo(f"\n✓ Dashboard built successfully")
+        click.echo("\n✓ Dashboard built successfully")
         click.echo(f"  Site Directory: {result['site_dir']}")
         click.echo(f"  HTML Files: {result['files']['html']}")
         click.echo(f"  JS Files: {result['files']['js']}")
@@ -1043,8 +1036,7 @@ def deploy(target: str, dry_run: bool):
       somali-tools dashboard deploy --target netlify
     """
     click.echo(
-        "Not yet implemented in Wave 1. Logic will be added in Wave 3.\n"
-        f"Would deploy to: {target}"
+        f"Not yet implemented in Wave 1. Logic will be added in Wave 3.\nWould deploy to: {target}"
     )
 
 

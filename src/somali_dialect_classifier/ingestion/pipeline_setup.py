@@ -8,12 +8,12 @@ from typing import Optional
 
 from ..infra.config import get_config
 from ..infra.data_manager import DataManager
-from ..quality.filter_engine import FilterEngine
-from ..schema import CURRENT_SCHEMA_VERSION
-from ..schema.validation_service import ValidationService
 from ..infra.logging_utils import StructuredLogger
 from ..infra.security import sanitize_source_name
+from ..quality.filter_engine import FilterEngine
 from ..quality.record_builder import RecordBuilder
+from ..schema import CURRENT_SCHEMA_VERSION
+from ..schema.validation_service import ValidationService
 
 logger = logging.getLogger(__name__)
 

@@ -169,16 +169,11 @@ class Statistics(BaseModel):
     text_length_stats: Optional[TextLengthStats] = None
     throughput: ThroughputMetrics
 
-
-
     # Metadata fields (optional, informational) - use aliases for underscore-prefixed
     metric_semantics: Optional[dict[str, str]] = Field(default=None, alias="_metric_semantics")
     deprecation_warnings: Optional[list[str]] = Field(default=None, alias="_deprecation_warnings")
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
-
-
-
 
 
 class IncrementalFilteringMetrics(BaseModel):

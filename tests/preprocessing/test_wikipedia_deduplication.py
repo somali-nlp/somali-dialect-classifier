@@ -20,6 +20,7 @@ from somali_dialect_classifier.ingestion.crawl_ledger import (
 from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
     WikipediaSomaliProcessor,
 )
+
 print(f"DEBUG: Module name: {WikipediaSomaliProcessor.__module__}")
 
 

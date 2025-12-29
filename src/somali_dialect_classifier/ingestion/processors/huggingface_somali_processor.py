@@ -34,11 +34,11 @@ except ImportError:
 from ...infra.config import get_config
 from ...infra.logging_utils import Timer, set_context
 from ...infra.metrics import MetricsCollector, PipelineType, QualityReporter
+from ...quality.schema_mappers import get_schema_mapper
+from ...quality.text_cleaners import create_html_cleaner
 from ..base_pipeline import BasePipeline, RawRecord
 from ..crawl_ledger import get_ledger
 from ..dedup import DedupConfig, DedupEngine
-from ...quality.schema_mappers import get_schema_mapper
-from ...quality.text_cleaners import create_html_cleaner
 
 logger = logging.getLogger(__name__)
 
@@ -330,7 +330,6 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         dataset_slug = self.dataset_name.split("/")[-1]
         # Pattern: {dataset_slug}_{run_id}_raw_manifest.json or old {dataset_slug}_manifest.json
         manifest_files = list(self.raw_dir.glob(f"{dataset_slug}_*_raw_manifest.json"))
-
 
         if not manifest_files:
             raise FileNotFoundError(f"Manifest not found in {self.raw_dir}. Run download() first.")
@@ -1121,7 +1120,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             # Use source name that matches what's stored in ledger
             processed_urls_list = self.ledger.get_processed_urls(source=self.source)
             # FIX: get_processed_urls returns list[dict], extract 'url' field
-            processed_urls = {record['url'] for record in processed_urls_list}
+            processed_urls = {record["url"] for record in processed_urls_list}
             self.logger.info(
                 f"Loaded {len(processed_urls)} processed URLs from ledger for source '{self.source}'"
             )

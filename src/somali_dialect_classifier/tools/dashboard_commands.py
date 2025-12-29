@@ -16,7 +16,7 @@ import shutil
 import socketserver
 import subprocess
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +26,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-def build_dashboard(
-    clean: bool = False,
-    verbose: bool = False
-) -> dict[str, Any]:
+def build_dashboard(clean: bool = False, verbose: bool = False) -> dict[str, Any]:
     """
     Build dashboard site.
 
@@ -72,7 +69,7 @@ def build_dashboard(
             cwd=project_root,
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
 
         if verbose:
@@ -95,13 +92,9 @@ def build_dashboard(
         return {
             "status": "success",
             "site_dir": str(site_dir),
-            "files": {
-                "html": len(html_files),
-                "js": len(js_files),
-                "json": len(data_files)
-            },
+            "files": {"html": len(html_files), "js": len(js_files), "json": len(data_files)},
             "cleaned": clean,
-            "verbose": verbose
+            "verbose": verbose,
         }
 
     except subprocess.CalledProcessError as e:
@@ -122,10 +115,7 @@ class SilentHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-def serve_dashboard(
-    port: int = 8000,
-    host: str = "127.0.0.1"
-) -> None:
+def serve_dashboard(port: int = 8000, host: str = "127.0.0.1") -> None:
     """
     Start local development server.
 
@@ -149,6 +139,7 @@ def serve_dashboard(
 
     # Change to site directory
     import os
+
     original_dir = os.getcwd()
 
     try:
@@ -173,10 +164,7 @@ def serve_dashboard(
 # ============================================================================
 
 
-def deploy_dashboard(
-    target: str = "github-pages",
-    dry_run: bool = False
-) -> dict[str, Any]:
+def deploy_dashboard(target: str = "github-pages", dry_run: bool = False) -> dict[str, Any]:
     """
     Deploy dashboard to specified target.
 
@@ -193,10 +181,7 @@ def deploy_dashboard(
     """
     supported_targets = ["github-pages", "netlify", "s3"]
     if target not in supported_targets:
-        raise ValueError(
-            f"Unsupported target: {target}. "
-            f"Supported: {', '.join(supported_targets)}"
-        )
+        raise ValueError(f"Unsupported target: {target}. Supported: {', '.join(supported_targets)}")
 
     # Find _site directory
     project_root = Path(__file__).parent.parent.parent.parent
@@ -216,10 +201,7 @@ def deploy_dashboard(
         return deploy_to_s3(site_dir, dry_run)
 
 
-def deploy_to_github_pages(
-    site_dir: Path,
-    dry_run: bool = False
-) -> dict[str, Any]:
+def deploy_to_github_pages(site_dir: Path, dry_run: bool = False) -> dict[str, Any]:
     """
     Deploy dashboard to GitHub Pages.
 
@@ -234,51 +216,31 @@ def deploy_to_github_pages(
         logger.info("[DRY RUN] Would deploy to GitHub Pages")
         logger.info(f"  Source: {site_dir}")
         logger.info("  Command: gh-pages -d _site")
-        return {
-            "status": "dry_run",
-            "target": "github-pages",
-            "site_dir": str(site_dir)
-        }
+        return {"status": "dry_run", "target": "github-pages", "site_dir": str(site_dir)}
 
     # Check if gh-pages CLI is available
     try:
-        subprocess.run(
-            ["gh-pages", "--version"],
-            capture_output=True,
-            check=True
-        )
+        subprocess.run(["gh-pages", "--version"], capture_output=True, check=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
-        raise RuntimeError(
-            "gh-pages CLI not found. Install with: npm install -g gh-pages"
-        )
+        raise RuntimeError("gh-pages CLI not found. Install with: npm install -g gh-pages")
 
     # Deploy
     logger.info("Deploying to GitHub Pages...")
 
     try:
-        result = subprocess.run(
-            ["gh-pages", "-d", str(site_dir)],
-            capture_output=True,
-            text=True,
-            check=True
+        subprocess.run(
+            ["gh-pages", "-d", str(site_dir)], capture_output=True, text=True, check=True
         )
 
         logger.info("Deployment successful")
-        return {
-            "status": "success",
-            "target": "github-pages",
-            "site_dir": str(site_dir)
-        }
+        return {"status": "success", "target": "github-pages", "site_dir": str(site_dir)}
 
     except subprocess.CalledProcessError as e:
         logger.error(f"Deployment failed: {e.stderr}")
         raise RuntimeError(f"Deployment failed: {e.stderr}")
 
 
-def deploy_to_netlify(
-    site_dir: Path,
-    dry_run: bool = False
-) -> dict[str, Any]:
+def deploy_to_netlify(site_dir: Path, dry_run: bool = False) -> dict[str, Any]:
     """
     Deploy dashboard to Netlify.
 
@@ -293,23 +255,13 @@ def deploy_to_netlify(
         logger.info("[DRY RUN] Would deploy to Netlify")
         logger.info(f"  Source: {site_dir}")
         logger.info("  Command: netlify deploy --prod --dir _site")
-        return {
-            "status": "dry_run",
-            "target": "netlify",
-            "site_dir": str(site_dir)
-        }
+        return {"status": "dry_run", "target": "netlify", "site_dir": str(site_dir)}
 
     # Check if netlify CLI is available
     try:
-        subprocess.run(
-            ["netlify", "--version"],
-            capture_output=True,
-            check=True
-        )
+        subprocess.run(["netlify", "--version"], capture_output=True, check=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
-        raise RuntimeError(
-            "Netlify CLI not found. Install with: npm install -g netlify-cli"
-        )
+        raise RuntimeError("Netlify CLI not found. Install with: npm install -g netlify-cli")
 
     # Deploy
     logger.info("Deploying to Netlify...")
@@ -319,27 +271,20 @@ def deploy_to_netlify(
             ["netlify", "deploy", "--prod", "--dir", str(site_dir)],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
 
         logger.info("Deployment successful")
         logger.info(result.stdout)
 
-        return {
-            "status": "success",
-            "target": "netlify",
-            "site_dir": str(site_dir)
-        }
+        return {"status": "success", "target": "netlify", "site_dir": str(site_dir)}
 
     except subprocess.CalledProcessError as e:
         logger.error(f"Deployment failed: {e.stderr}")
         raise RuntimeError(f"Deployment failed: {e.stderr}")
 
 
-def deploy_to_s3(
-    site_dir: Path,
-    dry_run: bool = False
-) -> dict[str, Any]:
+def deploy_to_s3(site_dir: Path, dry_run: bool = False) -> dict[str, Any]:
     """
     Deploy dashboard to AWS S3.
 
@@ -354,26 +299,17 @@ def deploy_to_s3(
         logger.info("[DRY RUN] Would deploy to AWS S3")
         logger.info(f"  Source: {site_dir}")
         logger.info("  Note: S3 bucket must be configured in environment")
-        return {
-            "status": "dry_run",
-            "target": "s3",
-            "site_dir": str(site_dir)
-        }
+        return {"status": "dry_run", "target": "s3", "site_dir": str(site_dir)}
 
     # Check if AWS CLI is available
     try:
-        subprocess.run(
-            ["aws", "--version"],
-            capture_output=True,
-            check=True
-        )
+        subprocess.run(["aws", "--version"], capture_output=True, check=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
-        raise RuntimeError(
-            "AWS CLI not found. Install with: pip install awscli"
-        )
+        raise RuntimeError("AWS CLI not found. Install with: pip install awscli")
 
     # Get S3 bucket from environment
     import os
+
     bucket = os.environ.get("DASHBOARD_S3_BUCKET")
 
     if not bucket:
@@ -386,25 +322,15 @@ def deploy_to_s3(
     logger.info(f"Deploying to S3 bucket: {bucket}")
 
     try:
-        result = subprocess.run(
-            [
-                "aws", "s3", "sync",
-                str(site_dir),
-                f"s3://{bucket}/",
-                "--delete"
-            ],
+        subprocess.run(
+            ["aws", "s3", "sync", str(site_dir), f"s3://{bucket}/", "--delete"],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
 
         logger.info("Deployment successful")
-        return {
-            "status": "success",
-            "target": "s3",
-            "bucket": bucket,
-            "site_dir": str(site_dir)
-        }
+        return {"status": "success", "target": "s3", "bucket": bucket, "site_dir": str(site_dir)}
 
     except subprocess.CalledProcessError as e:
         logger.error(f"Deployment failed: {e.stderr}")

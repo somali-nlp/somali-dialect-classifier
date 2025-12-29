@@ -132,7 +132,9 @@ class TestCLILogging:
 
     def test_bbc_cli_creates_log_file(self, cli_env, capsys):
         """Test that BBC CLI creates log file."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
+        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+            BBCSomaliProcessor,
+        )
 
         # Create processor
         processor = BBCSomaliProcessor()
@@ -159,7 +161,9 @@ class TestCLIDataDirectories:
 
     def test_bbc_creates_partitioned_directories(self, cli_env):
         """Test that BBC processor creates partitioned directories."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
+        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+            BBCSomaliProcessor,
+        )
 
         processor = BBCSomaliProcessor()
 
@@ -188,7 +192,9 @@ class TestCLIErrorHandling:
 
     def test_bbc_handles_missing_staging_gracefully(self, cli_env):
         """Test that BBC processor handles missing staging file gracefully."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
+        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+            BBCSomaliProcessor,
+        )
 
         processor = BBCSomaliProcessor()
 
@@ -205,7 +211,9 @@ class TestCLIOutput:
 
     def test_processors_have_consistent_logging_format(self, cli_env, capsys):
         """Test that both processors use consistent logging."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
+        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+            BBCSomaliProcessor,
+        )
         from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
@@ -265,7 +273,9 @@ class TestCLIIntegration:
 
     def test_bbc_cli_full_pipeline_with_fixture(self, cli_env, bbc_fixture):
         """Test full BBC pipeline with fixture data."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
+        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+            BBCSomaliProcessor,
+        )
 
         processor = BBCSomaliProcessor()
 

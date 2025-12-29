@@ -9,7 +9,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ try:
         DashboardSummary,
         validate_processing_json,
     )
+
     SCHEMA_VALIDATION_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Schema validation not available: {e}")
@@ -38,9 +39,7 @@ except ImportError as e:
 
 
 def consolidate_metrics(
-    metrics_dir: Path,
-    output_path: Path,
-    source_filter: list[str] | None = None
+    metrics_dir: Path, output_path: Path, source_filter: list[str] | None = None
 ) -> Path:
     """
     Consolidate metrics from multiple processing files.
@@ -85,7 +84,7 @@ def consolidate_metrics(
         "count": len(metrics),
         "records": summary["total_records"],
         "sources": summary["sources"],
-        "metrics": metrics
+        "metrics": metrics,
     }
 
     # Validate if schema available
@@ -98,14 +97,14 @@ def consolidate_metrics(
             raise ValueError(f"Schema validation failed: {e}")
 
     # Write consolidated file
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(consolidated_output, f, indent=2)
 
     logger.info(f"Wrote consolidated metrics to: {output_path}")
 
     # Write summary file alongside
     summary_path = output_path.parent / "summary.json"
-    with open(summary_path, 'w', encoding='utf-8') as f:
+    with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
 
     logger.info(f"Wrote summary to: {summary_path}")
@@ -132,7 +131,7 @@ def generate_summary(metrics: list[dict[str, Any]]) -> dict[str, Any]:
             "sources": [],
             "total_runs": 0,
             "last_update": datetime.utcnow().isoformat() + "Z",
-            "source_breakdown": {}
+            "source_breakdown": {},
         }
 
     total_records = sum(m.get("records_written", 0) for m in metrics)
@@ -143,8 +142,7 @@ def generate_summary(metrics: list[dict[str, Any]]) -> dict[str, Any]:
     success_rates = [
         m["http_request_success_rate"]
         for m in metrics
-        if m.get("http_request_success_rate") is not None
-        and m["http_request_success_rate"] > 0
+        if m.get("http_request_success_rate") is not None and m["http_request_success_rate"] > 0
     ]
     avg_success_rate = sum(success_rates) / len(success_rates) if success_rates else 0
 
@@ -162,8 +160,7 @@ def generate_summary(metrics: list[dict[str, Any]]) -> dict[str, Any]:
             if m.get("http_request_success_rate") is not None
         ]
         avg_success = (
-            sum(source_success_rates) / len(source_success_rates)
-            if source_success_rates else 0.0
+            sum(source_success_rates) / len(source_success_rates) if source_success_rates else 0.0
         )
 
         source_stats[source] = {
@@ -171,11 +168,10 @@ def generate_summary(metrics: list[dict[str, Any]]) -> dict[str, Any]:
             "runs": len(source_metrics),
             "avg_success_rate": avg_success,
             "avg_quality_pass_rate": (
-                sum(m.get("quality_pass_rate", 0) for m in source_metrics) /
-                len(source_metrics)
+                sum(m.get("quality_pass_rate", 0) for m in source_metrics) / len(source_metrics)
             ),
             "total_chars": sum(m.get("total_chars", 0) for m in source_metrics),
-            "last_run": max(m.get("timestamp", "") for m in source_metrics)
+            "last_run": max(m.get("timestamp", "") for m in source_metrics),
         }
 
     summary = {
@@ -186,7 +182,7 @@ def generate_summary(metrics: list[dict[str, Any]]) -> dict[str, Any]:
         "sources": sources,
         "total_runs": len(metrics),
         "last_update": datetime.utcnow().isoformat() + "Z",
-        "source_breakdown": source_stats
+        "source_breakdown": source_stats,
     }
 
     # Validate summary if schema available
@@ -204,10 +200,7 @@ def generate_summary(metrics: list[dict[str, Any]]) -> dict[str, Any]:
 # ============================================================================
 
 
-def validate_metrics(
-    metrics_dir: Path,
-    strict: bool = False
-) -> dict[str, Any]:
+def validate_metrics(metrics_dir: Path, strict: bool = False) -> dict[str, Any]:
     """
     Validate metrics files against Phase 3 schema.
 
@@ -234,13 +227,7 @@ def validate_metrics(
 
     if not processing_files:
         logger.warning(f"No *_processing.json files found in {metrics_dir}")
-        return {
-            "total_files": 0,
-            "valid": 0,
-            "errors": 0,
-            "warnings": 0,
-            "files": []
-        }
+        return {"total_files": 0, "valid": 0, "errors": 0, "warnings": 0, "files": []}
 
     results = []
     valid_count = 0
@@ -252,39 +239,27 @@ def validate_metrics(
             data = load_metrics_from_file(file_path)
 
             # Validate against schema
-            validated = validate_processing_json(data)
+            validate_processing_json(data)
 
             # Success
-            results.append({
-                "file": file_path.name,
-                "status": "valid",
-                "message": "Schema validation passed"
-            })
+            results.append(
+                {"file": file_path.name, "status": "valid", "message": "Schema validation passed"}
+            )
             valid_count += 1
 
         except json.JSONDecodeError as e:
-            results.append({
-                "file": file_path.name,
-                "status": "error",
-                "message": f"Invalid JSON: {e}"
-            })
+            results.append(
+                {"file": file_path.name, "status": "error", "message": f"Invalid JSON: {e}"}
+            )
             error_count += 1
 
         except Exception as e:
             # Check if it's a warning-level issue
             if strict or "required" in str(e).lower():
-                results.append({
-                    "file": file_path.name,
-                    "status": "error",
-                    "message": str(e)
-                })
+                results.append({"file": file_path.name, "status": "error", "message": str(e)})
                 error_count += 1
             else:
-                results.append({
-                    "file": file_path.name,
-                    "status": "warning",
-                    "message": str(e)
-                })
+                results.append({"file": file_path.name, "status": "warning", "message": str(e)})
                 warning_count += 1
 
     return {
@@ -292,7 +267,7 @@ def validate_metrics(
         "valid": valid_count,
         "errors": error_count,
         "warnings": warning_count,
-        "files": results
+        "files": results,
     }
 
 
@@ -303,14 +278,12 @@ def validate_metrics(
 
 class AnomalyLevel:
     """Anomaly severity levels."""
+
     WARNING = "warning"
     ERROR = "error"
 
 
-def check_anomalies(
-    metrics_dir: Path,
-    threshold: int = 3
-) -> dict[str, Any]:
+def check_anomalies(metrics_dir: Path, threshold: int = 3) -> dict[str, Any]:
     """
     Check for metric anomalies and outliers.
 
@@ -337,7 +310,7 @@ def check_anomalies(
             "total_anomalies": 0,
             "error_anomalies": 0,
             "warning_anomalies": 0,
-            "anomalies": []
+            "anomalies": [],
         }
 
     all_anomalies = []
@@ -348,14 +321,16 @@ def check_anomalies(
             all_anomalies.extend(file_anomalies)
         except Exception as e:
             logger.error(f"Error checking {file_path.name}: {e}")
-            all_anomalies.append({
-                "file": file_path.name,
-                "source": "unknown",
-                "level": AnomalyLevel.ERROR,
-                "message": f"Failed to check file: {e}",
-                "timestamp": "",
-                "details": {}
-            })
+            all_anomalies.append(
+                {
+                    "file": file_path.name,
+                    "source": "unknown",
+                    "level": AnomalyLevel.ERROR,
+                    "message": f"Failed to check file: {e}",
+                    "timestamp": "",
+                    "details": {},
+                }
+            )
 
     # Count by severity
     error_count = sum(1 for a in all_anomalies if a["level"] == AnomalyLevel.ERROR)
@@ -368,7 +343,7 @@ def check_anomalies(
         "warning_anomalies": warning_count,
         "threshold": threshold,
         "anomalies": all_anomalies,
-        "timestamp": datetime.utcnow().isoformat() + "Z"
+        "timestamp": datetime.utcnow().isoformat() + "Z",
     }
 
 
@@ -403,91 +378,99 @@ def check_file_for_anomalies(metrics_file: Path) -> list[dict[str, Any]]:
 
         # Anomaly Check 1: records_passed_filters > records_received
         if records_passed_filters > records_received:
-            anomalies.append({
-                "file": metrics_file.name,
-                "source": source,
-                "level": AnomalyLevel.ERROR,
-                "message": (
-                    f"METRICS_ANOMALY: records_passed_filters ({records_passed_filters}) "
-                    f"> records_received ({records_received})"
-                ),
-                "timestamp": timestamp,
-                "details": {
-                    "records_received": records_received,
-                    "records_passed_filters": records_passed_filters,
-                    "records_filtered": records_filtered
+            anomalies.append(
+                {
+                    "file": metrics_file.name,
+                    "source": source,
+                    "level": AnomalyLevel.ERROR,
+                    "message": (
+                        f"METRICS_ANOMALY: records_passed_filters ({records_passed_filters}) "
+                        f"> records_received ({records_received})"
+                    ),
+                    "timestamp": timestamp,
+                    "details": {
+                        "records_received": records_received,
+                        "records_passed_filters": records_passed_filters,
+                        "records_filtered": records_filtered,
+                    },
                 }
-            })
+            )
 
         # Anomaly Check 2: quality_pass_rate > 1.0
         if quality_pass_rate > 1.0:
-            anomalies.append({
-                "file": metrics_file.name,
-                "source": source,
-                "level": AnomalyLevel.ERROR,
-                "message": (
-                    f"METRICS_ANOMALY: quality_pass_rate ({quality_pass_rate}) "
-                    f"> 1.0 (impossible percentage)"
-                ),
-                "timestamp": timestamp,
-                "details": {
-                    "quality_pass_rate": quality_pass_rate
+            anomalies.append(
+                {
+                    "file": metrics_file.name,
+                    "source": source,
+                    "level": AnomalyLevel.ERROR,
+                    "message": (
+                        f"METRICS_ANOMALY: quality_pass_rate ({quality_pass_rate}) "
+                        f"> 1.0 (impossible percentage)"
+                    ),
+                    "timestamp": timestamp,
+                    "details": {"quality_pass_rate": quality_pass_rate},
                 }
-            })
+            )
 
         # Anomaly Check 3: records_written < 0
         if records_written < 0:
-            anomalies.append({
-                "file": metrics_file.name,
-                "source": source,
-                "level": AnomalyLevel.ERROR,
-                "message": (
-                    f"METRICS_ANOMALY: records_written ({records_written}) "
-                    f"< 0 (negative record count)"
-                ),
-                "timestamp": timestamp,
-                "details": {
-                    "records_written": records_written
+            anomalies.append(
+                {
+                    "file": metrics_file.name,
+                    "source": source,
+                    "level": AnomalyLevel.ERROR,
+                    "message": (
+                        f"METRICS_ANOMALY: records_written ({records_written}) "
+                        f"< 0 (negative record count)"
+                    ),
+                    "timestamp": timestamp,
+                    "details": {"records_written": records_written},
                 }
-            })
+            )
 
         # Anomaly Check 4: Zero records with non-zero URLs (warning level)
         urls_processed = layered.get("volume", {}).get("urls_processed", 0)
         if urls_processed > 0 and records_written == 0:
-            anomalies.append({
-                "file": metrics_file.name,
-                "source": source,
-                "level": AnomalyLevel.WARNING,
-                "message": (
-                    f"METRICS_WARNING: {urls_processed} URLs processed "
-                    f"but 0 records written (possible quality issue)"
-                ),
-                "timestamp": timestamp,
-                "details": {
-                    "urls_processed": urls_processed,
-                    "records_written": records_written,
-                    "quality_pass_rate": quality_pass_rate
+            anomalies.append(
+                {
+                    "file": metrics_file.name,
+                    "source": source,
+                    "level": AnomalyLevel.WARNING,
+                    "message": (
+                        f"METRICS_WARNING: {urls_processed} URLs processed "
+                        f"but 0 records written (possible quality issue)"
+                    ),
+                    "timestamp": timestamp,
+                    "details": {
+                        "urls_processed": urls_processed,
+                        "records_written": records_written,
+                        "quality_pass_rate": quality_pass_rate,
+                    },
                 }
-            })
+            )
 
     except json.JSONDecodeError as e:
-        anomalies.append({
-            "file": metrics_file.name,
-            "source": "unknown",
-            "level": AnomalyLevel.ERROR,
-            "message": f"JSON_ERROR: Invalid JSON in metrics file: {e}",
-            "timestamp": "",
-            "details": {}
-        })
+        anomalies.append(
+            {
+                "file": metrics_file.name,
+                "source": "unknown",
+                "level": AnomalyLevel.ERROR,
+                "message": f"JSON_ERROR: Invalid JSON in metrics file: {e}",
+                "timestamp": "",
+                "details": {},
+            }
+        )
     except Exception as e:
-        anomalies.append({
-            "file": metrics_file.name,
-            "source": "unknown",
-            "level": AnomalyLevel.ERROR,
-            "message": f"CHECK_ERROR: Failed to check file: {e}",
-            "timestamp": "",
-            "details": {}
-        })
+        anomalies.append(
+            {
+                "file": metrics_file.name,
+                "source": "unknown",
+                "level": AnomalyLevel.ERROR,
+                "message": f"CHECK_ERROR: Failed to check file: {e}",
+                "timestamp": "",
+                "details": {},
+            }
+        )
 
     return anomalies
 
@@ -497,11 +480,7 @@ def check_file_for_anomalies(metrics_file: Path) -> list[dict[str, Any]]:
 # ============================================================================
 
 
-def export_metrics(
-    metrics_dir: Path,
-    output_path: Path,
-    format: str = "json"
-) -> Path:
+def export_metrics(metrics_dir: Path, output_path: Path, format: str = "json") -> Path:
     """
     Export metrics to various formats.
 
@@ -522,10 +501,7 @@ def export_metrics(
 
     supported_formats = ["json", "csv", "parquet"]
     if format not in supported_formats:
-        raise ValueError(
-            f"Unsupported format: {format}. "
-            f"Supported: {', '.join(supported_formats)}"
-        )
+        raise ValueError(f"Unsupported format: {format}. Supported: {', '.join(supported_formats)}")
 
     # Load all metrics
     metrics = load_all_processing_metrics(metrics_dir)
@@ -537,7 +513,7 @@ def export_metrics(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if format == "json":
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(metrics, f, indent=2)
 
     elif format == "csv":
@@ -550,7 +526,7 @@ def export_metrics(
         # Get all unique keys from first metric
         fieldnames = sorted(metrics[0].keys())
 
-        with open(output_path, 'w', newline='', encoding='utf-8') as f:
+        with open(output_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
@@ -569,8 +545,7 @@ def export_metrics(
             import pandas as pd
         except ImportError:
             raise ImportError(
-                "Parquet export requires pandas. "
-                "Install with: pip install pandas pyarrow"
+                "Parquet export requires pandas. Install with: pip install pandas pyarrow"
             )
 
         # Convert to DataFrame

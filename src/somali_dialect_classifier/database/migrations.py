@@ -31,13 +31,16 @@ def check_table_exists(conn, table_name: str) -> bool:
         cursor = conn.cursor()
 
         # Try PostgreSQL query first
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
                 WHERE table_schema = 'public'
                 AND table_name = %s
             )
-        """, (table_name,))
+        """,
+            (table_name,),
+        )
 
         result = cursor.fetchone()
         return result[0] if result else False
@@ -45,10 +48,13 @@ def check_table_exists(conn, table_name: str) -> bool:
     except Exception:
         # Fallback to SQLite query
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT name FROM sqlite_master
                 WHERE type='table' AND name=?
-            """, (table_name,))
+            """,
+                (table_name,),
+            )
 
             return cursor.fetchone() is not None
 
@@ -57,7 +63,9 @@ def check_table_exists(conn, table_name: str) -> bool:
             return False
 
 
-def verify_schema_initialized(conn, required_tables: Optional[list[str]] = None) -> tuple[bool, list[str]]:
+def verify_schema_initialized(
+    conn, required_tables: Optional[list[str]] = None
+) -> tuple[bool, list[str]]:
     """
     Verify that required database tables exist.
 
@@ -80,9 +88,7 @@ def verify_schema_initialized(conn, required_tables: Optional[list[str]] = None)
     all_exist = len(missing_tables) == 0
 
     if not all_exist:
-        logger.warning(
-            f"Database schema incomplete. Missing tables: {', '.join(missing_tables)}"
-        )
+        logger.warning(f"Database schema incomplete. Missing tables: {', '.join(missing_tables)}")
 
     return all_exist, missing_tables
 

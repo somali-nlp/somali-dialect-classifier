@@ -17,7 +17,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from somali_dialect_classifier.ingestion.processors.tiktok_somali_processor import TikTokSomaliProcessor
+from somali_dialect_classifier.ingestion.processors.tiktok_somali_processor import (
+    TikTokSomaliProcessor,
+)
 
 
 class TestTikTokFilterInstrumentation:

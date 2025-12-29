@@ -312,9 +312,9 @@ def validate_metric_compatibility(
         if "pipeline_type" in source:
             pipeline_type = source["pipeline_type"]
         elif "layered_metrics" in source:
-             # Try to infer from layered metrics if possible, or default to unknown
-             # Usually pipeline_type is at root in Phase 3
-             pipeline_type = source.get("_pipeline_type", "unknown")
+            # Try to infer from layered metrics if possible, or default to unknown
+            # Usually pipeline_type is at root in Phase 3
+            pipeline_type = source.get("_pipeline_type", "unknown")
         else:
             pipeline_type = "unknown"
 

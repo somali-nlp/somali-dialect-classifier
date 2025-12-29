@@ -93,6 +93,7 @@ somali-orchestrate = "somali_dialect_classifier.orchestration.flows:main"
 somali-deploy-dashboard = "somali_dialect_classifier.cli.deploy_dashboard:main"
 somali-lock-status = "somali_dialect_classifier.cli.lock_status:lock_status"
 somali-tools = "somali_dialect_classifier.tools.cli:main"
+somali-validate-silver = "somali_dialect_classifier.cli.validate_silver:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/somali_dialect_classifier"]

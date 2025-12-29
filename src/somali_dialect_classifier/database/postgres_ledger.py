@@ -28,7 +28,7 @@ from psycopg2.extras import Json, RealDictCursor
 from psycopg2.pool import ThreadedConnectionPool
 
 from ..ingestion.crawl_ledger import CrawlState, LedgerBackend
-from .migrations import verify_schema_initialized, get_migration_instructions
+from .migrations import get_migration_instructions, verify_schema_initialized
 
 logger = logging.getLogger(__name__)
 

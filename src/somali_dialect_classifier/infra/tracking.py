@@ -1,6 +1,6 @@
-from typing import Any, Optional, Dict
-from pathlib import Path
 import logging
+from pathlib import Path
+from typing import Any, Optional
 
 try:
     import mlflow
@@ -8,6 +8,7 @@ except ImportError:
     mlflow = None
 
 logger = logging.getLogger(__name__)
+
 
 class MLFlowTracker:
     """
@@ -27,7 +28,7 @@ class MLFlowTracker:
             return mlflow.start_run(run_name=run_name)
         return None
 
-    def log_params(self, params: Dict[str, Any]):
+    def log_params(self, params: dict[str, Any]):
         """Log configuration parameters."""
         if mlflow is not None:
             mlflow.log_params(params)
@@ -37,7 +38,7 @@ class MLFlowTracker:
         if mlflow is not None:
             mlflow.log_param(key, value)
 
-    def log_metrics(self, metrics: Dict[str, float], step: Optional[int] = None):
+    def log_metrics(self, metrics: dict[str, float], step: Optional[int] = None):
         """Log operational metrics."""
         if mlflow is not None:
             mlflow.log_metrics(metrics, step=step)
@@ -55,7 +56,7 @@ class MLFlowTracker:
             else:
                 logger.warning(f"Artifact not found: {local_path}")
 
-    def set_tags(self, tags: Dict[str, Any]):
+    def set_tags(self, tags: dict[str, Any]):
         """Log a batch of tags."""
         if mlflow is not None:
             mlflow.set_tags(tags)

@@ -559,9 +559,7 @@ class MetricSnapshot:
                     stats["http_request_success_rate"] = self.urls_fetched / total_attempted
 
                 if self.urls_fetched > 0:
-                    stats["content_extraction_success_rate"] = (
-                        self.urls_fetched / self.urls_fetched
-                    )
+                    stats["content_extraction_success_rate"] = self.urls_fetched / self.urls_fetched
                 else:
                     stats["content_extraction_success_rate"] = 0.0
 
@@ -750,8 +748,6 @@ class MetricSnapshot:
             }
         else:
             return {}
-
-
 
     def _percentile(self, data: list[float], percentile: float) -> float:
         """Calculate percentile value."""
@@ -1078,7 +1074,7 @@ class MetricsCollector:
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         snapshot = self.get_snapshot()
-        stats = snapshot.calculate_statistics()
+        snapshot.calculate_statistics()
 
         # Build export data with schema versioning
         metrics_data = {
@@ -1116,7 +1112,6 @@ class MetricsCollector:
                 metrics_data["_validation_error"] = str(e)
 
         # Add legacy metrics for backward compatibility
-
 
         # Add custom metrics if any
         if self.custom_metrics:

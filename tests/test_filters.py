@@ -9,10 +9,10 @@ from somali_dialect_classifier.quality.filter_functions import (
     create_news_filters,
     create_wikipedia_filters,
     custom_filter,
-    topic_lexicon_enrichment_filter,
     langid_filter,
     min_length_filter,
     namespace_filter,
+    topic_lexicon_enrichment_filter,
 )
 
 
@@ -215,8 +215,9 @@ class TestTopicLexiconEnrichmentFilter:
         """Ensure legacy dialect_heuristic_filter alias has been completely removed."""
         from somali_dialect_classifier.quality import filter_functions as filters
 
-        assert not hasattr(filters, 'dialect_heuristic_filter'), \
+        assert not hasattr(filters, "dialect_heuristic_filter"), (
             "dialect_heuristic_filter alias should be completely removed (Stage 0.1)"
+        )
 
 
 class TestNamespaceFilter:

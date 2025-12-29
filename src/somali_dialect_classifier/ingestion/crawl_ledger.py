@@ -312,9 +312,7 @@ class LedgerBackend(ABC):
         pass
 
     @abstractmethod
-    def get_pipeline_runs_history(
-        self, source: str, limit: int = 10
-    ) -> list[dict[str, Any]]:
+    def get_pipeline_runs_history(self, source: str, limit: int = 10) -> list[dict[str, Any]]:
         """Get recent pipeline runs for a source."""
         pass
 
@@ -370,7 +368,7 @@ class SQLiteLedger(LedgerBackend):
         """Start a new campaign."""
         now = datetime.now(timezone.utc)
         config_json = json.dumps(config) if config else None
-        
+
         with self.transaction() as conn:
             conn.execute(
                 """
@@ -378,7 +376,7 @@ class SQLiteLedger(LedgerBackend):
                 VALUES (?, ?, 'ACTIVE', ?, ?, ?, ?)
                 ON CONFLICT(campaign_id) DO NOTHING
                 """,
-                (campaign_id, name, now, config_json, now, now)
+                (campaign_id, name, now, config_json, now, now),
             )
 
     def complete_campaign(self, campaign_id: str) -> None:
@@ -387,11 +385,11 @@ class SQLiteLedger(LedgerBackend):
         with self.transaction() as conn:
             conn.execute(
                 """
-                UPDATE campaigns 
+                UPDATE campaigns
                 SET status = 'COMPLETED', end_date = ?, updated_at = ?
                 WHERE campaign_id = ?
                 """,
-                (now, now, campaign_id)
+                (now, now, campaign_id),
             )
 
     def __init__(self, db_path: Path, check_same_thread: bool = False):
@@ -587,9 +585,15 @@ class SQLiteLedger(LedgerBackend):
         conn.execute("CREATE INDEX IF NOT EXISTS idx_quota_date ON daily_quotas(date, source)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pipeline_runs_source ON pipeline_runs(source)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pipeline_runs_status ON pipeline_runs(status)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pipeline_runs_start_time ON pipeline_runs(start_time)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pipeline_runs_end_time ON pipeline_runs(end_time)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pipeline_runs_source_status ON pipeline_runs(source, status)")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pipeline_runs_start_time ON pipeline_runs(start_time)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pipeline_runs_end_time ON pipeline_runs(end_time)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pipeline_runs_source_status ON pipeline_runs(source, status)"
+        )
 
     def upsert_url(
         self,
@@ -1210,9 +1214,7 @@ class SQLiteLedger(LedgerBackend):
             return dict(result)
         return None
 
-    def get_pipeline_runs_history(
-        self, source: str, limit: int = 10
-    ) -> list[dict[str, Any]]:
+    def get_pipeline_runs_history(self, source: str, limit: int = 10) -> list[dict[str, Any]]:
         """
         Get recent pipeline runs for a source.
 
@@ -1824,9 +1826,7 @@ class CrawlLedger:
         """
         return self.backend.get_pipeline_run(run_id)
 
-    def get_pipeline_runs_history(
-        self, source: str, limit: int = 10
-    ) -> list[dict[str, Any]]:
+    def get_pipeline_runs_history(self, source: str, limit: int = 10) -> list[dict[str, Any]]:
         """
         Get recent pipeline runs for a source.
 
@@ -1880,6 +1880,7 @@ class CrawlLedger:
             ...     print(f"First run: {first_run.isoformat()}")
         """
         return self.backend.get_first_successful_run(source)
+
     def get_campaign_status(self, campaign_id: str) -> Optional[str]:
         """
         Get status of a campaign.
@@ -1925,8 +1926,6 @@ class CrawlLedger:
             >>> ledger.complete_campaign("campaign_init_001")
         """
         return self.backend.complete_campaign(campaign_id)
-
-
 
     def close(self) -> None:
         """Close ledger connection."""

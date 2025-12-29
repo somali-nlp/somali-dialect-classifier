@@ -124,7 +124,9 @@ class TestBBCIntegration:
             "source_metadata",
             "domain",
             "register",
-            "embedding",  # Enhanced schema fields
+            "embedding",
+            "run_id",  # Provenance fields (v1.0)
+            "schema_version",
         ]
         actual_columns = table.column_names
         assert set(expected_columns) == set(actual_columns)

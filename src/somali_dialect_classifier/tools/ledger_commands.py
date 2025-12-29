@@ -11,13 +11,11 @@ Functions include:
 - Ad-hoc SQL queries
 """
 
-import json
 import logging
 import sqlite3
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 def migrate_ledger_database(
-    ledger_path: Path,
-    migration_name: str | None = None,
-    dry_run: bool = False
+    ledger_path: Path, migration_name: str | None = None, dry_run: bool = False
 ) -> dict[str, Any]:
     """
     Run ledger database migrations.
@@ -66,11 +62,7 @@ def migrate_ledger_database(
 
     if not migration_files:
         logger.info("No migrations found")
-        return {
-            "applied": [],
-            "dry_run": dry_run,
-            "total": 0
-        }
+        return {"applied": [], "dry_run": dry_run, "total": 0}
 
     # Connect to database
     conn = sqlite3.connect(ledger_path)
@@ -106,11 +98,15 @@ def migrate_ledger_database(
             migration_sql = f.read()
 
         if dry_run:
-            applied.append({
-                "migration": migration_name,
-                "status": "would_apply",
-                "sql_preview": migration_sql[:200] + "..." if len(migration_sql) > 200 else migration_sql
-            })
+            applied.append(
+                {
+                    "migration": migration_name,
+                    "status": "would_apply",
+                    "sql_preview": migration_sql[:200] + "..."
+                    if len(migration_sql) > 200
+                    else migration_sql,
+                }
+            )
         else:
             try:
                 # Execute migration
@@ -119,35 +115,29 @@ def migrate_ledger_database(
                 # Record migration
                 conn.execute(
                     "INSERT INTO schema_migrations (migration_name, applied_at) VALUES (?, ?)",
-                    (migration_name, datetime.utcnow().isoformat())
+                    (migration_name, datetime.utcnow().isoformat()),
                 )
                 conn.commit()
 
-                applied.append({
-                    "migration": migration_name,
-                    "status": "applied",
-                    "timestamp": datetime.utcnow().isoformat()
-                })
+                applied.append(
+                    {
+                        "migration": migration_name,
+                        "status": "applied",
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
 
                 logger.info(f"Successfully applied migration: {migration_name}")
 
             except sqlite3.Error as e:
                 conn.rollback()
                 logger.error(f"Failed to apply migration {migration_name}: {e}")
-                applied.append({
-                    "migration": migration_name,
-                    "status": "failed",
-                    "error": str(e)
-                })
+                applied.append({"migration": migration_name, "status": "failed", "error": str(e)})
                 raise
 
     conn.close()
 
-    return {
-        "applied": applied,
-        "dry_run": dry_run,
-        "total": len(applied)
-    }
+    return {"applied": applied, "dry_run": dry_run, "total": len(applied)}
 
 
 # ============================================================================
@@ -156,9 +146,7 @@ def migrate_ledger_database(
 
 
 def clear_stale_locks(
-    lock_dir: Path,
-    max_age_hours: int = 24,
-    force: bool = False
+    lock_dir: Path, max_age_hours: int = 24, force: bool = False
 ) -> dict[str, Any]:
     """
     Clear stale locks in ledger.
@@ -182,12 +170,7 @@ def clear_stale_locks(
 
     if not lock_files:
         logger.info("No lock files found")
-        return {
-            "total_locks": 0,
-            "cleared": 0,
-            "retained": 0,
-            "locks": []
-        }
+        return {"total_locks": 0, "cleared": 0, "retained": 0, "locks": []}
 
     cleared = []
     retained = []
@@ -202,19 +185,18 @@ def clear_stale_locks(
             # Remove lock
             try:
                 lock_file.unlink()
-                cleared.append({
-                    "file": lock_file.name,
-                    "age_hours": round(age_hours, 2),
-                    "removed_at": datetime.now().isoformat()
-                })
+                cleared.append(
+                    {
+                        "file": lock_file.name,
+                        "age_hours": round(age_hours, 2),
+                        "removed_at": datetime.now().isoformat(),
+                    }
+                )
                 logger.info(f"Cleared lock: {lock_file.name} (age: {age_hours:.1f}h)")
             except Exception as e:
                 logger.error(f"Failed to remove lock {lock_file.name}: {e}")
         else:
-            retained.append({
-                "file": lock_file.name,
-                "age_hours": round(age_hours, 2)
-            })
+            retained.append({"file": lock_file.name, "age_hours": round(age_hours, 2)})
 
     return {
         "total_locks": len(lock_files),
@@ -222,10 +204,7 @@ def clear_stale_locks(
         "retained": len(retained),
         "force": force,
         "max_age_hours": max_age_hours,
-        "locks": {
-            "cleared": cleared,
-            "retained": retained
-        }
+        "locks": {"cleared": cleared, "retained": retained},
     }
 
 
@@ -234,10 +213,7 @@ def clear_stale_locks(
 # ============================================================================
 
 
-def get_ledger_status(
-    ledger_path: Path,
-    verbose: bool = False
-) -> dict[str, Any]:
+def get_ledger_status(ledger_path: Path, verbose: bool = False) -> dict[str, Any]:
     """
     Show ledger database status.
 
@@ -305,10 +281,7 @@ def get_ledger_status(
         )
         row = cursor.fetchone()
         if row:
-            recent_activity["last_pipeline_run"] = {
-                "source": row[0],
-                "timestamp": row[1]
-            }
+            recent_activity["last_pipeline_run"] = {"source": row[0], "timestamp": row[1]}
     except sqlite3.OperationalError:
         pass  # Table doesn't exist
 
@@ -319,10 +292,7 @@ def get_ledger_status(
         )
         row = cursor.fetchone()
         if row:
-            recent_activity["last_url_added"] = {
-                "source": row[0],
-                "timestamp": row[1]
-            }
+            recent_activity["last_url_added"] = {"source": row[0], "timestamp": row[1]}
     except sqlite3.OperationalError:
         pass
 
@@ -335,7 +305,7 @@ def get_ledger_status(
         "schema_version": schema_version,
         "tables": tables,
         "recent_activity": recent_activity,
-        "verbose": verbose
+        "verbose": verbose,
     }
 
 
@@ -344,11 +314,7 @@ def get_ledger_status(
 # ============================================================================
 
 
-def query_ledger(
-    ledger_path: Path,
-    sql: str,
-    format: str = "table"
-) -> dict[str, Any]:
+def query_ledger(ledger_path: Path, sql: str, format: str = "table") -> dict[str, Any]:
     """
     Execute ad-hoc ledger queries.
 
@@ -371,10 +337,7 @@ def query_ledger(
     # Security: Only allow SELECT statements
     sql_upper = sql.strip().upper()
     if not sql_upper.startswith("SELECT"):
-        raise ValueError(
-            "Only SELECT queries are allowed. "
-            "For data modifications, use migrations."
-        )
+        raise ValueError("Only SELECT queries are allowed. For data modifications, use migrations.")
 
     conn = sqlite3.connect(ledger_path)
     conn.row_factory = sqlite3.Row
@@ -384,13 +347,7 @@ def query_ledger(
         rows = cursor.fetchall()
 
         if not rows:
-            return {
-                "query": sql,
-                "format": format,
-                "row_count": 0,
-                "columns": [],
-                "rows": []
-            }
+            return {"query": sql, "format": format, "row_count": 0, "columns": [], "rows": []}
 
         # Get column names
         columns = [desc[0] for desc in cursor.description]
@@ -406,7 +363,7 @@ def query_ledger(
             "format": format,
             "row_count": len(rows),
             "columns": columns,
-            "rows": result_rows
+            "rows": result_rows,
         }
 
     except sqlite3.Error as e:

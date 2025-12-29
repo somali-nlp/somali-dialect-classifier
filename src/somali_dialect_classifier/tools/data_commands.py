@@ -12,9 +12,8 @@ Functions include:
 
 import json
 import logging
-import random
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def validate_silver_dataset(
-    silver_path: Path,
-    source_filter: list[str] | None = None,
-    strict: bool = False
+    silver_path: Path, source_filter: list[str] | None = None, strict: bool = False
 ) -> dict[str, Any]:
     """
     Validate silver dataset integrity.
@@ -56,15 +53,12 @@ def validate_silver_dataset(
             "validated_sources": 0,
             "errors": 0,
             "warnings": 0,
-            "sources": []
+            "sources": [],
         }
 
     # Filter by source if specified
     if source_filter:
-        source_dirs = [
-            d for d in source_dirs
-            if d.name.split("=")[1] in source_filter
-        ]
+        source_dirs = [d for d in source_dirs if d.name.split("=")[1] in source_filter]
 
     results = []
     total_errors = 0
@@ -86,14 +80,11 @@ def validate_silver_dataset(
         "errors": total_errors,
         "warnings": total_warnings,
         "strict": strict,
-        "sources": results
+        "sources": results,
     }
 
 
-def validate_source_directory(
-    source_dir: Path,
-    strict: bool = False
-) -> dict[str, Any]:
+def validate_source_directory(source_dir: Path, strict: bool = False) -> dict[str, Any]:
     """
     Validate a single source directory.
 
@@ -112,24 +103,19 @@ def validate_source_directory(
     parquet_files = list(source_dir.rglob("*.parquet"))
 
     if not parquet_files:
-        errors.append({
-            "type": "no_data",
-            "message": "No parquet files found in source directory"
-        })
+        errors.append({"type": "no_data", "message": "No parquet files found in source directory"})
         return {
             "source": source_name,
             "status": "error",
             "errors": len(errors),
             "warnings": len(warnings),
-            "details": {
-                "errors": errors,
-                "warnings": warnings
-            }
+            "details": {"errors": errors, "warnings": warnings},
         }
 
     # Try to load with DuckDB for validation
     try:
         import duckdb
+
         conn = duckdb.connect()
 
         # Load first file for schema check
@@ -137,11 +123,13 @@ def validate_source_directory(
         result = conn.execute(f"SELECT * FROM '{first_file}' LIMIT 1").fetchone()
 
         if not result:
-            warnings.append({
-                "type": "empty_data",
-                "message": "Parquet file exists but contains no records",
-                "file": str(first_file)
-            })
+            warnings.append(
+                {
+                    "type": "empty_data",
+                    "message": "Parquet file exists but contains no records",
+                    "file": str(first_file),
+                }
+            )
 
         # Check for required columns
         df = conn.execute(f"DESCRIBE SELECT * FROM '{first_file}'").fetchall()
@@ -151,22 +139,23 @@ def validate_source_directory(
         missing_columns = [col for col in required_columns if col not in columns]
 
         if missing_columns:
-            errors.append({
-                "type": "schema_error",
-                "message": f"Missing required columns: {', '.join(missing_columns)}",
-                "file": str(first_file)
-            })
+            errors.append(
+                {
+                    "type": "schema_error",
+                    "message": f"Missing required columns: {', '.join(missing_columns)}",
+                    "file": str(first_file),
+                }
+            )
 
     except ImportError:
-        warnings.append({
-            "type": "validation_skipped",
-            "message": "DuckDB not available, skipping detailed validation"
-        })
+        warnings.append(
+            {
+                "type": "validation_skipped",
+                "message": "DuckDB not available, skipping detailed validation",
+            }
+        )
     except Exception as e:
-        errors.append({
-            "type": "validation_error",
-            "message": f"Failed to validate: {e}"
-        })
+        errors.append({"type": "validation_error", "message": f"Failed to validate: {e}"})
 
     # Determine status
     if errors:
@@ -184,10 +173,7 @@ def validate_source_directory(
         "file_count": len(parquet_files),
         "errors": len(errors),
         "warnings": len(warnings),
-        "details": {
-            "errors": errors,
-            "warnings": warnings
-        }
+        "details": {"errors": errors, "warnings": warnings},
     }
 
 
@@ -197,10 +183,7 @@ def validate_source_directory(
 
 
 def export_sample_records(
-    silver_path: Path,
-    output_path: Path,
-    count: int = 10,
-    source: str | None = None
+    silver_path: Path, output_path: Path, count: int = 10, source: str | None = None
 ) -> Path:
     """
     Export sample records for inspection.
@@ -234,6 +217,7 @@ def export_sample_records(
     # Load sample records
     try:
         import duckdb
+
         conn = duckdb.connect()
 
         # Read all parquet files
@@ -267,10 +251,7 @@ def export_sample_records(
         return output_path
 
     except ImportError:
-        raise ImportError(
-            "DuckDB required for sample export. "
-            "Install with: pip install duckdb"
-        )
+        raise ImportError("DuckDB required for sample export. Install with: pip install duckdb")
 
 
 # ============================================================================
@@ -278,10 +259,7 @@ def export_sample_records(
 # ============================================================================
 
 
-def check_data_quality(
-    silver_path: Path,
-    output_path: Path | None = None
-) -> dict[str, Any]:
+def check_data_quality(silver_path: Path, output_path: Path | None = None) -> dict[str, Any]:
     """
     Run quality checks on datasets.
 
@@ -303,13 +281,11 @@ def check_data_quality(
 
     if not parquet_files:
         logger.warning(f"No parquet files found in {silver_path}")
-        return {
-            "total_files": 0,
-            "quality_metrics": {}
-        }
+        return {"total_files": 0, "quality_metrics": {}}
 
     try:
         import duckdb
+
         conn = duckdb.connect()
 
         # Read all parquet files
@@ -353,26 +329,23 @@ def check_data_quality(
                 "min": text_length_stats[0],
                 "max": text_length_stats[1],
                 "avg": round(text_length_stats[2], 2),
-                "median": round(text_length_stats[3], 2)
+                "median": round(text_length_stats[3], 2),
             },
             "duplicates": duplicates,
-            "deduplication_rate": round(duplicates / total_records * 100, 2) if total_records > 0 else 0,
-            "source_breakdown": {
-                row[0]: row[1] for row in source_breakdown
-            }
+            "deduplication_rate": round(duplicates / total_records * 100, 2)
+            if total_records > 0
+            else 0,
+            "source_breakdown": {row[0]: row[1] for row in source_breakdown},
         }
 
         # Write report if output path specified
         if output_path:
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, 'w', encoding='utf-8') as f:
+            with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(quality_metrics, f, indent=2)
             logger.info(f"Wrote quality report to {output_path}")
 
         return quality_metrics
 
     except ImportError:
-        raise ImportError(
-            "DuckDB required for quality checks. "
-            "Install with: pip install duckdb"
-        )
+        raise ImportError("DuckDB required for quality checks. Install with: pip install duckdb")

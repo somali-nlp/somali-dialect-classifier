@@ -20,7 +20,7 @@ import json
 import logging
 import statistics
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +30,14 @@ try:
         ConsolidatedMetric,
         validate_processing_json,
     )
+
     SCHEMA_VALIDATION_AVAILABLE = True
 except ImportError:
     SCHEMA_VALIDATION_AVAILABLE = False
     logger.warning("Schema validation not available. Install with: pip install -e '.[config]'")
 
 
-def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optional[Dict[str, Any]]:
+def extract_consolidated_metric(data: dict[str, Any], source_file: str) -> Optional[dict[str, Any]]:
     """
     Extract consolidated metric from Phase 3 *_processing.json.
 
@@ -66,7 +67,9 @@ def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optio
                 validated = validate_processing_json(data)
                 use_validation = True
             except Exception as validation_error:
-                logger.debug(f"Schema validation failed for {source_file}, using fallback: {validation_error}")
+                logger.debug(
+                    f"Schema validation failed for {source_file}, using fallback: {validation_error}"
+                )
                 use_validation = False
 
         if use_validation and validated:
@@ -111,24 +114,20 @@ def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optio
                 "timestamp": validated.timestamp,
                 "duration_seconds": snapshot.duration_seconds,
                 "pipeline_type": snapshot.pipeline_type,
-
                 # Discovery metrics (from legacy for backward compatibility)
                 "urls_discovered": snapshot.urls_discovered,
                 "urls_fetched": snapshot.urls_fetched,
                 "urls_processed": snapshot.urls_processed,
                 "records_extracted": snapshot.records_extracted,
-
                 # Volume metrics (from layered_metrics.volume)
                 "records_written": volume.records_written,
                 "bytes_downloaded": volume.bytes_downloaded,
                 "total_chars": volume.total_chars,
-
                 # Quality metrics (from statistics)
                 "http_request_success_rate": stats.http_request_success_rate,
                 "content_extraction_success_rate": stats.content_extraction_success_rate,
                 "quality_pass_rate": stats.quality_pass_rate,
                 "deduplication_rate": stats.deduplication_rate,
-
                 # Throughput metrics (from statistics.throughput)
                 "urls_per_second": stats.throughput.urls_per_second,
                 "bytes_per_second": stats.throughput.bytes_per_second,
@@ -151,25 +150,22 @@ def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optio
                 "source": source,
                 "timestamp": data.get("_timestamp") or snapshot.get("timestamp", ""),
                 "duration_seconds": snapshot.get("duration_seconds", 0),
-                "pipeline_type": data.get("_pipeline_type") or snapshot.get("pipeline_type", "unknown"),
-
+                "pipeline_type": data.get("_pipeline_type")
+                or snapshot.get("pipeline_type", "unknown"),
                 # Discovery metrics (from legacy for backward compatibility)
                 "urls_discovered": snapshot.get("urls_discovered", 0),
                 "urls_fetched": snapshot.get("urls_fetched", 0),
                 "urls_processed": snapshot.get("urls_processed", 0),
                 "records_extracted": snapshot.get("records_extracted", 0),
-
                 # Volume metrics (from layered_metrics.volume)
                 "records_written": volume.get("records_written", 0),
                 "bytes_downloaded": volume.get("bytes_downloaded", 0),
                 "total_chars": volume.get("total_chars", 0),
-
                 # Quality metrics (from statistics)
                 "http_request_success_rate": stats.get("http_request_success_rate", 0),
                 "content_extraction_success_rate": stats.get("content_extraction_success_rate", 0),
                 "quality_pass_rate": stats.get("quality_pass_rate", 0),
                 "deduplication_rate": stats.get("deduplication_rate", 0),
-
                 # Throughput metrics (from statistics.throughput)
                 "urls_per_second": stats.get("throughput", {}).get("urls_per_second", 0),
                 "bytes_per_second": stats.get("throughput", {}).get("bytes_per_second", 0),
@@ -206,7 +202,7 @@ def extract_consolidated_metric(data: Dict[str, Any], source_file: str) -> Optio
         return None
 
 
-def load_metrics_from_file(file_path: Path) -> Dict[str, Any]:
+def load_metrics_from_file(file_path: Path) -> dict[str, Any]:
     """
     Load and parse metrics JSON file.
 
@@ -227,11 +223,11 @@ def load_metrics_from_file(file_path: Path) -> Dict[str, Any]:
     if not file_path.exists():
         raise FileNotFoundError(f"Metrics file not found: {file_path}")
 
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, encoding="utf-8") as f:
         return json.load(f)
 
 
-def load_all_processing_metrics(metrics_dir: Path) -> List[Dict[str, Any]]:
+def load_all_processing_metrics(metrics_dir: Path) -> list[dict[str, Any]]:
     """
     Load all *_processing.json files from metrics directory.
 
@@ -279,10 +275,8 @@ def load_all_processing_metrics(metrics_dir: Path) -> List[Dict[str, Any]]:
 
 
 def aggregate_metrics_across_sources(
-    metrics_dir: Path,
-    sources: List[str],
-    metric_field: str
-) -> Dict[str, Optional[float]]:
+    metrics_dir: Path, sources: list[str], metric_field: str
+) -> dict[str, Optional[float]]:
     """
     Aggregate a specific metric field across multiple sources.
 
@@ -335,7 +329,7 @@ def aggregate_metrics_across_sources(
     return result
 
 
-def calculate_metric_statistics(values: List[Optional[float]]) -> Dict[str, float]:
+def calculate_metric_statistics(values: list[Optional[float]]) -> dict[str, float]:
     """
     Calculate statistics for a list of metric values.
 
@@ -354,20 +348,13 @@ def calculate_metric_statistics(values: List[Optional[float]]) -> Dict[str, floa
     valid_values = [v for v in values if v is not None]
 
     if not valid_values:
-        return {
-            'mean': 0.0,
-            'median': 0.0,
-            'min': 0.0,
-            'max': 0.0,
-            'sum': 0.0,
-            'count': 0
-        }
+        return {"mean": 0.0, "median": 0.0, "min": 0.0, "max": 0.0, "sum": 0.0, "count": 0}
 
     return {
-        'mean': statistics.mean(valid_values),
-        'median': statistics.median(valid_values),
-        'min': min(valid_values),
-        'max': max(valid_values),
-        'sum': sum(valid_values),
-        'count': len(valid_values)
+        "mean": statistics.mean(valid_values),
+        "median": statistics.median(valid_values),
+        "min": min(valid_values),
+        "max": max(valid_values),
+        "sum": sum(valid_values),
+        "count": len(valid_values),
     }

@@ -10,14 +10,14 @@ while handling the unique aspects of TikTok comment data (social media, informal
 
 import json
 from collections.abc import Iterator
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+
+from ...quality.text_cleaners import TextCleaningPipeline
 
 # Import our Apify client
 from ..apify_tiktok_client import ApifyTikTokClient
 from ..base_pipeline import BasePipeline, RawRecord
-from ...quality.text_cleaners import TextCleaningPipeline
 
 
 class TikTokSomaliProcessor(BasePipeline):
@@ -218,10 +218,10 @@ class TikTokSomaliProcessor(BasePipeline):
 
         # FIX: Filter out already-processed video URLs from ledger
         processed_video_urls = set()
-        if not self.force and hasattr(self, 'ledger') and self.ledger is not None:
+        if not self.force and hasattr(self, "ledger") and self.ledger is not None:
             try:
                 processed_records = self.ledger.get_processed_urls(source="tiktok-somali")
-                processed_video_urls = {record['url'] for record in processed_records}
+                processed_video_urls = {record["url"] for record in processed_records}
                 self.logger.info(
                     f"Loaded {len(processed_video_urls)} already-processed video URLs from ledger"
                 )
@@ -508,7 +508,10 @@ class TikTokSomaliProcessor(BasePipeline):
             created_at_unix = item.get("createTime", 0)
             if created_at_unix:
                 from datetime import datetime, timezone
-                created_at_iso = datetime.fromtimestamp(created_at_unix, tz=timezone.utc).isoformat()
+
+                created_at_iso = datetime.fromtimestamp(
+                    created_at_unix, tz=timezone.utc
+                ).isoformat()
             else:
                 # Try ISO format from createTimeISO field as fallback
                 created_at_iso = item.get("createTimeISO", "")
