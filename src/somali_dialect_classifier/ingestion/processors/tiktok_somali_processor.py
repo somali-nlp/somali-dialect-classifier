@@ -72,9 +72,11 @@ class TikTokSomaliProcessor(BasePipeline):
         # Initialize deduplication and ledger BEFORE BasePipeline
         from somali_dialect_classifier.ingestion.crawl_ledger import get_ledger
         from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
+        from somali_dialect_classifier.ingestion.pipeline_setup import PipelineSetup
 
-        # IMPORTANT: Only remove EXACT duplicates, not similar comments
-        # User pays for every comment Apify scrapes, so we keep ALL of them
+        # IMPORTANT: TikTok uses exact-match deduplication ONLY (MinHash disabled)
+        # User pays for every comment Apify scrapes, so we keep ALL non-identical comments
+        # Override centralized config for TikTok-specific needs
         dedup_config = DedupConfig(
             hash_fields=["text", "url"],
             enable_minhash=False,  # Disabled: was removing similar (not identical) comments

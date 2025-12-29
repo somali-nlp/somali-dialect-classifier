@@ -20,8 +20,10 @@ All corpora use CC BY 4.0 license and XML format (bz2 compressed).
 import bz2
 import json
 import logging
+import signal
 import xml.etree.ElementTree as ET
 from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -30,15 +32,59 @@ import requests
 from tqdm import tqdm
 
 from ...infra.config import get_config
-from ...infra.http import HTTPSessionFactory
 from ...infra.logging_utils import Timer, set_context
 from ...infra.metrics import MetricsCollector, PipelineType
 from ...quality.text_cleaners import TextCleaningPipeline, create_html_cleaner
 from ..base_pipeline import BasePipeline, RawRecord
 from ..crawl_ledger import get_ledger
-from ..dedup import DedupConfig, DedupEngine
+from ..pipeline_setup import PipelineSetup
 
 logger = logging.getLogger(__name__)
+
+
+class XMLParseTimeoutError(Exception):
+    """Raised when XML parsing exceeds timeout limit."""
+
+    pass
+
+
+@contextmanager
+def parsing_timeout(seconds: int, file_path: Path):
+    """
+    Context manager for XML parsing timeout.
+
+    Args:
+        seconds: Timeout duration in seconds
+        file_path: Path to file being parsed (for error messages)
+
+    Raises:
+        XMLParseTimeoutError: If parsing exceeds timeout
+
+    Example:
+        >>> with parsing_timeout(300, Path("corpus.xml.bz2")):
+        ...     tree = ET.parse(file_handle)
+    """
+
+    def timeout_handler(signum, frame):
+        raise XMLParseTimeoutError(
+            f"XML parsing exceeded {seconds}s timeout for file: {file_path}"
+        )
+
+    # Set alarm signal handler (Unix-only, gracefully degrades on Windows)
+    if hasattr(signal, "SIGALRM"):
+        original_handler = signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(seconds)
+        try:
+            yield
+        finally:
+            signal.alarm(0)  # Disable alarm
+            signal.signal(signal.SIGALRM, original_handler)
+    else:
+        # On Windows, no timeout protection (log warning)
+        logger.warning(
+            f"Timeout protection unavailable on this platform (parsing {file_path})"
+        )
+        yield
 
 
 # Corpus metadata mapping - Complete 66 Somali corpora from Språkbanken
@@ -166,6 +212,10 @@ class SprakbankenSomaliProcessor(BasePipeline):
         force: bool = False,
         batch_size: Optional[int] = 5000,
         run_seed: Optional[str] = None,
+        # Dependency injection parameters
+        ledger: Optional[Any] = None,
+        metrics_factory: Optional[Any] = None,
+        http_session: Optional[requests.Session] = None,
     ):
         """
         Initialize Språkbanken processor.
@@ -174,6 +224,10 @@ class SprakbankenSomaliProcessor(BasePipeline):
             corpus_id: Specific corpus ID or "all" for all 66 corpora
             force: Force reprocessing even if output files exist
             batch_size: Batch size for silver dataset writing
+            run_seed: Seed for run ID generation
+            ledger: Optional CrawlLedger instance (for testing)
+            metrics_factory: Optional callable for creating MetricsCollector instances
+            http_session: Optional HTTP session (for testing)
         """
         self.corpus_id = corpus_id
         # Support comma-separated corpus IDs: "somali-cilmi,somali-cb"
@@ -200,12 +254,22 @@ class SprakbankenSomaliProcessor(BasePipeline):
         # Corpus ID will be stored in source_id field for querying
         source_name = "sprakbanken-somali"
 
-        # Initialize deduplication BEFORE BasePipeline (which generates run_id)
-        dedup_config = DedupConfig(
-            hash_fields=["text"], enable_minhash=True, similarity_threshold=0.85
+        # Initialize deduplication BEFORE BasePipeline (now uses centralized config)
+        self.dedup = PipelineSetup.create_dedup_engine()
+
+        # Dependency injection: use provided ledger or default
+        self.ledger = ledger if ledger is not None else get_ledger()
+
+        # Dependency injection: store metrics factory for lazy initialization
+        self._metrics_factory = metrics_factory or (
+            lambda run_id, source: MetricsCollector(
+                run_id, source, pipeline_type=PipelineType.FILE_PROCESSING
+            )
         )
-        self.dedup = DedupEngine(dedup_config)
-        self.ledger = get_ledger()
+
+        # Dependency injection: store HTTP session for lazy initialization
+        self._http_session = http_session
+
         self.metrics = None  # Will be initialized in download()
 
         # Initialize BasePipeline (this generates run_id and StructuredLogger)
@@ -449,10 +513,8 @@ class SprakbankenSomaliProcessor(BasePipeline):
         # Set context using run_id from base_pipeline
         set_context(run_id=self.run_id, source=self.source, phase="discovery")
 
-        # Initialize metrics with run_id from base_pipeline
-        self.metrics = MetricsCollector(
-            self.run_id, self.source, pipeline_type=PipelineType.FILE_PROCESSING
-        )
+        # Initialize metrics with run_id from base_pipeline (using factory for DI support)
+        self.metrics = self._metrics_factory(self.run_id, self.source)
 
         # Check if manifest exists
         if self.manifest_file.exists() and not self.force:
@@ -592,11 +654,9 @@ class SprakbankenSomaliProcessor(BasePipeline):
         # Set context using run_id from base_pipeline
         set_context(run_id=self.run_id, source=self.source, phase="extract")
 
-        # Resume or create metrics with run_id from base_pipeline
+        # Resume or create metrics with run_id from base_pipeline (using factory for DI support)
         if self.metrics is None:
-            self.metrics = MetricsCollector(
-                self.run_id, self.source, pipeline_type=PipelineType.FILE_PROCESSING
-            )
+            self.metrics = self._metrics_factory(self.run_id, self.source)
 
         if not has_quota:
             self.logger.warning(
@@ -614,8 +674,9 @@ class SprakbankenSomaliProcessor(BasePipeline):
             )
             corpora_to_process = corpora_to_process[:remaining]
         else:
+            quota_display = quota_limit or "unlimited"
             self.logger.info(
-                f"Processing {len(corpora_to_process)} corpora (quota: {quota_limit or 'unlimited'})"
+                f"Processing {len(corpora_to_process)} corpora (quota: {quota_display})"
             )
 
         if self.staging_file.exists() and not self.force:
@@ -717,8 +778,9 @@ class SprakbankenSomaliProcessor(BasePipeline):
         self, corpus_file: Path, corpus_info: dict[str, Any], out_file
     ) -> tuple[int, int]:
         """
-        Extract text from a single corpus XML file.
+        Extract text from a single corpus XML file using streaming parser.
 
+        Uses iterparse for memory-efficient streaming parsing with timeout protection.
         Handles two corpus structures:
         1. Multi-text: Multiple <text> elements (each is a document)
         2. Single-text: One <text> with multiple <page> elements (each page is a document)
@@ -733,57 +795,123 @@ class SprakbankenSomaliProcessor(BasePipeline):
         """
         texts_count = 0
         sentences_count = 0
+        corpus_id = corpus_info["id"]  # Fallback corpus ID
+
+        # Get timeout from config
+        timeout_seconds = self.sprakbanken_config.xml_parse_timeout
 
         try:
-            # Open and parse compressed XML
+            # Open compressed XML file
             with bz2.open(corpus_file, "rt", encoding="utf-8") as f:
-                tree = ET.parse(f)
-                root = tree.getroot()
+                # Apply timeout protection
+                with parsing_timeout(timeout_seconds, corpus_file):
+                    # Use iterparse for streaming (memory-efficient)
+                    context = ET.iterparse(f, events=["start", "end"])
 
-                # Get corpus ID from root element
-                corpus_id = root.get("id", corpus_info["id"])
+                    # Track corpus structure and state
+                    root_elem = None
+                    text_elems = []
+                    current_text = None
+                    text_index = 0
 
-                # ADAPTIVE PARSING: Detect corpus structure
-                text_elems = root.findall(".//text")
+                    for event, elem in context:
+                        # Capture root element to extract corpus ID
+                        if root_elem is None and event == "start" and elem.tag == "corpus":
+                            root_elem = elem
+                            corpus_id = elem.get("id", corpus_info["id"])
 
-                if len(text_elems) == 1:
-                    # Single-text corpus: Check if it has pages
-                    pages = text_elems[0].findall(".//page")
+                        # Process <text> elements when fully parsed
+                        if event == "end" and elem.tag == "text":
+                            text_index += 1
 
-                    if pages:
-                        # Single-text with pages: Treat each page as a document
-                        self.logger.info(f"  Detected single-text corpus with {len(pages)} pages")
-                        text_metadata = self._extract_text_metadata(text_elems[0])
+                            # Store first text element to detect structure
+                            if len(text_elems) == 0:
+                                text_elems.append(elem)
+                                current_text = elem
+                            elif len(text_elems) == 1:
+                                # Second text found - multi-text corpus
+                                self.logger.info("  Detected multi-text corpus (streaming mode)")
 
-                        for page_index, page in enumerate(pages, start=1):
-                            result = self._process_page_as_document(
-                                page, corpus_id, page_index, text_metadata, corpus_info, out_file
+                                # Process first text element
+                                result = self._process_text_element(
+                                    text_elems[0], corpus_id, 1, corpus_info, out_file
+                                )
+                                if result:
+                                    texts_count += 1
+                                    sentences_count += result
+
+                                # Clear first text to free memory
+                                text_elems[0].clear()
+                                text_elems = []
+
+                                # Process current text
+                                result = self._process_text_element(
+                                    elem, corpus_id, text_index, corpus_info, out_file
+                                )
+                                if result:
+                                    texts_count += 1
+                                    sentences_count += result
+
+                                # Clear element to free memory
+                                elem.clear()
+                            else:
+                                # Multi-text corpus - process each text
+                                result = self._process_text_element(
+                                    elem, corpus_id, text_index, corpus_info, out_file
+                                )
+                                if result:
+                                    texts_count += 1
+                                    sentences_count += result
+
+                                # Clear element to free memory
+                                elem.clear()
+
+                    # After parsing completes, check if single-text corpus
+                    if len(text_elems) == 1 and current_text is not None:
+                        pages = current_text.findall(".//page")
+
+                        if pages:
+                            # Single-text with pages
+                            self.logger.info(
+                                f"  Detected single-text corpus with {len(pages)} pages"
+                            )
+                            text_metadata = self._extract_text_metadata(current_text)
+
+                            for page_index, page in enumerate(pages, start=1):
+                                result = self._process_page_as_document(
+                                    page,
+                                    corpus_id,
+                                    page_index,
+                                    text_metadata,
+                                    corpus_info,
+                                    out_file,
+                                )
+                                if result:
+                                    texts_count += 1
+                                    sentences_count += result
+                        else:
+                            # Single-text without pages
+                            result = self._process_text_element(
+                                current_text, corpus_id, 1, corpus_info, out_file
                             )
                             if result:
                                 texts_count += 1
                                 sentences_count += result
-                    else:
-                        # Single-text without pages: Process as one document
-                        result = self._process_text_element(
-                            text_elems[0], corpus_id, 1, corpus_info, out_file
-                        )
-                        if result:
-                            texts_count += 1
-                            sentences_count += result
-                else:
-                    # Multi-text corpus: Process each text as a document
-                    self.logger.info(f"  Detected multi-text corpus with {len(text_elems)} texts")
 
-                    for text_index, text_elem in enumerate(text_elems, start=1):
-                        result = self._process_text_element(
-                            text_elem, corpus_id, text_index, corpus_info, out_file
-                        )
-                        if result:
-                            texts_count += 1
-                            sentences_count += result
+                        # Clear element to free memory
+                        current_text.clear()
 
+        except XMLParseTimeoutError as e:
+            self.logger.error(
+                f"XML parsing timeout ({timeout_seconds}s) for {corpus_file}: {e}"
+            )
+            self.metrics.increment("xml_parse_timeout")
+        except ET.ParseError as e:
+            self.logger.error(f"XML parse error in {corpus_file}: {e}")
+            self.metrics.increment("xml_parse_error")
         except Exception as e:
             self.logger.error(f"Error extracting {corpus_file}: {e}")
+            self.metrics.increment("extraction_error")
 
         return texts_count, sentences_count
 
@@ -1020,13 +1148,18 @@ class SprakbankenSomaliProcessor(BasePipeline):
                 )
 
     def _get_http_session(self) -> requests.Session:
-        """Create HTTP session with retry logic."""
-        return HTTPSessionFactory.create_session(
-            max_retries=5,
-            backoff_factor=0.5,
-            status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "OPTIONS"],
-        )
+        """
+        Get HTTP session with retry logic (lazy initialization).
+
+        Returns:
+            requests.Session instance (injected or default)
+        """
+        if self._http_session is None:
+            self._http_session = PipelineSetup.create_default_http_session(
+                max_retries=5,
+                backoff_factor=0.5,
+            )
+        return self._http_session
 
 
 def list_available_corpora() -> list[str]:

@@ -38,7 +38,7 @@ from ...quality.schema_mappers import get_schema_mapper
 from ...quality.text_cleaners import create_html_cleaner
 from ..base_pipeline import BasePipeline, RawRecord
 from ..crawl_ledger import get_ledger
-from ..dedup import DedupConfig, DedupEngine
+from ..pipeline_setup import PipelineSetup
 
 logger = logging.getLogger(__name__)
 
@@ -140,14 +140,8 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             # Simple format: HuggingFace-Somali_c4
             source = f"HuggingFace-Somali_{dataset_slug}"
 
-        # Initialize deduplication BEFORE BasePipeline (which generates run_id)
-        # PHASE 3: Enable LSH persistence for cross-run near-duplicate detection
-        dedup_config = DedupConfig(
-            hash_fields=["text", "url"],
-            enable_minhash=True,
-            similarity_threshold=0.85,
-        )
-        self.dedup = DedupEngine(dedup_config)
+        # Initialize deduplication BEFORE BasePipeline (now uses centralized config)
+        self.dedup = PipelineSetup.create_dedup_engine()
         self.ledger = get_ledger()
         self.metrics = None  # Will be initialized in download()
 

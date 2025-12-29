@@ -200,6 +200,9 @@ if PYDANTIC_AVAILABLE:
             default=None, description="Maximum number of corpora to process (None = all 23)"
         )
         timeout: int = Field(default=30, description="Request timeout (seconds)")
+        xml_parse_timeout: int = Field(
+            default=300, description="XML parsing timeout for large files (seconds)"
+        )
         min_length_threshold: int = Field(
             default=20, description="Minimum text length for quality filter (tokens)"
         )
@@ -244,6 +247,60 @@ if PYDANTIC_AVAILABLE:
             default=3600, description="Maximum wait time for actor completion (seconds)"
         )
         batch_size: int = Field(default=1000, description="Items per batch when fetching dataset")
+
+    class DedupSettings(BaseSettings):
+        """
+        Deduplication configuration.
+
+        Controls exact and near-duplicate detection across all data sources.
+        Ensures consistent deduplication thresholds and cache sizes.
+
+        Environment Variables:
+            SDC_DEDUP__HASH_FIELDS: Fields to include in hash (default: ["text", "url"])
+            SDC_DEDUP__ENABLE_MINHASH: Enable MinHash near-duplicate detection (default: True)
+            SDC_DEDUP__SIMILARITY_THRESHOLD: Jaccard similarity threshold (default: 0.85)
+            SDC_DEDUP__CACHE_SIZE: LRU cache size for hash storage (default: 100000)
+            SDC_DEDUP__NUM_SHARDS: Number of LSH shards for performance (default: 10)
+
+        Examples:
+            >>> config = DedupSettings()
+            >>> config.similarity_threshold
+            0.85
+            >>> config.cache_size
+            100000
+        """
+
+        model_config = SettingsConfigDict(
+            env_prefix="SDC_DEDUP__",
+            env_file=".env",
+            env_file_encoding="utf-8",
+            extra="ignore",
+        )
+
+        hash_fields: list[str] = Field(
+            default_factory=lambda: ["text", "url"],
+            description="Fields to include in content hash for exact deduplication",
+        )
+        enable_minhash: bool = Field(
+            default=True, description="Enable MinHash-based near-duplicate detection"
+        )
+        similarity_threshold: float = Field(
+            default=0.85,
+            description="Jaccard similarity threshold for near-duplicates (0.0-1.0)",
+            ge=0.0,
+            le=1.0,
+        )
+        cache_size: int = Field(
+            default=100_000,
+            description="Maximum number of hashes to store in LRU cache",
+            ge=1000,
+        )
+        num_shards: int = Field(
+            default=10,
+            description="Number of LSH shards for performance optimization",
+            ge=1,
+            le=100,
+        )
 
     class OrchestrationConfig(BaseSettings):
         """
@@ -399,6 +456,7 @@ if PYDANTIC_AVAILABLE:
         scraping: ScrapingConfig = Field(default_factory=ScrapingConfig)
         logging: LoggingConfig = Field(default_factory=LoggingConfig)
         orchestration: OrchestrationConfig = Field(default_factory=OrchestrationConfig)
+        dedup: DedupSettings = Field(default_factory=DedupSettings)
 
 
 # Fallback dataclass-based configuration (if pydantic not available)
@@ -470,8 +528,23 @@ else:
         batch_size: int = 5000
         max_corpora: Optional[int] = None
         timeout: int = 30
+        xml_parse_timeout: int = 300
         min_length_threshold: int = 20
         langid_confidence_threshold: float = 0.3
+
+    @dataclass
+    class DedupSettings:
+        """
+        Deduplication configuration (fallback).
+
+        Fallback implementation when Pydantic is unavailable.
+        """
+
+        hash_fields: list[str] = field(default_factory=lambda: ["text", "url"])
+        enable_minhash: bool = True
+        similarity_threshold: float = 0.85
+        cache_size: int = 100_000
+        num_shards: int = 10
 
     @dataclass
     class ScrapingConfig:
@@ -531,6 +604,7 @@ else:
         scraping: ScrapingConfig = field(default_factory=ScrapingConfig)
         logging: LoggingConfig = field(default_factory=LoggingConfig)
         orchestration: OrchestrationConfig = field(default_factory=OrchestrationConfig)
+        dedup: DedupSettings = field(default_factory=DedupSettings)
 
 
 # Singleton instance

@@ -6,14 +6,27 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+import requests
+
 from ..infra.config import get_config
 from ..infra.data_manager import DataManager
+from ..infra.http import HTTPSessionFactory
 from ..infra.logging_utils import StructuredLogger
 from ..infra.security import sanitize_source_name
 from ..quality.filter_engine import FilterEngine
 from ..quality.record_builder import RecordBuilder
 from ..schema import CURRENT_SCHEMA_VERSION
 from ..schema.validation_service import ValidationService
+
+# Import dedup module for type hints
+try:
+    from .dedup import DedupConfig, DedupEngine
+
+    DEDUP_AVAILABLE = True
+except ImportError:
+    DEDUP_AVAILABLE = False
+    DedupConfig = None
+    DedupEngine = None
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +159,83 @@ class PipelineSetup:
             return validation_service
 
         return ValidationService()
+
+    @staticmethod
+    def create_dedup_engine(dedup_engine: Optional["DedupEngine"] = None) -> Optional["DedupEngine"]:
+        """
+        Create DedupEngine with centralized configuration.
+
+        Args:
+            dedup_engine: Optional injected DedupEngine
+
+        Returns:
+            DedupEngine instance configured from central config, or None if dedup unavailable
+
+        Example:
+            >>> engine = PipelineSetup.create_dedup_engine()
+            >>> # Uses SDC_DEDUP__* environment variables or defaults
+        """
+        if dedup_engine is not None:
+            return dedup_engine
+
+        if not DEDUP_AVAILABLE:
+            logger.warning("DedupEngine not available (dedup module not imported)")
+            return None
+
+        # Load centralized dedup configuration
+        config = get_config()
+        dedup_settings = config.dedup
+
+        # Create DedupConfig from centralized settings
+        dedup_config = DedupConfig(
+            hash_fields=dedup_settings.hash_fields,
+            enable_minhash=dedup_settings.enable_minhash,
+            similarity_threshold=dedup_settings.similarity_threshold,
+            num_shards=dedup_settings.num_shards,
+        )
+
+        return DedupEngine(dedup_config)
+
+    @staticmethod
+    def create_default_http_session(
+        max_retries: int = 5,
+        backoff_factor: float = 0.5,
+        timeout: int = 30,
+        status_forcelist: Optional[list[int]] = None,
+        allowed_methods: Optional[list[str]] = None,
+    ) -> requests.Session:
+        """
+        Create HTTP session with standard retry configuration.
+
+        Args:
+            max_retries: Maximum retry attempts for failed requests
+            backoff_factor: Exponential backoff multiplier
+            timeout: Request timeout in seconds
+            status_forcelist: HTTP status codes to retry (default: 429, 500, 502, 503, 504)
+            allowed_methods: HTTP methods to retry (default: HEAD, GET, OPTIONS)
+
+        Returns:
+            Configured requests.Session with retry adapter
+
+        Example:
+            >>> session = PipelineSetup.create_default_http_session()
+            >>> # Uses default retry parameters (5 retries, 0.5 backoff)
+
+            >>> session = PipelineSetup.create_default_http_session(max_retries=3, backoff_factor=1.0)
+            >>> # Custom retry configuration for scraping scenarios
+        """
+        if status_forcelist is None:
+            status_forcelist = [429, 500, 502, 503, 504]
+        if allowed_methods is None:
+            allowed_methods = ["HEAD", "GET", "OPTIONS"]
+
+        return HTTPSessionFactory.create_session(
+            max_retries=max_retries,
+            backoff_factor=backoff_factor,
+            status_forcelist=status_forcelist,
+            allowed_methods=allowed_methods,
+            timeout=timeout,
+        )
 
     @staticmethod
     def get_directory_paths(source: str, date_accessed: str) -> tuple[Path, Path, Path]:

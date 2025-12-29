@@ -16,13 +16,12 @@ import requests
 from tqdm import tqdm
 
 from ...infra.config import get_config
-from ...infra.http import HTTPSessionFactory
 from ...infra.logging_utils import Timer, set_context
 from ...infra.metrics import MetricsCollector, PipelineType
 from ...quality.text_cleaners import TextCleaningPipeline, create_wikipedia_cleaner
 from ..base_pipeline import BasePipeline, RawRecord
 from ..crawl_ledger import get_ledger
-from ..dedup import DedupConfig, DedupEngine
+from ..pipeline_setup import PipelineSetup
 
 # Constants for buffer management
 BUFFER_CHUNK_SIZE_MB = 1  # Read 1MB chunks from compressed file
@@ -39,17 +38,47 @@ class WikipediaSomaliProcessor(BasePipeline):
     Wikipedia-specific logic (XML parsing, URL resolution).
     """
 
-    def __init__(self, force: bool = False, run_seed: Optional[str] = None):
+    def __init__(
+        self,
+        force: bool = False,
+        run_seed: Optional[str] = None,
+        # Dependency injection parameters
+        ledger: Optional[Any] = None,
+        metrics_factory: Optional[Any] = None,
+        http_session: Optional[Any] = None,
+    ):
+        """
+        Initialize Wikipedia Somali processor.
+
+        Args:
+            force: Force reprocessing even if output files exist
+            run_seed: Seed for run ID generation
+            ledger: Optional CrawlLedger instance (for testing)
+            metrics_factory: Optional callable for creating MetricsCollector instances
+            http_session: Optional HTTP session (for testing)
+        """
         # Load config FIRST
         config = get_config()
         self.config = config
 
-        # Initialize deduplication BEFORE BasePipeline (which generates run_id)
-        dedup_config = DedupConfig(
-            hash_fields=["text", "url"], enable_minhash=True, similarity_threshold=0.85
+        # Initialize deduplication BEFORE BasePipeline (now uses centralized config)
+        self.dedup = PipelineSetup.create_dedup_engine()
+
+        # Dependency injection: use provided ledger or default
+        self.ledger = ledger if ledger is not None else get_ledger()
+
+        # Dependency injection: store metrics factory for lazy initialization
+        from ...infra.metrics import MetricsCollector, PipelineType
+
+        self._metrics_factory = metrics_factory or (
+            lambda run_id, source: MetricsCollector(
+                run_id, source, pipeline_type=PipelineType.FILE_PROCESSING
+            )
         )
-        self.dedup = DedupEngine(dedup_config)
-        self.ledger = get_ledger()
+
+        # Dependency injection: store HTTP session for lazy initialization
+        self._http_session = http_session
+
         self.metrics = None  # Will be initialized in download()
 
         # Initialize BasePipeline with source name (this generates run_id and StructuredLogger)
@@ -178,10 +207,8 @@ class WikipediaSomaliProcessor(BasePipeline):
         # Set context using run_id from base_pipeline
         set_context(run_id=self.run_id, source="wikipedia-somali", phase="download")
 
-        # Initialize metrics with run_id from base_pipeline
-        self.metrics = MetricsCollector(
-            self.run_id, "Wikipedia-Somali", pipeline_type=PipelineType.FILE_PROCESSING
-        )
+        # Initialize metrics with run_id from base_pipeline (using factory for DI support)
+        self.metrics = self._metrics_factory(self.run_id, "Wikipedia-Somali")
 
         # LEVEL 1: DUMP-LEVEL DEDUPLICATION (HTTP Conditional Requests)
         # Check if dump URL exists in ledger with HTTP metadata (ETag/Last-Modified)
@@ -324,11 +351,9 @@ class WikipediaSomaliProcessor(BasePipeline):
         # Set context for extraction phase using run_id from base_pipeline
         set_context(run_id=self.run_id, source="wikipedia-somali", phase="extract")
 
-        # Resume or create metrics with run_id from base_pipeline
+        # Resume or create metrics with run_id from base_pipeline (using factory for DI support)
         if self.metrics is None:
-            self.metrics = MetricsCollector(
-                self.run_id, "Wikipedia-Somali", pipeline_type=PipelineType.FILE_PROCESSING
-            )
+            self.metrics = self._metrics_factory(self.run_id, "Wikipedia-Somali")
 
         if self.staging_file.exists() and not self.force:
             self.logger.info(f"Staging file already exists: {self.staging_file}")
@@ -557,13 +582,18 @@ class WikipediaSomaliProcessor(BasePipeline):
                 )
 
     def _get_http_session(self) -> requests.Session:
-        """Create a requests session with retry policy for robustness."""
-        return HTTPSessionFactory.create_session(
-            max_retries=5,
-            backoff_factor=0.5,
-            status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "OPTIONS"],
-        )
+        """
+        Get HTTP session with retry logic (lazy initialization).
+
+        Returns:
+            requests.Session instance (injected or default)
+        """
+        if self._http_session is None:
+            self._http_session = PipelineSetup.create_default_http_session(
+                max_retries=5,
+                backoff_factor=0.5,
+            )
+        return self._http_session
 
     def _resolve_dump_url(self, session: requests.Session) -> tuple[str, str]:
         """

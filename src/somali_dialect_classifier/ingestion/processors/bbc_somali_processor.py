@@ -33,14 +33,13 @@ except ImportError:
     aiohttp = None
 
 from ...infra.config import get_config
-from ...infra.http import HTTPSessionFactory
 from ...infra.logging_utils import set_context
 from ...infra.metrics import MetricsCollector, PipelineType, QualityReporter
 from ...infra.rate_limiter import AdaptiveRateLimiter, RateLimitConfig, TimedRequest
 from ...quality.text_cleaners import TextCleaningPipeline, create_html_cleaner
 from ..base_pipeline import BasePipeline, RawRecord
 from ..crawl_ledger import get_ledger
-from ..dedup import DedupConfig, DedupEngine
+from ..pipeline_setup import PipelineSetup
 
 
 class BBCSomaliProcessor(BasePipeline):
@@ -70,11 +69,8 @@ class BBCSomaliProcessor(BasePipeline):
         config = get_config()
         self.config = config
 
-        # Initialize deduplication BEFORE BasePipeline (which generates run_id)
-        dedup_config = DedupConfig(
-            hash_fields=["text", "url"], enable_minhash=True, similarity_threshold=0.85
-        )
-        self.dedup = DedupEngine(dedup_config)
+        # Initialize deduplication BEFORE BasePipeline (now uses centralized config)
+        self.dedup = PipelineSetup.create_dedup_engine()
         self.ledger = get_ledger()
         self.metrics = None  # Will be initialized in download()
 
@@ -1364,9 +1360,7 @@ class BBCSomaliProcessor(BasePipeline):
 
     def _get_http_session(self) -> requests.Session:
         """Create HTTP session with retry logic."""
-        return HTTPSessionFactory.create_session(
+        return PipelineSetup.create_default_http_session(
             max_retries=3,  # Fewer retries for scraping vs downloading dumps
             backoff_factor=1.0,
-            status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "OPTIONS"],
         )
