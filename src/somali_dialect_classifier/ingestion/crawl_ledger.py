@@ -974,9 +974,16 @@ class SQLiteLedger(LedgerBackend):
 
         Returns:
             Dictionary with quota usage stats
+
+        Raises:
+            ValueError: If date format is invalid
         """
         if date is None:
             date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        else:
+            # Validate ISO date format
+            from ..infra.logging_utils import validate_iso_date
+            date = validate_iso_date(date)
 
         result = self.connection.execute(
             """
@@ -1023,9 +1030,16 @@ class SQLiteLedger(LedgerBackend):
 
         Returns:
             Updated quota usage stats
+
+        Raises:
+            ValueError: If date format is invalid
         """
         if date is None:
             date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        else:
+            # Validate ISO date format
+            from ..infra.logging_utils import validate_iso_date
+            date = validate_iso_date(date)
 
         now = datetime.now(timezone.utc)
 
@@ -1061,9 +1075,16 @@ class SQLiteLedger(LedgerBackend):
             items_remaining: Number of items not processed due to quota
             quota_limit: Quota limit that was hit
             date: Date string in YYYY-MM-DD format (None = today UTC)
+
+        Raises:
+            ValueError: If date format is invalid
         """
         if date is None:
             date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        else:
+            # Validate ISO date format
+            from ..infra.logging_utils import validate_iso_date
+            date = validate_iso_date(date)
 
         now = datetime.now(timezone.utc)
 
@@ -1093,12 +1114,19 @@ class SQLiteLedger(LedgerBackend):
 
         Returns:
             Tuple of (has_quota: bool, remaining: int)
+
+        Raises:
+            ValueError: If date format is invalid
         """
         if quota_limit is None:
             return True, -1  # Unlimited
 
         if date is None:
             date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        else:
+            # Validate ISO date format
+            from ..infra.logging_utils import validate_iso_date
+            date = validate_iso_date(date)
 
         usage = self.get_daily_quota_usage(source, date)
         used = usage["records_ingested"]
@@ -1718,11 +1746,15 @@ class CrawlLedger:
         Returns:
             Dictionary with quota usage stats
 
+        Raises:
+            ValueError: If date format is invalid
+
         Example:
             >>> ledger = CrawlLedger()
             >>> usage = ledger.get_daily_quota_usage("bbc")
             >>> print(f"Used {usage['records_ingested']} of {usage['quota_limit']}")
         """
+        # Validation happens in backend
         return self.backend.get_daily_quota_usage(source, date)
 
     def increment_daily_quota(
@@ -1744,11 +1776,15 @@ class CrawlLedger:
         Returns:
             Updated quota usage stats
 
+        Raises:
+            ValueError: If date format is invalid
+
         Example:
             >>> ledger = CrawlLedger()
             >>> usage = ledger.increment_daily_quota("bbc", count=10, quota_limit=350)
             >>> print(f"Quota: {usage['records_ingested']}/{usage['quota_limit']}")
         """
+        # Validation happens in backend
         return self.backend.increment_daily_quota(source, count, quota_limit, date)
 
     def mark_quota_hit(
@@ -1767,10 +1803,14 @@ class CrawlLedger:
             quota_limit: Quota limit that was hit
             date: Date string in YYYY-MM-DD format (None = today UTC)
 
+        Raises:
+            ValueError: If date format is invalid
+
         Example:
             >>> ledger = CrawlLedger()
             >>> ledger.mark_quota_hit("bbc", items_remaining=127, quota_limit=350)
         """
+        # Validation happens in backend
         self.backend.mark_quota_hit(source, items_remaining, quota_limit, date)
 
     def check_quota_available(
@@ -1788,12 +1828,16 @@ class CrawlLedger:
             Tuple of (has_quota: bool, remaining: int)
             remaining is -1 if unlimited
 
+        Raises:
+            ValueError: If date format is invalid
+
         Example:
             >>> ledger = CrawlLedger()
             >>> has_quota, remaining = ledger.check_quota_available("bbc", quota_limit=350)
             >>> if not has_quota:
             ...     print("Daily quota reached!")
         """
+        # Validation happens in backend
         return self.backend.check_quota_available(source, quota_limit, date)
 
     def register_pipeline_run(

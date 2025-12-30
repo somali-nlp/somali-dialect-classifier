@@ -462,6 +462,41 @@ def setup_logging(config_path: Optional[Path] = None, environment: str = "develo
     return logger
 
 
+def validate_iso_date(date_str: str) -> str:
+    """
+    Validate and return ISO 8601 date string (YYYY-MM-DD).
+
+    Args:
+        date_str: Date string to validate
+
+    Returns:
+        Validated date string in YYYY-MM-DD format
+
+    Raises:
+        ValueError: If date_str is not valid ISO 8601 format
+
+    Examples:
+        >>> validate_iso_date("2025-12-30")
+        '2025-12-30'
+        >>> validate_iso_date("2025-13-01")  # Invalid month
+        Traceback (most recent call last):
+        ...
+        ValueError: Invalid ISO date format '2025-13-01': time data '2025-13-01' does not match format '%Y-%m-%d'
+        >>> validate_iso_date("not-a-date")
+        Traceback (most recent call last):
+        ...
+        ValueError: Invalid ISO date format 'not-a-date': time data 'not-a-date' does not match format '%Y-%m-%d'
+    """
+    if not date_str or not isinstance(date_str, str):
+        raise ValueError(f"Invalid ISO date format '{date_str}': date string cannot be empty")
+
+    try:
+        datetime.strptime(date_str, "%Y-%m-%d")
+        return date_str
+    except ValueError as e:
+        raise ValueError(f"Invalid ISO date format '{date_str}': {e}") from e
+
+
 # Example usage
 if __name__ == "__main__":
     # Setup logger

@@ -88,6 +88,95 @@ class BasePipeline(DataProcessor, ABC):
         self.processed_file: Optional[Path] = None
         self.silver_path: Optional[Path] = None
 
+        # Log configuration at startup
+        self._log_configuration()
+
+    def _log_configuration(self) -> None:
+        """
+        Log configuration values at startup with secret redaction.
+
+        Logs all relevant config values at INFO level, ensuring secrets
+        (passwords, tokens, API keys) are properly redacted.
+        """
+        import json
+
+        from ..infra.config import get_config
+        from ..infra.security import redact_secrets
+
+        try:
+            config = get_config()
+
+            # Build configuration dictionary with relevant values
+            config_dict = {
+                "data_dirs": {
+                    "raw": str(config.data.raw_dir),
+                    "staging": str(config.data.staging_dir),
+                    "processed": str(config.data.processed_dir),
+                    "silver": str(config.data.silver_dir),
+                    "metrics": str(config.data.metrics_dir),
+                    "reports": str(config.data.reports_dir),
+                },
+                "scraping": {
+                    "bbc": {
+                        "max_articles": config.scraping.bbc.max_articles,
+                        "min_delay": config.scraping.bbc.min_delay,
+                        "max_delay": config.scraping.bbc.max_delay,
+                        "timeout": config.scraping.bbc.timeout,
+                    },
+                    "wikipedia": {
+                        "batch_size": config.scraping.wikipedia.batch_size,
+                        "max_articles": config.scraping.wikipedia.max_articles,
+                        "timeout": config.scraping.wikipedia.timeout,
+                    },
+                    "huggingface": {
+                        "streaming_batch_size": config.scraping.huggingface.streaming_batch_size,
+                        "max_records": config.scraping.huggingface.max_records,
+                        "min_length_threshold": config.scraping.huggingface.min_length_threshold,
+                    },
+                    "sprakbanken": {
+                        "batch_size": config.scraping.sprakbanken.batch_size,
+                        "max_corpora": config.scraping.sprakbanken.max_corpora,
+                        "timeout": config.scraping.sprakbanken.timeout,
+                    },
+                    "tiktok": {
+                        "apify_api_token": config.scraping.tiktok.apify_api_token,  # Will be redacted
+                        "max_comments_per_video": config.scraping.tiktok.max_comments_per_video,
+                    },
+                },
+                "database": {
+                    "query_timeout": config.database.query_timeout,
+                    "min_connections": config.database.min_connections,
+                    "max_connections": config.database.max_connections,
+                    # Password is NOT included
+                },
+                "logging": {
+                    "level": config.logging.level,
+                    "format": config.logging.format,
+                },
+                "pipeline": {
+                    "source": self.source,
+                    "run_id": self.run_id,
+                    "date_accessed": self.date_accessed,
+                    "batch_size": self.batch_size,
+                    "force": self.force,
+                    "log_frequency": self.log_frequency,
+                },
+            }
+
+            # Redact secrets from configuration
+            redacted_config = redact_secrets(config_dict)
+
+            # Log configuration as formatted JSON
+            self.logger.info("=" * 60)
+            self.logger.info("Pipeline Configuration:")
+            self.logger.info("=" * 60)
+            self.logger.info(json.dumps(redacted_config, indent=2))
+            self.logger.info("=" * 60)
+
+        except Exception as e:
+            # Don't fail pipeline startup if config logging fails
+            self.logger.warning(f"Failed to log configuration: {e}")
+
     def _register_filters(self) -> None:
         """Register quality filters with self.filter_engine. Subclasses override to add filters."""
         pass
