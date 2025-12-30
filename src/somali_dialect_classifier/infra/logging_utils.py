@@ -7,6 +7,7 @@ Provides:
 - Thread-safe context variables
 - Human-readable console output for development
 - Log rotation and compression
+- Secret redaction for security
 """
 
 import json
@@ -21,6 +22,8 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, Union
+
+from somali_dialect_classifier.infra.security import redact_secrets
 
 # Thread-local storage for context
 _context = threading.local()
@@ -52,7 +55,7 @@ class StructuredFormatter(logging.Formatter):
         self.hostname = socket.gethostname() if include_hostname else None
 
     def format(self, record: logging.LogRecord) -> str:
-        """Format log record as JSON."""
+        """Format log record as JSON with secret redaction."""
         # Base log entry
         log_entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -65,15 +68,19 @@ class StructuredFormatter(logging.Formatter):
         if self.hostname:
             log_entry["hostname"] = self.hostname
 
-        # Add context variables
+        # Add context variables (with redaction)
         if self.include_context:
             context = get_context()
             if context:
-                log_entry.update(context)
+                # Redact secrets from context before adding to log
+                redacted_context = redact_secrets(context)
+                log_entry.update(redacted_context)
 
-        # Add extra fields from record
+        # Add extra fields from record (with redaction)
         if hasattr(record, "extra_fields"):
-            log_entry.update(record.extra_fields)
+            # Redact secrets from extra fields before adding to log
+            redacted_extra = redact_secrets(record.extra_fields)
+            log_entry.update(redacted_extra)
 
         # Add exception info if present
         if record.exc_info and self.include_traceback:
@@ -123,15 +130,17 @@ class ColoredFormatter(logging.Formatter):
         self.use_colors = use_colors and sys.stderr.isatty()
 
     def format(self, record: logging.LogRecord) -> str:
-        """Format log record with colors."""
+        """Format log record with colors and secret redaction."""
         if self.use_colors:
             levelname = record.levelname
             record.levelname = f"{self.COLORS.get(levelname, '')}{levelname}{self.COLORS['RESET']}"
 
-        # Add context to message
+        # Add context to message (with redaction)
         context = get_context()
         if context:
-            context_str = " ".join(f"[{k}={v}]" for k, v in context.items())
+            # Redact secrets from context before displaying
+            redacted_context = redact_secrets(context)
+            context_str = " ".join(f"[{k}={v}]" for k, v in redacted_context.items())
             record.msg = f"{context_str} {record.msg}" if context_str else record.msg
 
         formatted = super().format(record)

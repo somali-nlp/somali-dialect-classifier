@@ -53,7 +53,7 @@ class PostgresLedger(LedgerBackend):
         port: int = 5432,
         database: str = "somali_nlp",
         user: str = "somali",
-        password: str = "somali_dev_password",
+        password: str | None = None,
         min_connections: int = 2,
         max_connections: int = 10,
     ):
@@ -65,10 +65,21 @@ class PostgresLedger(LedgerBackend):
             port: PostgreSQL port
             database: Database name
             user: Database user
-            password: Database password
+            password: Database password (required, must be provided via SDC_DB_PASSWORD
+                     or POSTGRES_PASSWORD environment variable)
             min_connections: Minimum connections in pool
             max_connections: Maximum connections in pool
+
+        Raises:
+            ValueError: If password is not provided
         """
+        # SECURITY: Password must be provided via environment variable
+        if password is None:
+            raise ValueError(
+                "Database password is required. "
+                "Set SDC_DB_PASSWORD or POSTGRES_PASSWORD environment variable."
+            )
+
         self.connection_string = (
             f"host={host} port={port} dbname={database} user={user} password={password}"
         )
@@ -244,6 +255,11 @@ class PostgresLedger(LedgerBackend):
         self, source: str, state: CrawlState, limit: Optional[int] = None
     ) -> list[dict[str, Any]]:
         """Get URLs in specific state for a source."""
+        # SECURITY: Validate limit parameter to prevent SQL injection
+        if limit is not None:
+            if not isinstance(limit, int) or limit <= 0:
+                raise ValueError(f"limit must be a positive integer, got: {limit}")
+
         query = """
             SELECT id, url, source, state, text_hash, minhash_signature, silver_id,
                    http_status, etag, last_modified, content_length,
@@ -254,12 +270,15 @@ class PostgresLedger(LedgerBackend):
             ORDER BY discovered_at ASC
         """
 
-        if limit:
-            query += f" LIMIT {limit}"
+        params = [source, state.value]
+
+        if limit is not None:
+            query += " LIMIT %s"
+            params.append(limit)
 
         with self._get_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(query, (source, state.value))
+                cur.execute(query, tuple(params))
                 results = cur.fetchall()
 
         return [dict(row) for row in results]
@@ -491,6 +510,299 @@ class PostgresLedger(LedgerBackend):
             with conn.cursor() as cur:
                 cur.execute(query, ("failed", cutoff))
                 return cur.rowcount
+
+    def get_daily_quota_usage(self, source: str, date: Optional[str] = None) -> dict[str, Any]:
+        """Get daily quota usage for a source."""
+        if date is None:
+            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        query = """
+            SELECT records_ingested, quota_limit, quota_hit, items_remaining
+            FROM daily_quotas
+            WHERE date = %s AND source = %s
+        """
+
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (date, source))
+                result = cur.fetchone()
+
+        if result:
+            return {
+                "date": date,
+                "source": source,
+                "records_ingested": result[0],
+                "quota_limit": result[1],
+                "quota_hit": bool(result[2]),
+                "items_remaining": result[3],
+            }
+        return {
+            "date": date,
+            "source": source,
+            "records_ingested": 0,
+            "quota_limit": None,
+            "quota_hit": False,
+            "items_remaining": None,
+        }
+
+    def increment_daily_quota(
+        self,
+        source: str,
+        count: int = 1,
+        quota_limit: Optional[int] = None,
+        date: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Increment daily quota counter."""
+        if date is None:
+            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        now = datetime.now(timezone.utc)
+
+        query = """
+            INSERT INTO daily_quotas (date, source, records_ingested, quota_limit, updated_at)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (date, source) DO UPDATE SET
+                records_ingested = daily_quotas.records_ingested + EXCLUDED.records_ingested,
+                quota_limit = COALESCE(EXCLUDED.quota_limit, daily_quotas.quota_limit),
+                updated_at = EXCLUDED.updated_at
+        """
+
+        with self.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (date, source, count, quota_limit, now))
+
+        return self.get_daily_quota_usage(source, date)
+
+    def mark_quota_hit(
+        self,
+        source: str,
+        items_remaining: int,
+        quota_limit: int,
+        date: Optional[str] = None,
+    ) -> None:
+        """Mark that daily quota has been reached."""
+        if date is None:
+            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        now = datetime.now(timezone.utc)
+
+        query = """
+            UPDATE daily_quotas SET
+                quota_hit = true,
+                items_remaining = %s,
+                quota_limit = %s,
+                updated_at = %s
+            WHERE date = %s AND source = %s
+        """
+
+        with self.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (items_remaining, quota_limit, now, date, source))
+
+    def check_quota_available(
+        self, source: str, quota_limit: Optional[int] = None, date: Optional[str] = None
+    ) -> tuple[bool, int]:
+        """Check if quota is still available."""
+        if quota_limit is None:
+            return True, -1
+
+        if date is None:
+            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        usage = self.get_daily_quota_usage(source, date)
+        used = usage["records_ingested"]
+        remaining = quota_limit - used
+
+        return remaining > 0, max(0, remaining)
+
+    def register_pipeline_run(
+        self,
+        run_id: str,
+        source: str,
+        pipeline_type: str,
+        config: Optional[dict] = None,
+        git_commit: Optional[str] = None,
+    ) -> None:
+        """Register a new pipeline run."""
+        now = datetime.now(timezone.utc)
+        config_json = Json(config) if config else None
+
+        query = """
+            INSERT INTO pipeline_runs (
+                run_id, source, pipeline_type, start_time, status,
+                config_snapshot, git_commit, created_at, updated_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+
+        with self.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    query,
+                    (run_id, source, pipeline_type, now, "STARTED", config_json, git_commit, now, now),
+                )
+
+    def update_pipeline_run(
+        self,
+        run_id: str,
+        status: Optional[str] = None,
+        records_discovered: Optional[int] = None,
+        records_processed: Optional[int] = None,
+        records_failed: Optional[int] = None,
+        errors: Optional[str] = None,
+        metrics_path: Optional[str] = None,
+        end_time: Optional[datetime] = None,
+    ) -> None:
+        """Update pipeline run with new information."""
+        now = datetime.now(timezone.utc)
+
+        updates = []
+        params = []
+
+        if status is not None:
+            updates.append("status = %s")
+            params.append(status)
+
+        if records_discovered is not None:
+            updates.append("records_discovered = %s")
+            params.append(records_discovered)
+
+        if records_processed is not None:
+            updates.append("records_processed = %s")
+            params.append(records_processed)
+
+        if records_failed is not None:
+            updates.append("records_failed = %s")
+            params.append(records_failed)
+
+        if errors is not None:
+            updates.append("errors = %s")
+            params.append(errors)
+
+        if metrics_path is not None:
+            updates.append("metrics_path = %s")
+            params.append(metrics_path)
+
+        if end_time is not None:
+            updates.append("end_time = %s")
+            params.append(end_time)
+
+        updates.append("updated_at = %s")
+        params.append(now)
+
+        params.append(run_id)
+
+        if updates:
+            query = f"UPDATE pipeline_runs SET {', '.join(updates)} WHERE run_id = %s"
+            with self.transaction() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, params)
+
+    def get_pipeline_run(self, run_id: str) -> Optional[dict]:
+        """Retrieve pipeline run details."""
+        query = "SELECT * FROM pipeline_runs WHERE run_id = %s"
+
+        with self._get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query, (run_id,))
+                result = cur.fetchone()
+
+        if result:
+            return dict(result)
+        return None
+
+    def get_pipeline_runs_history(self, source: str, limit: int = 10) -> list[dict[str, Any]]:
+        """Get recent pipeline runs for a source."""
+        # SECURITY: Validate limit parameter
+        if not isinstance(limit, int) or limit <= 0:
+            raise ValueError(f"limit must be a positive integer, got: {limit}")
+
+        query = """
+            SELECT * FROM pipeline_runs
+            WHERE source = %s
+            ORDER BY start_time DESC
+            LIMIT %s
+        """
+
+        with self._get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query, (source, limit))
+                results = cur.fetchall()
+
+        return [dict(row) for row in results]
+
+    def get_last_successful_run(self, source: str) -> Optional[datetime]:
+        """Get timestamp of last successful pipeline run."""
+        query = """
+            SELECT MAX(end_time) as last_run_time
+            FROM pipeline_runs
+            WHERE source = %s AND status = %s
+        """
+
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (source, "COMPLETED"))
+                result = cur.fetchone()
+
+        if result and result[0]:
+            return result[0]
+        return None
+
+    def get_first_successful_run(self, source: str) -> Optional[datetime]:
+        """Get timestamp of first successful pipeline run."""
+        query = """
+            SELECT MIN(end_time) as first_run_time
+            FROM pipeline_runs
+            WHERE source = %s AND status = %s
+        """
+
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (source, "COMPLETED"))
+                result = cur.fetchone()
+
+        if result and result[0]:
+            return result[0]
+        return None
+
+    def get_campaign_status(self, campaign_id: str) -> Optional[str]:
+        """Get status of a campaign."""
+        query = "SELECT status FROM campaigns WHERE campaign_id = %s"
+
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (campaign_id,))
+                result = cur.fetchone()
+
+        return result[0] if result else None
+
+    def start_campaign(self, campaign_id: str, name: str, config: Optional[dict] = None) -> None:
+        """Start a new campaign."""
+        now = datetime.now(timezone.utc)
+        config_json = Json(config) if config else None
+
+        query = """
+            INSERT INTO campaigns (campaign_id, name, status, start_date, config, created_at, updated_at)
+            VALUES (%s, %s, 'ACTIVE', %s, %s, %s, %s)
+            ON CONFLICT(campaign_id) DO NOTHING
+        """
+
+        with self.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (campaign_id, name, now, config_json, now, now))
+
+    def complete_campaign(self, campaign_id: str) -> None:
+        """Mark a campaign as completed."""
+        now = datetime.now(timezone.utc)
+
+        query = """
+            UPDATE campaigns
+            SET status = 'COMPLETED', end_date = %s, updated_at = %s
+            WHERE campaign_id = %s
+        """
+
+        with self.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (now, now, campaign_id))
 
     def close(self) -> None:
         """Close all connections in pool."""

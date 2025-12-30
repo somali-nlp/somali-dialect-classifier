@@ -706,16 +706,24 @@ class SQLiteLedger(LedgerBackend):
         self, source: str, state: CrawlState, limit: Optional[int] = None
     ) -> list[dict[str, Any]]:
         """Get URLs in specific state."""
+        # SECURITY: Validate limit parameter to prevent SQL injection
+        if limit is not None:
+            if not isinstance(limit, int) or limit <= 0:
+                raise ValueError(f"limit must be a positive integer, got: {limit}")
+
         query = """
             SELECT * FROM crawl_ledger
             WHERE source = ? AND state = ?
             ORDER BY discovered_at ASC
         """
 
-        if limit:
-            query += f" LIMIT {limit}"
+        params = [source, state.value]
 
-        results = self.connection.execute(query, (source, state.value)).fetchall()
+        if limit is not None:
+            query += " LIMIT ?"
+            params.append(limit)
+
+        results = self.connection.execute(query, tuple(params)).fetchall()
         return [dict(row) for row in results]
 
     def mark_url_state(
@@ -1361,8 +1369,9 @@ class CrawlLedger:
                 port = backend_kwargs.get("port", int(os.getenv("POSTGRES_PORT", "5432")))
                 database = backend_kwargs.get("database", os.getenv("POSTGRES_DB", "somali_nlp"))
                 user = backend_kwargs.get("user", os.getenv("POSTGRES_USER", "somali"))
+                # SECURITY: Password must come from environment variable
                 password = backend_kwargs.get(
-                    "password", os.getenv("POSTGRES_PASSWORD", "somali_dev_password")
+                    "password", os.getenv("SDC_DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD")
                 )
 
                 self.backend = PostgresLedger(

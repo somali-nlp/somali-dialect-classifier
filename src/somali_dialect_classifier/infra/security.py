@@ -256,14 +256,24 @@ def validate_file_path(file_path: str, base_dir: Optional[str] = None) -> bool:
         return False
 
 
-def is_safe_url(url: str) -> bool:
+def is_safe_url(
+    url: str, allowed_schemes: set[str] | None = None, allowed_domains: set[str] | None = None
+) -> bool:
     """
-    Validate URL is safe for use in system.
+    Validate URL is safe for use in system (SSRF protection).
 
-    Prevents SSRF attacks by blocking internal/private URLs.
+    Prevents SSRF attacks by blocking:
+    - Unsafe schemes (file://, ftp://, javascript:, data:)
+    - Private IP ranges (RFC 1918)
+    - Loopback addresses (127.0.0.0/8, ::1)
+    - Link-local addresses (169.254.0.0/16)
+    - Multicast addresses
+    - Metadata endpoints (AWS, GCP, Azure)
 
     Args:
         url: URL to validate
+        allowed_schemes: Set of allowed schemes (default: {"http", "https"})
+        allowed_domains: Optional set of allowed domains (e.g., {"bbc.com", "bbc.co.uk"})
 
     Returns:
         True if URL is safe, False otherwise
@@ -275,20 +285,46 @@ def is_safe_url(url: str) -> bool:
         False
         >>> is_safe_url("file:///etc/passwd")
         False
+        >>> is_safe_url("http://169.254.169.254/latest/meta-data/")
+        False
+        >>> is_safe_url("https://bbc.com/article", allowed_domains={"bbc.com"})
+        True
+        >>> is_safe_url("https://evil.com/article", allowed_domains={"bbc.com"})
+        False
     """
+    import ipaddress
     from urllib.parse import urlparse
+
+    if allowed_schemes is None:
+        allowed_schemes = {"http", "https"}
 
     try:
         parsed = urlparse(url)
 
-        # Only allow http/https schemes
-        if parsed.scheme not in ("http", "https"):
+        # Only allow http/https schemes (or custom whitelist)
+        if parsed.scheme not in allowed_schemes:
             return False
 
-        # Block localhost/loopback
+        # Block data: URLs (common in XSS/SSRF)
+        if parsed.scheme == "data":
+            return False
+
+        # Require hostname
         hostname = parsed.hostname
         if not hostname:
             return False
+
+        # Domain whitelist check (if provided)
+        if allowed_domains is not None:
+            domain_match = False
+            for allowed_domain in allowed_domains:
+                # Support both exact match and subdomain match
+                if hostname == allowed_domain or hostname.endswith(f".{allowed_domain}"):
+                    domain_match = True
+                    break
+
+            if not domain_match:
+                return False
 
         # Block localhost variations
         localhost_patterns = [
@@ -296,28 +332,235 @@ def is_safe_url(url: str) -> bool:
             "127.0.0.1",
             "0.0.0.0",
             "::1",
+            "[::]",
+            "[::1]",
         ]
 
         if hostname.lower() in localhost_patterns:
             return False
 
-        # Block private IP ranges (basic check)
-        if hostname.startswith("10."):
+        # Try to parse as IP address for comprehensive checks
+        try:
+            ip = ipaddress.ip_address(hostname)
+
+            # Block loopback addresses (127.0.0.0/8, ::1)
+            if ip.is_loopback:
+                return False
+
+            # Block private IP ranges (RFC 1918)
+            if ip.is_private:
+                return False
+
+            # Block link-local addresses (169.254.0.0/16, fe80::/10)
+            if ip.is_link_local:
+                return False
+
+            # Block multicast addresses
+            if ip.is_multicast:
+                return False
+
+            # Block reserved addresses
+            if ip.is_reserved:
+                return False
+
+            # Block unspecified addresses (0.0.0.0, ::)
+            if ip.is_unspecified:
+                return False
+
+        except ValueError:
+            # Not a direct IP address, continue with domain checks
+            pass
+
+        # Block cloud metadata endpoints (DNS-based)
+        metadata_endpoints = [
+            "metadata.google.internal",  # GCP
+            "169.254.169.254",  # AWS/Azure
+            "metadata.azure.com",  # Azure
+            "consul",  # Consul
+            "kubernetes.default",  # Kubernetes
+        ]
+
+        if hostname.lower() in metadata_endpoints:
             return False
-        if hostname.startswith("192.168."):
-            return False
-        if hostname.startswith("172."):
-            # Check if in 172.16.0.0 - 172.31.255.255 range
-            parts = hostname.split(".")
-            if len(parts) == 4:
-                try:
-                    second_octet = int(parts[1])
-                    if 16 <= second_octet <= 31:
-                        return False
-                except ValueError:
-                    pass
 
         return True
 
     except Exception:
+        # Any parsing error = reject URL
         return False
+
+
+def validate_url_for_source(url: str, source: str, allowed_domains: set[str]) -> tuple[bool, str]:
+    """
+    Validate URL for a specific data source with SSRF protection.
+
+    Combines general SSRF protection with source-specific domain validation.
+
+    Args:
+        url: URL to validate
+        source: Source name (for logging)
+        allowed_domains: Set of allowed domains for this source
+
+    Returns:
+        Tuple of (is_valid, error_message)
+        - (True, "") if valid
+        - (False, error_msg) if invalid
+
+    Examples:
+        >>> validate_url_for_source("https://bbc.com/somali/article", "bbc", {"bbc.com", "bbc.co.uk"})
+        (True, "")
+        >>> validate_url_for_source("http://127.0.0.1/pwned", "bbc", {"bbc.com"})
+        (False, "SSRF attempt detected: loopback address blocked")
+        >>> validate_url_for_source("https://evil.com/article", "bbc", {"bbc.com"})
+        (False, "Domain not allowed for source 'bbc': evil.com")
+    """
+    from urllib.parse import urlparse
+
+    try:
+        # Basic URL validation
+        if not url or not isinstance(url, str):
+            return False, "URL is empty or invalid type"
+
+        # Parse URL
+        try:
+            parsed = urlparse(url)
+        except Exception as e:
+            return False, f"Failed to parse URL: {e}"
+
+        hostname = parsed.hostname
+        if not hostname:
+            return False, "URL missing hostname"
+
+        # General SSRF protection
+        if not is_safe_url(url, allowed_schemes={"http", "https"}):
+            # Determine specific reason for rejection
+            if parsed.scheme not in {"http", "https"}:
+                return False, f"SSRF attempt detected: unsafe scheme '{parsed.scheme}'"
+
+            import ipaddress
+
+            try:
+                ip = ipaddress.ip_address(hostname)
+                if ip.is_loopback:
+                    return False, "SSRF attempt detected: loopback address blocked"
+                if ip.is_private:
+                    return False, "SSRF attempt detected: private IP range blocked"
+                if ip.is_link_local:
+                    return False, "SSRF attempt detected: link-local address blocked"
+            except ValueError:
+                pass
+
+            return False, "SSRF attempt detected: URL blocked by security policy"
+
+        # Domain whitelist validation
+        domain_match = False
+        for allowed_domain in allowed_domains:
+            if hostname == allowed_domain or hostname.endswith(f".{allowed_domain}"):
+                domain_match = True
+                break
+
+        if not domain_match:
+            return (
+                False,
+                f"Domain not allowed for source '{source}': {hostname} "
+                f"(allowed: {', '.join(sorted(allowed_domains))})",
+            )
+
+        return True, ""
+
+    except Exception as e:
+        return False, f"URL validation error: {e}"
+
+
+# Sensitive key patterns for log redaction
+SENSITIVE_KEYS = {
+    "password",
+    "passwd",
+    "pwd",
+    "secret",
+    "token",
+    "api_key",
+    "apikey",
+    "api-key",
+    "access_token",
+    "refresh_token",
+    "auth",
+    "authorization",
+    "apify_api_token",
+    "apify_token",
+    "huggingface_token",
+    "hf_token",
+    "private_key",
+    "client_secret",
+    "bearer",
+    "credential",
+    "credentials",
+}
+
+
+def redact_secrets(data: dict | list | tuple | str | int | float | bool | None) -> dict | list | tuple | str | int | float | bool | None:
+    """
+    Recursively redact sensitive values from data structures.
+
+    Designed for use in logging systems to prevent secret exposure.
+    Handles nested dictionaries, lists, tuples, and primitive types.
+
+    Args:
+        data: Data structure potentially containing secrets
+              (dict, list, tuple, or primitive types)
+
+    Returns:
+        Data structure with secrets masked using mask_secret()
+        Original structure and types preserved
+
+    Examples:
+        >>> redact_secrets({"username": "admin", "password": "secret123"})
+        {'username': 'admin', 'password': '***t123'}
+
+        >>> redact_secrets({"config": {"api_key": "sk_live_abc123"}})
+        {'config': {'api_key': '***c123'}}
+
+        >>> redact_secrets([{"token": "abc"}, {"data": "safe"}])
+        [{'token': '***'}, {'data': 'safe'}]
+
+        >>> redact_secrets("plain string")
+        'plain string'
+    """
+    # Handle None
+    if data is None:
+        return None
+
+    # Handle dictionaries
+    if isinstance(data, dict):
+        redacted = {}
+        for key, value in data.items():
+            # Check if key name indicates sensitive data (case-insensitive)
+            key_lower = key.lower() if isinstance(key, str) else str(key).lower()
+
+            # Check for exact match or partial match in key name
+            is_sensitive = False
+            for sensitive_key in SENSITIVE_KEYS:
+                if sensitive_key in key_lower:
+                    is_sensitive = True
+                    break
+
+            if is_sensitive and isinstance(value, str):
+                # Redact the value using mask_secret
+                redacted[key] = mask_secret(value)
+            else:
+                # Recursively process the value
+                redacted[key] = redact_secrets(value)
+
+        return redacted
+
+    # Handle lists
+    if isinstance(data, list):
+        return [redact_secrets(item) for item in data]
+
+    # Handle tuples (preserve tuple type)
+    if isinstance(data, tuple):
+        return tuple(redact_secrets(item) for item in data)
+
+    # Handle primitive types (str, int, float, bool)
+    # These are returned as-is unless they're dict values (handled above)
+    return data

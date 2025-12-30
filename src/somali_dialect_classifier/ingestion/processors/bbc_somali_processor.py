@@ -188,16 +188,28 @@ class BBCSomaliProcessor(BasePipeline):
         Returns:
             List of article URLs from RSS feeds
         """
+        from ...infra.security import validate_url_for_source
+
         bbc_config = self.config.scraping.bbc
         feeds = bbc_config.rss_feeds
         max_items = bbc_config.max_items_per_feed
         check_frequency_hours = bbc_config.check_frequency_hours
+
+        # BBC domain whitelist for SSRF protection
+        BBC_ALLOWED_DOMAINS = {"bbc.com", "bbc.co.uk"}
 
         article_urls = []
 
         self.logger.info(f"Scraping {len(feeds)} RSS feeds...")
 
         for feed_url in feeds:
+            # Validate RSS feed URL before fetching (SSRF protection)
+            is_valid, error_msg = validate_url_for_source(feed_url, "bbc", BBC_ALLOWED_DOMAINS)
+            if not is_valid:
+                self.logger.warning(f"  ✗ Rejected RSS feed URL: {feed_url} ({error_msg})")
+                self.metrics.increment("urls_rejected_security")
+                continue
+
             # Check throttling
             if not self.ledger.should_fetch_rss(feed_url, min_hours=check_frequency_hours):
                 self.logger.info(f"  ⊘ Skipping RSS feed (throttled): {feed_url}")
@@ -212,7 +224,18 @@ class BBCSomaliProcessor(BasePipeline):
                 items = feed.entries[:max_items] if max_items else feed.entries
                 for entry in items:
                     url = entry.get("link")
-                    if url and "/somali/" in url and "/articles/" in url:
+                    if not url:
+                        continue
+
+                    # Validate article URL before adding (SSRF protection)
+                    is_valid, error_msg = validate_url_for_source(url, "bbc", BBC_ALLOWED_DOMAINS)
+                    if not is_valid:
+                        self.logger.debug(f"  ⊘ Rejected article URL: {url} ({error_msg})")
+                        self.metrics.increment("urls_rejected_security")
+                        continue
+
+                    # Additional BBC-specific checks
+                    if "/somali/" in url and "/articles/" in url:
                         article_urls.append(url)
 
                 # Record fetch
@@ -1092,13 +1115,26 @@ class BBCSomaliProcessor(BasePipeline):
         Returns:
             Set of article URLs found in the page
         """
+        from ...infra.security import validate_url_for_source
+
+        # BBC domain whitelist for SSRF protection
+        BBC_ALLOWED_DOMAINS = {"bbc.com", "bbc.co.uk"}
+
         links = set()
         for link in soup.find_all("a", href=True):
             href = link["href"]
             # BBC Somali articles have /somali/articles/ in URL
             if "/somali/" in href and "/articles/" in href:
                 full_url = f"https://www.bbc.com{href}" if href.startswith("/") else href
-                links.add(full_url)
+
+                # Validate URL before adding (SSRF protection)
+                is_valid, _ = validate_url_for_source(full_url, "bbc", BBC_ALLOWED_DOMAINS)
+                if is_valid:
+                    links.add(full_url)
+                else:
+                    self.logger.debug(f"  ⊘ Rejected link from soup: {full_url}")
+                    self.metrics.increment("urls_rejected_security")
+
         return links
 
     def _scrape_homepage(self, session: requests.Session) -> tuple[set, Optional[BeautifulSoup]]:
