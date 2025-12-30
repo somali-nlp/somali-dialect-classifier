@@ -27,6 +27,13 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+from .disk_utils import (
+    InsufficientDiskSpaceError,
+    check_disk_space,
+    format_bytes,
+    get_available_disk_space,
+)
+
 try:
     import pandas as pd
 
@@ -90,6 +97,65 @@ class DataManager:
         self.paths = DataPaths(base_dir)
         self.paths.ensure_directories()
         self.logger = logging.getLogger(__name__)
+
+    def ensure_disk_space(self, required_bytes: int, path: Path | None = None) -> None:
+        """
+        Ensure sufficient disk space before write operations.
+
+        Checks available disk space and raises error if insufficient.
+        Uses configuration settings for buffer percentage and minimum free space.
+
+        Args:
+            required_bytes: Number of bytes required for operation
+            path: Path where data will be written (defaults to base data directory)
+
+        Raises:
+            InsufficientDiskSpaceError: If insufficient space available
+
+        Example:
+            >>> manager = DataManager("BBC-Somali", "20231115_120000")
+            >>> manager.ensure_disk_space(500 * 1024**2)  # 500MB
+            >>> # Raises error if < 500MB + 10% buffer available
+        """
+        from .config import get_config
+
+        config = get_config()
+
+        # Use specified path or default to base data directory
+        check_path = path if path else self.paths.base
+
+        # Get disk space configuration
+        buffer_pct = config.disk.space_buffer_pct
+        min_free_gb = config.disk.min_free_space_gb
+
+        # Check disk space
+        has_space, error_msg = check_disk_space(
+            required_bytes=required_bytes,
+            path=check_path,
+            buffer_pct=buffer_pct,
+            min_free_gb=min_free_gb,
+        )
+
+        if not has_space:
+            # Log warning before raising
+            self.logger.error(error_msg)
+            available = get_available_disk_space(check_path)
+            raise InsufficientDiskSpaceError(
+                required=required_bytes, available=available, path=check_path
+            )
+
+        # Log space availability if tight (< 20% buffer)
+        available = get_available_disk_space(check_path)
+        buffered_required = int(required_bytes * (1 + buffer_pct))
+        margin = available - buffered_required
+
+        # Warn if space is tight (< 2GB margin)
+        if margin < 2 * (1024**3):
+            margin_gb = margin / (1024**3)
+            self.logger.warning(
+                f"Disk space is tight: {margin_gb:.2f}GB margin at {check_path}. "
+                f"Consider freeing up space."
+            )
 
     def compute_file_checksum(self, filepath: Path, algorithm: str = "sha256") -> str:
         """

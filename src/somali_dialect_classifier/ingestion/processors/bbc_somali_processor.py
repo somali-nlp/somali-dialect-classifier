@@ -40,8 +40,10 @@ from ...quality.text_cleaners import TextCleaningPipeline, create_html_cleaner
 from ..base_pipeline import BasePipeline, RawRecord
 from ..crawl_ledger import get_ledger
 from ..pipeline_setup import PipelineSetup
+from ..processor_registry import register_processor
 
 
+@register_processor("bbc")
 class BBCSomaliProcessor(BasePipeline):
     """
     Processor for scraping, extracting, and cleaning BBC Somali news articles.
@@ -1218,6 +1220,10 @@ class BBCSomaliProcessor(BasePipeline):
 
         Returns:
             Set of article URLs found in sitemap
+
+        Security:
+            - Uses html.parser instead of xml parser to avoid XXE vulnerabilities
+            - Sitemaps are valid HTML and don't require XML-specific features
         """
         article_links = set()
         self.logger.info("Scraping sitemap...")
@@ -1226,7 +1232,9 @@ class BBCSomaliProcessor(BasePipeline):
             response = session.get(f"{self.base_url}/sitemap.xml", headers=self.headers, timeout=30)
             response.raise_for_status()
 
-            soup = BeautifulSoup(response.content, "xml")
+            # Use html.parser instead of xml to avoid XXE vulnerabilities (SEC-MED-002)
+            # Sitemaps are valid HTML and html.parser is XXE-safe by default
+            soup = BeautifulSoup(response.content, "html.parser")
 
             # Extract URLs from sitemap
             for loc in soup.find_all("loc"):

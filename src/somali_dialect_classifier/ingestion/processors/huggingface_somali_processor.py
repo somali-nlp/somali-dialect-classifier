@@ -39,10 +39,12 @@ from ...quality.text_cleaners import create_html_cleaner
 from ..base_pipeline import BasePipeline, RawRecord
 from ..crawl_ledger import get_ledger
 from ..pipeline_setup import PipelineSetup
+from ..processor_registry import register_processor
 
 logger = logging.getLogger(__name__)
 
 
+@register_processor("huggingface")
 class HuggingFaceSomaliProcessor(BasePipeline):
     """
     Streaming processor for HuggingFace datasets.

@@ -15,6 +15,7 @@ from typing import Any, Optional
 
 from ..infra.config import get_config
 from ..infra.data_manager import DataManager
+from ..infra.disk_utils import estimate_required_space
 from ..infra.logging_utils import generate_run_id
 from ..infra.tracking import MLFlowTracker
 from ..quality.filter_engine import FilterEngine
@@ -177,6 +178,35 @@ class BasePipeline(DataProcessor, ABC):
         except Exception as e:
             self.logger.warning(f"Failed to save checkpoint: {e}")
 
+    def _estimate_processing_space(self) -> int:
+        """
+        Estimate required disk space for processing phase.
+
+        Subclasses can override for more accurate estimates.
+        Default: 2x staging file size.
+
+        Returns:
+            Estimated bytes required
+        """
+        if self.staging_file and self.staging_file.exists():
+            staging_size = self.staging_file.stat().st_size
+            return staging_size * 2  # Processed text + silver Parquet
+        # Fallback estimate
+        return estimate_required_space(self.source)
+
+    def _check_disk_space_for_processing(self) -> None:
+        """
+        Check disk space before processing phase.
+
+        Raises:
+            InsufficientDiskSpaceError: If insufficient space
+        """
+        required = self._estimate_processing_space()
+        self.logger.info(
+            f"Checking disk space for processing (estimated: {required / (1024**2):.0f}MB)..."
+        )
+        self.data_manager.ensure_disk_space(required, self.processed_dir)
+
     def process(self) -> Path:
         """Orchestrate processing: extract→clean→filter→build→validate→write. Returns silver Parquet path."""
         if not self.staging_file or not self.staging_file.exists():
@@ -190,6 +220,10 @@ class BasePipeline(DataProcessor, ABC):
                 return self.processed_file
             self.logger.info(f"Force reprocessing: removing {self.processed_file}")
             self.processed_file.unlink()
+
+        # Check disk space before starting processing
+        self._check_disk_space_for_processing()
+
         self.logger.info("\n" + "=" * 60)
         self.logger.info("PHASE 3: Text Processing & Silver Dataset Creation")
         self.logger.info("=" * 60)

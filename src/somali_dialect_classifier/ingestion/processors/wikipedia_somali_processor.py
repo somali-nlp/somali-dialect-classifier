@@ -3,6 +3,10 @@ Wikipedia Somali data processor.
 
 Orchestrates downloading, extracting, and processing Somali Wikipedia dumps.
 Uses BasePipeline for shared orchestration and composable utilities.
+
+Security:
+    - Uses defusedxml for XXE-safe XML parsing (OWASP A05:2021)
+    - Disables external entity processing to prevent XXE attacks
 """
 
 import bz2
@@ -13,6 +17,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import requests
+from defusedxml import ElementTree as ET
 from tqdm import tqdm
 
 from ...infra.config import get_config
@@ -22,6 +27,7 @@ from ...quality.text_cleaners import TextCleaningPipeline, create_wikipedia_clea
 from ..base_pipeline import BasePipeline, RawRecord
 from ..crawl_ledger import get_ledger
 from ..pipeline_setup import PipelineSetup
+from ..processor_registry import register_processor
 
 # Constants for buffer management
 BUFFER_CHUNK_SIZE_MB = 1  # Read 1MB chunks from compressed file
@@ -30,6 +36,7 @@ BUFFER_TRUNCATE_SIZE_MB = 1  # Keep last 1MB when truncating
 LOG_FREQUENCY_PAGES = 1000  # Log extraction progress every N pages
 
 
+@register_processor("wikipedia")
 class WikipediaSomaliProcessor(BasePipeline):
     """
     Processor for downloading, extracting, and cleaning Somali Wikipedia data.

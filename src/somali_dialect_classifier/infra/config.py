@@ -286,6 +286,45 @@ if PYDANTIC_AVAILABLE:
             le=60,
         )
 
+    class DiskConfig(BaseSettings):
+        """
+        Disk space management configuration.
+
+        Prevents data loss from full disk scenarios by enforcing pre-flight
+        space checks before large writes.
+
+        Environment Variables:
+            SDC_DISK__MIN_FREE_SPACE_GB: Minimum free space required (GB)
+            SDC_DISK__SPACE_BUFFER_PCT: Safety buffer percentage (0.0-1.0)
+
+        Examples:
+            >>> config = DiskConfig()
+            >>> config.min_free_space_gb
+            5
+            >>> config.space_buffer_pct
+            0.1
+        """
+
+        model_config = SettingsConfigDict(
+            env_prefix="SDC_DISK__",
+            env_file=".env",
+            env_file_encoding="utf-8",
+            extra="ignore",
+        )
+
+        min_free_space_gb: int = Field(
+            default=5,
+            description="Minimum free disk space to maintain after writes (GB)",
+            ge=1,
+            le=1000,
+        )
+        space_buffer_pct: float = Field(
+            default=0.1,
+            description="Safety buffer percentage for space calculations (0.1 = 10%)",
+            ge=0.0,
+            le=0.5,
+        )
+
     class DedupSettings(BaseSettings):
         """
         Deduplication configuration.
@@ -496,6 +535,7 @@ if PYDANTIC_AVAILABLE:
         orchestration: OrchestrationConfig = Field(default_factory=OrchestrationConfig)
         dedup: DedupSettings = Field(default_factory=DedupSettings)
         http: HTTPConfig = Field(default_factory=HTTPConfig)
+        disk: DiskConfig = Field(default_factory=DiskConfig)
 
 
 # Fallback dataclass-based configuration (if pydantic not available)
@@ -635,6 +675,13 @@ else:
         connect_timeout: int = 10
 
     @dataclass
+    class DiskConfig:
+        """Disk space management configuration (fallback)."""
+
+        min_free_space_gb: int = 5
+        space_buffer_pct: float = 0.1
+
+    @dataclass
     class LoggingConfig:
         """Logging configuration."""
 
@@ -652,6 +699,7 @@ else:
         orchestration: OrchestrationConfig = field(default_factory=OrchestrationConfig)
         dedup: DedupSettings = field(default_factory=DedupSettings)
         http: HTTPConfig = field(default_factory=HTTPConfig)
+        disk: DiskConfig = field(default_factory=DiskConfig)
 
 
 # Singleton instance

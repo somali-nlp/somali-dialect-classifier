@@ -179,7 +179,11 @@ def run_wikipedia_task(force: bool = False, run_seed: Optional[str] = None) -> d
 
     from ..infra.config import get_config
     from ..ingestion.crawl_ledger import CrawlLedger
-    from ..ingestion.processors.wikipedia_somali_processor import WikipediaSomaliProcessor
+    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
+    from ..ingestion.processor_registry import ProcessorRegistry
+
+    # Load processors to trigger registration
+    from ..ingestion import processors  # noqa: F401
 
     logger.info("Starting Wikipedia pipeline...")
 
@@ -234,7 +238,9 @@ def run_wikipedia_task(force: bool = False, run_seed: Optional[str] = None) -> d
         # Run pipeline with lock held
         ledger.update_pipeline_run(run_id=run_id, status="RUNNING")
 
-        processor = WikipediaSomaliProcessor(force=force, run_seed=run_seed)
+        # Use ProcessorRegistry instead of direct import
+        processor_kwargs = get_processor_kwargs("wikipedia", force=force, run_seed=run_seed)
+        processor = ProcessorRegistry.create("wikipedia", **processor_kwargs)
         silver_path = processor.run()
 
         # Get statistics from ledger
@@ -249,8 +255,9 @@ def run_wikipedia_task(force: bool = False, run_seed: Optional[str] = None) -> d
             end_time=datetime.now(timezone.utc),
         )
 
+        source_name = get_processor_source_name("wikipedia")
         return {
-            "source": "Wikipedia-Somali",
+            "source": source_name,
             "status": "success",
             "silver_path": str(silver_path),
             "statistics": stats,
@@ -266,8 +273,9 @@ def run_wikipedia_task(force: bool = False, run_seed: Optional[str] = None) -> d
             end_time=datetime.now(timezone.utc),
         )
 
+        source_name = get_processor_source_name("wikipedia")
         return {
-            "source": "Wikipedia-Somali",
+            "source": source_name,
             "status": "failed",
             "error": str(e),
         }
@@ -292,7 +300,11 @@ def run_bbc_task(
         Dictionary with pipeline results and metrics
     """
     from ..ingestion.crawl_ledger import CrawlLedger
-    from ..ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
+    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
+    from ..ingestion.processor_registry import ProcessorRegistry
+
+    # Load processors to trigger registration
+    from ..ingestion import processors  # noqa: F401
 
     logger.info("Starting BBC pipeline...")
 
@@ -316,22 +328,28 @@ def run_bbc_task(
 
     try:
         # Run pipeline with lock held
-        processor = BBCSomaliProcessor(max_articles=max_articles, force=force, run_seed=run_seed)
+        # Use ProcessorRegistry instead of direct import
+        processor_kwargs = get_processor_kwargs(
+            "bbc", force=force, run_seed=run_seed, max_articles=max_articles
+        )
+        processor = ProcessorRegistry.create("bbc", **processor_kwargs)
         silver_path = processor.run()
 
         # Get statistics from ledger
         stats = processor.ledger.get_statistics("bbc")
 
+        source_name = get_processor_source_name("bbc")
         return {
-            "source": "BBC-Somali",
+            "source": source_name,
             "status": "success",
             "silver_path": str(silver_path),
             "statistics": stats,
         }
     except Exception as e:
         logger.error(f"BBC pipeline failed: {e}")
+        source_name = get_processor_source_name("bbc")
         return {
-            "source": "BBC-Somali",
+            "source": source_name,
             "status": "failed",
             "error": str(e),
         }
@@ -362,7 +380,11 @@ def run_huggingface_task(
         Dictionary with pipeline results and metrics
     """
     from ..ingestion.crawl_ledger import CrawlLedger
-    from ..ingestion.processors.huggingface_somali_processor import HuggingFaceSomaliProcessor
+    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
+    from ..ingestion.processor_registry import ProcessorRegistry
+
+    # Load processors to trigger registration
+    from ..ingestion import processors  # noqa: F401
 
     logger.info(f"Starting HuggingFace pipeline: {dataset_name}...")
 
@@ -390,22 +412,23 @@ def run_huggingface_task(
 
     try:
         # Run pipeline with lock held
-        processor = HuggingFaceSomaliProcessor(
-            dataset_name=dataset_name,
-            dataset_config=dataset_config,
-            url_field="url",  # Required for ledger deduplication
-            max_records=max_records,
+        # Use ProcessorRegistry instead of direct import
+        processor_kwargs = get_processor_kwargs(
+            "huggingface",
             force=force,
             run_seed=run_seed,
+            dataset_name=dataset_name,
+            dataset_config=dataset_config,
+            max_records=max_records,
         )
+        processor = ProcessorRegistry.create("huggingface", **processor_kwargs)
         silver_path = processor.run()
 
         # Get statistics
-        dataset_slug = dataset_name.split("/")[-1]
-        source = f"HuggingFace-Somali_{dataset_slug}"
+        source_name = get_processor_source_name("huggingface", dataset_name=dataset_name)
 
         return {
-            "source": source,
+            "source": source_name,
             "status": "success",
             "silver_path": str(silver_path),
             "dataset_name": dataset_name,
@@ -413,8 +436,9 @@ def run_huggingface_task(
         }
     except Exception as e:
         logger.error(f"HuggingFace pipeline failed: {e}")
+        source_name = get_processor_source_name("huggingface", dataset_name=dataset_name)
         return {
-            "source": f"HuggingFace-{dataset_name}",
+            "source": source_name,
             "status": "failed",
             "error": str(e),
         }
@@ -439,7 +463,11 @@ def run_sprakbanken_task(
         Dictionary with pipeline results and metrics
     """
     from ..ingestion.crawl_ledger import CrawlLedger
-    from ..ingestion.processors.sprakbanken_somali_processor import SprakbankenSomaliProcessor
+    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
+    from ..ingestion.processor_registry import ProcessorRegistry
+
+    # Load processors to trigger registration
+    from ..ingestion import processors  # noqa: F401
 
     logger.info(f"Starting Språkbanken pipeline: {corpus_id}...")
 
@@ -467,22 +495,27 @@ def run_sprakbanken_task(
 
     try:
         # Run pipeline with lock held
-        processor = SprakbankenSomaliProcessor(corpus_id=corpus_id, force=force, run_seed=run_seed)
+        # Use ProcessorRegistry instead of direct import
+        processor_kwargs = get_processor_kwargs(
+            "sprakbanken", force=force, run_seed=run_seed, corpus_id=corpus_id
+        )
+        processor = ProcessorRegistry.create("sprakbanken", **processor_kwargs)
         silver_path = processor.run()
 
         # Get statistics
-        source = f"Sprakbanken-Somali-{corpus_id}"
+        source_name = get_processor_source_name("sprakbanken", corpus_id=corpus_id)
 
         return {
-            "source": source,
+            "source": source_name,
             "status": "success",
             "silver_path": str(silver_path),
             "corpus_id": corpus_id,
         }
     except Exception as e:
         logger.error(f"Språkbanken pipeline failed: {e}")
+        source_name = get_processor_source_name("sprakbanken", corpus_id=corpus_id)
         return {
-            "source": f"Sprakbanken-Somali-{corpus_id}",
+            "source": source_name,
             "status": "failed",
             "error": str(e),
         }
@@ -513,7 +546,11 @@ def run_tiktok_task(
         Dictionary with pipeline results and metrics
     """
     from ..ingestion.crawl_ledger import CrawlLedger
-    from ..ingestion.processors.tiktok_somali_processor import TikTokSomaliProcessor
+    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
+    from ..ingestion.processor_registry import ProcessorRegistry
+
+    # Load processors to trigger registration
+    from ..ingestion import processors  # noqa: F401
 
     logger.info(f"Starting TikTok pipeline for {len(video_urls)} videos...")
 
@@ -537,28 +574,32 @@ def run_tiktok_task(
 
     try:
         # Run pipeline with lock held
-        processor = TikTokSomaliProcessor(
-            apify_api_token=apify_api_token,
-            apify_user_id=apify_user_id,
-            video_urls=video_urls,
+        # Use ProcessorRegistry instead of direct import
+        processor_kwargs = get_processor_kwargs(
+            "tiktok",
             force=force,
             run_seed=run_seed,
+            video_urls=video_urls,
+            apify_api_token=apify_api_token,
+            apify_user_id=apify_user_id,
         )
+        processor = ProcessorRegistry.create("tiktok", **processor_kwargs)
         silver_path = processor.run()
 
         # Get statistics
-        source = "TikTok-Somali"
+        source_name = get_processor_source_name("tiktok")
 
         return {
-            "source": source,
+            "source": source_name,
             "status": "success",
             "silver_path": str(silver_path),
             "num_videos": len(video_urls),
         }
     except Exception as e:
         logger.error(f"TikTok pipeline failed: {e}")
+        source_name = get_processor_source_name("tiktok")
         return {
-            "source": "TikTok-Somali",
+            "source": source_name,
             "status": "failed",
             "error": str(e),
         }

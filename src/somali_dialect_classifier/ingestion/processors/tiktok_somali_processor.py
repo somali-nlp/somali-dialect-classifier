@@ -18,8 +18,10 @@ from ...quality.text_cleaners import TextCleaningPipeline
 # Import our Apify client
 from ..apify_tiktok_client import ApifyTikTokClient
 from ..base_pipeline import BasePipeline, RawRecord
+from ..processor_registry import register_processor
 
 
+@register_processor("tiktok")
 class TikTokSomaliProcessor(BasePipeline):
     """
     Processor for scraping and processing TikTok Somali comments via Apify.

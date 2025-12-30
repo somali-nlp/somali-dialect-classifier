@@ -15,20 +15,25 @@ Corpora domains:
 - Immigrant: Diaspora content from Canada
 
 All corpora use CC BY 4.0 license and XML format (bz2 compressed).
+
+Security:
+    - Uses defusedxml for XXE-safe XML parsing (OWASP A05:2021)
+    - Disables external entity processing to prevent XXE attacks
 """
 
 import bz2
 import json
 import logging
 import signal
-import xml.etree.ElementTree as ET
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+from xml.etree.ElementTree import Element
 
 import requests
+from defusedxml import ElementTree as ET
 from tqdm import tqdm
 
 from ...infra.config import get_config
@@ -38,6 +43,7 @@ from ...quality.text_cleaners import TextCleaningPipeline, create_html_cleaner
 from ..base_pipeline import BasePipeline, RawRecord
 from ..crawl_ledger import get_ledger
 from ..pipeline_setup import PipelineSetup
+from ..processor_registry import register_processor
 
 logger = logging.getLogger(__name__)
 
@@ -198,6 +204,7 @@ CORPUS_INFO = {
 }
 
 
+@register_processor("sprakbanken")
 class SprakbankenSomaliProcessor(BasePipeline):
     """
     Processor for Språkbanken Somali corpora.
@@ -917,7 +924,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
     def _process_page_as_document(
         self,
-        page_elem: ET.Element,
+        page_elem: Element,
         corpus_id: str,
         page_index: int,
         text_metadata: dict[str, Any],
@@ -1004,7 +1011,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
     def _process_text_element(
         self,
-        text_elem: ET.Element,
+        text_elem: Element,
         corpus_id: str,
         text_index: int,
         corpus_info: dict[str, Any],
@@ -1081,7 +1088,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
             return None
 
-    def _extract_text_metadata(self, text_elem: ET.Element) -> dict[str, Any]:
+    def _extract_text_metadata(self, text_elem: Element) -> dict[str, Any]:
         """Extract metadata from text element."""
         metadata = {}
 
@@ -1092,7 +1099,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
 
         return metadata
 
-    def _extract_sentence_text(self, sentence_elem: ET.Element) -> str:
+    def _extract_sentence_text(self, sentence_elem: Element) -> str:
         """
         Extract text from sentence element.
 
