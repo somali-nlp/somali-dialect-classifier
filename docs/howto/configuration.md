@@ -217,6 +217,53 @@ SDC_LOGGING__LOG_DIR=/var/log/somali-dialect-classifier
 SDC_LOGGING__FORMAT="%(asctime)s - %(message)s"
 ```
 
+### Deduplication Configuration
+
+Configure deduplication behavior with centralized settings:
+
+```bash
+# Similarity threshold for near-duplicate detection (0.0-1.0)
+SDC_DEDUP__SIMILARITY_THRESHOLD=0.85
+
+# Maximum cache size for hash storage (default: 100,000)
+SDC_DEDUP__CACHE_SIZE=100000
+
+# Enable MinHash for near-duplicate detection
+SDC_DEDUP__ENABLE_MINHASH=true
+
+# Number of MinHash shards for parallel processing
+SDC_DEDUP__NUM_SHARDS=10
+```
+
+**Memory Management:**
+- `DEDUP_CACHE_SIZE`: Controls memory usage (legacy, prefer SDC_DEDUP__CACHE_SIZE)
+- Default 100k entries ≈ 14MB memory
+- Increase for large runs, decrease for memory-constrained environments
+
+**Performance Impact:**
+- 1M documents: 200MB → 14MB (93% reduction with bounded cache)
+- May miss duplicates after cache eviction (acceptable tradeoff)
+- No false positives guaranteed
+
+See [Memory Optimization Guide](memory-optimization.md) for details.
+
+### Språkbanken Configuration
+
+```bash
+# XML parsing timeout in seconds (default: 300)
+SDC_SCRAPING__SPRAKBANKEN__XML_PARSE_TIMEOUT=300
+```
+
+**Performance Notes:**
+- Streaming XML parser uses O(1) memory regardless of file size
+- Timeout prevents hanging on malformed/large XML files
+- Adjust timeout for very large corpus files (>1GB)
+
+**Memory Optimization:**
+- Språkbanken processor uses streaming XML parser
+- Memory usage: O(1) bounded (~4MB) vs O(n) unbounded
+- Before: 500MB for large files → After: 4MB (99% reduction)
+
 ### OrchestrationConfig (New in Phase B)
 
 Controls pipeline orchestration behavior including refresh cadences and daily quotas.

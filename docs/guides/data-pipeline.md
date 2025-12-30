@@ -554,6 +554,106 @@ data/processed/silver/
 
 ---
 
+## Provenance Tracking
+
+Every silver record includes provenance metadata for lineage tracking:
+
+### Provenance Fields
+
+- **`run_id`**: Unique identifier linking record to pipeline run
+- **`schema_version`**: Contract version (currently "1.0")
+- **`source`**: Data source (e.g., "Wikipedia-Somali", "BBC-Somali")
+- **`date_accessed`**: Collection timestamp
+
+### Querying by Provenance
+
+```python
+import pyarrow.parquet as pq
+
+# Read silver dataset
+table = pq.read_table("data/processed/silver/")
+df = table.to_pandas()
+
+# Query by run_id
+run_records = df[df['run_id'] == 'abc123']
+print(f"Records from run abc123: {len(run_records)}")
+
+# Query by schema version
+v1_records = df[df['schema_version'] == '1.0']
+print(f"Version 1.0 records: {len(v1_records)}")
+
+# Query by source and date
+recent_wiki = df[
+    (df['source'] == 'Wikipedia-Somali') &
+    (df['date_accessed'] >= '2025-12-01')
+]
+```
+
+### Provenance Benefits
+
+1. **Reproducibility**: Trace any record back to specific pipeline run
+2. **Debugging**: Identify problematic runs quickly
+3. **Auditing**: Track data lineage for compliance
+4. **Rollback**: Remove records from specific runs if needed
+
+See [Contract Validation Guide](../howto/contract-validation.md) for schema details.
+
+---
+
+## Crash Recovery
+
+The pipeline automatically saves checkpoints for crash recovery.
+
+### Automatic Checkpointing
+
+- **Frequency**: Every 1000 records processed
+- **Location**: `data/checkpoints/{source}/`
+- **Format**: JSON with offset and timestamp
+
+### How It Works
+
+```python
+# Pipeline saves checkpoint automatically
+{
+    "last_offset": 5000,
+    "timestamp": "2025-12-30T10:30:00Z",
+    "processed_count": 5000,
+    "run_id": "abc123"
+}
+```
+
+On next run, pipeline:
+1. Checks for existing checkpoint
+2. Resumes from last offset if found
+3. Continues processing from where it stopped
+
+### Manual Recovery
+
+```bash
+# Resume automatically (detects checkpoint)
+wikisom-download
+
+# Force clean start (ignore checkpoints)
+wikisom-download --force
+```
+
+### Checkpoint Management
+
+```bash
+# View checkpoints
+ls data/checkpoints/wikipedia-somali/
+
+# Remove checkpoint to restart
+rm data/checkpoints/wikipedia-somali/checkpoint_*.json
+
+# Force reprocess (bypasses checkpoint)
+wikisom-download --force
+```
+
+See [Crash Recovery Guide](../howto/crash-recovery.md) for comprehensive documentation.
+
+---
+
 ## Quality Filters
 
 All pipelines use pluggable filters for data quality:

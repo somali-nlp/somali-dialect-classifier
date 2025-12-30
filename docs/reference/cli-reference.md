@@ -463,6 +463,57 @@ somali-tools data validate-silver --strict
 
 ---
 
+### somali-validate-silver
+
+Validate silver dataset against ingestion output contract.
+
+**Usage:**
+```bash
+somali-validate-silver [OPTIONS] SILVER_DIR
+```
+
+**Arguments:**
+| Argument | Type | Description |
+|----------|------|-------------|
+| `SILVER_DIR` | Path | Path to silver dataset directory (required) |
+
+**Options:**
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--source` | `-s` | String | (none) | Filter by specific source (e.g., Wikipedia-Somali) |
+| `--verbose` | `-v` | Boolean | False | Show detailed validation errors |
+| `--strict` | (flag) | Boolean | False | Exit with error code on any validation failure |
+
+**Validation Checks:**
+- Required fields present (id, text, title, source, etc.)
+- Schema version compliance
+- run_id field present for provenance tracking
+- Data type correctness
+
+**Exit Codes:**
+- `0` - All records valid
+- `1` - Validation errors found
+- `2` - No records found
+
+**Examples:**
+```bash
+# Validate entire silver dataset
+somali-validate-silver data/processed/silver/
+
+# Validate specific source
+somali-validate-silver data/processed/silver/ --source Wikipedia-Somali
+
+# Strict validation with verbose output
+somali-validate-silver data/processed/silver/ --strict --verbose
+
+# Validate and show detailed errors
+somali-validate-silver data/processed/silver/ -v
+```
+
+**New functionality** (implements ingestion output contract validation)
+
+---
+
 ### data export-sample
 
 Export sample records for inspection.

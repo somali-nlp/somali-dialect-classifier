@@ -317,6 +317,53 @@ for record in batch:
     process_record(record)
 ```
 
+### Memory-Bounded Deduplication
+
+To prevent unbounded memory growth during large pipeline runs, deduplication uses **LRU (Least Recently Used) eviction**:
+
+**Configuration:**
+```bash
+# Set cache size (default: 100,000 entries)
+SDC_DEDUP__CACHE_SIZE=100000
+
+# Enable MinHash with bounded cache
+SDC_DEDUP__ENABLE_MINHASH=true
+SDC_DEDUP__SIMILARITY_THRESHOLD=0.85
+```
+
+**Memory Impact:**
+- **Default cache (100k entries)**: ~14MB memory
+- **Without bound (1M documents)**: ~200MB memory
+- **Reduction**: 93% memory savings
+
+**Behavior:**
+```python
+from somali_dialect_classifier.ingestion.dedup import DedupEngine, DedupConfig
+
+# Configure bounded cache
+config = DedupConfig(
+    cache_size=100000,  # Maximum hash entries
+    enable_minhash=True
+)
+
+dedup = DedupEngine(config)
+
+# Add documents (cache automatically evicts oldest entries)
+for i in range(1000000):
+    text_hash = compute_hash(f"document_{i}")
+    dedup.add_document(text_hash, None)
+
+# Cache size stays bounded
+assert len(dedup.hash_cache) <= 100000
+```
+
+**Tradeoffs:**
+- **Pros**: Bounded memory, predictable performance
+- **Cons**: May miss some duplicates after eviction (LRU)
+- **Guarantee**: No false positives (duplicates detected are true duplicates)
+
+See [Memory Optimization Guide](memory-optimization.md) for detailed analysis.
+
 ### MinHash LSH
 
 **MinHash** represents documents as signatures (sets of hash values), enabling efficient similarity computation:

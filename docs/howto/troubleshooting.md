@@ -282,6 +282,52 @@ Killed (process terminated)
    hfsom-download mc4 --max-records 10000
    ```
 
+### Problem: Checkpoint recovery fails or loops
+
+**Symptoms**:
+```
+ERROR: Failed to load checkpoint
+OR
+Pipeline keeps restarting from beginning despite checkpoint
+```
+
+**Solutions**:
+
+1. **Remove corrupted checkpoint**:
+   ```bash
+   # Check for checkpoint files
+   ls data/checkpoints/*/
+
+   # Remove corrupted checkpoint
+   rm data/checkpoints/wikipedia-somali/*.json
+
+   # Restart pipeline
+   wikisom-download
+   ```
+
+2. **Force clean start (ignore checkpoints)**:
+   ```bash
+   # Skip checkpoint recovery
+   wikisom-download --force
+   ```
+
+3. **Verify checkpoint directory permissions**:
+   ```bash
+   # Ensure write access
+   chmod 755 data/checkpoints/
+   chmod 644 data/checkpoints/*/*.json
+   ```
+
+4. **Check checkpoint JSON format**:
+   ```bash
+   # Validate checkpoint JSON
+   python -m json.tool data/checkpoints/wikipedia-somali/checkpoint_*.json
+
+   # Should contain: last_offset, timestamp, processed_count, run_id
+   ```
+
+See [Crash Recovery Guide](crash-recovery.md) for comprehensive troubleshooting.
+
 ### Problem: Deduplication is too slow
 
 **Symptoms**:

@@ -179,6 +179,32 @@ from somali_dialect_classifier.ingestion.processors import (
 
 **Design Pattern**: **Template Method** - Defines skeleton, subclasses fill in steps
 
+### 1.5. Contracts and Validation
+
+**Contracts Layer** (`contracts/`)
+
+**Purpose**: Define and enforce ingestion output contracts
+
+**Key Components**:
+- `ingestion_output.py` - TypedDict schemas and validation functions
+- Contract validation ensures preprocessing compatibility
+- Version tracking (currently v1.0)
+
+**Key Responsibilities**:
+- Define required output schema (id, text, title, source, run_id, schema_version)
+- Validate silver dataset compliance
+- Track schema version evolution
+
+**Preprocessing Layer** (`preprocessing/`)
+
+**Purpose**: Validate silver datasets before ML training
+
+**Key Components**:
+- `validator.py` - Silver dataset validation utilities
+- CLI integration via `somali-validate-silver`
+
+**Design Pattern**: **Validation Layer** - Separate validation from business logic
+
 ### 2. Processors (`wikipedia_somali_processor.py`, `bbc_somali_processor.py`)
 
 **Purpose**: Source-specific implementations
@@ -522,6 +548,14 @@ def _extract_records(self) -> Iterator[RawRecord]:
 somali-dialect-classifier/
 ├── src/somali_dialect_classifier/
 │   ├── __init__.py
+│   │
+│   ├── contracts/                         # Ingestion output contracts
+│   │   ├── __init__.py
+│   │   └── ingestion_output.py           # Contract validation and TypedDict schemas
+│   │
+│   ├── preprocessing/                     # Preprocessing and validation
+│   │   ├── __init__.py
+│   │   └── validator.py                  # Silver dataset validation
 │   │
 │   ├── ingestion/                         # Data collection layer
 │   │   ├── __init__.py
