@@ -805,10 +805,101 @@ class PostgresLedger(LedgerBackend):
                 cur.execute(query, (now, now, campaign_id))
 
     def close(self) -> None:
-        """Close all connections in pool."""
+        """Close all connections in pool with error handling."""
         if self.pool:
-            self.pool.closeall()
-            logger.info("PostgreSQL connection pool closed")
+            try:
+                self.pool.closeall()
+                logger.info("PostgreSQL connection pool closed successfully")
+            except Exception as e:
+                logger.error(f"Error closing connection pool: {e}")
+            finally:
+                self.pool = None
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - ensure cleanup."""
+        self.close()
+        return False  # Don't suppress exceptions
+
+    def __del__(self):
+        """Destructor - last resort cleanup."""
+        if hasattr(self, "pool") and self.pool is not None:
+            logger.warning("PostgresLedger not explicitly closed, cleaning up in destructor")
+            try:
+                self.pool.closeall()
+            except Exception:
+                pass  # Destructors should never raise
+
+    def get_pool_status(self) -> dict[str, Any]:
+        """
+        Get current connection pool status.
+
+        Returns:
+            Dict containing pool metrics:
+            - pool_available: Whether pool is available
+            - min_connections: Minimum pool size
+            - max_connections: Maximum pool size
+            - pool_closed: Whether pool is closed
+        """
+        if not self.pool:
+            return {
+                "pool_available": False,
+                "total_connections": 0,
+                "min_connections": 0,
+                "max_connections": 0,
+            }
+
+        # ThreadedConnectionPool doesn't expose connection count directly
+        # We can only get min/max from attributes
+        return {
+            "pool_available": True,
+            "min_connections": self.pool.minconn,
+            "max_connections": self.pool.maxconn,
+            "pool_closed": self.pool.closed if hasattr(self.pool, "closed") else False,
+        }
+
+    def check_connection_health(self) -> dict[str, Any]:
+        """
+        Check connection pool health.
+
+        Tests pool by acquiring and releasing a connection,
+        checking for potential leaks or issues.
+
+        Returns:
+            Dict containing health check results:
+            - healthy: Whether pool is healthy
+            - error: Error message if unhealthy
+            - pool_status: Current pool status
+            - test_connection_success: Whether test connection worked
+        """
+        result = {
+            "healthy": True,
+            "error": None,
+            "pool_status": self.get_pool_status(),
+            "test_connection_success": False,
+        }
+
+        if not self.pool:
+            result["healthy"] = False
+            result["error"] = "Connection pool not initialized"
+            return result
+
+        # Test connection acquisition and release
+        try:
+            with self._get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+                    cur.fetchone()
+            result["test_connection_success"] = True
+        except Exception as e:
+            result["healthy"] = False
+            result["error"] = f"Connection test failed: {e}"
+            result["test_connection_success"] = False
+
+        return result
 
     @property
     def connection(self):

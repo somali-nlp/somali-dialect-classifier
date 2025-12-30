@@ -8,6 +8,35 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 
+class TimeoutHTTPSession(requests.Session):
+    """
+    HTTP Session with automatic timeout enforcement.
+
+    Automatically applies timeout to all requests if not explicitly provided.
+    This prevents silent hangs on network failures.
+    """
+
+    def __init__(self, default_timeout: int = 30):
+        """
+        Initialize session with default timeout.
+
+        Args:
+            default_timeout: Default timeout in seconds for all requests
+        """
+        super().__init__()
+        self.default_timeout = default_timeout
+
+    def request(self, method, url, **kwargs):
+        """
+        Override request to inject timeout if not provided.
+
+        If timeout is not specified in kwargs, uses self.default_timeout.
+        """
+        if "timeout" not in kwargs:
+            kwargs["timeout"] = self.default_timeout
+        return super().request(method, url, **kwargs)
+
+
 class HTTPSessionFactory:
     """Factory for creating configured HTTP sessions."""
 
@@ -23,22 +52,22 @@ class HTTPSessionFactory:
         backoff_factor: float = 0.5,
         status_forcelist: Optional[list[int]] = None,
         user_agent: Optional[str] = None,
-        timeout: int = 30,
+        timeout: Optional[int] = None,
         allowed_methods: Optional[list[str]] = None,
-    ) -> requests.Session:
+    ) -> TimeoutHTTPSession:
         """
-        Create HTTP session with retry logic and proper headers.
+        Create HTTP session with retry logic, proper headers, and timeout enforcement.
 
         Args:
             max_retries: Maximum number of retry attempts
             backoff_factor: Backoff factor for exponential backoff
             status_forcelist: List of HTTP status codes to retry on
             user_agent: Custom user agent string (uses default if None)
-            timeout: Request timeout in seconds (unused, for documentation)
+            timeout: Request timeout in seconds (loads from config if None)
             allowed_methods: List of HTTP methods to retry (default: GET, POST, HEAD, OPTIONS)
 
         Returns:
-            Configured requests.Session with retry logic
+            Configured TimeoutHTTPSession with retry logic and automatic timeout
         """
         if status_forcelist is None:
             status_forcelist = [500, 502, 503, 504]
@@ -46,7 +75,14 @@ class HTTPSessionFactory:
         if allowed_methods is None:
             allowed_methods = ["GET", "POST", "HEAD", "OPTIONS"]
 
-        session = requests.Session()
+        # Load timeout from config if not provided
+        if timeout is None:
+            from somali_dialect_classifier.infra.config import get_config
+
+            config = get_config()
+            timeout = config.http.request_timeout
+
+        session = TimeoutHTTPSession(default_timeout=timeout)
 
         # Configure retry strategy
         retries = Retry(

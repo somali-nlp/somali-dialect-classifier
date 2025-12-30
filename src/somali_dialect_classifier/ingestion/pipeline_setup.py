@@ -200,29 +200,29 @@ class PipelineSetup:
     def create_default_http_session(
         max_retries: int = 5,
         backoff_factor: float = 0.5,
-        timeout: int = 30,
+        timeout: Optional[int] = None,
         status_forcelist: Optional[list[int]] = None,
         allowed_methods: Optional[list[str]] = None,
-    ) -> requests.Session:
+    ):
         """
-        Create HTTP session with standard retry configuration.
+        Create HTTP session with standard retry configuration and timeout enforcement.
 
         Args:
             max_retries: Maximum retry attempts for failed requests
             backoff_factor: Exponential backoff multiplier
-            timeout: Request timeout in seconds
+            timeout: Request timeout in seconds (loads from config if None)
             status_forcelist: HTTP status codes to retry (default: 429, 500, 502, 503, 504)
             allowed_methods: HTTP methods to retry (default: HEAD, GET, OPTIONS)
 
         Returns:
-            Configured requests.Session with retry adapter
+            Configured TimeoutHTTPSession with retry adapter and automatic timeout
 
         Example:
             >>> session = PipelineSetup.create_default_http_session()
-            >>> # Uses default retry parameters (5 retries, 0.5 backoff)
+            >>> # Uses default config timeout (30s) with 5 retries, 0.5 backoff
 
-            >>> session = PipelineSetup.create_default_http_session(max_retries=3, backoff_factor=1.0)
-            >>> # Custom retry configuration for scraping scenarios
+            >>> session = PipelineSetup.create_default_http_session(max_retries=3, timeout=60)
+            >>> # Custom retry configuration with explicit timeout
         """
         if status_forcelist is None:
             status_forcelist = [429, 500, 502, 503, 504]

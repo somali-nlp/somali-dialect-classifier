@@ -248,6 +248,44 @@ if PYDANTIC_AVAILABLE:
         )
         batch_size: int = Field(default=1000, description="Items per batch when fetching dataset")
 
+    class HTTPConfig(BaseSettings):
+        """
+        HTTP request configuration with timeout enforcement.
+
+        Prevents silent hangs on network failures by enforcing timeouts on all HTTP requests.
+
+        Environment Variables:
+            SDC_HTTP__REQUEST_TIMEOUT: Total request timeout in seconds (default: 30)
+            SDC_HTTP__CONNECT_TIMEOUT: Connection timeout in seconds (default: 10)
+
+        Examples:
+            >>> config = HTTPConfig()
+            >>> config.request_timeout
+            30
+            >>> config.connect_timeout
+            10
+        """
+
+        model_config = SettingsConfigDict(
+            env_prefix="SDC_HTTP__",
+            env_file=".env",
+            env_file_encoding="utf-8",
+            extra="ignore",
+        )
+
+        request_timeout: int = Field(
+            default=30,
+            description="HTTP request timeout in seconds (total time for request)",
+            ge=1,
+            le=600,
+        )
+        connect_timeout: int = Field(
+            default=10,
+            description="Connection timeout in seconds (time to establish connection)",
+            ge=1,
+            le=60,
+        )
+
     class DedupSettings(BaseSettings):
         """
         Deduplication configuration.
@@ -457,6 +495,7 @@ if PYDANTIC_AVAILABLE:
         logging: LoggingConfig = Field(default_factory=LoggingConfig)
         orchestration: OrchestrationConfig = Field(default_factory=OrchestrationConfig)
         dedup: DedupSettings = Field(default_factory=DedupSettings)
+        http: HTTPConfig = Field(default_factory=HTTPConfig)
 
 
 # Fallback dataclass-based configuration (if pydantic not available)
@@ -589,6 +628,13 @@ else:
             return self.quota_limits.get(source_normalized)
 
     @dataclass
+    class HTTPConfig:
+        """HTTP request configuration (fallback)."""
+
+        request_timeout: int = 30
+        connect_timeout: int = 10
+
+    @dataclass
     class LoggingConfig:
         """Logging configuration."""
 
@@ -605,6 +651,7 @@ else:
         logging: LoggingConfig = field(default_factory=LoggingConfig)
         orchestration: OrchestrationConfig = field(default_factory=OrchestrationConfig)
         dedup: DedupSettings = field(default_factory=DedupSettings)
+        http: HTTPConfig = field(default_factory=HTTPConfig)
 
 
 # Singleton instance
