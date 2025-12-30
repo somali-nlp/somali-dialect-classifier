@@ -56,6 +56,7 @@ class PostgresLedger(LedgerBackend):
         password: str | None = None,
         min_connections: int = 2,
         max_connections: int = 10,
+        query_timeout: int = 30,
     ):
         """
         Initialize PostgreSQL ledger with connection pooling.
@@ -69,6 +70,7 @@ class PostgresLedger(LedgerBackend):
                      or POSTGRES_PASSWORD environment variable)
             min_connections: Minimum connections in pool
             max_connections: Maximum connections in pool
+            query_timeout: Query timeout in seconds (default: 30)
 
         Raises:
             ValueError: If password is not provided
@@ -81,7 +83,8 @@ class PostgresLedger(LedgerBackend):
             )
 
         self.connection_string = (
-            f"host={host} port={port} dbname={database} user={user} password={password}"
+            f"host={host} port={port} dbname={database} user={user} password={password} "
+            f"options='-c statement_timeout={query_timeout * 1000}'"  # PostgreSQL uses milliseconds
         )
 
         # Create connection pool
@@ -614,6 +617,29 @@ class PostgresLedger(LedgerBackend):
         remaining = quota_limit - used
 
         return remaining > 0, max(0, remaining)
+
+    def check_file_checksum(self, checksum: str, source: str) -> Optional[dict[str, Any]]:
+        """
+        Check if file with checksum exists in ledger (PostgreSQL).
+
+        Note: Current schema doesn't have dedicated checksum field.
+        This implementation stores checksum in metadata JSONB field.
+        Consider adding file_checksum column in future migration.
+        """
+        query = """
+            SELECT url, source, state, created_at, metadata
+            FROM crawl_ledger
+            WHERE source = %s
+              AND metadata->>'file_checksum' = %s
+            LIMIT 1
+        """
+
+        with self._get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query, (source, checksum))
+                result = cur.fetchone()
+
+        return dict(result) if result else None
 
     def register_pipeline_run(
         self,

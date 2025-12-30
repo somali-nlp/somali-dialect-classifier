@@ -967,12 +967,20 @@ class DedupEngine:
         try:
             # Check ledger for this checksum
             # Query URLs with matching file_checksum
-            # This assumes ledger has file_checksum tracking
-            # (Implementation depends on ledger schema)
+            # Check if file checksum already exists in ledger
+            if self.ledger:
+                existing = self.ledger.check_file_checksum(checksum, source)
+                if existing:
+                    logger.info(
+                        f"File already processed: {existing['url']} "
+                        f"(checksum: {checksum[:16]}...)"
+                    )
+                    return True, checksum  # Is duplicate
+                else:
+                    logger.debug(f"File checksum computed: {checksum[:16]}...")
+            else:
+                logger.debug(f"File checksum computed (no ledger): {checksum[:16]}...")
 
-            # For now, return False (not duplicate)
-            # TODO: Implement ledger.check_file_checksum(checksum, source)
-            logger.debug(f"File checksum computed: {checksum[:16]}...")
             return False, checksum
 
         except Exception as e:

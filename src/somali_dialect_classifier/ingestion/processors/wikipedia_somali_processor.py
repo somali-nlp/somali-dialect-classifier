@@ -30,10 +30,23 @@ from ..pipeline_setup import PipelineSetup
 from ..processor_registry import register_processor
 
 # Constants for buffer management
-BUFFER_CHUNK_SIZE_MB = 1  # Read 1MB chunks from compressed file
-BUFFER_MAX_SIZE_MB = 10  # Max buffer size before truncation
-BUFFER_TRUNCATE_SIZE_MB = 1  # Keep last 1MB when truncating
-LOG_FREQUENCY_PAGES = 1000  # Log extraction progress every N pages
+# Rationale: Wikipedia pages are typically <1MB, but some heavily-formatted
+# pages with tables/templates can exceed 5MB. Buffer sized to hold ~10 pages
+# worst-case before truncation safety mechanism triggers.
+BUFFER_CHUNK_SIZE_MB = 1  # Read 1MB chunks (balance I/O vs memory)
+BUFFER_MAX_SIZE_MB = 10  # Hold ~10 large pages before truncation
+BUFFER_TRUNCATE_SIZE_MB = 1  # Keep last chunk for page boundary context
+LOG_FREQUENCY_PAGES = 1000  # Log every 1k pages (balance verbosity vs info)
+
+# Safety checks
+assert BUFFER_MAX_SIZE_MB >= BUFFER_CHUNK_SIZE_MB, \
+    "Max buffer must be at least one chunk size"
+assert BUFFER_TRUNCATE_SIZE_MB <= BUFFER_MAX_SIZE_MB, \
+    "Truncate size must be smaller than max buffer"
+
+# Constants for article size limits
+MAX_ARTICLE_SIZE_MB = 10  # Maximum article size in MB
+MAX_ARTICLE_LINES = 100_000  # ~100k lines ≈ 10MB at 100 chars/line
 
 
 @register_processor("wikipedia")
@@ -93,6 +106,12 @@ class WikipediaSomaliProcessor(BasePipeline):
 
         # Note: StructuredLogger is now initialized in BasePipeline
         # Use self.logger for all logging (it's now a structured logger with JSON output)
+
+        # Load buffer config from settings
+        wikipedia_config = config.scraping.wikipedia
+        self.buffer_chunk_size_mb = wikipedia_config.buffer_chunk_size_mb
+        self.buffer_max_size_mb = wikipedia_config.buffer_max_size_mb
+        self.buffer_truncate_size_mb = wikipedia_config.buffer_truncate_size_mb
 
         # Wikimedia language code for Somali is "so" → "sowiki". Some users expect "somwiki";
         # we support both, preferring sowiki.
@@ -377,11 +396,11 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.logger.info("Phase 1: Parsing XML and collecting article metadata...")
         raw_articles = []
         buffer = ""
-        buffer_size_threshold = BUFFER_MAX_SIZE_MB * 1024 * 1024
+        buffer_size_threshold = self.buffer_max_size_mb * 1024 * 1024
 
         with bz2.open(self.dump_file, "rt", encoding="utf-8") as fin:
             while True:
-                chunk = fin.read(BUFFER_CHUNK_SIZE_MB * 1024 * 1024)
+                chunk = fin.read(self.buffer_chunk_size_mb * 1024 * 1024)
                 if not chunk:
                     # Process remaining buffer
                     if buffer:
@@ -408,11 +427,11 @@ class WikipediaSomaliProcessor(BasePipeline):
                 # Safety check: if buffer exceeds threshold, warn and truncate oldest data
                 if len(buffer) > buffer_size_threshold:
                     self.logger.warning(
-                        f"Buffer size exceeded {BUFFER_MAX_SIZE_MB}MB. "
+                        f"Buffer size exceeded {self.buffer_max_size_mb}MB. "
                         f"Truncating to prevent memory issues. Some malformed pages may be skipped."
                     )
                     # Keep only the last chunk to maintain page boundary context
-                    buffer = buffer[-(BUFFER_TRUNCATE_SIZE_MB * 1024 * 1024) :]
+                    buffer = buffer[-(self.buffer_truncate_size_mb * 1024 * 1024) :]
 
         self.logger.info(f"Parsed {len(raw_articles)} articles from XML dump")
 
@@ -547,10 +566,13 @@ class WikipediaSomaliProcessor(BasePipeline):
 
     def _extract_records(self) -> Iterator[RawRecord]:
         """
-        Extract records from staging file.
+        Extract records from staging file with size limits.
 
         Yields RawRecord objects for each Wikipedia page.
         BasePipeline.process() handles the rest (cleaning, writing, logging).
+
+        Implements M3 fix: Articles exceeding MAX_ARTICLE_LINES are truncated
+        to prevent memory exhaustion from malformed staging files.
         """
         current_title = None
         current_lines = []
@@ -560,11 +582,24 @@ class WikipediaSomaliProcessor(BasePipeline):
                 if line.startswith(self.page_marker_prefix + " "):
                     # Yield previous page if exists
                     if current_title is not None:
+                        # Check for oversized articles and truncate
+                        truncated = False
+                        if len(current_lines) > MAX_ARTICLE_LINES:
+                            self.logger.warning(
+                                f"Article '{current_title}' exceeds max size "
+                                f"({len(current_lines)} lines), truncating to {MAX_ARTICLE_LINES}"
+                            )
+                            if hasattr(self, "metrics") and self.metrics is not None:
+                                self.metrics.increment("articles_truncated_size")
+                            # Truncate to max size
+                            current_lines = current_lines[:MAX_ARTICLE_LINES]
+                            truncated = True
+
                         yield RawRecord(
                             title=current_title,
                             text="".join(current_lines),
                             url=self._title_to_url(current_title),
-                            metadata={},
+                            metadata={"truncated": truncated},
                         )
 
                     # Start new page
@@ -577,23 +612,38 @@ class WikipediaSomaliProcessor(BasePipeline):
                         continue
                     current_lines = []
                 else:
-                    current_lines.append(line)
+                    # Add line only if under size limit
+                    if len(current_lines) < MAX_ARTICLE_LINES:
+                        current_lines.append(line)
 
             # Yield last page
             if current_title is not None:
+                # Check for oversized articles and truncate
+                truncated = False
+                if len(current_lines) > MAX_ARTICLE_LINES:
+                    self.logger.warning(
+                        f"Article '{current_title}' exceeds max size "
+                        f"({len(current_lines)} lines), truncating to {MAX_ARTICLE_LINES}"
+                    )
+                    if hasattr(self, "metrics") and self.metrics is not None:
+                        self.metrics.increment("articles_truncated_size")
+                    # Truncate to max size
+                    current_lines = current_lines[:MAX_ARTICLE_LINES]
+                    truncated = True
+
                 yield RawRecord(
                     title=current_title,
                     text="".join(current_lines),
                     url=self._title_to_url(current_title),
-                    metadata={},
+                    metadata={"truncated": truncated},
                 )
 
     def _get_http_session(self) -> requests.Session:
         """
-        Get HTTP session with retry logic (lazy initialization).
+        Get or create HTTP session with retry logic.
 
         Returns:
-            requests.Session instance (injected or default)
+            Configured requests.Session for HTTP requests
         """
         if self._http_session is None:
             self._http_session = PipelineSetup.create_default_http_session(

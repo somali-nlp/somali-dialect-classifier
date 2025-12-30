@@ -55,10 +55,17 @@ class FilterEngine:
         filter_reasons (dict): Count of records filtered by each reason
     """
 
-    def __init__(self):
-        """Initialize filter engine with empty filter list."""
+    def __init__(self, strict_mode: bool = False):
+        """
+        Initialize filter engine with empty filter list.
+
+        Args:
+            strict_mode: If True, filter errors cause record rejection.
+                        If False (default), filter errors pass records through.
+        """
         self.filters: list[tuple[Callable, dict[str, Any]]] = []
         self.filter_stats: Counter = Counter()
+        self.strict_mode = strict_mode
 
     def register_filter(self, filter_func: Callable, kwargs: dict[str, Any] = None) -> None:
         """
@@ -84,7 +91,7 @@ class FilterEngine:
         Apply all registered filters to cleaned text.
 
         Args:
-            cleaned_text: Cleaned text to filter
+            cleaned_text: Cleaned text to filter (MUST be non-empty string)
             record_title: Optional record title for debug logging
 
         Returns:
@@ -93,11 +100,24 @@ class FilterEngine:
                 - reason_if_failed: Name of filter that failed (None if passed)
                 - metadata_updates: Dictionary of metadata updates from filters
 
+        Raises:
+            ValueError: If cleaned_text is not a non-empty string
+
         Example:
             >>> passed, reason, metadata = engine.apply_filters("Hello world")
             >>> if not passed:
             ...     print(f"Filtered by: {reason}")
         """
+        # STRICT INPUT VALIDATION
+        if not isinstance(cleaned_text, str):
+            raise ValueError(
+                f"cleaned_text must be string, got {type(cleaned_text).__name__}"
+            )
+
+        if not cleaned_text.strip():
+            # Empty text should fail early (not reach filters)
+            return False, "empty_after_cleaning", {}
+
         filter_metadata = {}
 
         for filter_func, filter_kwargs in self.filters:
@@ -119,13 +139,26 @@ class FilterEngine:
                 filter_metadata.update(metadata_updates)
 
             except Exception as e:
-                # Log filter errors but don't fail pipeline
                 filter_name = filter_func.__name__
-                logger.warning(
-                    f"Filter {filter_name} raised error on '{record_title[:50] if record_title else 'record'}': {e}"
+
+                # Log error with full traceback for debugging
+                logger.error(
+                    f"Filter {filter_name} raised error on '{record_title[:50] if record_title else 'record'}': {e}",
+                    exc_info=True  # Include full traceback
                 )
-                # Treat as pass to avoid data loss from buggy filters
-                continue
+
+                # Track filter failures for monitoring
+                self.filter_stats[f"filter_error_{filter_name}"] += 1
+
+                # Default policy: Treat as pass to avoid data loss
+                # Configurable via FilterEngine.__init__(strict_mode=False)
+                if self.strict_mode:
+                    # Strict mode: Filter errors cause rejection
+                    return False, f"{filter_name}_error", filter_metadata
+                else:
+                    # Permissive mode: Filter errors are pass-through
+                    logger.warning(f"Filter {filter_name} error treated as PASS (permissive mode)")
+                    continue
 
         return True, None, filter_metadata
 

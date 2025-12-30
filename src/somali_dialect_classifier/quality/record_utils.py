@@ -8,6 +8,8 @@ import hashlib
 import json
 from typing import Optional
 
+from ..version import __pipeline_version__
+
 
 def generate_text_hash(text: str) -> str:
     """
@@ -70,7 +72,7 @@ def build_silver_record(
     source_type: str = "wiki",
     language: str = "so",
     license_str: str = "CC-BY-SA-3.0",
-    pipeline_version: str = "2.1.0",
+    pipeline_version: str = __pipeline_version__,
     source_metadata: Optional[dict] = None,
     date_published: Optional[str] = None,
     topic: Optional[str] = None,

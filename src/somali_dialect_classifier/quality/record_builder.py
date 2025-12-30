@@ -11,6 +11,7 @@ Responsibilities:
 import logging
 from typing import Any, Optional
 
+from ..version import __pipeline_version__
 from .record_utils import build_silver_record
 
 logger = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ class RecordBuilder:
         license_str: str,
         domain: str,
         register: str,
-        pipeline_version: str = "2.1.0",
+        pipeline_version: str = __pipeline_version__,
         language: str = "so",
         source_metadata: Optional[dict] = None,
     ) -> dict[str, Any]:

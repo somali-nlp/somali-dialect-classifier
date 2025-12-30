@@ -280,6 +280,20 @@ class LedgerBackend(ABC):
         pass
 
     @abstractmethod
+    def check_file_checksum(self, checksum: str, source: str) -> Optional[dict[str, Any]]:
+        """
+        Check if file with checksum already exists in ledger.
+
+        Args:
+            checksum: File checksum (SHA256)
+            source: Source identifier
+
+        Returns:
+            Ledger record if checksum exists, None otherwise
+        """
+        pass
+
+    @abstractmethod
     def register_pipeline_run(
         self,
         run_id: str,
@@ -1092,6 +1106,35 @@ class SQLiteLedger(LedgerBackend):
 
         return remaining > 0, max(0, remaining)
 
+    def check_file_checksum(self, checksum: str, source: str) -> Optional[dict[str, Any]]:
+        """
+        Check if file with checksum exists in ledger (SQLite).
+
+        Note: Current schema doesn't have dedicated checksum field.
+        This implementation stores checksum in metadata JSON field.
+        Consider adding file_checksum column in future migration.
+        """
+        query = """
+            SELECT url, source, state, created_at, metadata
+            FROM crawl_ledger
+            WHERE source = ?
+              AND json_extract(metadata, '$.file_checksum') = ?
+            LIMIT 1
+        """
+
+        result = self.connection.execute(query, (source, checksum)).fetchone()
+
+        if result:
+            return {
+                "url": result["url"],
+                "source": result["source"],
+                "state": result["state"],
+                "created_at": result["created_at"],
+                "metadata": result["metadata"],
+            }
+
+        return None
+
     def register_pipeline_run(
         self,
         run_id: str,
@@ -1364,6 +1407,9 @@ class CrawlLedger:
             elif backend_type == "postgres":
                 # PostgreSQL backend (production scale)
                 from ..database.postgres_ledger import PostgresLedger
+                from ..infra.config import get_config
+
+                config = get_config()
 
                 host = backend_kwargs.get("host", os.getenv("POSTGRES_HOST", "localhost"))
                 port = backend_kwargs.get("port", int(os.getenv("POSTGRES_PORT", "5432")))
@@ -1374,8 +1420,20 @@ class CrawlLedger:
                     "password", os.getenv("SDC_DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD")
                 )
 
+                # Load database config for connection pool and timeout settings
+                query_timeout = backend_kwargs.get("query_timeout", config.database.query_timeout)
+                min_connections = backend_kwargs.get("min_connections", config.database.min_connections)
+                max_connections = backend_kwargs.get("max_connections", config.database.max_connections)
+
                 self.backend = PostgresLedger(
-                    host=host, port=port, database=database, user=user, password=password
+                    host=host,
+                    port=port,
+                    database=database,
+                    user=user,
+                    password=password,
+                    min_connections=min_connections,
+                    max_connections=max_connections,
+                    query_timeout=query_timeout,
                 )
                 logger.info(f"Using PostgreSQL backend: {host}:{port}/{database}")
 
@@ -1935,6 +1993,27 @@ class CrawlLedger:
             >>> ledger.complete_campaign("campaign_init_001")
         """
         return self.backend.complete_campaign(campaign_id)
+
+    def check_file_checksum(self, checksum: str, source: str) -> Optional[dict[str, Any]]:
+        """
+        Check if file with checksum already exists in ledger.
+
+        Used for file-level deduplication to avoid reprocessing identical files.
+
+        Args:
+            checksum: File checksum (SHA256)
+            source: Source identifier
+
+        Returns:
+            Ledger record if checksum exists, None otherwise
+
+        Example:
+            >>> ledger = CrawlLedger()
+            >>> existing = ledger.check_file_checksum("abc123...", "wikipedia")
+            >>> if existing:
+            ...     print(f"File already processed: {existing['url']}")
+        """
+        return self.backend.check_file_checksum(checksum, source)
 
     def close(self) -> None:
         """Close ledger connection."""

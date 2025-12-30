@@ -11,6 +11,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from ..infra.config import get_config
+from ..version import __pipeline_version__
 
 logger = logging.getLogger(__name__)
 
@@ -150,18 +151,26 @@ class SilverDatasetWriter:
                     f"{sorted(missing_fields)}. All fields must be provided by pipeline."
                 )
 
+            # Add source context to error messages
+            source = record.get("source", "unknown")
+            run_id = record.get("run_id", "unknown")
+
             # Validate domain value (fail on invalid, don't patch)
             if record["domain"] not in self.DOMAINS:
                 raise ValueError(
-                    f"Record {idx} (id={record['id']}) has invalid domain '{record['domain']}'. "
-                    f"Valid domains: {sorted(self.DOMAINS)}"
+                    f"Record {idx} from {source} (run_id={run_id}, id={record['id']}) "
+                    f"has invalid domain '{record['domain']}'. "
+                    f"Valid domains: {sorted(self.DOMAINS)}. "
+                    f"Check processor's _get_domain() method."
                 )
 
             # Validate register value (fail on invalid, don't patch)
             if record["register"] not in self.VALID_REGISTERS:
                 raise ValueError(
-                    f"Record {idx} (id={record['id']}) has invalid register '{record['register']}'. "
-                    f"Valid registers: {sorted(self.VALID_REGISTERS)}"
+                    f"Record {idx} from {source} (run_id={run_id}, id={record['id']}) "
+                    f"has invalid register '{record['register']}'. "
+                    f"Valid registers: {sorted(self.VALID_REGISTERS)}. "
+                    f"Check processor's _get_register() method."
                 )
 
             # Handle embedding field - ensure it's a string or None
@@ -362,7 +371,7 @@ class SilverDatasetWriter:
             metadata = {
                 "run_id": run_id,
                 "source": source,
-                "pipeline_version": "2.1.0",
+                "pipeline_version": __pipeline_version__,
                 "date_accessed": date_accessed,
                 "date_processed": datetime.now(timezone.utc).isoformat(),
                 "total_records": len(records),

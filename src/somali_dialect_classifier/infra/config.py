@@ -151,6 +151,26 @@ if PYDANTIC_AVAILABLE:
         )
         timeout: int = Field(default=30, description="Request timeout (seconds)")
 
+        # Buffer management configuration
+        buffer_chunk_size_mb: int = Field(
+            default=1,
+            description="XML buffer chunk size in MB",
+            ge=1,
+            le=10,
+        )
+        buffer_max_size_mb: int = Field(
+            default=10,
+            description="Max XML buffer size before truncation (MB)",
+            ge=1,
+            le=100,
+        )
+        buffer_truncate_size_mb: int = Field(
+            default=1,
+            description="Buffer size to keep after truncation (MB)",
+            ge=1,
+            le=10,
+        )
+
     class HuggingFaceScrapingConfig(BaseSettings):
         """HuggingFace datasets configuration."""
 
@@ -247,6 +267,44 @@ if PYDANTIC_AVAILABLE:
             default=3600, description="Maximum wait time for actor completion (seconds)"
         )
         batch_size: int = Field(default=1000, description="Items per batch when fetching dataset")
+
+    class DatabaseConfig(BaseSettings):
+        """
+        Database configuration.
+
+        Controls PostgreSQL connection and query behavior.
+
+        Environment Variables:
+            SDC_DATABASE__QUERY_TIMEOUT: PostgreSQL query timeout in seconds (default: 30)
+            SDC_DATABASE__MIN_CONNECTIONS: Minimum connection pool size (default: 2)
+            SDC_DATABASE__MAX_CONNECTIONS: Maximum connection pool size (default: 10)
+        """
+
+        model_config = SettingsConfigDict(
+            env_prefix="SDC_DATABASE__",
+            env_file=".env",
+            env_file_encoding="utf-8",
+            extra="ignore",
+        )
+
+        query_timeout: int = Field(
+            default=30,
+            description="PostgreSQL query timeout in seconds",
+            ge=1,
+            le=300,
+        )
+        min_connections: int = Field(
+            default=2,
+            description="Minimum connection pool size",
+            ge=1,
+            le=10,
+        )
+        max_connections: int = Field(
+            default=10,
+            description="Maximum connection pool size",
+            ge=1,
+            le=100,
+        )
 
     class HTTPConfig(BaseSettings):
         """
@@ -536,6 +594,7 @@ if PYDANTIC_AVAILABLE:
         dedup: DedupSettings = Field(default_factory=DedupSettings)
         http: HTTPConfig = Field(default_factory=HTTPConfig)
         disk: DiskConfig = Field(default_factory=DiskConfig)
+        database: DatabaseConfig = Field(default_factory=DatabaseConfig)
 
 
 # Fallback dataclass-based configuration (if pydantic not available)

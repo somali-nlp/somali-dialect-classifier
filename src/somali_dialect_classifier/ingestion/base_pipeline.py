@@ -207,8 +207,13 @@ class BasePipeline(DataProcessor, ABC):
         )
         self.data_manager.ensure_disk_space(required, self.processed_dir)
 
-    def process(self) -> Path:
-        """Orchestrate processing: extract→clean→filter→build→validate→write. Returns silver Parquet path."""
+    def process(self) -> Optional[Path]:
+        """
+        Orchestrate processing: extract→clean→filter→build→validate→write.
+
+        Returns:
+            Path to silver Parquet file, or None if no records to process
+        """
         if not self.staging_file or not self.staging_file.exists():
             raise FileNotFoundError(f"Staging file not found: {self.staging_file}")
         self.processed_dir.mkdir(parents=True, exist_ok=True)
@@ -527,8 +532,14 @@ class BasePipeline(DataProcessor, ABC):
         except Exception:
             return None
 
-    def run(self) -> Path:
-        """Template method: download→extract→process. Returns silver Parquet path."""
+    def run(self) -> Optional[Path]:
+        """
+        Template method: download→extract→process.
+
+        Returns:
+            Path to silver Parquet file, or None if no data to process
+            (e.g., 304 Not Modified for Wikipedia, no new articles)
+        """
         self.download()
         self.extract()
         return self.process()
@@ -577,9 +588,18 @@ class BasePipeline(DataProcessor, ABC):
             self.metrics.export_json(output_path=metrics_path)
 
             self.logger.info(f"Exported {stage} metrics: {metrics_path}")
-        except (AttributeError, Exception) as e:
-            # Gracefully handle test environments or missing config
-            self.logger.debug(f"Could not export metrics: {e}")
+        except AttributeError as e:
+            # Expected in test environments where metrics may be None
+            self.logger.debug(f"Metrics not available (test environment): {e}")
+        except Exception as e:
+            # Unexpected error - should be visible
+            self.logger.warning(f"Failed to export {stage} metrics: {e}")
+            # Track failure for monitoring
+            if hasattr(self, 'metrics') and self.metrics:
+                try:
+                    self.metrics.increment('metrics_export_failed')
+                except Exception:
+                    pass  # Don't fail on metric tracking failure
 
     def _generate_quality_report(self, stage: str):
         """
