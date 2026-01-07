@@ -10,7 +10,10 @@
 2. [Configuration Hierarchy](#configuration-hierarchy)
 3. [Environment Variables Reference](#environment-variables-reference)
 4. [Configuration Sections](#configuration-sections)
+   - [PerformanceConfig](#performanceconfig-new-in-v020)
+   - [Performance Tuning Quick Start](#performance-tuning-quick-start)
 5. [Programmatic Access](#programmatic-access)
+   - [Configuration Startup Logging](#configuration-startup-logging)
 6. [Environment-Specific Configs](#environment-specific-configs)
 7. [Security Best Practices](#security-best-practices)
 8. [Troubleshooting](#troubleshooting)
@@ -391,6 +394,222 @@ SDC_ORCHESTRATION__INITIAL_COLLECTION_DAYS=14
 - [Orchestration Guide](orchestration.md) - Full orchestration documentation
 - [Daily Quotas Documentation](orchestration.md#daily-quotas-new-in-phase-c) - Quota enforcement details
 
+### PerformanceConfig (New in v0.2.0)
+
+Controls timeout, buffer sizes, and resource limits for production reliability.
+
+**Fields**:
+
+```python
+class PerformanceConfig(BaseSettings):
+    request_timeout: int = 30           # HTTP request timeout (seconds)
+    query_timeout: int = 30             # Database query timeout (seconds)
+    buffer_size_mb: int = 10            # XML/HTML parsing buffer (MB)
+    min_free_disk_gb: int = 10          # Minimum disk space (GB)
+    connection_pool_size: int = 5       # Database connection pool size
+    max_pool_overflow: int = 10         # Max additional connections
+```
+
+**Environment Variables**:
+
+```bash
+# HTTP timeout (applies to BBC, Wikipedia, HuggingFace)
+SDC_HTTP__REQUEST_TIMEOUT=30
+
+# Database timeout (prevents runaway queries)
+SDC_DB__QUERY_TIMEOUT=30
+
+# Parsing buffer (memory vs. performance tradeoff)
+SDC_PARSING__BUFFER_SIZE_MB=10
+
+# Disk space safety check
+SDC_DISK__MIN_FREE_SPACE_GB=10
+
+# Connection pool (concurrent pipeline support)
+SDC_DB__POOL_SIZE=5
+SDC_DB__MAX_OVERFLOW=10
+```
+
+**Usage Example**:
+
+```python
+from somali_dialect_classifier.config import get_config
+
+config = get_config()
+
+# Check timeout settings
+print(f"HTTP timeout: {config.performance.request_timeout}s")
+print(f"DB query timeout: {config.performance.query_timeout}s")
+
+# Adjust for slow network
+import os
+os.environ['SDC_HTTP__REQUEST_TIMEOUT'] = '60'
+config = get_config(reload=True)
+```
+
+**Tuning Guidelines**:
+
+| Setting | Low Resources | Standard | High Performance |
+|---------|--------------|----------|------------------|
+| `request_timeout` | 60s | 30s | 15s |
+| `query_timeout` | 60s | 30s | 15s |
+| `buffer_size_mb` | 5MB | 10MB | 20MB |
+| `min_free_disk_gb` | 5GB | 10GB | 20GB |
+| `pool_size` | 2 | 5 | 10 |
+
+**Disk Space Pre-Flight Checks**:
+
+All pipelines check available disk space before processing (v0.2.0). If free space is below `min_free_disk_gb`, the pipeline aborts with:
+
+```
+DiskSpaceError: Insufficient disk space: 8GB available, 10GB required
+```
+
+**Override for testing**:
+
+```bash
+# Warning: May cause disk full errors
+SDC_DISK__MIN_FREE_SPACE_GB=1
+```
+
+### Performance Tuning Quick Start
+
+**New in v0.2.0**: Comprehensive performance tuning across multiple subsystems.
+
+Performance optimization is covered across several specialized guides. Use this decision tree to navigate to the right documentation:
+
+**Decision Tree: What's Slow?**
+
+```
+Is the pipeline slow?
+├─ YES: Network requests timing out?
+│   ├─ YES → Increase timeouts (see below: HTTP Timeout Tuning)
+│   └─ NO → Database queries slow?
+│       ├─ YES → Tune database (see: Database Performance Tuning)
+│       └─ NO → High memory usage?
+│           ├─ YES → Reduce memory (see: Memory Tuning)
+│           └─ NO → CPU-bound processing?
+│               └─ YES → Increase buffer sizes (see: Buffer Size Tuning)
+└─ NO: Out of memory errors?
+    └─ YES → See Memory Tuning below
+```
+
+**HTTP Timeout Tuning**:
+
+| Problem | Symptom | Solution | Guide |
+|---------|---------|----------|-------|
+| Network slow | `TimeoutError: Connection timed out` | Increase `SDC_HTTP__REQUEST_TIMEOUT` | [Troubleshooting](troubleshooting.md#http-requests-timing-out) |
+| Large responses | `ReadTimeout: Read timed out` | Increase timeout + buffer size | This section + [Memory Optimization](memory-optimization.md#buffer-size-tuning) |
+
+**Quick fix**:
+```bash
+export SDC_HTTP__REQUEST_TIMEOUT=60  # Increase from default 30s
+```
+
+**Database Performance Tuning**:
+
+| Problem | Symptom | Solution | Guide |
+|---------|---------|----------|-------|
+| Query timeout | `OperationalError: query timeout` | Increase `SDC_DB__QUERY_TIMEOUT` | [PostgreSQL Setup](../operations/postgres-setup.md#query-timeout-configuration) |
+| Connection pool exhausted | `PoolError: Connection pool is full` | Increase pool size | [PostgreSQL Setup](../operations/postgres-setup.md#connection-pool-management) |
+| Slow queries | General slowness | Add indexes, optimize queries | [PostgreSQL Setup](../operations/postgres-setup.md#performance-optimization) |
+
+**Quick fix**:
+```bash
+export SDC_DB__QUERY_TIMEOUT=60     # Increase from default 30s
+export SDC_DB__POOL_SIZE=10         # Increase from default 5
+```
+
+**Memory Tuning**:
+
+| Problem | Symptom | Solution | Guide |
+|---------|---------|----------|-------|
+| Out of memory | `MemoryError` | Reduce buffer/batch sizes, enable LRU | [Memory Optimization](memory-optimization.md) |
+| Dedup cache too large | Memory grows unbounded | Configure LRU cache size | [Memory Optimization](memory-optimization.md#memory-bounded-deduplication-lruhashset) |
+| XML parsing memory spike | High memory during parsing | Reduce buffer size | [Memory Optimization](memory-optimization.md#buffer-size-tuning) |
+
+**Quick fix**:
+```bash
+export SDC_PARSING__BUFFER_SIZE_MB=5           # Reduce from default 10 MB
+export DEDUP_CACHE_SIZE=10000                  # Reduce from default 100K
+export SDC_SCRAPING__WIKIPEDIA__BATCH_SIZE=50  # Reduce from default 100
+```
+
+**Buffer Size Tuning**:
+
+| Problem | Symptom | Solution | Guide |
+|---------|---------|----------|-------|
+| Slow parsing | Low throughput (< 1000 articles/sec) | Increase buffer size | [Memory Optimization](memory-optimization.md#buffer-size-tuning) |
+| High memory but slow | Memory high but still slow | Balance buffer with batch size | [Memory Optimization](memory-optimization.md#buffer-size-tuning) |
+
+**Quick fix**:
+```bash
+export SDC_PARSING__BUFFER_SIZE_MB=20  # Increase from default 10 MB (requires sufficient RAM)
+```
+
+**Comprehensive Tuning Checklist**:
+
+For production deployment, tune all performance settings together:
+
+```bash
+# High-performance configuration (16+ GB RAM)
+export SDC_HTTP__REQUEST_TIMEOUT=30
+export SDC_DB__QUERY_TIMEOUT=30
+export SDC_DB__POOL_SIZE=10
+export SDC_DB__MAX_OVERFLOW=20
+export SDC_PARSING__BUFFER_SIZE_MB=20
+export SDC_DISK__MIN_FREE_SPACE_GB=20
+export DEDUP_CACHE_SIZE=500000
+export SDC_SCRAPING__WIKIPEDIA__BATCH_SIZE=200
+export SDC_SCRAPING__WIKIPEDIA__BUFFER_LIMIT_MB=20
+
+# Low-resource configuration (< 4 GB RAM)
+export SDC_HTTP__REQUEST_TIMEOUT=60
+export SDC_DB__QUERY_TIMEOUT=60
+export SDC_DB__POOL_SIZE=2
+export SDC_DB__MAX_OVERFLOW=5
+export SDC_PARSING__BUFFER_SIZE_MB=5
+export SDC_DISK__MIN_FREE_SPACE_GB=5
+export DEDUP_CACHE_SIZE=10000
+export SDC_SCRAPING__WIKIPEDIA__BATCH_SIZE=50
+export SDC_SCRAPING__WIKIPEDIA__BUFFER_LIMIT_MB=5
+```
+
+**Performance Monitoring**:
+
+Monitor these metrics during pipeline runs:
+
+```bash
+# Memory usage
+watch -n 1 'ps aux | grep python | grep somali'
+
+# Disk I/O
+iostat -x 1
+
+# Network throughput
+iftop
+
+# Database connections
+psql -c "SELECT count(*) FROM pg_stat_activity WHERE datname='somali_nlp';"
+```
+
+**Specialized Guides**:
+
+For deep dives into specific subsystems:
+
+| Subsystem | Guide | Topics Covered |
+|-----------|-------|----------------|
+| **Memory** | [Memory Optimization](memory-optimization.md) | LRU cache, streaming parsing, buffer tuning, batch sizes |
+| **Database** | [PostgreSQL Setup](../operations/postgres-setup.md) | Connection pools, query timeouts, indexes, VACUUM |
+| **Network** | [Troubleshooting](troubleshooting.md) | HTTP timeouts, retry logic, rate limiting |
+| **Debugging** | [Troubleshooting](troubleshooting.md) | General performance issues, profiling |
+
+**See Also**:
+- [PerformanceConfig](#performanceconfig-new-in-v020) - Full configuration reference
+- [Memory Optimization Guide](memory-optimization.md) - Memory tuning deep dive
+- [PostgreSQL Setup](../operations/postgres-setup.md) - Database performance tuning
+- [Troubleshooting Guide](troubleshooting.md) - Performance debugging
+
 ## Programmatic Access
 
 ### Basic Usage
@@ -462,6 +681,173 @@ config.scraping.bbc.max_articles = "invalid"  # ValidationError!
 config.scraping.bbc.max_articles = 100        # OK
 config.scraping.bbc.max_articles = None       # OK (Optional[int])
 ```
+
+### Configuration Startup Logging
+
+**New in v0.2.0**: All pipelines log configuration summaries at startup for debugging and audit trails.
+
+**What Gets Logged**:
+
+At pipeline initialization, the following configuration sections are logged:
+
+```
+INFO [2026-01-06 10:30:45] Configuration loaded:
+  Data paths:
+    raw_dir: data/raw
+    silver_dir: data/processed/silver
+    staging_dir: data/staging
+
+  Scraping (BBC):
+    max_articles: 100
+    delay_range: (3, 6)
+    timeout: 30
+
+  Performance:
+    request_timeout: 30
+    query_timeout: 30
+    buffer_size_mb: 10
+    min_free_disk_gb: 10
+
+  Database:
+    host: localhost
+    port: 5432
+    database: somali_nlp
+    password: [REDACTED]  # Sensitive values masked
+```
+
+**Why Configuration is Logged**:
+
+1. **Debugging**: Quickly verify which settings are active (especially in production)
+2. **Audit Trail**: Record which configuration was used for each pipeline run
+3. **Reproducibility**: Enable exact replication of pipeline runs from logs
+4. **Validation**: Confirm environment variables were loaded correctly
+
+**Security - Automatic Redaction**:
+
+Sensitive configuration values are **automatically redacted** before logging:
+
+| Field Pattern | Redaction | Example |
+|--------------|-----------|---------|
+| `*password*` | `[REDACTED]` | `password: [REDACTED]` |
+| `*api_key*` | `[REDACTED]` | `apify_api_token: [REDACTED]` |
+| `*token*` | `[REDACTED]` | `github_token: [REDACTED]` |
+| `*secret*` | `[REDACTED]` | `jwt_secret: [REDACTED]` |
+
+Redaction logic is implemented in `src/somali_dialect_classifier/infra/logging_utils.py`. For full details, see [Security Hardening Guide](security-hardening.md#log-redaction).
+
+**Disabling Startup Logging**:
+
+If startup logs are too verbose or not needed:
+
+```bash
+# Disable configuration logging
+export SDC_LOGGING__LOG_CONFIG_ON_STARTUP=false
+
+# Or in .env file
+SDC_LOGGING__LOG_CONFIG_ON_STARTUP=false
+```
+
+**Default**: Startup logging is **enabled** by default (`true`).
+
+**Error Handling**:
+
+If configuration logging fails (e.g., due to serialization errors), the pipeline **continues execution** to prevent logging issues from blocking data processing.
+
+```python
+# Implementation detail (for reference)
+try:
+    logger.info(f"Configuration loaded: {sanitize_config(config)}")
+except Exception as e:
+    # Log warning but don't fail pipeline startup
+    logger.warning(f"Failed to log configuration: {e}")
+```
+
+**Where Startup Logs Appear**:
+
+| Output | Location | Format |
+|--------|----------|--------|
+| **Console (stdout)** | Terminal output | Human-readable text |
+| **Log file** | `logs/somali_nlp_{timestamp}.log` | Structured JSON (if configured) |
+| **Metrics file** | `data/metrics/{run_id}_processing.json` | Not included (only runtime metrics) |
+
+**Troubleshooting with Startup Logs**:
+
+**Problem**: Pipeline uses wrong data directory
+
+**Solution**: Check startup logs to verify `data.raw_dir` value:
+
+```bash
+# Run pipeline with verbose logging
+SDC_LOGGING__LEVEL=DEBUG wikisom-download 2>&1 | grep "Configuration loaded" -A 20
+
+# Expected output:
+# INFO [2026-01-06 10:30:45] Configuration loaded:
+#   Data paths:
+#     raw_dir: /custom/path/raw  # Verify this matches expectation
+```
+
+**Problem**: HTTP timeouts despite increasing `SDC_HTTP__REQUEST_TIMEOUT`
+
+**Solution**: Confirm environment variable was loaded:
+
+```bash
+export SDC_HTTP__REQUEST_TIMEOUT=60
+wikisom-download 2>&1 | grep "request_timeout"
+
+# Expected output:
+#   Performance:
+#     request_timeout: 60  # Should match exported value
+```
+
+**Example Startup Log Output**:
+
+```
+INFO [2026-01-06 10:30:45] Starting Wikipedia Somali processor
+INFO [2026-01-06 10:30:45] Configuration loaded:
+  Data paths:
+    raw_dir: data/raw
+    silver_dir: data/processed/silver
+    staging_dir: data/staging
+    processed_dir: data/processed
+    metrics_dir: data/metrics
+
+  Scraping (Wikipedia):
+    batch_size: 100
+    max_articles: None
+    buffer_limit_mb: 10
+
+  Performance:
+    request_timeout: 30
+    query_timeout: 30
+    buffer_size_mb: 10
+    min_free_disk_gb: 10
+    connection_pool_size: 5
+    max_pool_overflow: 10
+
+  Database:
+    host: localhost
+    port: 5432
+    database: somali_nlp
+    user: somali_user
+    password: [REDACTED]
+    pool_size: 5
+    max_overflow: 10
+    query_timeout: 30
+
+  Logging:
+    level: INFO
+    format: structured
+    log_config_on_startup: true
+
+INFO [2026-01-06 10:30:46] Pre-flight disk space check: 45GB available (required: 10GB)
+INFO [2026-01-06 10:30:46] Initializing crawl ledger (SQLite)
+INFO [2026-01-06 10:30:46] Starting extraction phase...
+```
+
+**See Also**:
+- [Security Hardening Guide](security-hardening.md#log-redaction) - Full redaction implementation details
+- [Troubleshooting Guide](troubleshooting.md) - Using logs for debugging
+- [Operations Runbook](../operations/runbook.md) - Production startup checklist
 
 ## Environment-Specific Configs
 

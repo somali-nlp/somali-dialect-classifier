@@ -740,7 +740,7 @@ The filter adds the following metadata fields (note: field names use "dialect" f
 
 ### Migration from dialect_heuristic_filter
 
-If you are upgrading from earlier versions:
+For projects using the legacy `dialect_heuristic_filter`:
 
 - **Filter name changed**: `dialect_heuristic_filter` → `topic_lexicon_enrichment_filter`
 - **Metadata keys unchanged**: Still use `dialect_markers`, `primary_dialect`, `total_dialect_markers` (for backward compatibility)

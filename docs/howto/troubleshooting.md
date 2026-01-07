@@ -328,6 +328,199 @@ Pipeline keeps restarting from beginning despite checkpoint
 
 See [Crash Recovery Guide](crash-recovery.md) for comprehensive troubleshooting.
 
+### Problem: Pipeline aborts with "Insufficient disk space"
+
+**Symptoms**:
+```
+DiskSpaceError: Insufficient disk space: 8GB available, 10GB required
+```
+
+**Cause**: v0.2.0 introduces pre-flight disk space checks (default: 10GB minimum).
+
+**Solutions**:
+
+1. **Free up disk space** (recommended):
+   ```bash
+   # Check current usage
+   df -h .
+
+   # Clean old logs
+   rm -rf logs/*.log
+
+   # Remove old raw/staging data (if silver exists)
+   rm -rf data/raw/ data/staging/
+   ```
+
+2. **Lower threshold** (use with caution):
+   ```bash
+   # Set minimum to 5GB
+   export SDC_DISK__MIN_FREE_DISK_GB=5
+
+   # Or disable check (NOT recommended)
+   export SDC_DISK__MIN_FREE_DISK_GB=0
+   ```
+
+3. **Use external storage**:
+   ```bash
+   # Mount external drive
+   export SDC_DATA__RAW_DIR=/mnt/external/data/raw
+   export SDC_DATA__SILVER_DIR=/mnt/external/data/silver
+   ```
+
+**Why 10GB?**:
+- Wikipedia dump: ~2GB compressed, 5-8GB uncompressed
+- HuggingFace MC4: 3-5GB for 100k records
+- Processing overhead: 2-3GB
+- Safety margin: 2GB
+
+**See Also**:
+- [Configuration Guide - Disk Space](configuration.md#disk-space-checks)
+- [Memory Optimization](memory-optimization.md)
+
+---
+
+### Problem: HTTP requests timing out
+
+**Symptoms**:
+```
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='www.bbc.com'): Read timed out.
+```
+
+**Cause**: Default 30s timeout may be too short for slow networks or large responses.
+
+**Solutions**:
+
+1. **Increase timeout globally**:
+   ```bash
+   # Set to 60 seconds
+   export SDC_HTTP__REQUEST_TIMEOUT=60
+   ```
+
+2. **Source-specific timeout**:
+   ```bash
+   # BBC timeout (overrides global)
+   export SDC_SCRAPING__BBC__TIMEOUT=60
+
+   # Wikipedia timeout
+   export SDC_SCRAPING__WIKIPEDIA__TIMEOUT=60
+   ```
+
+3. **Check network**:
+   ```bash
+   # Test connectivity
+   curl -I https://www.bbc.com/somali
+
+   # Measure response time
+   time curl -s https://www.bbc.com/somali > /dev/null
+   ```
+
+4. **Retry logic**:
+   Timeout errors trigger automatic retry with exponential backoff:
+   - 1st retry: 2s delay
+   - 2nd retry: 4s delay
+   - 3rd retry: 8s delay
+
+   Check logs for "Retrying after timeout" messages.
+
+**See Also**:
+- [Configuration Guide - HTTP Timeout](configuration.md#http-timeout)
+
+---
+
+### Problem: PostgreSQL query timeout
+
+**Symptoms**:
+```
+psycopg2.errors.QueryCanceled: canceling statement due to statement timeout
+```
+
+**Cause**: Database queries exceed 30s timeout (default).
+
+**Solutions**:
+
+1. **Increase query timeout**:
+   ```bash
+   # Set to 60 seconds
+   export SDC_DB__QUERY_TIMEOUT=60
+   ```
+
+2. **Optimize queries** (check logs for slow queries):
+   ```bash
+   # Enable query logging
+   export SDC_LOGGING__LEVEL=DEBUG
+
+   # Look for slow query warnings
+   grep "slow query" logs/*.log
+   ```
+
+3. **Check indexes**:
+   ```bash
+   # Connect to database
+   psql -h localhost -U somali -d somali_nlp
+
+   # Verify indexes exist
+   \d+ crawl_ledger
+
+   # Should show:
+   # - idx_crawl_ledger_source_state
+   # - idx_crawl_ledger_text_hash
+   ```
+
+4. **Analyze tables**:
+   ```sql
+   ANALYZE crawl_ledger;
+   ANALYZE pipeline_runs;
+   ```
+
+**See Also**:
+- [PostgreSQL Setup - Query Optimization](../operations/postgres-setup.md#slow-query-performance)
+- [Configuration Guide - Database Timeout](configuration.md#database-timeout)
+
+---
+
+### Problem: Connection pool exhausted
+
+**Symptoms**:
+```
+sqlalchemy.exc.TimeoutError: QueuePool limit of size 5 overflow 10 reached
+```
+
+**Cause**: Too many concurrent database connections.
+
+**Solutions**:
+
+1. **Increase pool size**:
+   ```bash
+   # Increase pool to 10 connections
+   export SDC_DB__POOL_SIZE=10
+   export SDC_DB__MAX_OVERFLOW=20
+   ```
+
+2. **Reduce concurrency**:
+   ```bash
+   # Run fewer pipelines concurrently
+   somali-orchestrate --pipeline wikipedia  # One at a time
+   ```
+
+3. **Check for connection leaks**:
+   ```bash
+   # Monitor active connections
+   psql -h localhost -U somali -d somali_nlp -c \
+     "SELECT count(*) FROM pg_stat_activity WHERE datname='somali_nlp';"
+
+   # Should be <= pool_size + max_overflow
+   ```
+
+4. **Restart database** (if connections stuck):
+   ```bash
+   docker-compose restart postgres
+   ```
+
+**See Also**:
+- [PostgreSQL Setup - Connection Pool](../operations/postgres-setup.md#connection-pool-management)
+
+---
+
 ### Problem: Deduplication is too slow
 
 **Symptoms**:

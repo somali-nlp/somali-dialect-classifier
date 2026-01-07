@@ -291,9 +291,9 @@ Add to `.github/workflows/metrics-validation.yml`:
 
 ## Migration Guide
 
-### Upgrading from Version 2.0
+### Schema Version Compatibility (v2.0 → v3.0)
 
-Version 2.0 metrics are supported via `legacy_metrics` wrapper. To migrate:
+Version 2.0 metrics are supported via `legacy_metrics` wrapper. To migrate schema format:
 
 1. Keep existing `snapshot` and `statistics` sections
 2. Add new `layered_metrics` section
@@ -567,7 +567,7 @@ These fields may still appear in legacy_metrics sections for backward compatibil
   - [Schema Enforcement](#schema-enforcement)
   - [CI Integration](#ci-integration)
 - [Migration Guide](#migration-guide)
-  - [Upgrading from Version 2.0](#upgrading-from-version-20)
+  - [Schema Version Compatibility (v2.0 → v3.0)](#schema-version-compatibility-v20--v30)
   - [Example Migration](#example-migration)
 - [Deprecated Metrics](#deprecated-metrics)
 - [Best Practices](#best-practices)

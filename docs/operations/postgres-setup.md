@@ -186,6 +186,109 @@ The script will:
 - **Target:** 5 sources, concurrent runs (quarterly refresh)
 - **10x scale:** 50 concurrent threads (stress tested)
 
+## Connection Pool Management
+
+Connection pool leaks are prevented through proper resource cleanup (v0.2.0).
+
+### Configuration
+
+```bash
+# Connection pool settings
+SDC_DB__POOL_SIZE=5              # Base pool size
+SDC_DB__MAX_OVERFLOW=10          # Additional connections under load
+SDC_DB__POOL_RECYCLE=3600        # Recycle connections after 1 hour
+SDC_DB__POOL_PRE_PING=true       # Verify connection before use
+```
+
+### Monitoring
+
+Check active connections:
+
+```bash
+# Total connections
+psql -h localhost -U somali -d somali_nlp -c \
+  "SELECT count(*) FROM pg_stat_activity WHERE datname='somali_nlp';"
+
+# Idle connections
+psql -h localhost -U somali -d somali_nlp -c \
+  "SELECT count(*) FROM pg_stat_activity WHERE state='idle';"
+```
+
+### Troubleshooting Pool Exhaustion
+
+**Symptoms**: `QueuePool limit reached` errors
+
+**Solutions**:
+
+1. Increase pool size (temporary):
+   ```bash
+   export SDC_DB__POOL_SIZE=10
+   export SDC_DB__MAX_OVERFLOW=20
+   ```
+
+2. Check for connection leaks:
+   ```python
+   # All connections should be properly closed
+   # Check logs for unclosed connection warnings
+   grep "unclosed connection" logs/*.log
+   ```
+
+3. Restart pooler:
+   ```bash
+   docker-compose restart postgres
+   ```
+
+### Best Practices
+
+- **Development**: pool_size=2, max_overflow=5 (sufficient)
+- **Production**: pool_size=5, max_overflow=10 (handles concurrent pipelines)
+- **Quarterly Refresh**: pool_size=10, max_overflow=20 (all 5 sources concurrent)
+
+---
+
+## Query Timeout Configuration
+
+Prevent runaway queries with timeout limits:
+
+```bash
+# Global query timeout
+SDC_DB__QUERY_TIMEOUT=30  # seconds
+
+# Per-statement timeout (PostgreSQL config)
+ALTER DATABASE somali_nlp SET statement_timeout = '30s';
+```
+
+### Timeout Scenarios
+
+| Query Type | Typical Duration | Recommended Timeout |
+|------------|------------------|---------------------|
+| URL lookup | 5-10ms | 30s (default) |
+| State update | 10-20ms | 30s (default) |
+| Batch insert | 100-500ms | 60s |
+| Analytics query | 1-5s | 120s |
+
+### Handling Timeouts
+
+If queries consistently timeout:
+
+1. **Add indexes**:
+   ```sql
+   CREATE INDEX idx_custom ON crawl_ledger(your_column);
+   ```
+
+2. **Analyze tables**:
+   ```sql
+   ANALYZE crawl_ledger;
+   ```
+
+3. **Check slow queries**:
+   ```sql
+   SELECT query, calls, total_time, mean_time
+   FROM pg_stat_statements
+   ORDER BY total_time DESC
+   LIMIT 10;
+   ```
+
 ## Troubleshooting
 
 ### PostgreSQL container won't start
@@ -288,7 +391,7 @@ As of 2025-11-29, database schema is managed via **Alembic migrations** (single 
 cd migrations/database
 alembic current
 
-# Upgrade to latest
+# Apply latest migrations
 alembic upgrade head
 
 # Rollback one version
@@ -328,9 +431,68 @@ All indexes are created automatically on schema initialization:
 ## Security
 
 ### Credentials
-- Never commit passwords to git
-- Use strong passwords in production
-- Rotate passwords regularly
+
+**CRITICAL**: PostgreSQL password validation is enforced (v0.2.0).
+
+**Password Requirements**:
+- Minimum length: 8 characters (16+ recommended for production)
+- Must be set via `SDC_DB_PASSWORD` or `POSTGRES_PASSWORD` environment variable
+- NEVER hardcode passwords in code
+- NEVER commit `.env` files to version control
+
+**Setting Passwords**:
+
+```bash
+# Development (.env file)
+SDC_DB_PASSWORD="dev_password_123"
+
+# Production (environment variable)
+export SDC_DB_PASSWORD="$(openssl rand -base64 32)"
+
+# Docker Compose
+echo "SDC_DB_PASSWORD=$(openssl rand -base64 32)" >> .env
+docker-compose up -d postgres
+```
+
+**Password Validation Errors**:
+
+If you see:
+
+```
+ValueError: PostgreSQL password is required. Set SDC_DB_PASSWORD or POSTGRES_PASSWORD environment variable.
+```
+
+Solution:
+
+```bash
+# Check password is set
+echo $SDC_DB_PASSWORD
+
+# If empty, set it
+export SDC_DB_PASSWORD="your_secure_password"
+```
+
+**Password Rotation**:
+
+```bash
+# Generate new password
+NEW_PASSWORD=$(openssl rand -base64 32)
+
+# Update PostgreSQL
+psql -h localhost -U somali -d somali_nlp -c \
+  "ALTER USER somali WITH PASSWORD '$NEW_PASSWORD';"
+
+# Update environment
+export SDC_DB_PASSWORD="$NEW_PASSWORD"
+
+# Update .env (for Docker)
+sed -i "s/SDC_DB_PASSWORD=.*/SDC_DB_PASSWORD=$NEW_PASSWORD/" .env
+docker-compose restart postgres
+```
+
+**See Also**:
+- [Configuration Guide - Security](../howto/configuration.md#security-best-practices)
+- `.env.example` - Password configuration template
 
 ### Network
 - PostgreSQL port (5432) exposed only on localhost

@@ -87,10 +87,28 @@ somali-orchestrate --pipeline all
 
 ## Installation
 
-### Requirements
+### System Requirements
 
-- Python 3.9 or higher
-- pip or conda package manager
+Before installation, ensure you have:
+
+- **Python**: 3.9 or higher
+- **Disk Space**: Minimum 10GB free (checked automatically before processing)
+- **Memory**: Minimum 4GB RAM (8GB recommended for large datasets)
+- **Network**: Stable internet connection for data sources
+
+### Security Dependencies
+
+This project includes security-hardened XML parsing to prevent XXE attacks:
+
+```bash
+pip install -e ".[config]"  # Includes defusedxml for safe XML processing
+```
+
+For production deployments, always use the latest security patches:
+
+```bash
+pip install --upgrade defusedxml
+```
 
 ### Installation Options
 

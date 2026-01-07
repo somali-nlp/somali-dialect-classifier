@@ -134,6 +134,75 @@ src/somali_dialect_classifier/
 └── ml/                 # Machine learning (Stage 3)
 ```
 
+### ProcessorRegistry Pattern (v0.2.0)
+
+The ProcessorRegistry provides a factory pattern for creating data source processors, enabling dynamic processor discovery and registration.
+
+**Design Goals**:
+- Decouple processor creation from orchestration logic
+- Enable plugin-style processor registration
+- Support future processor auto-discovery
+
+**Architecture**:
+
+```python
+# Registry pattern
+ProcessorRegistry
+  ├── register(name, processor_class)
+  ├── create(name, **kwargs) -> BasePipeline
+  └── list_processors() -> List[str]
+
+# Built-in processors
+processors = {
+    "wikipedia": WikipediaSomaliProcessor,
+    "bbc": BBCSomaliProcessor,
+    "huggingface": HuggingFaceSomaliProcessor,
+    "sprakbanken": SprakbankenSomaliProcessor,
+    "tiktok": TikTokSomaliProcessor
+}
+```
+
+**Usage**:
+
+```python
+from somali_dialect_classifier.ingestion.registry import ProcessorRegistry
+
+# Create processor via registry
+processor = ProcessorRegistry.create("wikipedia", force=True)
+processor.download()
+
+# List available processors
+processors = ProcessorRegistry.list_processors()
+print(processors)  # ['wikipedia', 'bbc', 'huggingface', 'sprakbanken', 'tiktok']
+```
+
+**Adding Custom Processors**:
+
+```python
+from somali_dialect_classifier.ingestion import BasePipeline, ProcessorRegistry
+
+class CustomProcessor(BasePipeline):
+    def __init__(self, **kwargs):
+        super().__init__(source="Custom-Source", **kwargs)
+
+    # Implement required methods...
+
+# Register processor
+ProcessorRegistry.register("custom", CustomProcessor)
+
+# Use it
+processor = ProcessorRegistry.create("custom")
+```
+
+**Benefits**:
+- Simplifies orchestration (no hardcoded processor imports)
+- Enables future plugin system
+- Improves testability (mock processor registration)
+
+**See Also**:
+- [API Reference - ProcessorRegistry](../reference/api.md#processorregistry)
+- [Adding a New Data Source](../../CLAUDE.md#adding-a-new-data-source)
+
 ### 1. Ingestion Layer (`ingestion/`)
 
 **Purpose**: Acquire raw data from external sources and track ingestion state

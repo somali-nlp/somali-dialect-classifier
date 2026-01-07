@@ -20,6 +20,7 @@
     - [HuggingFace Datasets](#huggingface-datasets)
     - [Språkbanken Corpora](#språkbanken-corpora)
     - [TikTok Comments](#tiktok-comments)
+    - [File Checksum Deduplication](#file-checksum-deduplication)
 - [Continuous Streaming (HuggingFace)](#continuous-streaming-huggingface)
   - [Problem](#problem)
   - [Solution](#solution)
@@ -202,6 +203,149 @@ for video_url in video_urls:
 ```
 
 **Result**: TikTok only scrapes NEW videos, saving Apify API costs.
+
+#### File Checksum Deduplication
+
+**Use Case**: Sources without stable URLs (local file uploads, S3 objects, data exports)
+
+File checksum deduplication uses **SHA256 hash of entire file content** to detect duplicates when URLs are unavailable or unreliable.
+
+**When to Use**:
+
+| Deduplication Method | Use When | Example Sources |
+|---------------------|----------|-----------------|
+| **URL-based** | URLs are stable and unique | Wikipedia dumps, BBC articles, TikTok videos |
+| **File checksum** | No URLs or URLs change frequently | Local file uploads, S3 objects, CSV exports |
+| **Text hash** | Content changes but meaning same | Edited articles, reformatted documents |
+
+**How It Works**:
+
+```python
+import hashlib
+from pathlib import Path
+
+# Compute file checksum (SHA256 of entire file)
+def compute_file_checksum(file_path: Path) -> str:
+    sha256 = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        # Read in chunks for memory efficiency
+        for chunk in iter(lambda: f.read(8192), b''):
+            sha256.update(chunk)
+    return sha256.hexdigest()
+
+# Check if file already processed
+checksum = compute_file_checksum(Path("data/corpus_v2.xml"))
+existing = ledger.check_file_checksum(checksum, source="local-corpus")
+
+if existing:
+    logger.info(f"File already processed on {existing['processed_at']}")
+    logger.info(f"Silver ID: {existing['silver_id']}")
+else:
+    # Process new file
+    process_file(file_path)
+    ledger.mark_processed(
+        url=f"file://{file_path}",  # Use file:// URL for local files
+        text_hash=compute_text_hash(extracted_text),
+        silver_id=record_id,
+        source="local-corpus",
+        metadata={"file_checksum": checksum}  # Store checksum in metadata
+    )
+```
+
+**Storage**: File checksums are stored in the ledger's `metadata` JSONB field (no dedicated column yet). Future schema migrations may add a `file_checksum` column for indexing.
+
+**Comparison with Other Methods**:
+
+```
+FILE CHECKSUM DEDUP:
+  Input: Entire file bytes (XML, JSON, CSV, etc.)
+  Hash: SHA256 of file content
+  Detects: Exact file duplicates (byte-for-byte identical)
+  Misses: Same content with different formatting
+
+URL-BASED DEDUP:
+  Input: URL string
+  Hash: URL (no hashing needed)
+  Detects: Re-fetching same URL
+  Misses: Same content at different URLs
+
+TEXT HASH DEDUP:
+  Input: Extracted text only
+  Hash: SHA256 of cleaned text
+  Detects: Same text content
+  Misses: Near-duplicates (80% similar)
+```
+
+**Example: Local File Upload Pipeline**
+
+```python
+from pathlib import Path
+from somali_dialect_classifier.ingestion.crawl_ledger import get_ledger
+
+ledger = get_ledger()
+
+# Process directory of uploaded files
+upload_dir = Path("data/uploads")
+for file_path in upload_dir.glob("*.txt"):
+    # Compute checksum
+    checksum = compute_file_checksum(file_path)
+
+    # Check if already processed
+    if ledger.check_file_checksum(checksum, source="manual-upload"):
+        logger.info(f"Skipping duplicate file: {file_path.name}")
+        continue
+
+    # Extract text
+    text = file_path.read_text(encoding='utf-8')
+
+    # Process and store
+    record_id = process_text(text, source="manual-upload")
+    ledger.mark_processed(
+        url=f"file://{file_path.absolute()}",
+        text_hash=compute_text_hash(text),
+        silver_id=record_id,
+        source="manual-upload",
+        metadata={
+            "file_checksum": checksum,
+            "filename": file_path.name,
+            "upload_date": datetime.now(timezone.utc).isoformat()
+        }
+    )
+```
+
+**Querying Checksum History**:
+
+```python
+# Find all files with specific checksum
+checksum = "a3f2b1c4d5..."
+record = ledger.check_file_checksum(checksum, source="manual-upload")
+
+if record:
+    print(f"File previously processed:")
+    print(f"  Processed at: {record['processed_at']}")
+    print(f"  Silver ID: {record['silver_id']}")
+    print(f"  URL: {record['url']}")
+```
+
+**Best Practices**:
+
+1. **Use with URL fallback**: Always provide a `file://` URL for local files (enables URL-based dedup too)
+2. **Store in metadata**: Include checksum in metadata JSONB for auditing
+3. **Chunk reading**: Compute checksums in 8KB chunks for memory efficiency
+4. **Source-specific**: Always scope checksum queries by source (prevents false positives)
+
+**Limitations**:
+
+- **No near-duplicate detection**: Only detects exact byte matches (use MinHash for near-duplicates)
+- **Metadata storage**: Current schema stores checksums in JSONB (slower than indexed column)
+- **Cross-source duplicates**: Must query each source separately (no global checksum index)
+
+**Future Enhancement**: Schema migration to add dedicated `file_checksum` column with index for faster lookups.
+
+**See Also**:
+- [Phase 2: Extraction-Stage Deduplication](#phase-2-extraction-stage-deduplication) - MinHash LSH for near-duplicates
+- [API Reference](../reference/api.md#crawlledger-check_file_checksum) - `check_file_checksum()` method details
+- [Data Pipeline Architecture](../overview/data-pipeline-architecture.md#deduplication-architecture) - Dedup strategy overview
 
 ---
 
