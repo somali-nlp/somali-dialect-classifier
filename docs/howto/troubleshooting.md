@@ -335,7 +335,7 @@ See [Crash Recovery Guide](crash-recovery.md) for comprehensive troubleshooting.
 DiskSpaceError: Insufficient disk space: 8GB available, 10GB required
 ```
 
-**Cause**: v0.2.0 introduces pre-flight disk space checks (default: 10GB minimum).
+**Cause**: Pre-flight disk space checks require minimum 10GB free space (default threshold).
 
 **Solutions**:
 

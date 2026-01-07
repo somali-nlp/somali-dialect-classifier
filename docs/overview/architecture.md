@@ -134,7 +134,7 @@ src/somali_dialect_classifier/
 └── ml/                 # Machine learning (Stage 3)
 ```
 
-### ProcessorRegistry Pattern (v0.2.0)
+### ProcessorRegistry Pattern
 
 The ProcessorRegistry provides a factory pattern for creating data source processors, enabling dynamic processor discovery and registration.
 

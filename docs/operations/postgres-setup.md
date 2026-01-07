@@ -188,7 +188,7 @@ The script will:
 
 ## Connection Pool Management
 
-Connection pool leaks are prevented through proper resource cleanup (v0.2.0).
+Connection pool leaks are prevented through proper resource cleanup.
 
 ### Configuration
 
@@ -432,7 +432,7 @@ All indexes are created automatically on schema initialization:
 
 ### Credentials
 
-**CRITICAL**: PostgreSQL password validation is enforced (v0.2.0).
+**CRITICAL**: PostgreSQL password validation is enforced.
 
 **Password Requirements**:
 - Minimum length: 8 characters (16+ recommended for production)

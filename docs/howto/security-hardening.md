@@ -21,7 +21,7 @@
 
 ## Overview
 
-**New in v0.2.0**: The project includes comprehensive security hardening to protect against common vulnerabilities. This guide explains each security feature and provides best practices for production deployments.
+The project includes comprehensive security hardening to protect against common vulnerabilities. This guide explains each security feature and provides best practices for production deployments.
 
 **Security Principles**:
 - Defense in depth (multiple layers of protection)
@@ -163,7 +163,7 @@ stmt = select(CrawlLedger).where(
 
 ## Password Validation
 
-### Requirements (v0.2.0+)
+### Requirements
 
 **PostgreSQL password validation is enforced**:
 

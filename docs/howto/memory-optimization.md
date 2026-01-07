@@ -363,8 +363,6 @@ Examples:
 
 ### Buffer Size Tuning
 
-**New in v0.2.0**: Configurable parsing buffer for XML/HTML/JSON processing with memory vs. performance tradeoff.
-
 **What is Buffer Size?**
 
 The buffer size controls how much data is read into memory at once during file parsing. Larger buffers improve parsing speed but use more memory. Smaller buffers reduce memory usage but may slow down processing.

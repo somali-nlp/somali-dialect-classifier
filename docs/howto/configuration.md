@@ -394,7 +394,7 @@ SDC_ORCHESTRATION__INITIAL_COLLECTION_DAYS=14
 - [Orchestration Guide](orchestration.md) - Full orchestration documentation
 - [Daily Quotas Documentation](orchestration.md#daily-quotas-new-in-phase-c) - Quota enforcement details
 
-### PerformanceConfig (New in v0.2.0)
+### PerformanceConfig
 
 Controls timeout, buffer sizes, and resource limits for production reliability.
 
@@ -459,7 +459,7 @@ config = get_config(reload=True)
 
 **Disk Space Pre-Flight Checks**:
 
-All pipelines check available disk space before processing (v0.2.0). If free space is below `min_free_disk_gb`, the pipeline aborts with:
+All pipelines check available disk space before processing. If free space is below `min_free_disk_gb`, the pipeline aborts with:
 
 ```
 DiskSpaceError: Insufficient disk space: 8GB available, 10GB required
@@ -473,8 +473,6 @@ SDC_DISK__MIN_FREE_SPACE_GB=1
 ```
 
 ### Performance Tuning Quick Start
-
-**New in v0.2.0**: Comprehensive performance tuning across multiple subsystems.
 
 Performance optimization is covered across several specialized guides. Use this decision tree to navigate to the right documentation:
 
@@ -683,8 +681,6 @@ config.scraping.bbc.max_articles = None       # OK (Optional[int])
 ```
 
 ### Configuration Startup Logging
-
-**New in v0.2.0**: All pipelines log configuration summaries at startup for debugging and audit trails.
 
 **What Gets Logged**:
 
