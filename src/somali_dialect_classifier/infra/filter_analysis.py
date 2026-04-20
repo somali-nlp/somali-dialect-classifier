@@ -6,7 +6,7 @@ datasets, and compute filter breakdown statistics. Useful for understanding
 what data is being dropped and why.
 
 Usage:
-    from somali_dialect_classifier.utils.filter_analysis import FilterAnalyzer
+    from somali_dialect_classifier.infra.filter_analysis import FilterAnalyzer
 
     analyzer = FilterAnalyzer(source="BBC-Somali")
     analyzer.enable_sampling(rate=0.01)  # Sample 1% of filtered records

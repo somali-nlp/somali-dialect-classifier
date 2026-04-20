@@ -11,6 +11,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from ..infra.config import get_config
+from ..schema.registry import CURRENT_SCHEMA_VERSION
 from ..version import __pipeline_version__
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ class SilverDatasetWriter:
     Handles partitioning, schema validation, and file I/O.
     """
 
-    # Current schema version: 1.0 (hard-coded, no backward compatibility)
+    # Storage schema for silver records. Record values are validated before write.
     SCHEMA = pa.schema(
         [
             ("id", pa.string()),
@@ -46,7 +47,7 @@ class SilverDatasetWriter:
             ("embedding", pa.string()),
             ("register", pa.string()),
             ("run_id", pa.string()),  # Provenance: links record to metrics/logs
-            ("schema_version", pa.string()),  # Always "1.0" (hard-coded)
+            ("schema_version", pa.string()),  # Preserved from the validated record
         ]
     )
 
@@ -82,6 +83,28 @@ class SilverDatasetWriter:
             config = get_config()
             base_dir = config.data.silver_dir
         self.base_dir = base_dir
+
+    def _get_partition_dir(self, source: str, date_accessed: str) -> Path:
+        """Return the parquet partition directory for a source/date pair."""
+        return self.base_dir / f"source={source}" / f"date_accessed={date_accessed}"
+
+    def _get_metadata_dir(self, source: str, date_accessed: str) -> Path:
+        """Return the sidecar directory for a source/date pair."""
+        return self.base_dir / "_metadata" / f"source={source}" / f"date_accessed={date_accessed}"
+
+    def _list_parquet_files(self, silver_dir: Path) -> list[Path]:
+        """Return all parquet fragments under a partition directory."""
+        return sorted(path for path in silver_dir.rglob("*.parquet") if path.is_file())
+
+    def _read_parquet_files(self, parquet_files: list[Path]) -> pa.Table:
+        """Read parquet fragments without triggering hive partition inference."""
+        if not parquet_files:
+            raise FileNotFoundError("No Parquet files provided for read.")
+
+        tables = [pq.ParquetFile(path).read() for path in parquet_files]
+        if len(tables) == 1:
+            return tables[0]
+        return pa.concat_tables(tables)
 
     def _get_next_partition_num(self, silver_dir: Path, run_id: str) -> int:
         """
@@ -133,60 +156,80 @@ class SilverDatasetWriter:
         Raises:
             ValueError: If required fields are missing or invalid
         """
-        # Define required fields from IngestionOutputV1 contract
+        # Define required fields from IngestionOutputV1 contract + silver storage schema
         required_fields = {
             "id", "text", "title", "source", "source_type", "url",
             "date_accessed", "language", "license", "tokens", "text_hash",
-            "pipeline_version", "source_metadata", "domain", "register", "run_id"
+            "pipeline_version", "source_metadata", "domain", "register", "run_id",
+            "schema_version",
         }
 
         enriched_records = []
 
         for idx, record in enumerate(records):
+            normalized_record = dict(record)
+
+            if "linguistic_register" in normalized_record:
+                alias_value = normalized_record["linguistic_register"]
+                register_value = normalized_record.get("register")
+                if register_value is not None and register_value != alias_value:
+                    raise ValueError(
+                        f"Record {idx} (id={normalized_record.get('id', 'unknown')}) has conflicting "
+                        f"'register' ({register_value!r}) and 'linguistic_register' ({alias_value!r}) values."
+                    )
+                normalized_record["register"] = alias_value
+                normalized_record.pop("linguistic_register", None)
+
             # STRICT VALIDATION: Check for missing required fields
-            missing_fields = required_fields - set(record.keys())
+            missing_fields = required_fields - set(normalized_record.keys())
             if missing_fields:
                 raise ValueError(
-                    f"Record {idx} (id={record.get('id', 'unknown')}) missing required fields: "
+                    f"Record {idx} (id={normalized_record.get('id', 'unknown')}) missing required fields: "
                     f"{sorted(missing_fields)}. All fields must be provided by pipeline."
                 )
 
             # Add source context to error messages
-            source = record.get("source", "unknown")
-            run_id = record.get("run_id", "unknown")
+            source = normalized_record.get("source", "unknown")
+            run_id = normalized_record.get("run_id", "unknown")
 
             # Validate domain value (fail on invalid, don't patch)
-            if record["domain"] not in self.DOMAINS:
+            if normalized_record["domain"] not in self.DOMAINS:
                 raise ValueError(
-                    f"Record {idx} from {source} (run_id={run_id}, id={record['id']}) "
-                    f"has invalid domain '{record['domain']}'. "
+                    f"Record {idx} from {source} (run_id={run_id}, id={normalized_record['id']}) "
+                    f"has invalid domain '{normalized_record['domain']}'. "
                     f"Valid domains: {sorted(self.DOMAINS)}. "
                     f"Check processor's _get_domain() method."
                 )
 
             # Validate register value (fail on invalid, don't patch)
-            if record["register"] not in self.VALID_REGISTERS:
+            if normalized_record["register"] not in self.VALID_REGISTERS:
                 raise ValueError(
-                    f"Record {idx} from {source} (run_id={run_id}, id={record['id']}) "
-                    f"has invalid register '{record['register']}'. "
+                    f"Record {idx} from {source} (run_id={run_id}, id={normalized_record['id']}) "
+                    f"has invalid register '{normalized_record['register']}'. "
                     f"Valid registers: {sorted(self.VALID_REGISTERS)}. "
                     f"Check processor's _get_register() method."
                 )
 
+            if normalized_record["schema_version"] != CURRENT_SCHEMA_VERSION:
+                raise ValueError(
+                    f"Record {idx} from {source} (run_id={run_id}, id={normalized_record['id']}) "
+                    f"has invalid schema_version '{normalized_record['schema_version']}'. "
+                    f"Expected '{CURRENT_SCHEMA_VERSION}'."
+                )
+
             # Handle embedding field - ensure it's a string or None
-            if record.get("embedding") is not None and not isinstance(record["embedding"], str):
+            if normalized_record.get("embedding") is not None and not isinstance(
+                normalized_record["embedding"], str
+            ):
                 # Convert embeddings to JSON string if provided as list/dict
                 try:
-                    record["embedding"] = json.dumps(record["embedding"])
+                    normalized_record["embedding"] = json.dumps(normalized_record["embedding"])
                 except (TypeError, ValueError) as e:
                     raise ValueError(
-                        f"Record {idx} (id={record['id']}) has invalid embedding format: {e}"
-                    )
+                        f"Record {idx} (id={normalized_record['id']}) has invalid embedding format: {e}"
+                    ) from e
 
-            # HARD-CODE schema_version to "1.0" (no version detection)
-            record["schema_version"] = "1.0"
-
-            enriched_records.append(record)
+            enriched_records.append(normalized_record)
 
         return enriched_records
 
@@ -229,7 +272,7 @@ class SilverDatasetWriter:
         records = self._validate_and_enrich_records(records)
 
         # Create partitioned directory structure
-        silver_dir = self.base_dir / f"source={source}" / f"date_accessed={date_accessed}"
+        silver_dir = self._get_partition_dir(source, date_accessed)
         silver_dir.mkdir(parents=True, exist_ok=True)
 
         # Auto-increment partition number if not specified
@@ -253,7 +296,6 @@ class SilverDatasetWriter:
 
         # Generate metadata JSON sidecar
         self._write_metadata_sidecar(
-            silver_dir=silver_dir,
             source=source,
             source_slug=source_slug,
             run_id=run_id,
@@ -264,7 +306,7 @@ class SilverDatasetWriter:
         )
 
         # Log domain distribution
-        domain_counts = {}
+        domain_counts: dict[str, int] = {}
         for record in records:
             domain = record.get("domain", "unknown")
             domain_counts[domain] = domain_counts.get(domain, 0) + 1
@@ -281,7 +323,7 @@ class SilverDatasetWriter:
 
     def _format_size(self, path: Path) -> str:
         """Format file size for logging."""
-        size_bytes = path.stat().st_size
+        size_bytes = float(path.stat().st_size)
         for unit in ["B", "KB", "MB", "GB"]:
             if size_bytes < 1024.0:
                 return f"{size_bytes:.1f}{unit}"
@@ -309,7 +351,6 @@ class SilverDatasetWriter:
 
     def _write_metadata_sidecar(
         self,
-        silver_dir: Path,
         source: str,
         source_slug: str,
         run_id: str,
@@ -324,7 +365,6 @@ class SilverDatasetWriter:
         Creates a metadata file with checksums, statistics, and lineage information.
 
         Args:
-            silver_dir: Silver dataset directory
             source: Source name
             source_slug: Source slug for filename
             run_id: Run ID
@@ -335,8 +375,9 @@ class SilverDatasetWriter:
         """
         from datetime import datetime, timezone
 
-        # Check if metadata file already exists (create once per run)
-        metadata_path = silver_dir / f"{source_slug}_{run_id}_silver_metadata.json"
+        metadata_dir = self._get_metadata_dir(source, date_accessed)
+        metadata_dir.mkdir(parents=True, exist_ok=True)
+        metadata_path = metadata_dir / f"{source_slug}_{run_id}_silver_metadata.json"
 
         # Compute checksum for this partition
         checksum = self._compute_checksum(parquet_path)
@@ -407,13 +448,16 @@ class SilverDatasetWriter:
             FileNotFoundError: If dataset not found
             ValueError: If dataset schema doesn't match current schema
         """
-        silver_dir = self.base_dir / f"source={source}" / f"date_accessed={date_accessed}"
+        silver_dir = self._get_partition_dir(source, date_accessed)
 
         if not silver_dir.exists():
             raise FileNotFoundError(f"Silver dataset not found: {silver_dir}")
 
-        # Read all parquet files in partition
-        table = pq.read_table(silver_dir)
+        parquet_files = self._list_parquet_files(silver_dir)
+        if not parquet_files:
+            raise FileNotFoundError(f"No Parquet files found in {silver_dir}")
+
+        table = self._read_parquet_files(parquet_files)
 
         # STRICT VALIDATION: All required fields must be present
         required_fields = {field.name for field in self.SCHEMA}
@@ -439,7 +483,7 @@ class SilverDatasetWriter:
         Returns:
             Dictionary mapping domain to document count
         """
-        stats = {}
+        stats: dict[str, int] = {}
 
         # Iterate through all source directories
         if source:
@@ -451,8 +495,10 @@ class SilverDatasetWriter:
             # Iterate through all date partitions
             for date_dir in source_dir.glob("date_accessed=*"):
                 try:
-                    # Read partition
-                    table = pq.read_table(date_dir)
+                    parquet_files = self._list_parquet_files(date_dir)
+                    if not parquet_files:
+                        continue
+                    table = self._read_parquet_files(parquet_files)
 
                     # Count domains if field exists
                     if "domain" in table.column_names:

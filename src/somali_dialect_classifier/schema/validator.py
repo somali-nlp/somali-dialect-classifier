@@ -177,7 +177,7 @@ class SchemaValidator:
         validation_rate = (valid_records / total_records * 100) if total_records > 0 else 0.0
 
         # Count error types
-        error_summary = {}
+        error_summary: dict[str, int] = {}
         for errors in df[~df["_validation_valid"]]["_validation_errors"]:
             for error in errors:
                 # Extract error type (before first colon)

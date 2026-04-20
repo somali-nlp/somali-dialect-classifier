@@ -81,6 +81,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         max_records: Optional[int] = None,
         force: bool = False,
         run_seed: Optional[str] = None,
+        ledger=None,
     ):
         """
         Initialize HuggingFace datasets processor.
@@ -144,7 +145,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
         # Initialize deduplication BEFORE BasePipeline (now uses centralized config)
         self.dedup = PipelineSetup.create_dedup_engine()
-        self.ledger = get_ledger()
+        self.ledger = ledger if ledger is not None else get_ledger()
         self.metrics = None  # Will be initialized in download()
 
         # Initialize schema mapper for field mapping
@@ -392,7 +393,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
         # PHASE 5: Load checkpoint for resumption
         # Try checkpoint file first (more frequent saves), fallback to manifest
-        checkpoint = None if self.force else self._load_checkpoint()
+        checkpoint = None if self.force else self._load_extraction_checkpoint()
         start_offset = 0
         if checkpoint:
             start_offset = checkpoint.get("last_index", 0)
@@ -523,7 +524,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
                 # PHASE 5: Save checkpoint every 1000 records
                 if total_processed % 1000 == 0:
-                    self._save_checkpoint(
+                    self._save_extraction_checkpoint(
                         {
                             "last_index": current_offset,
                             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -544,7 +545,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
                     # Skip if batch already completed
                     if batch_file.name not in batches_completed:
-                        self._write_batch(batch, batch_file)
+                        self._write_staging_batch(batch, batch_file)
                         batches_completed.add(batch_file.name)
 
                         # Track batch completion
@@ -574,7 +575,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                     / f"{dataset_slug}_{self.run_id}_staging_batch-{batch_num:06d}.jsonl"
                 )
                 if batch_file.name not in batches_completed:
-                    self._write_batch(batch, batch_file)
+                    self._write_staging_batch(batch, batch_file)
                     batches_completed.add(batch_file.name)
 
                     manifest["last_offset"] = current_offset
@@ -610,7 +611,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                     )
 
             # PHASE 5: Save final checkpoint and clean up
-            self._save_checkpoint(
+            self._save_extraction_checkpoint(
                 {
                     "last_index": current_offset,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -654,8 +655,8 @@ class HuggingFaceSomaliProcessor(BasePipeline):
 
         return staging_dir
 
-    def _write_batch(self, batch: list[dict[str, Any]], batch_file: Path) -> None:
-        """Write batch of records to JSONL file."""
+    def _write_staging_batch(self, batch: list[dict[str, Any]], batch_file: Path) -> None:
+        """Write a staged extraction batch to JSONL."""
         with open(batch_file, "w", encoding="utf-8") as f:
             for record in batch:
                 # Convert non-serializable types (datetime, etc.) to strings
@@ -697,205 +698,6 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         with open(manifest_path, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
 
-    def process(self) -> Path:
-        """
-        Process staged JSONL batches and write to silver dataset.
-
-        Overrides BasePipeline.process() to handle multi-batch staging format,
-        but uses the same enrichment logic.
-
-        Returns:
-            Path to silver dataset directory
-        """
-        from collections import Counter
-
-        from ...quality.record_utils import build_silver_record
-
-        # Check that extraction has been performed
-        staging_dir = self.staging_dir
-        if not staging_dir.exists():
-            raise FileNotFoundError(
-                f"Staging directory not found: {staging_dir}. Run extract() first."
-            )
-
-        # NOTE: We don't check for .extraction_complete marker anymore because
-        # it's only created when the dataset is exhausted, not when stopping at max_records.
-        # The process() method can run as long as JSONL files exist in staging.
-
-        self.processed_dir.mkdir(parents=True, exist_ok=True)
-
-        self.logger.info("")
-        self.logger.info("=" * 60)
-        self.logger.info("PHASE 3: Text Processing & Silver Dataset Creation")
-        self.logger.info("=" * 60)
-
-        records_processed = 0
-        records_filtered = 0
-        filter_stats = Counter()
-        silver_records = []
-
-        # PHASE 1: Load already-processed URLs for cross-run deduplication
-        processed_urls = set()
-        if not self.force and hasattr(self, "ledger") and self.ledger is not None:
-            try:
-                processed_urls = self._get_processed_urls()
-                self.logger.info(
-                    f"PHASE 1 DEDUP (process): Loaded {len(processed_urls)} already-processed URLs from ledger"
-                )
-            except Exception as e:
-                self.logger.warning(f"Failed to load processed URLs from ledger: {e}")
-
-        for raw_record in self._extract_records():
-            # PHASE 1: Skip if URL already processed in previous runs
-            if raw_record.url and raw_record.url in processed_urls:
-                self.metrics.increment("records_skipped_discovery_dedup")
-                continue
-
-            # Shared text cleaning
-            cleaned = self.text_cleaner.clean(raw_record.text)
-
-            if not cleaned:
-                records_filtered += 1
-                filter_stats["empty_after_cleaning"] += 1
-
-                # Record filter reason in metrics if available
-                if hasattr(self, "metrics") and self.metrics is not None:
-                    self.metrics.record_filter_reason("empty_after_cleaning")
-                continue
-
-            # Execute record filters using FilterEngine API
-            passed, failed_filter, filter_metadata = self.filter_engine.apply_filters(
-                cleaned, raw_record.title
-            )
-
-            if not passed:
-                records_filtered += 1
-                filter_stats[f"filtered_by_{failed_filter}"] += 1
-
-                # Record filter reason in metrics if available
-                if hasattr(self, "metrics") and self.metrics is not None:
-                    self.metrics.record_filter_reason(failed_filter)
-                continue
-
-            # Merge metadata
-            source_meta = self._get_source_metadata()
-            merged_metadata = {**source_meta, **raw_record.metadata, **filter_metadata}
-
-            # Build enriched silver record
-            record = build_silver_record(
-                text=cleaned,
-                title=raw_record.title,
-                source=self.source,
-                url=raw_record.url,
-                date_accessed=self.date_accessed,
-                source_type=self._get_source_type(),
-                language=self._get_language(),
-                license_str=self._get_license(),
-                pipeline_version="2.1.0",  # Updated for schema v2.1
-                source_metadata=merged_metadata,
-                date_published=raw_record.metadata.get("date_published"),
-                topic=raw_record.metadata.get("topic"),
-                domain=self._get_domain(),
-                embedding=None,  # Placeholder for future embeddings
-                register=self._get_register(),  # v2.1: Linguistic register
-            )
-
-            # PHASE 1: Mark URL as processed in ledger for cross-run deduplication
-            if hasattr(self, "ledger") and self.ledger is not None:
-                try:
-                    # Get minhash_signature from metadata if available
-                    minhash_sig = raw_record.metadata.get("minhash_signature")
-                    # Use URL from silver record (has correct URL from JSONL)
-                    record_url = record["url"]
-                    self.ledger.mark_processed(
-                        url=record_url,
-                        text_hash=record["text_hash"],
-                        silver_id=record["id"],
-                        minhash_signature=minhash_sig,
-                        source=self.source,
-                    )
-                except Exception as e:
-                    self.logger.error(f"Failed to mark URL as processed in ledger: {e}")
-
-            silver_records.append(record)
-            records_processed += 1
-
-            # Log progress
-            if records_processed % self.log_frequency == 0:
-                self.logger.info(
-                    f"Processed {records_processed:,} records (filtered: {records_filtered:,})"
-                )
-
-        # Write human-readable text dump (aligns with other pipelines)
-        if not silver_records:
-            self.logger.error("No records passed filters!")
-            self.logger.error("")
-            self.logger.error("=" * 60)
-            self.logger.error("PROCESSING FAILED - NO DATA")
-            self.logger.error("=" * 60)
-            self.logger.error(f"Total processed: {records_processed:,}")
-            self.logger.error(f"Total filtered:  {records_filtered:,}")
-            if filter_stats:
-                self.logger.error("\nFilter breakdown:")
-                for filter_name, count in filter_stats.most_common():
-                    self.logger.error(f"  {filter_name}: {count:,}")
-            raise ValueError(
-                f"No records passed filters. Total extracted: {records_processed:,}, "
-                f"Total filtered: {records_filtered:,}. Check filter configuration."
-            )
-
-        # Write processed text file for human inspection
-        with open(self.processed_file, "w", encoding="utf-8") as f:
-            for record in silver_records:
-                # Format: <title>\n<text>\n\n (separator between records)
-                f.write(f"{record['title']}\n")
-                f.write(f"{record['text']}\n")
-                f.write("\n")  # Blank line separator
-
-        self.logger.info(
-            f"✓ Processed text written: {self.processed_file} ({records_processed:,} records)"
-        )
-
-        # Write to silver dataset (Parquet)
-        silver_path = self.silver_writer.write(
-            records=silver_records,
-            source=self.source,
-            date_accessed=self.date_accessed,
-            run_id=self.run_id,
-        )
-        self.logger.info(f"✓ Silver dataset written: {silver_path}")
-
-        # Export processing metrics and final quality report (aligns with base_pipeline.py)
-        if hasattr(self, "metrics") and self.metrics is not None:
-            self.metrics.increment("records_processed", records_processed)
-            self.metrics.increment("records_written", records_processed)
-
-            metrics_path = Path("data/metrics") / f"{self.run_id}_processing.json"
-            metrics_path.parent.mkdir(parents=True, exist_ok=True)
-            self.metrics.export_json(metrics_path)
-            self.logger.info(f"Processing metrics exported: {metrics_path}")
-
-            from ...infra.metrics import QualityReporter
-
-            report_path = Path("data/reports") / f"{self.run_id}_final_quality_report.md"
-            report_path.parent.mkdir(parents=True, exist_ok=True)
-            QualityReporter(self.metrics).generate_markdown_report(report_path)
-            self.logger.info(f"Final quality report: {report_path}")
-
-        # Log final stats
-        self.logger.info("")
-        self.logger.info("=" * 60)
-        self.logger.info("PROCESSING COMPLETE")
-        self.logger.info("=" * 60)
-        self.logger.info(f"Total processed: {records_processed:,}")
-        self.logger.info(f"Total filtered:  {records_filtered:,}")
-        if filter_stats:
-            self.logger.info("\nFilter breakdown:")
-            for filter_name, count in filter_stats.most_common():
-                self.logger.info(f"  {filter_name}: {count:,}")
-
-        return silver_path
-
     def _extract_records(self) -> Iterator[RawRecord]:
         """
         Replay staged JSONL batches and map to RawRecords.
@@ -920,13 +722,30 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             self.logger.warning(f"No batch files found in {staging_dir}")
             return
 
+        processed_urls = set()
+        if not self.force and hasattr(self, "ledger") and self.ledger is not None:
+            try:
+                processed_urls = self._get_processed_urls()
+                self.logger.info(
+                    f"PHASE 1 DEDUP (process): Loaded {len(processed_urls)} already-processed URLs from ledger"
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to load processed URLs from ledger: {e}")
+
         self.logger.info(f"Replaying {len(batch_files)} JSONL batches")
 
         for batch_file in batch_files:
             with open(batch_file, encoding="utf-8") as f:
                 for line in f:
                     record = json.loads(line)
-                    yield self._map_to_raw_record(record)
+                    raw_record = self._map_to_raw_record(record)
+
+                    if raw_record.url and raw_record.url in processed_urls:
+                        if hasattr(self, "metrics") and self.metrics is not None:
+                            self.metrics.increment("records_skipped_discovery_dedup")
+                        continue
+
+                    yield raw_record
 
     def _map_to_raw_record(self, record: dict[str, Any]) -> RawRecord:
         """
@@ -1125,7 +944,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
             self.logger.warning(f"Failed to query ledger for processed URLs: {e}")
             return set()
 
-    def _load_checkpoint(self) -> Optional[dict]:
+    def _load_extraction_checkpoint(self) -> Optional[dict]:
         """
         Load processing checkpoint from disk.
 
@@ -1148,7 +967,7 @@ class HuggingFaceSomaliProcessor(BasePipeline):
                 return None
         return None
 
-    def _save_checkpoint(self, checkpoint: dict):
+    def _save_extraction_checkpoint(self, checkpoint: dict):
         """
         Save processing checkpoint to disk.
 

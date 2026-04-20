@@ -8,7 +8,7 @@ scripts and reduces maintenance risk.
 Supports Phase 3 (layered) structure with schema validation.
 
 Usage:
-    >>> from somali_dialect_classifier.utils.metrics_aggregation import (
+    >>> from somali_dialect_classifier.infra.metrics_aggregation import (
     ...     extract_consolidated_metric,
     ...     load_metrics_from_file
     ... )
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Try to import schema validation
 try:
-    from somali_dialect_classifier.utils.metrics_schema import (
+    from somali_dialect_classifier.infra.metrics_schema import (
         ConsolidatedMetric,
         validate_processing_json,
     )

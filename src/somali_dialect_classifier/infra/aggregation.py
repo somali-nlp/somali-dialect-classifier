@@ -29,7 +29,7 @@ INCOMPATIBLE METRICS (require same pipeline type):
 
 USAGE EXAMPLES:
     # Calculate volume-weighted quality across sources
-    >>> from somali_dialect_classifier.utils.aggregation import calculate_volume_weighted_quality
+    >>> from somali_dialect_classifier.infra.aggregation import calculate_volume_weighted_quality
     >>> sources = [
     ...     {"name": "BBC", "records_written": 150, "layered_metrics": {"quality": {"quality_pass_rate": 0.847}}},
     ...     {"name": "Wikipedia", "records_written": 10000, "layered_metrics": {"quality": {"quality_pass_rate": 1.0}}}
@@ -39,7 +39,7 @@ USAGE EXAMPLES:
     Overall quality: 0.987
 
     # Validate metric compatibility
-    >>> from somali_dialect_classifier.utils.aggregation import validate_metric_compatibility
+    >>> from somali_dialect_classifier.infra.aggregation import validate_metric_compatibility
     >>> is_compat, reason = validate_metric_compatibility(sources, "http_request_success_rate")
     >>> if not is_compat:
     ...     print(f"Cannot aggregate: {reason}")
@@ -221,7 +221,7 @@ def aggregate_compatible_metrics(
     """
     if method == AggregationMethod.VOLUME_WEIGHTED_MEAN:
         if metric_name == "quality_pass_rate":
-            return calculate_volume_weighted_quality(sources)["overall_quality_rate"]
+            return float(calculate_volume_weighted_quality(sources)["overall_quality_rate"])
         else:
             # Generic volume-weighted mean for other metrics
             total_weight = 0
@@ -264,7 +264,7 @@ def aggregate_compatible_metrics(
 
     elif method == AggregationMethod.SUM:
         # Sum values (for countable metrics like records_written, bytes_downloaded)
-        total = 0
+        total = 0.0
         for source in sources:
             _, value, _ = _extract_metrics(source, metric_name)
             total += value
@@ -308,17 +308,7 @@ def validate_metric_compatibility(
     # Extract pipeline types from all sources
     pipeline_types = set()
     for source in sources:
-        # Handle both formats
-        if "pipeline_type" in source:
-            pipeline_type = source["pipeline_type"]
-        elif "layered_metrics" in source:
-            # Try to infer from layered metrics if possible, or default to unknown
-            # Usually pipeline_type is at root in Phase 3
-            pipeline_type = source.get("_pipeline_type", "unknown")
-        else:
-            pipeline_type = "unknown"
-
-        pipeline_types.add(pipeline_type)
+        pipeline_types.add(_get_pipeline_type(source))
 
     # Check if all sources have same pipeline type
     if len(pipeline_types) == 1:
@@ -373,6 +363,13 @@ def _extract_metrics(
 
         source_name = source.get("name", "unknown")
 
+    elif "snapshot" in source or "statistics" in source:
+        snapshot = source.get("snapshot", {})
+        statistics = source.get("statistics", {})
+        weight = snapshot.get(weight_name, source.get(weight_name, 0))
+        value = statistics.get(metric_name, snapshot.get(metric_name, source.get(metric_name, 0.0)))
+        source_name = snapshot.get("source", source.get("source", "unknown"))
+
     else:
         # Simple flat format
         weight = source.get(weight_name, 0)
@@ -384,6 +381,16 @@ def _extract_metrics(
         value = value / 100.0
 
     return weight, value, source_name
+
+
+def _get_pipeline_type(source: dict[str, Any]) -> str:
+    """Extract pipeline type from flat or processing.json metrics payloads."""
+    return (
+        source.get("pipeline_type")
+        or source.get("_pipeline_type")
+        or source.get("snapshot", {}).get("pipeline_type")
+        or "unknown"
+    )
 
 
 def calculate_aggregate_summary(sources: list[dict[str, Any]]) -> dict[str, Any]:
@@ -439,7 +446,7 @@ def calculate_aggregate_summary(sources: list[dict[str, Any]]) -> dict[str, Any]
     # Extract pipeline types
     pipeline_types = []
     for source in sources:
-        pt = source.get("pipeline_type", source.get("_pipeline_type", "unknown"))
+        pt = _get_pipeline_type(source)
         if pt not in pipeline_types:
             pipeline_types.append(pt)
 

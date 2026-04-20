@@ -15,6 +15,7 @@ import logging
 from collections.abc import Iterator
 from pathlib import Path
 
+from pyarrow import dataset as ds
 import pyarrow.parquet as pq
 
 from somali_dialect_classifier.contracts import validate_ingestion_output
@@ -26,6 +27,21 @@ class ValidationError(Exception):
     """Raised when validation fails."""
 
     pass
+
+
+def _iter_record_batches(parquet_path: Path, batch_size: int = 1000) -> tuple[Iterator, int]:
+    """Return a batch iterator and row count without materializing the whole dataset."""
+    if parquet_path.is_dir():
+        dataset = ds.dataset(
+            parquet_path,
+            format="parquet",
+            exclude_invalid_files=True,
+        )
+        return dataset.scanner(batch_size=batch_size).to_batches(), dataset.count_rows()
+
+    parquet_file = pq.ParquetFile(parquet_path)
+    total_rows = parquet_file.metadata.num_rows if parquet_file.metadata else 0
+    return parquet_file.iter_batches(batch_size=batch_size), total_rows
 
 
 def validate_silver_parquet(
@@ -72,39 +88,18 @@ def validate_silver_parquet(
     logger.info(f"Validating silver Parquet: {parquet_path}")
 
     try:
-        # Read Parquet table (handles both files and directories)
-        # For directories, PyArrow will automatically ignore non-parquet files
-        # Use a ParquetDataset to filter by file extension
-        from pyarrow import dataset as ds
-
-        if parquet_path.is_dir():
-            # Use dataset API to filter only .parquet files
-            dataset = ds.dataset(
-                parquet_path,
-                format="parquet",
-                exclude_invalid_files=True,
-            )
-            table = dataset.to_table()
-        else:
-            # Single file
-            table = pq.read_table(parquet_path)
-
-        total_rows = len(table)
+        batch_size = 1000
+        batch_iterator, total_rows = _iter_record_batches(parquet_path, batch_size=batch_size)
 
         logger.info(f"Loaded {total_rows} records from {parquet_path}")
 
-        # Convert to iterator of dictionaries for validation
-        # Use batched conversion to reduce memory overhead
-        batch_size = 1000
-        for batch_idx in range(0, total_rows, batch_size):
-            batch_end = min(batch_idx + batch_size, total_rows)
-            batch = table.slice(batch_idx, batch_end - batch_idx)
-
-            # Convert batch to list of dicts
+        processed_rows = 0
+        for batch in batch_iterator:
             records = batch.to_pylist()
+            batch_end = processed_rows + len(records)
 
             for idx, record in enumerate(records):
-                record_index = batch_idx + idx
+                record_index = processed_rows + idx
                 is_valid, validation_errors = validate_ingestion_output(record)
 
                 if is_valid:
@@ -133,6 +128,8 @@ def validate_silver_parquet(
                     f"Progress: {batch_end}/{total_rows} records "
                     f"({valid_count} valid, {invalid_count} invalid)"
                 )
+
+            processed_rows = batch_end
 
     except Exception as e:
         if isinstance(e, ValidationError):
@@ -189,40 +186,21 @@ def iter_validated_records(parquet_path: Path, fail_fast: bool = True) -> Iterat
     logger.info(f"Streaming validated records from: {parquet_path}")
 
     try:
-        # Read Parquet table
-        # For directories, use dataset API to filter only .parquet files
-        from pyarrow import dataset as ds
-
-        if parquet_path.is_dir():
-            # Use dataset API to filter only .parquet files
-            dataset = ds.dataset(
-                parquet_path,
-                format="parquet",
-                exclude_invalid_files=True,
-            )
-            table = dataset.to_table()
-        else:
-            # Single file
-            table = pq.read_table(parquet_path)
-
-        total_rows = len(table)
+        batch_size = 1000
+        batch_iterator, total_rows = _iter_record_batches(parquet_path, batch_size=batch_size)
 
         logger.info(f"Loaded {total_rows} records for streaming validation")
 
         valid_count = 0
         invalid_count = 0
 
-        # Stream records in batches to minimize memory overhead
-        batch_size = 1000
-        for batch_idx in range(0, total_rows, batch_size):
-            batch_end = min(batch_idx + batch_size, total_rows)
-            batch = table.slice(batch_idx, batch_end - batch_idx)
-
-            # Convert batch to list of dicts
+        processed_rows = 0
+        for batch in batch_iterator:
             records = batch.to_pylist()
+            batch_end = processed_rows + len(records)
 
             for idx, record in enumerate(records):
-                record_index = batch_idx + idx
+                record_index = processed_rows + idx
                 is_valid, validation_errors = validate_ingestion_output(record)
 
                 if is_valid:
@@ -253,6 +231,8 @@ def iter_validated_records(parquet_path: Path, fail_fast: bool = True) -> Iterat
                     f"Streaming progress: {batch_end}/{total_rows} records "
                     f"({valid_count} valid, {invalid_count} skipped)"
                 )
+
+            processed_rows = batch_end
 
         # Final summary
         logger.info(f"Streaming complete: {valid_count} valid, {invalid_count} skipped records")

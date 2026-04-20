@@ -49,6 +49,7 @@ class TikTokSomaliProcessor(BasePipeline):
         video_urls: Optional[list[str]] = None,
         force: bool = False,
         run_seed: Optional[str] = None,
+        ledger=None,
     ):
         """
         Initialize TikTok Somali processor.
@@ -74,7 +75,6 @@ class TikTokSomaliProcessor(BasePipeline):
         # Initialize deduplication and ledger BEFORE BasePipeline
         from somali_dialect_classifier.ingestion.crawl_ledger import get_ledger
         from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
-        from somali_dialect_classifier.ingestion.pipeline_setup import PipelineSetup
 
         # IMPORTANT: TikTok uses exact-match deduplication ONLY (MinHash disabled)
         # User pays for every comment Apify scrapes, so we keep ALL non-identical comments
@@ -85,7 +85,7 @@ class TikTokSomaliProcessor(BasePipeline):
             similarity_threshold=1.0,  # Only remove 100% identical duplicates
         )
         self.dedup = DedupEngine(dedup_config)
-        self.ledger = get_ledger()
+        self.ledger = ledger if ledger is not None else get_ledger()
         self.metrics = None  # Will be initialized in download()
 
         # Initialize BasePipeline (generates run_id and logger)

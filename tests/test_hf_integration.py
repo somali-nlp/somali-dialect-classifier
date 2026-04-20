@@ -16,13 +16,7 @@ try:
 except ImportError:
     DATASETS_AVAILABLE = False
 
-# Skip ALL tests in this module - HuggingFace processor features not fully implemented
-pytestmark = [
-    pytest.mark.skip(
-        reason="HuggingFace processor features not fully implemented - requires backend engineer"
-    ),
-    pytest.mark.skipif(not DATASETS_AVAILABLE, reason="datasets library not installed"),
-]
+pytestmark = pytest.mark.skipif(not DATASETS_AVAILABLE, reason="datasets library not installed")
 
 from somali_dialect_classifier.ingestion.processors.huggingface_somali_processor import (
     HuggingFaceSomaliProcessor,
@@ -84,7 +78,7 @@ class TestHuggingFaceSomaliProcessor:
         assert processor.dataset_config == "so"
         assert processor.split == "train"
         # Source format: HuggingFace-Somali_{dataset_slug}-{config}
-        assert processor.source == "HuggingFace-Somali_dataset-so"
+        assert processor.source == "huggingface-somali_dataset-so"
 
     def test_manifest_creation(self, temp_work_dir, monkeypatch):
         """Test manifest file is created correctly."""
@@ -119,7 +113,7 @@ class TestHuggingFaceSomaliProcessor:
         manifest_path = processor.download()
 
         assert manifest_path.exists()
-        assert manifest_path.name == "dataset_manifest.json"  # Should match dataset slug
+        assert manifest_path.name == f"dataset_{processor.run_id}_raw_manifest.json"
 
         # Verify manifest content
         with open(manifest_path) as f:
@@ -206,7 +200,7 @@ class TestHuggingFaceSomaliProcessor:
         ]
 
         batch_file = temp_work_dir / "test_batch.jsonl"
-        processor._write_batch(batch, batch_file)
+        processor._write_staging_batch(batch, batch_file)
 
         assert batch_file.exists()
 
@@ -228,10 +222,10 @@ class TestHuggingFaceSomaliProcessor:
             text_field="text",
         )
 
-        assert len(processor.record_filters) == 2  # min_length + langid
+        assert len(processor.filter_engine.filters) == 2  # min_length + langid
 
         # Verify filter names
-        filter_funcs = [f[0].__name__ for f in processor.record_filters]
+        filter_funcs = [f[0].__name__ for f in processor.filter_engine.filters]
         assert "min_length_filter" in filter_funcs
         assert "langid_filter" in filter_funcs
 
@@ -340,7 +334,7 @@ class TestHFIntegration:
         manifest_dir = processor.raw_dir
         manifest_dir.mkdir(parents=True, exist_ok=True)
         dataset_slug = "dataset"  # test/dataset -> "dataset"
-        manifest_file = manifest_dir / f"{dataset_slug}_manifest.json"
+        manifest_file = manifest_dir / f"{dataset_slug}_{processor.run_id}_raw_manifest.json"
 
         manifest = {
             "dataset_name": "test/dataset",
@@ -413,7 +407,7 @@ class TestHFConfiguration:
 
         # Find min_length_filter
         min_length_filter = None
-        for filter_func, kwargs in processor.record_filters:
+        for filter_func, kwargs in processor.filter_engine.filters:
             if filter_func.__name__ == "min_length_filter":
                 min_length_filter = kwargs
                 break
@@ -474,5 +468,5 @@ class TestHFErrorHandling:
             processor.download()
 
             # Try to process without extract
-            with pytest.raises(FileNotFoundError, match="Staging directory not found"):
+            with pytest.raises(FileNotFoundError, match="Staging file not found"):
                 processor.process()

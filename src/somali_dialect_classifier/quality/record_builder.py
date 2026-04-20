@@ -9,7 +9,7 @@ Responsibilities:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from ..version import __pipeline_version__
 from .record_utils import build_silver_record
@@ -99,7 +99,7 @@ class RecordBuilder:
             ... )
         """
         # Merge source-wide metadata with per-record metadata and filter metadata
-        merged_metadata = {}
+        merged_metadata: dict[str, Any] = {}
         if source_metadata:
             merged_metadata.update(source_metadata)
         merged_metadata.update(raw_record.metadata)
@@ -133,7 +133,7 @@ class RecordBuilder:
         record["schema_version"] = self.schema_version
         record["run_id"] = self.run_id
 
-        return record
+        return cast(dict[str, Any], record)
 
     def add_metadata(self, record: dict[str, Any], **kwargs) -> dict[str, Any]:
         """

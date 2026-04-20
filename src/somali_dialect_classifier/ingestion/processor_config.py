@@ -34,6 +34,8 @@ def get_processor_kwargs(
         "force": force,
         "run_seed": run_seed,
     }
+    if "ledger" in kwargs:
+        base_kwargs["ledger"] = kwargs["ledger"]
 
     # Processor-specific parameter mapping
     if processor_name == "wikipedia":

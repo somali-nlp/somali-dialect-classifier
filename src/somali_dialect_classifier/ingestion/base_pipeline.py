@@ -322,115 +322,21 @@ class BasePipeline(DataProcessor, ABC):
         self.logger.info("PHASE 3: Text Processing & Silver Dataset Creation")
         self.logger.info("=" * 60)
 
-        # Start MLFlow run
-        self.mlflow.start_run(run_name=self.run_id)
-
-        # Log context tags
-        tags = {
-            "source": self.source,
-            "run_id": self.run_id,
-            "git_commit": self.git_commit or "unknown",
-            "config_hash": self.config_hash,
-            "date_accessed": self.date_accessed,
-            **self.system_context,
-        }
-        self.mlflow.set_tags(tags)
-
-        self.mlflow.log_params(
-            {
-                "source": self.source,
-                "run_id": self.run_id,
-                "force": self.force,
-                "batch_size": self.batch_size,
-            }
-        )
-
-        # Checkpoint setup
-        checkpoint_path = self.processed_dir / f"{self.run_id}_checkpoint.json"
-        last_processed_index = self._load_checkpoint(checkpoint_path)
-
-        records_processed = 0
-        records_filtered = 0
-        records = []
-        current_index = 0
+        checkpoint_path, last_processed_index = self._prepare_process_run()
 
         try:
             with open(self.processed_file, "w", encoding="utf-8") as fout:
-                for raw_record in self._extract_records():
-                    # Skip already processed records when resuming from checkpoint
-                    if current_index < last_processed_index:
-                        current_index += 1
-                        continue
-
-                    current_index += 1
-                    cleaned = self.text_cleaner.clean(raw_record.text)
-                    if not cleaned:
-                        records_filtered += 1
-                        self._record_filter_metric("empty_after_cleaning")
-                        continue
-                    passed, failed_filter, filter_metadata = self.filter_engine.apply_filters(
-                        cleaned, raw_record.title
-                    )
-                    if not passed:
-                        records_filtered += 1
-                        self._record_filter_metric(failed_filter)
-                        continue
-                    fout.write(f"=== {raw_record.title} ===\n{cleaned}\n\n")
-                    record = self.record_builder.build_silver_record(
-                        raw_record=raw_record,
-                        cleaned_text=cleaned,
-                        filter_metadata=filter_metadata,
-                        source_type=self._get_source_type(),
-                        license_str=self._get_license(),
-                        domain=self._get_domain(),
-                        register=self._get_register(),
-                        language=self._get_language(),
-                        source_metadata=self._get_source_metadata(),
-                    )
-                    metrics = self.metrics if hasattr(self, "metrics") else None
-                    is_valid, errors = self.validation_service.validate_record(
-                        record, self.source, metrics
-                    )
-                    if not is_valid:
-                        records_filtered += 1
-                        continue
-                    records.append(record)
-                    records_processed += 1
-                    self._mark_url_processed(raw_record, record)
-                    if records_processed % self.log_frequency == 0:
-                        self.logger.info(f"Progress: {records_processed} records processed...")
-
-                    # Save checkpoint every CHECKPOINT_INTERVAL records
-                    if current_index % CHECKPOINT_INTERVAL == 0:
-                        self._save_checkpoint(checkpoint_path, current_index)
-
-                    if self.batch_size and len(records) >= self.batch_size:
-                        self._write_batch(records)
-                        records = []
-
-            self._log_processing_summary(records_processed, records_filtered)
-            self._write_final_batch(records)
-            self._export_metrics(records_processed, records_filtered)
-
-            # Log headline metrics to MLFlow
-            quality_pass_rate = 0.0
-            if records_processed + records_filtered > 0:
-                quality_pass_rate = records_processed / (records_processed + records_filtered)
-
-            self.mlflow.log_metrics(
-                {
-                    "records_processed": records_processed,
-                    "records_written": records_processed,
-                    "records_filtered": records_filtered,
-                    "quality_pass_rate": quality_pass_rate,
-                }
+                records_processed, records_filtered, records = self._process_record_stream(
+                    last_processed_index=last_processed_index,
+                    checkpoint_path=checkpoint_path,
+                    fout=fout,
+                )
+            self._finalize_process_run(
+                records=records,
+                records_processed=records_processed,
+                records_filtered=records_filtered,
+                checkpoint_path=checkpoint_path,
             )
-
-            self.mlflow.set_tag("status", "success")
-
-            # Clean up checkpoint on successful completion
-            checkpoint_path.unlink(missing_ok=True)
-            self.logger.info("Pipeline completed successfully, checkpoint removed")
 
         except Exception as e:
             self.logger.error(f"Pipeline failed: {e}")
@@ -443,6 +349,128 @@ class BasePipeline(DataProcessor, ABC):
             self.mlflow.end_run()
 
         return self.silver_path if self.silver_path else self.processed_file
+
+    def _prepare_process_run(self) -> tuple[Path, int]:
+        """Start tracking and load the process checkpoint."""
+        self.mlflow.start_run(run_name=self.run_id)
+
+        tags = {
+            "source": self.source,
+            "run_id": self.run_id,
+            "git_commit": self.git_commit or "unknown",
+            "config_hash": self.config_hash,
+            "date_accessed": self.date_accessed,
+            **self.system_context,
+        }
+        self.mlflow.set_tags(tags)
+        self.mlflow.log_params(
+            {
+                "source": self.source,
+                "run_id": self.run_id,
+                "force": self.force,
+                "batch_size": self.batch_size,
+            }
+        )
+
+        checkpoint_path = self.processed_dir / f"{self.run_id}_checkpoint.json"
+        last_processed_index = self._load_checkpoint(checkpoint_path)
+        return checkpoint_path, last_processed_index
+
+    def _process_record_stream(
+        self,
+        last_processed_index: int,
+        checkpoint_path: Path,
+        fout,
+    ) -> tuple[int, int, list[dict]]:
+        """Stream, clean, filter, validate, and batch records for writing."""
+        records_processed = 0
+        records_filtered = 0
+        records: list[dict] = []
+        current_index = 0
+
+        for raw_record in self._extract_records():
+            if current_index < last_processed_index:
+                current_index += 1
+                continue
+
+            current_index += 1
+            cleaned = self.text_cleaner.clean(raw_record.text)
+            if not cleaned:
+                records_filtered += 1
+                self._record_filter_metric("empty_after_cleaning")
+                continue
+
+            passed, failed_filter, filter_metadata = self.filter_engine.apply_filters(
+                cleaned, raw_record.title
+            )
+            if not passed:
+                records_filtered += 1
+                self._record_filter_metric(failed_filter)
+                continue
+
+            fout.write(f"=== {raw_record.title} ===\n{cleaned}\n\n")
+            record = self.record_builder.build_silver_record(
+                raw_record=raw_record,
+                cleaned_text=cleaned,
+                filter_metadata=filter_metadata,
+                source_type=self._get_source_type(),
+                license_str=self._get_license(),
+                domain=self._get_domain(),
+                register=self._get_register(),
+                language=self._get_language(),
+                source_metadata=self._get_source_metadata(),
+            )
+            metrics = self.metrics if hasattr(self, "metrics") else None
+            is_valid, errors = self.validation_service.validate_record(
+                record, self.source, metrics
+            )
+            if not is_valid:
+                records_filtered += 1
+                continue
+
+            records.append(record)
+            records_processed += 1
+            self._mark_url_processed(raw_record, record)
+
+            if records_processed % self.log_frequency == 0:
+                self.logger.info(f"Progress: {records_processed} records processed...")
+
+            if current_index % CHECKPOINT_INTERVAL == 0:
+                self._save_checkpoint(checkpoint_path, current_index)
+
+            if self.batch_size and len(records) >= self.batch_size:
+                self._write_batch(records)
+                records = []
+
+        return records_processed, records_filtered, records
+
+    def _finalize_process_run(
+        self,
+        records: list[dict],
+        records_processed: int,
+        records_filtered: int,
+        checkpoint_path: Path,
+    ) -> None:
+        """Flush final outputs, export metrics, and mark the run successful."""
+        self._log_processing_summary(records_processed, records_filtered)
+        self._write_final_batch(records)
+        self._export_metrics(records_processed, records_filtered)
+
+        quality_pass_rate = 0.0
+        if records_processed + records_filtered > 0:
+            quality_pass_rate = records_processed / (records_processed + records_filtered)
+
+        self.mlflow.log_metrics(
+            {
+                "records_processed": records_processed,
+                "records_written": records_processed,
+                "records_filtered": records_filtered,
+                "quality_pass_rate": quality_pass_rate,
+            }
+        )
+        self.mlflow.set_tag("status", "success")
+        checkpoint_path.unlink(missing_ok=True)
+        self.logger.info("Pipeline completed successfully, checkpoint removed")
 
     def _record_filter_metric(self, filter_reason: str) -> None:
         """Record filter reason in metrics if available."""

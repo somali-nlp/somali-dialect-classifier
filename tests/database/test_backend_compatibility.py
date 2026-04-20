@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger, get_ledger
 
 # Skip PostgreSQL tests if not available
 postgres_available = os.getenv("POSTGRES_HOST") is not None
@@ -190,6 +190,20 @@ class TestBackendSelection:
         """Test that invalid backend type raises error."""
         with pytest.raises(ValueError, match="Unknown backend type"):
             CrawlLedger(backend_type="invalid_backend")
+
+    def test_get_ledger_returns_independent_instances(self):
+        """Factory helper should not reuse a hidden singleton."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "factory.db"
+            first = get_ledger(db_path=db_path)
+            second = get_ledger(db_path=db_path)
+
+            try:
+                assert first is not second
+                assert first.backend_type == second.backend_type == "sqlite"
+            finally:
+                first.close()
+                second.close()
 
 
 class TestBackendBehaviorParity:

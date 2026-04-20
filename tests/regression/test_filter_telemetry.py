@@ -161,7 +161,7 @@ def test_filter_breakdown_present_when_filtering_occurred(metrics_dir):
             error_msg += f"❌ {failure['source']}: {failure['records_filtered']} records filtered but filter_breakdown is empty\n"
             error_msg += f"   File: {failure['file_path']}\n\n"
 
-        error_msg += "💡 Fix: Check filter implementation in preprocessing/*.py files\n"
+        error_msg += "💡 Fix: Check filter handling in ingestion/base_pipeline.py and source processors\n"
         error_msg += (
             "   Ensure all filters call: self.metrics.record_filter_reason('filter_name')\n"
         )
@@ -258,7 +258,7 @@ def test_all_filter_keys_in_catalog(metrics_dir):
 
     Regression Scenario:
         Developer adds new filter but forgets to register it in:
-        `src/somali_dialect_classifier/pipeline/filters/catalog.py`
+        `src/somali_dialect_classifier/quality/filters/catalog.py`
 
         Result:
         - Filter data collected in metrics

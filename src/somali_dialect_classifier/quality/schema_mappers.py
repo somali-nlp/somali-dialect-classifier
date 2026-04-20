@@ -14,7 +14,8 @@ Supported datasets:
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from dataclasses import field
+from typing import Any, Callable, Optional, cast
 
 logger = logging.getLogger(__name__)
 
@@ -35,13 +36,8 @@ class SchemaMapping:
     text_field: str
     url_field: Optional[str] = None
     timestamp_field: Optional[str] = None
-    metadata_fields: list = None
-    transform_fn: Optional[Callable] = None
-
-    def __post_init__(self):
-        """Set defaults."""
-        if self.metadata_fields is None:
-            self.metadata_fields = []
+    metadata_fields: list[str] = field(default_factory=list)
+    transform_fn: Optional[Callable[[str], str]] = None
 
 
 class DatasetSchemaMapper:
@@ -109,7 +105,7 @@ class DatasetSchemaMapper:
         Returns:
             Extracted text, or None if field missing
         """
-        text = record.get(self.mapping.text_field)
+        text = cast(Optional[str], record.get(self.mapping.text_field))
 
         if text is None:
             logger.debug(
@@ -122,7 +118,7 @@ class DatasetSchemaMapper:
         if self.mapping.transform_fn:
             text = self.mapping.transform_fn(text)
 
-        return text
+        return cast(Optional[str], text)
 
     def extract_url(self, record: dict[str, Any]) -> Optional[str]:
         """
@@ -152,7 +148,7 @@ class DatasetSchemaMapper:
         if not self.mapping.timestamp_field:
             return None
 
-        return record.get(self.mapping.timestamp_field)
+        return cast(Optional[str], record.get(self.mapping.timestamp_field))
 
     def extract_metadata(self, record: dict[str, Any]) -> dict[str, Any]:
         """

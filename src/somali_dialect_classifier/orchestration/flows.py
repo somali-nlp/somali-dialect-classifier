@@ -9,11 +9,12 @@ Provides coordinated execution of all four data sources with:
 """
 
 import logging
+import subprocess
 import sys
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional, cast
 
 try:
     from prefect import flow, task
@@ -37,6 +38,14 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+PIPELINE_RUN_TYPES = {
+    "wikipedia": "file",
+    "bbc": "web",
+    "huggingface": "stream",
+    "sprakbanken": "file",
+    "tiktok": "stream",
+}
+
 
 def _get_ledger():
     """Get ledger instance for orchestrator operations."""
@@ -45,6 +54,133 @@ def _get_ledger():
     # Use CrawlLedger factory which respects SDC_LEDGER_BACKEND env var
     # Automatically selects PostgreSQL or SQLite based on configuration
     return CrawlLedger()
+
+
+def _get_git_commit() -> Optional[str]:
+    """Return the current git commit if available."""
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except Exception:
+        return None
+
+
+def _build_pipeline_run_config(source: str, **extra: Any) -> dict[str, Any]:
+    """Build a safe config snapshot for pipeline run tracking."""
+    from ..infra.config import get_config
+
+    config = get_config()
+    snapshot: dict[str, Any] = {"quota": config.orchestration.get_quota(source)}
+    snapshot.update({key: value for key, value in extra.items() if value is not None})
+    return snapshot
+
+
+def _get_records_processed(ledger: Any, source: str) -> Optional[int]:
+    """Best-effort extraction of processed record count for pipeline run updates."""
+    try:
+        stats = ledger.get_statistics(source)
+    except Exception:
+        return None
+
+    processed = stats.get("by_state", {}).get("processed")
+    return processed if isinstance(processed, int) else None
+
+
+def _run_locked_pipeline_task(
+    *,
+    processor_name: str,
+    display_source: str,
+    pipeline_type: str,
+    processor_kwargs: dict[str, Any],
+    source_name_kwargs: Optional[dict[str, Any]] = None,
+    result_extras: Optional[dict[str, Any]] = None,
+    include_statistics: bool = False,
+    start_message: str,
+    ledger_factory: Callable[[], Any] = _get_ledger,
+    processor_factory: Callable[..., Any],
+    source_name_factory: Callable[..., str],
+    git_commit_resolver: Callable[[], Optional[str]] = _get_git_commit,
+    config_snapshot: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    """Run a pipeline task with consistent lock, registration, and provenance updates."""
+    source_name_kwargs = source_name_kwargs or {}
+    result_extras = result_extras or {}
+    source_name = source_name_factory(processor_name, **source_name_kwargs)
+
+    logger.info(start_message)
+
+    ledger = ledger_factory()
+    if ledger.is_source_locked(processor_name):
+        logger.warning(f"{display_source} pipeline already running, skipping")
+        return {"source": source_name, "status": "skipped", "reason": "concurrent_run_active"}
+
+    try:
+        ledger.acquire_source_lock(processor_name, timeout=30)
+    except RuntimeError as e:
+        logger.error(f"Failed to acquire lock: {e}")
+        return {
+            "source": source_name,
+            "status": "failed",
+            "reason": "lock_timeout",
+            "error": str(e),
+        }
+
+    registered_run_id: Optional[str] = None
+
+    try:
+        processor = processor_factory(processor_name, **{**processor_kwargs, "ledger": ledger})
+        registered_run_id = processor.run_id
+
+        ledger.register_pipeline_run(
+            run_id=registered_run_id,
+            source=processor_name,
+            pipeline_type=pipeline_type,
+            config=config_snapshot,
+            git_commit=git_commit_resolver(),
+        )
+        ledger.update_pipeline_run(run_id=registered_run_id, status="RUNNING")
+
+        silver_path = processor.run()
+        records_processed = _get_records_processed(ledger, processor_name)
+
+        ledger.update_pipeline_run(
+            run_id=registered_run_id,
+            status="COMPLETED",
+            records_processed=records_processed,
+            end_time=datetime.now(timezone.utc),
+        )
+
+        result = {
+            "source": source_name,
+            "status": "success",
+            "silver_path": str(silver_path),
+            **result_extras,
+        }
+        if include_statistics:
+            result["statistics"] = ledger.get_statistics(processor_name)
+        return result
+    except Exception as e:
+        logger.error(f"{display_source} pipeline failed: {e}")
+        if registered_run_id is not None:
+            ledger.update_pipeline_run(
+                run_id=registered_run_id,
+                status="FAILED",
+                errors=str(e),
+                end_time=datetime.now(timezone.utc),
+            )
+        return {
+            "source": source_name,
+            "status": "failed",
+            "error": str(e),
+            **result_extras,
+        }
+    finally:
+        ledger.release_source_lock(processor_name)
+        logger.info(f"{display_source} pipeline completed and lock released")
 
 
 def should_run_source(source: str) -> tuple[bool, str]:
@@ -118,7 +254,7 @@ def is_initial_collection_phase() -> bool:
         )
         return True
 
-    return status == "ACTIVE"
+    return isinstance(status, str) and status == "ACTIVE"
 
 
 def _setup_orchestrator_logging() -> None:
@@ -174,115 +310,21 @@ def run_wikipedia_task(force: bool = False, run_seed: Optional[str] = None) -> d
     Returns:
         Dictionary with pipeline results and metrics
     """
-    import subprocess
-    import uuid
-
-    from ..infra.config import get_config
-    from ..ingestion.crawl_ledger import CrawlLedger
-    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
-    from ..ingestion.processor_registry import ProcessorRegistry
-
     # Load processors to trigger registration
     from ..ingestion import processors  # noqa: F401
-
-    logger.info("Starting Wikipedia pipeline...")
-
-    # Check for concurrent runs before starting expensive work
-    ledger = CrawlLedger()
-    if ledger.is_source_locked("wikipedia"):
-        logger.warning("Wikipedia pipeline already running, skipping")
-        return {
-            "source": "Wikipedia-Somali",
-            "status": "skipped",
-            "reason": "concurrent_run_active",
-        }
-
-    # Acquire lock before pipeline starts
-    try:
-        ledger.acquire_source_lock("wikipedia", timeout=30)
-    except RuntimeError as e:
-        logger.error(f"Failed to acquire lock: {e}")
-        return {
-            "source": "Wikipedia-Somali",
-            "status": "failed",
-            "reason": "lock_timeout",
-            "error": str(e),
-        }
-
-    # Generate run ID and get git commit
-    run_id = f"wikipedia_{uuid.uuid4().hex[:12]}"
-    try:
-        git_commit = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-    except Exception:
-        git_commit = None
-
-    # Get config for pipeline run tracking
-    config = get_config()
-    quota_config = {"quota": config.orchestration.get_quota("wikipedia")}
-
-    # Register pipeline run
-    ledger.register_pipeline_run(
-        run_id=run_id,
-        source="wikipedia",
-        pipeline_type="web",
-        config=quota_config,
-        git_commit=git_commit,
+    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
+    from ..ingestion.processor_registry import ProcessorRegistry
+    return _run_locked_pipeline_task(
+        processor_name="wikipedia",
+        display_source="Wikipedia",
+        pipeline_type=PIPELINE_RUN_TYPES["wikipedia"],
+        processor_kwargs=get_processor_kwargs("wikipedia", force=force, run_seed=run_seed),
+        include_statistics=True,
+        start_message="Starting Wikipedia pipeline...",
+        processor_factory=ProcessorRegistry.create,
+        source_name_factory=get_processor_source_name,
+        config_snapshot=_build_pipeline_run_config("wikipedia"),
     )
-
-    try:
-        # Run pipeline with lock held
-        ledger.update_pipeline_run(run_id=run_id, status="RUNNING")
-
-        # Use ProcessorRegistry instead of direct import
-        processor_kwargs = get_processor_kwargs("wikipedia", force=force, run_seed=run_seed)
-        processor = ProcessorRegistry.create("wikipedia", **processor_kwargs)
-        silver_path = processor.run()
-
-        # Get statistics from ledger
-        stats = processor.ledger.get_statistics("wikipedia")
-        records_processed = stats.get("by_state", {}).get("processed", 0)
-
-        # Mark pipeline run as completed
-        ledger.update_pipeline_run(
-            run_id=run_id,
-            status="COMPLETED",
-            records_processed=records_processed,
-            end_time=datetime.now(timezone.utc),
-        )
-
-        source_name = get_processor_source_name("wikipedia")
-        return {
-            "source": source_name,
-            "status": "success",
-            "silver_path": str(silver_path),
-            "statistics": stats,
-        }
-    except Exception as e:
-        logger.error(f"Wikipedia pipeline failed: {e}")
-
-        # Mark pipeline run as failed
-        ledger.update_pipeline_run(
-            run_id=run_id,
-            status="FAILED",
-            errors=str(e),
-            end_time=datetime.now(timezone.utc),
-        )
-
-        source_name = get_processor_source_name("wikipedia")
-        return {
-            "source": source_name,
-            "status": "failed",
-            "error": str(e),
-        }
-    finally:
-        # ALWAYS release lock, even if pipeline fails
-        ledger.release_source_lock("wikipedia")
-        logger.info("Wikipedia pipeline completed and lock released")
 
 
 @task(retries=2, retry_delay_seconds=10)
@@ -299,64 +341,23 @@ def run_bbc_task(
     Returns:
         Dictionary with pipeline results and metrics
     """
-    from ..ingestion.crawl_ledger import CrawlLedger
-    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
-    from ..ingestion.processor_registry import ProcessorRegistry
-
     # Load processors to trigger registration
     from ..ingestion import processors  # noqa: F401
-
-    logger.info("Starting BBC pipeline...")
-
-    # Check for concurrent runs before starting expensive work
-    ledger = CrawlLedger()
-    if ledger.is_source_locked("bbc"):
-        logger.warning("BBC pipeline already running, skipping")
-        return {"source": "BBC-Somali", "status": "skipped", "reason": "concurrent_run_active"}
-
-    # Acquire lock before pipeline starts
-    try:
-        ledger.acquire_source_lock("bbc", timeout=30)
-    except RuntimeError as e:
-        logger.error(f"Failed to acquire lock: {e}")
-        return {
-            "source": "BBC-Somali",
-            "status": "failed",
-            "reason": "lock_timeout",
-            "error": str(e),
-        }
-
-    try:
-        # Run pipeline with lock held
-        # Use ProcessorRegistry instead of direct import
-        processor_kwargs = get_processor_kwargs(
+    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
+    from ..ingestion.processor_registry import ProcessorRegistry
+    return _run_locked_pipeline_task(
+        processor_name="bbc",
+        display_source="BBC",
+        pipeline_type=PIPELINE_RUN_TYPES["bbc"],
+        processor_kwargs=get_processor_kwargs(
             "bbc", force=force, run_seed=run_seed, max_articles=max_articles
-        )
-        processor = ProcessorRegistry.create("bbc", **processor_kwargs)
-        silver_path = processor.run()
-
-        # Get statistics from ledger
-        stats = processor.ledger.get_statistics("bbc")
-
-        source_name = get_processor_source_name("bbc")
-        return {
-            "source": source_name,
-            "status": "success",
-            "silver_path": str(silver_path),
-            "statistics": stats,
-        }
-    except Exception as e:
-        logger.error(f"BBC pipeline failed: {e}")
-        source_name = get_processor_source_name("bbc")
-        return {
-            "source": source_name,
-            "status": "failed",
-            "error": str(e),
-        }
-    finally:
-        # ALWAYS release lock, even if pipeline fails
-        ledger.release_source_lock("bbc")
-        logger.info("BBC pipeline completed and lock released")
+        ),
+        include_statistics=True,
+        start_message="Starting BBC pipeline...",
+        processor_factory=ProcessorRegistry.create,
+        source_name_factory=get_processor_source_name,
+        config_snapshot=_build_pipeline_run_config("bbc", max_articles=max_articles),
+    )
 
 
 @task(retries=2, retry_delay_seconds=10)
@@ -379,73 +380,34 @@ def run_huggingface_task(
     Returns:
         Dictionary with pipeline results and metrics
     """
-    from ..ingestion.crawl_ledger import CrawlLedger
-    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
-    from ..ingestion.processor_registry import ProcessorRegistry
-
     # Load processors to trigger registration
     from ..ingestion import processors  # noqa: F401
-
-    logger.info(f"Starting HuggingFace pipeline: {dataset_name}...")
-
-    # Check for concurrent runs before starting expensive work
-    ledger = CrawlLedger()
-    if ledger.is_source_locked("huggingface"):
-        logger.warning("HuggingFace pipeline already running, skipping")
-        return {
-            "source": "HuggingFace-Somali",
-            "status": "skipped",
-            "reason": "concurrent_run_active",
-        }
-
-    # Acquire lock before pipeline starts
-    try:
-        ledger.acquire_source_lock("huggingface", timeout=30)
-    except RuntimeError as e:
-        logger.error(f"Failed to acquire lock: {e}")
-        return {
-            "source": "HuggingFace-Somali",
-            "status": "failed",
-            "reason": "lock_timeout",
-            "error": str(e),
-        }
-
-    try:
-        # Run pipeline with lock held
-        # Use ProcessorRegistry instead of direct import
-        processor_kwargs = get_processor_kwargs(
+    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
+    from ..ingestion.processor_registry import ProcessorRegistry
+    return _run_locked_pipeline_task(
+        processor_name="huggingface",
+        display_source="HuggingFace",
+        pipeline_type=PIPELINE_RUN_TYPES["huggingface"],
+        processor_kwargs=get_processor_kwargs(
             "huggingface",
             force=force,
             run_seed=run_seed,
             dataset_name=dataset_name,
             dataset_config=dataset_config,
             max_records=max_records,
-        )
-        processor = ProcessorRegistry.create("huggingface", **processor_kwargs)
-        silver_path = processor.run()
-
-        # Get statistics
-        source_name = get_processor_source_name("huggingface", dataset_name=dataset_name)
-
-        return {
-            "source": source_name,
-            "status": "success",
-            "silver_path": str(silver_path),
-            "dataset_name": dataset_name,
-            "dataset_config": dataset_config,
-        }
-    except Exception as e:
-        logger.error(f"HuggingFace pipeline failed: {e}")
-        source_name = get_processor_source_name("huggingface", dataset_name=dataset_name)
-        return {
-            "source": source_name,
-            "status": "failed",
-            "error": str(e),
-        }
-    finally:
-        # ALWAYS release lock, even if pipeline fails
-        ledger.release_source_lock("huggingface")
-        logger.info("HuggingFace pipeline completed and lock released")
+        ),
+        source_name_kwargs={"dataset_name": dataset_name},
+        result_extras={"dataset_name": dataset_name, "dataset_config": dataset_config},
+        start_message=f"Starting HuggingFace pipeline: {dataset_name}...",
+        processor_factory=ProcessorRegistry.create,
+        source_name_factory=get_processor_source_name,
+        config_snapshot=_build_pipeline_run_config(
+            "huggingface",
+            dataset_name=dataset_name,
+            dataset_config=dataset_config,
+            max_records=max_records,
+        ),
+    )
 
 
 @task(retries=2, retry_delay_seconds=10)
@@ -462,67 +424,24 @@ def run_sprakbanken_task(
     Returns:
         Dictionary with pipeline results and metrics
     """
-    from ..ingestion.crawl_ledger import CrawlLedger
-    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
-    from ..ingestion.processor_registry import ProcessorRegistry
-
     # Load processors to trigger registration
     from ..ingestion import processors  # noqa: F401
-
-    logger.info(f"Starting Språkbanken pipeline: {corpus_id}...")
-
-    # Check for concurrent runs before starting expensive work
-    ledger = CrawlLedger()
-    if ledger.is_source_locked("sprakbanken"):
-        logger.warning("Språkbanken pipeline already running, skipping")
-        return {
-            "source": "Sprakbanken-Somali",
-            "status": "skipped",
-            "reason": "concurrent_run_active",
-        }
-
-    # Acquire lock before pipeline starts
-    try:
-        ledger.acquire_source_lock("sprakbanken", timeout=30)
-    except RuntimeError as e:
-        logger.error(f"Failed to acquire lock: {e}")
-        return {
-            "source": "Sprakbanken-Somali",
-            "status": "failed",
-            "reason": "lock_timeout",
-            "error": str(e),
-        }
-
-    try:
-        # Run pipeline with lock held
-        # Use ProcessorRegistry instead of direct import
-        processor_kwargs = get_processor_kwargs(
+    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
+    from ..ingestion.processor_registry import ProcessorRegistry
+    return _run_locked_pipeline_task(
+        processor_name="sprakbanken",
+        display_source="Språkbanken",
+        pipeline_type=PIPELINE_RUN_TYPES["sprakbanken"],
+        processor_kwargs=get_processor_kwargs(
             "sprakbanken", force=force, run_seed=run_seed, corpus_id=corpus_id
-        )
-        processor = ProcessorRegistry.create("sprakbanken", **processor_kwargs)
-        silver_path = processor.run()
-
-        # Get statistics
-        source_name = get_processor_source_name("sprakbanken", corpus_id=corpus_id)
-
-        return {
-            "source": source_name,
-            "status": "success",
-            "silver_path": str(silver_path),
-            "corpus_id": corpus_id,
-        }
-    except Exception as e:
-        logger.error(f"Språkbanken pipeline failed: {e}")
-        source_name = get_processor_source_name("sprakbanken", corpus_id=corpus_id)
-        return {
-            "source": source_name,
-            "status": "failed",
-            "error": str(e),
-        }
-    finally:
-        # ALWAYS release lock, even if pipeline fails
-        ledger.release_source_lock("sprakbanken")
-        logger.info("Språkbanken pipeline completed and lock released")
+        ),
+        source_name_kwargs={"corpus_id": corpus_id},
+        result_extras={"corpus_id": corpus_id},
+        start_message=f"Starting Språkbanken pipeline: {corpus_id}...",
+        processor_factory=ProcessorRegistry.create,
+        source_name_factory=get_processor_source_name,
+        config_snapshot=_build_pipeline_run_config("sprakbanken", corpus_id=corpus_id),
+    )
 
 
 @task(retries=2, retry_delay_seconds=10)
@@ -545,68 +464,32 @@ def run_tiktok_task(
     Returns:
         Dictionary with pipeline results and metrics
     """
-    from ..ingestion.crawl_ledger import CrawlLedger
-    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
-    from ..ingestion.processor_registry import ProcessorRegistry
-
     # Load processors to trigger registration
     from ..ingestion import processors  # noqa: F401
-
-    logger.info(f"Starting TikTok pipeline for {len(video_urls)} videos...")
-
-    # Check for concurrent runs before starting expensive work
-    ledger = CrawlLedger()
-    if ledger.is_source_locked("tiktok"):
-        logger.warning("TikTok pipeline already running, skipping")
-        return {"source": "TikTok-Somali", "status": "skipped", "reason": "concurrent_run_active"}
-
-    # Acquire lock before pipeline starts
-    try:
-        ledger.acquire_source_lock("tiktok", timeout=30)
-    except RuntimeError as e:
-        logger.error(f"Failed to acquire lock: {e}")
-        return {
-            "source": "TikTok-Somali",
-            "status": "failed",
-            "reason": "lock_timeout",
-            "error": str(e),
-        }
-
-    try:
-        # Run pipeline with lock held
-        # Use ProcessorRegistry instead of direct import
-        processor_kwargs = get_processor_kwargs(
+    from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
+    from ..ingestion.processor_registry import ProcessorRegistry
+    return _run_locked_pipeline_task(
+        processor_name="tiktok",
+        display_source="TikTok",
+        pipeline_type=PIPELINE_RUN_TYPES["tiktok"],
+        processor_kwargs=get_processor_kwargs(
             "tiktok",
             force=force,
             run_seed=run_seed,
             video_urls=video_urls,
             apify_api_token=apify_api_token,
             apify_user_id=apify_user_id,
-        )
-        processor = ProcessorRegistry.create("tiktok", **processor_kwargs)
-        silver_path = processor.run()
-
-        # Get statistics
-        source_name = get_processor_source_name("tiktok")
-
-        return {
-            "source": source_name,
-            "status": "success",
-            "silver_path": str(silver_path),
-            "num_videos": len(video_urls),
-        }
-    except Exception as e:
-        logger.error(f"TikTok pipeline failed: {e}")
-        source_name = get_processor_source_name("tiktok")
-        return {
-            "source": source_name,
-            "status": "failed",
-            "error": str(e),
-        }
-    finally:
-        # ALWAYS release lock, even if pipeline fails
-        ledger.release_source_lock("tiktok")
-        logger.info("TikTok pipeline completed and lock released")
+        ),
+        result_extras={"num_videos": len(video_urls)},
+        start_message=f"Starting TikTok pipeline for {len(video_urls)} videos...",
+        processor_factory=ProcessorRegistry.create,
+        source_name_factory=get_processor_source_name,
+        config_snapshot=_build_pipeline_run_config(
+            "tiktok",
+            num_videos=len(video_urls),
+            has_user_id=bool(apify_user_id),
+        ),
+    )
 
 
 @flow(
@@ -623,7 +506,7 @@ def run_wikipedia_pipeline(force: bool = False) -> dict[str, Any]:
     Returns:
         Pipeline execution results
     """
-    return run_wikipedia_task(force=force)
+    return cast(dict[str, Any], run_wikipedia_task(force=force))
 
 
 @flow(
@@ -641,7 +524,7 @@ def run_bbc_pipeline(max_articles: Optional[int] = None, force: bool = False) ->
     Returns:
         Pipeline execution results
     """
-    return run_bbc_task(max_articles=max_articles, force=force)
+    return cast(dict[str, Any], run_bbc_task(max_articles=max_articles, force=force))
 
 
 @flow(
@@ -666,11 +549,14 @@ def run_huggingface_pipeline(
     Returns:
         Pipeline execution results
     """
-    return run_huggingface_task(
-        dataset_name=dataset_name,
-        dataset_config=dataset_config,
-        max_records=max_records,
-        force=force,
+    return cast(
+        dict[str, Any],
+        run_huggingface_task(
+            dataset_name=dataset_name,
+            dataset_config=dataset_config,
+            max_records=max_records,
+            force=force,
+        ),
     )
 
 
@@ -689,7 +575,7 @@ def run_sprakbanken_pipeline(corpus_id: str = "all", force: bool = False) -> dic
     Returns:
         Pipeline execution results
     """
-    return run_sprakbanken_task(corpus_id=corpus_id, force=force)
+    return cast(dict[str, Any], run_sprakbanken_task(corpus_id=corpus_id, force=force))
 
 
 @flow(
@@ -714,11 +600,14 @@ def run_tiktok_pipeline(
     Returns:
         Pipeline execution results
     """
-    return run_tiktok_task(
-        video_urls=video_urls,
-        apify_api_token=apify_api_token,
-        apify_user_id=apify_user_id,
-        force=force,
+    return cast(
+        dict[str, Any],
+        run_tiktok_task(
+            video_urls=video_urls,
+            apify_api_token=apify_api_token,
+            apify_user_id=apify_user_id,
+            force=force,
+        ),
     )
 
 
@@ -741,7 +630,7 @@ def run_all_pipelines(
     tiktok_api_token: Optional[str] = None,
     tiktok_user_id: Optional[str] = None,
     auto_deploy: bool = False,
-) -> dict[str, list[dict[str, Any]]]:
+) -> dict[str, Any]:
     """
     Flow to orchestrate all data collection pipelines in parallel.
 

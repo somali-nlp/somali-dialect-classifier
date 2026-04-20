@@ -12,6 +12,7 @@ Requirements:
 """
 
 import os
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -230,6 +231,27 @@ class TestLRUHashSet:
 class TestDedupEngineWithLRU:
     """Integration tests for DedupEngine with LRU hash storage."""
 
+    def test_check_file_duplicate_uses_passed_ledger(self, tmp_path):
+        """File dedup queries the ledger argument rather than a missing instance attribute."""
+        from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
+
+        engine = DedupEngine(config=DedupConfig(enable_minhash=False))
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("test content for file-level dedup", encoding="utf-8")
+
+        mock_ledger = MagicMock()
+        mock_ledger.check_file_checksum.return_value = None
+
+        is_duplicate, checksum = engine.check_file_duplicate(
+            filepath=test_file,
+            ledger=mock_ledger,
+            source="test-source",
+        )
+
+        assert not is_duplicate
+        assert checksum is not None
+        mock_ledger.check_file_checksum.assert_called_once_with(checksum, "test-source")
+
     def test_dedup_engine_uses_lru_cache(self):
         """Verify DedupEngine initializes with LRUHashSet."""
         from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine, LRUHashSet
@@ -363,7 +385,7 @@ class TestMemoryBenchmark:
 
         # Memory growth should be bounded (not proportional to 50k docs)
         # Final size should be roughly stable (within 2x of capacity-based size)
-        print(f"\nMemory benchmark:")
+        print("\nMemory benchmark:")
         print(f"  Initial size: {initial_size:,} bytes")
         print(f"  Final size: {final_size:,} bytes")
         print(f"  Cache entries: {len(engine.seen_hashes):,}")

@@ -7,6 +7,7 @@ Tests processor initialization, file creation, and integration with base pipelin
 import importlib.util
 from pathlib import Path
 
+import pyarrow.parquet as pq
 import pytest
 
 from somali_dialect_classifier.ingestion.processors.huggingface_somali_processor import (
@@ -15,8 +16,7 @@ from somali_dialect_classifier.ingestion.processors.huggingface_somali_processor
 
 DATASETS_AVAILABLE = importlib.util.find_spec("datasets") is not None
 
-# Skip all tests - HuggingFace processor features not fully implemented
-pytestmark = pytest.mark.skip(reason="HuggingFace processor features not fully implemented")
+pytestmark = pytest.mark.skipif(not DATASETS_AVAILABLE, reason="datasets library not installed")
 
 
 @pytest.fixture
@@ -33,11 +33,11 @@ class TestHFProcessorFiles:
 
     def test_processed_file_is_set(self):
         """Test that processed_file is set during initialization."""
-        processor = create_mc4_processor(max_records=10)
+        processor = create_mc4_processor(max_records=10, force=True)
 
         assert hasattr(processor, "processed_file")
         assert processor.processed_file is not None
-        assert processor.processed_file.name == "c4_processed.txt"
+        assert processor.processed_file.name == f"c4_{processor.run_id}_processed_cleaned.txt"
 
     def test_manifest_uses_dataset_slug(self, temp_work_dir, monkeypatch):
         """Test that manifest file uses dataset-specific naming."""
@@ -55,10 +55,10 @@ class TestHFProcessorFiles:
                 mock_load_dataset,
             )
 
-        processor = create_mc4_processor(max_records=10)
+        processor = create_mc4_processor(max_records=10, force=True)
         manifest_path = processor.download()
 
-        assert manifest_path.name == "c4_manifest.json"  # Not hf_manifest.json
+        assert manifest_path.name == f"c4_{processor.run_id}_raw_manifest.json"
         assert manifest_path.exists()
 
     def test_processed_file_written_after_process(self, temp_work_dir, monkeypatch):
@@ -90,13 +90,14 @@ class TestHFProcessorFiles:
                 mock_load_dataset,
             )
 
-        processor = create_mc4_processor(max_records=10)
+        processor = create_mc4_processor(max_records=10, force=True)
 
         # Setup: create manifest, staging, and mock JSONL batch
         processor.download()
 
         staging_dir = processor.staging_dir
         staging_dir.mkdir(parents=True, exist_ok=True)
+        processor.staging_file = staging_dir
 
         # Write mock JSONL batch
         batch_file = staging_dir / "batch_000000.jsonl"
@@ -139,7 +140,7 @@ class TestHFProcessorFiles:
                 mock_load_dataset,
             )
 
-        processor = create_mc4_processor(max_records=10)
+        processor = create_mc4_processor(max_records=10, force=True)
         manifest_path = processor.download()
 
         # Read manifest
@@ -178,13 +179,14 @@ class TestHFProcessorFiles:
                 mock_load_dataset,
             )
 
-        processor = create_mc4_processor(max_records=10)
+        processor = create_mc4_processor(max_records=10, force=True)
 
         # Setup: create manifest, staging, and mock JSONL batch
         processor.download()
 
         staging_dir = processor.staging_dir
         staging_dir.mkdir(parents=True, exist_ok=True)
+        processor.staging_file = staging_dir
 
         # Write mock JSONL batch
         batch_file = staging_dir / "batch_000000.jsonl"
@@ -201,9 +203,103 @@ class TestHFProcessorFiles:
         result = processor.process()
         assert result is not None, "process() must not return None"
         assert isinstance(result, Path), f"process() must return Path, got {type(result)}"
+        assert result.suffix == ".parquet"
 
-    def test_process_raises_on_empty_results(self, temp_work_dir, monkeypatch):
-        """Test that process() raises ValueError when all records are filtered."""
+    def test_process_writes_run_id_and_schema_version(self, temp_work_dir, monkeypatch):
+        """Shared pipeline output includes provenance fields for HF records."""
+        mock_data = [
+            {
+                "text": "Muqdisho waa magaalada ugu weyn ee Soomaaliya. Waxay ku taalla xeebta Badweynta Hindi ee koonfurta Soomaaliya oo waxay leedahay taariikh dheer.",
+                "url": "http://ex.com/contract",
+                "timestamp": "2023-01-01",
+            },
+        ]
+
+        def mock_load_dataset(*args, **kwargs):
+            class MockDataset:
+                revision = "test"
+                info = None
+
+            return MockDataset()
+
+        if DATASETS_AVAILABLE:
+            monkeypatch.setattr(
+                "somali_dialect_classifier.ingestion.processors.huggingface_somali_processor.load_dataset",
+                mock_load_dataset,
+            )
+
+        processor = create_mc4_processor(max_records=10, force=True)
+        processor.download()
+
+        staging_dir = processor.staging_dir
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        processor.staging_file = staging_dir
+
+        batch_file = staging_dir / "batch_000000.jsonl"
+        import json
+
+        with open(batch_file, "w", encoding="utf-8") as f:
+            for record in mock_data:
+                f.write(json.dumps(record) + "\n")
+
+        result = processor.process()
+        row = pq.ParquetFile(result).read().to_pylist()[0]
+
+        assert row["run_id"] == processor.run_id
+        assert row["schema_version"] == "1.0"
+
+    def test_process_handles_mid_run_batch_flush(self, temp_work_dir, monkeypatch):
+        """HF process() can flush through BasePipeline without signature collisions."""
+        mock_data = [
+            {
+                "text": "Muqdisho waa magaalada ugu weyn ee Soomaaliya. Waxay ku taalla xeebta Badweynta Hindi ee koonfurta Soomaaliya oo waxay leedahay taariikh dheer.",
+                "url": "http://ex.com/flush-1",
+                "timestamp": "2023-01-01",
+            },
+            {
+                "text": "Hargeysa waa magaalo muhiim ah oo leh taariikh dheer iyo dhaqan sugan oo ka muuqda qoraallada af Soomaaliga ee casriga ah.",
+                "url": "http://ex.com/flush-2",
+                "timestamp": "2023-01-02",
+            },
+        ]
+
+        def mock_load_dataset(*args, **kwargs):
+            class MockDataset:
+                revision = "test"
+                info = None
+
+            return MockDataset()
+
+        if DATASETS_AVAILABLE:
+            monkeypatch.setattr(
+                "somali_dialect_classifier.ingestion.processors.huggingface_somali_processor.load_dataset",
+                mock_load_dataset,
+            )
+
+        processor = create_mc4_processor(max_records=10, force=True)
+        processor.batch_size = 1
+        processor.download()
+
+        staging_dir = processor.staging_dir
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        processor.staging_file = staging_dir
+
+        batch_file = staging_dir / "batch_000000.jsonl"
+        import json
+
+        with open(batch_file, "w", encoding="utf-8") as f:
+            for record in mock_data:
+                f.write(json.dumps(record) + "\n")
+
+        result = processor.process()
+        table = processor.silver_writer.read(source=processor.source, date_accessed=processor.date_accessed)
+
+        assert result is not None
+        assert result.suffix == ".parquet"
+        assert len(table) == 2
+
+    def test_process_with_all_filtered_records_returns_processed_path(self, temp_work_dir, monkeypatch):
+        """Shared BasePipeline.process() returns the processed path even when nothing is written."""
         # Create mock dataset with text that will be filtered
         mock_data = [
             {"text": "x", "url": "http://ex.com/1", "timestamp": "2023-01-01"},  # Too short
@@ -222,13 +318,14 @@ class TestHFProcessorFiles:
                 mock_load_dataset,
             )
 
-        processor = create_mc4_processor(max_records=10)
+        processor = create_mc4_processor(max_records=10, force=True)
 
         # Setup: create manifest, staging, and mock JSONL batch
         processor.download()
 
         staging_dir = processor.staging_dir
         staging_dir.mkdir(parents=True, exist_ok=True)
+        processor.staging_file = staging_dir
 
         # Write mock JSONL batch
         batch_file = staging_dir / "batch_000000.jsonl"
@@ -241,9 +338,9 @@ class TestHFProcessorFiles:
         # Mark extraction complete
         (staging_dir / ".extraction_complete").touch()
 
-        # Process should raise ValueError
-        with pytest.raises(ValueError, match="No records passed filters"):
-            processor.process()
+        result = processor.process()
+        assert result == processor.processed_file
+        assert processor.processed_file.exists()
 
 
 # ============================================================================

@@ -8,11 +8,11 @@ Single source of truth for filter labels, descriptions, and categories.
 Eliminates parallel label maintenance between Python and JavaScript.
 
 Usage:
-    >>> from somali_dialect_classifier.pipeline.filters import get_filter_label
+    >>> from somali_dialect_classifier.quality.filters.catalog import get_filter_label
     >>> get_filter_label("min_length_filter")
     'Minimum length (50 chars)'
 
-    >>> from somali_dialect_classifier.pipeline.filters import export_for_javascript
+    >>> from somali_dialect_classifier.quality.filters.catalog import export_for_javascript
     >>> labels = export_for_javascript()
     >>> # Save to JSON for dashboard consumption
 """

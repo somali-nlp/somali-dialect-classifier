@@ -28,6 +28,12 @@ Configuration file:
     SDC_LOGGING__LEVEL=DEBUG
 """
 
+# mypy: disable-error-code=no-redef
+#
+# This module intentionally exposes the same public config class names from
+# two mutually exclusive implementations: a pydantic-settings version and a
+# dataclass fallback used when pydantic is unavailable at runtime.
+
 from pathlib import Path
 from typing import Optional
 

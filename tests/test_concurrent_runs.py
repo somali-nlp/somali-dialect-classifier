@@ -14,6 +14,39 @@ import pytest
 from somali_dialect_classifier.ingestion.crawl_ledger import LockManager
 
 
+def _same_source_worker(
+    source: str,
+    worker_id: int,
+    lock_dir: Path,
+    results_list,
+    hold_seconds: float = 0.5,
+    timeout: float = 2.0,
+) -> None:
+    """Worker used by spawn-based multiprocessing tests."""
+    try:
+        lock_mgr = LockManager(lock_dir)
+        lock_mgr.acquire_lock(source, timeout=timeout)
+        results_list.append(f"worker_{worker_id}_acquired")
+        time.sleep(hold_seconds)
+        lock_mgr.release_lock(source)
+        results_list.append(f"worker_{worker_id}_released")
+    except RuntimeError:
+        results_list.append(f"worker_{worker_id}_timeout")
+
+
+def _different_source_worker(source: str, worker_id: int, lock_dir: Path, results_list) -> None:
+    """Worker used by cross-source concurrency tests."""
+    try:
+        lock_mgr = LockManager(lock_dir)
+        lock_mgr.acquire_lock(source, timeout=5)
+        results_list.append(f"{source}_worker_{worker_id}_acquired")
+        time.sleep(0.3)
+        lock_mgr.release_lock(source)
+        results_list.append(f"{source}_worker_{worker_id}_released")
+    except RuntimeError as err:
+        results_list.append(f"{source}_worker_{worker_id}_timeout: {err}")
+
+
 @pytest.fixture
 def test_lock_dir(tmp_path):
     """Create temporary lock directory for testing."""
@@ -33,24 +66,16 @@ def test_lock_prevents_concurrent_runs_same_source(test_lock_dir):
     manager = Manager()
     results = manager.list()
 
-    def worker(source: str, worker_id: int, lock_dir: Path, results_list):
-        """Worker that tries to acquire lock."""
-        try:
-            lock_mgr = LockManager(lock_dir)
-            lock_mgr.acquire_lock(source, timeout=2)
-            results_list.append(f"worker_{worker_id}_acquired")
-            time.sleep(0.5)  # Hold lock for 0.5 second
-            lock_mgr.release_lock(source)
-            results_list.append(f"worker_{worker_id}_released")
-        except RuntimeError:
-            results_list.append(f"worker_{worker_id}_timeout")
-
     # Run two workers for same source
-    p1 = Process(target=worker, args=("wikipedia", 1, test_lock_dir, results))
-    p2 = Process(target=worker, args=("wikipedia", 2, test_lock_dir, results))
+    p1 = Process(target=_same_source_worker, args=("wikipedia", 1, test_lock_dir, results, 1.5, 2.0))
+    p2 = Process(target=_same_source_worker, args=("wikipedia", 2, test_lock_dir, results, 0.1, 0.2))
 
     p1.start()
-    time.sleep(0.1)  # Ensure p1 acquires lock first
+    lock_file = test_lock_dir / "wikipedia.lock"
+    for _ in range(20):
+        if lock_file.exists():
+            break
+        time.sleep(0.05)
     p2.start()
 
     p1.join(timeout=5)
@@ -72,21 +97,11 @@ def test_lock_allows_concurrent_runs_different_sources(test_lock_dir):
     manager = Manager()
     results = manager.list()
 
-    def worker(source: str, worker_id: int, lock_dir: Path, results_list):
-        """Worker that tries to acquire lock."""
-        try:
-            lock_mgr = LockManager(lock_dir)
-            lock_mgr.acquire_lock(source, timeout=5)
-            results_list.append(f"{source}_worker_{worker_id}_acquired")
-            time.sleep(0.3)
-            lock_mgr.release_lock(source)
-            results_list.append(f"{source}_worker_{worker_id}_released")
-        except RuntimeError as e:
-            results_list.append(f"{source}_worker_{worker_id}_timeout: {e}")
-
     # Run two workers for DIFFERENT sources
-    p1 = Process(target=worker, args=("wikipedia", 1, test_lock_dir, results))
-    p2 = Process(target=worker, args=("bbc", 2, test_lock_dir, results))
+    p1 = Process(
+        target=_different_source_worker, args=("wikipedia", 1, test_lock_dir, results)
+    )
+    p2 = Process(target=_different_source_worker, args=("bbc", 2, test_lock_dir, results))
 
     p1.start()
     p2.start()

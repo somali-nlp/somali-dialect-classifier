@@ -212,6 +212,36 @@ class TestValidateSilverParquet:
         with pytest.raises(FileNotFoundError):
             validate_silver_parquet(nonexistent_path)
 
+    def test_validate_streams_directory_batches_without_to_table(
+        self, temp_silver_dir, valid_records, monkeypatch
+    ):
+        """Regression test: directory validation must stream batches, not call to_table()."""
+        partition_dir = temp_silver_dir / "source=Test-Source" / "date_accessed=2025-11-27"
+        partition_dir.mkdir(parents=True)
+
+        class FakeScanner:
+            def to_batches(self):
+                yield pa.RecordBatch.from_pylist(valid_records)
+
+        class FakeDataset:
+            def scanner(self, batch_size=1000):
+                assert batch_size == 1000
+                return FakeScanner()
+
+            def count_rows(self):
+                return len(valid_records)
+
+            def to_table(self):
+                raise AssertionError("validate_silver_parquet should not call dataset.to_table()")
+
+        monkeypatch.setattr("pyarrow.dataset.dataset", lambda *args, **kwargs: FakeDataset())
+
+        valid_count, invalid_count, errors = validate_silver_parquet(partition_dir)
+
+        assert valid_count == len(valid_records)
+        assert invalid_count == 0
+        assert errors == []
+
 
 class TestIterValidatedRecords:
     """Test iter_validated_records function."""

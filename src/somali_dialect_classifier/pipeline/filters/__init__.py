@@ -1,6 +1,6 @@
-"""Filter catalog for quality validation pipeline."""
+"""Deprecated compatibility exports for the filter catalog."""
 
-from .catalog import (
+from somali_dialect_classifier.quality.filters.catalog import (
     FILTER_CATALOG,
     export_for_javascript,
     get_filter_category,
