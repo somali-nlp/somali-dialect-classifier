@@ -17,15 +17,16 @@ import sys
 from pathlib import Path
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from somali_dialect_classifier.utils.metrics_comparison import (
+from somali_dialect_classifier.infra.metrics_comparison import (
     calculate_delta,
     compare_multiple_runs,
     generate_comparison_summary,
     identify_trends,
 )
-from somali_dialect_classifier.utils.metrics_filters import (
+from somali_dialect_classifier.infra.metrics_filters import (
     apply_filters,
     filter_by_date_range,
     filter_by_quality,
@@ -34,7 +35,7 @@ from somali_dialect_classifier.utils.metrics_filters import (
     get_top_performers,
     search_metrics,
 )
-from somali_dialect_classifier.utils.visualization_aggregator import (
+from somali_dialect_classifier.infra.visualization_aggregator import (
     calculate_pipeline_flow,
     calculate_text_length_distribution,
     calculate_time_series,
@@ -43,7 +44,7 @@ from somali_dialect_classifier.utils.visualization_aggregator import (
 
 def load_test_metrics():
     """Load metrics from consolidated file."""
-    project_root = Path(__file__).parent.parent
+    project_root = PROJECT_ROOT
     all_metrics_file = project_root / "_site" / "data" / "all_metrics.json"
 
     if not all_metrics_file.exists():

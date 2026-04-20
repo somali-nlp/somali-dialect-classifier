@@ -641,7 +641,7 @@ The `filter_breakdown` field within the Quality layer tracks how many records we
 
 ### Filter Keys and Labels
 
-All filter keys are defined in the central filter catalog: `src/somali_dialect_classifier/pipeline/filters/catalog.py`
+All filter keys are defined in the central filter catalog: `src/somali_dialect_classifier/quality/filters/catalog.py`
 
 The catalog maps filter keys to human-readable labels:
 
@@ -796,7 +796,7 @@ See [Dashboard Architecture](../reference/dashboard-architecture.md) for how fil
 
 When adding a new filter to the pipeline:
 
-1. **Define in catalog** → `src/somali_dialect_classifier/pipeline/filters/catalog.py`
+1. **Define in catalog** → `src/somali_dialect_classifier/quality/filters/catalog.py`
 2. **Implement filter logic** → Call `metrics.record_filter_reason("new_filter_key")`
 3. **Update dashboard labels** → `dashboard/js/core/aggregates.js`
 4. **Document in schema** → This file (add to table above)
@@ -820,9 +820,9 @@ if detect_negative_sentiment(text):
 
 The filter catalog is versioned and exported to JSON for dashboard consumption:
 
-**Catalog location:** `src/somali_dialect_classifier/pipeline/filters/catalog.py`
+**Catalog location:** `src/somali_dialect_classifier/quality/filters/catalog.py`
 
-**Export location:** `dashboard/data/filter_catalog.json`
+**Export location:** `src/dashboard/data/filter_catalog.json`
 
 **Schema:**
 ```json

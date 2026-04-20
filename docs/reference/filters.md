@@ -12,7 +12,9 @@
 
 Filters are stateless functions that validate and enrich records during pipeline processing. All filters follow a consistent signature and return both a pass/fail boolean and optional metadata updates.
 
-**Module**: `somali_dialect_classifier.preprocessing.filters`
+**Modules**:
+- `somali_dialect_classifier.quality.filters.catalog`
+- `somali_dialect_classifier.quality.filter_engine`
 
 **Design Philosophy**:
 - **Stateless**: No side effects, thread-safe
@@ -39,50 +41,39 @@ Filters are stateless functions that validate and enrich records during pipeline
 
 ## Filter Organization
 
-### Current Structure (Stage 0)
+### Current Structure
 
 Filters are organized across three locations:
 
-**1. Filter Implementations** (`preprocessing/filters.py`)
-- Contains all filter function implementations
-- Import from: `from somali_dialect_classifier.preprocessing.filters import <filter_name>`
-- **Note:** Will move to `quality/filters.py` in Stage 1 restructuring
-
-**2. Filter Catalog** (`pipeline/filters/catalog.py`)
+**1. Filter Catalog** (`quality/filters/catalog.py`)
 - Contains filter metadata and labels
-- Provides `get_filter_label()` and `load_filter_catalog()` helpers
-- Import from: `from somali_dialect_classifier.pipeline.filters.catalog import ...`
+- Provides `get_filter_label()` and related metadata helpers
+- Import from: `from somali_dialect_classifier.quality.filters.catalog import ...`
 
-**3. Filter Engine** (`pipeline/filter_engine.py`)
+**2. Filter Engine** (`quality/filter_engine.py`)
 - Executes filters and tracks statistics
-- Import from: `from somali_dialect_classifier.pipeline.filter_engine import FilterEngine`
+- Import from: `from somali_dialect_classifier.quality.filter_engine import FilterEngine`
+
+**3. Source Pipeline Integration** (`ingestion/base_pipeline.py`)
+- Applies configured filters during ingestion
+- Records filter reasons via `metrics.record_filter_reason(...)`
 
 ### Import Examples
 
 **Correct (Current):**
 ```python
-from somali_dialect_classifier.preprocessing.filters import (
-    min_length_filter,
-    topic_lexicon_enrichment_filter,
-    langid_filter
+from somali_dialect_classifier.quality.filters.catalog import (
+    get_filter_category,
+    get_filter_label,
 )
-from somali_dialect_classifier.pipeline.filter_engine import FilterEngine
+from somali_dialect_classifier.quality.filter_engine import FilterEngine
 ```
 
 **Incorrect:**
 ```python
-# ❌ Don't do this - filters not exposed via pipeline.filters
-from somali_dialect_classifier.pipeline.filters import min_length_filter
+# ❌ Don't do this - old import path no longer exists
+from somali_dialect_classifier.pipeline.filters.catalog import get_filter_label
 ```
-
-### Future Changes (Stage 1+)
-
-In Stage 1, the preprocessing module will be reorganized:
-- `preprocessing/filters.py` → `quality/filters.py`
-- Import path will change to: `from somali_dialect_classifier.quality.filters import ...`
-- Filter catalog and engine locations unchanged
-
-We will provide migration guides when this happens.
 
 ---
 

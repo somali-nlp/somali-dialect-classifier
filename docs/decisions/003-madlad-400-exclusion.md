@@ -225,7 +225,7 @@ hfsom-download mc4
 ### Removed from Codebase
 
 1. ✅ **`create_madlad400_processor()` function** - REMOVED
-   - Located in: `src/somali_dialect_classifier/preprocessing/huggingface_somali_processor.py`
+   - Located in: `src/somali_dialect_classifier/ingestion/processors/huggingface_somali_processor.py`
    - Reason: Non-functional with datasets>=3.0
 
 2. ✅ **MADLAD-400 CLI option** - REMOVED

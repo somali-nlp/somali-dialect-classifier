@@ -1580,11 +1580,11 @@ print(df.head())
 
 ## Related Documentation
 
-- [Configuration Guide](CONFIGURATION.md) - Environment variables and configuration
-- [Architecture Documentation](ARCHITECTURE.md) - System design patterns
-- [Data Pipeline](DATA_PIPELINE.md) - ETL pipeline details
-- [Testing Guide](TESTING.md) - Testing strategies and examples
-- [Deployment Guide](DEPLOYMENT.md) - Production deployment
+- [Configuration Guide](../howto/configuration.md) - Environment variables and configuration
+- [Architecture Overview](../overview/data-pipeline-architecture.md) - System design patterns
+- [Data Pipeline Guide](../guides/data-pipeline.md) - ETL pipeline details
+- [Testing Operations](../operations/testing.md) - Testing strategies and examples
+- [Deployment Guide](../operations/deployment.md) - Production deployment
 
 ---
 

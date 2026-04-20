@@ -92,8 +92,8 @@ The Somali Dialect Classifier is a production-ready data engineering and MLOps p
 
 ```
 Somali NLP Data Pipeline & Classifier | Python, Streamlit, GitHub Actions, Parquet, Docker | Jan 2025 - Present
-Live Demo: https://YOUR-USERNAME.github.io/somali-dialect-classifier/
-GitHub: https://github.com/YOUR-USERNAME/somali-dialect-classifier
+Live Demo: https://somali-nlp.github.io/somali-dialect-classifier/
+GitHub: https://github.com/somali-nlp/somali-dialect-classifier
 ```
 
 ### Achievement Bullets
@@ -529,7 +529,7 @@ Ensure your repository README is compelling:
 Add status badges at the top:
 
 ```markdown
-![CI](https://github.com/YOUR-USERNAME/somali-dialect-classifier/workflows/CI/badge.svg)
+![CI](https://github.com/somali-nlp/somali-dialect-classifier/workflows/CI/badge.svg)
 ![Dashboard](https://img.shields.io/badge/dashboard-live-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -544,7 +544,7 @@ Make it easy for others to try:
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR-USERNAME/somali-dialect-classifier.git
+git clone https://github.com/somali-nlp/somali-dialect-classifier.git
 cd somali-dialect-classifier
 
 # Install dependencies
@@ -576,17 +576,17 @@ Add visual appeal:
 
 ### Profile README
 
-Add this project to your GitHub profile README (`YOUR-USERNAME/YOUR-USERNAME/README.md`):
+Add this project to your GitHub profile README (`<your-github-username>/<your-github-username>/README.md`):
 
 ```markdown
 ## Featured Projects
 
-### [Somali Dialect Classifier](https://github.com/YOUR-USERNAME/somali-dialect-classifier)
+### [Somali Dialect Classifier](https://github.com/somali-nlp/somali-dialect-classifier)
 Production-grade NLP data pipeline processing 130K+ texts from 4 sources with automated quality monitoring.
 
 **Tech**: Python, Streamlit, GitHub Actions, Parquet, Docker
 **Highlights**: 99.5% success rate, zero-cost dashboard, 165+ tests
-**Live Demo**: [Dashboard](https://YOUR-USERNAME.github.io/somali-dialect-classifier/)
+**Live Demo**: [Dashboard](https://somali-nlp.github.io/somali-dialect-classifier/)
 ```
 
 ### Pinned Repositories

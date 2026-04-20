@@ -38,7 +38,7 @@ from pathlib import Path
 from typing import Any
 
 # Add project root to Python path
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root / "src"))
 
 try:
@@ -52,7 +52,7 @@ except ImportError as e:
 
 # Import filter catalog functions
 try:
-    from somali_dialect_classifier.pipeline.filters.catalog import (
+    from somali_dialect_classifier.quality.filters.catalog import (
         get_filter_category,
         get_filter_label,
     )

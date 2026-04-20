@@ -138,7 +138,7 @@ Persistent SQLite database tracking URL states:
 - **RSS Throttling**: Frequency-limited feed checking
 
 ```python
-from somali_dialect_classifier.preprocessing.crawl_ledger import get_ledger
+from somali_dialect_classifier.ingestion.crawl_ledger import get_ledger
 
 ledger = get_ledger()
 
@@ -245,7 +245,7 @@ else:
 - Near-duplicates: MinHash LSH with 85% similarity threshold
 
 ```python
-from somali_dialect_classifier.preprocessing.dedup import DedupEngine, DedupConfig
+from somali_dialect_classifier.ingestion.dedup import DedupEngine, DedupConfig
 
 config = DedupConfig(
     hash_fields=["text", "url"],
@@ -297,7 +297,7 @@ logger.info(f"Saved LSH index with {dedup.doc_count} documents")
 JSON logs with automatic context injection:
 
 ```python
-from somali_dialect_classifier.utils.logging_utils import (
+from somali_dialect_classifier.infra.logging_utils import (
     StructuredLogger, set_context, generate_run_id
 )
 
@@ -315,7 +315,7 @@ logger.info("Article fetched", url="...", http_status=200)
 Automated metrics tracking with quality reports:
 
 ```python
-from somali_dialect_classifier.utils.metrics import MetricsCollector, QualityReporter
+from somali_dialect_classifier.infra.metrics import MetricsCollector, QualityReporter
 
 metrics = MetricsCollector(run_id, "BBC-Somali")
 
@@ -894,7 +894,7 @@ Generated in `data/reports/` with health indicators:
 ```bash
 # Check ledger statistics
 python -c "
-from somali_dialect_classifier.preprocessing.crawl_ledger import get_ledger
+from somali_dialect_classifier.ingestion.crawl_ledger import get_ledger
 ledger = get_ledger()
 stats = ledger.get_statistics('bbc')
 print(stats)
@@ -971,7 +971,7 @@ tail -f logs/download_bbcsom.log
 
 ```python
 # Test deduplication
-from somali_dialect_classifier.preprocessing.dedup import DedupEngine, DedupConfig
+from somali_dialect_classifier.ingestion.dedup import DedupEngine, DedupConfig
 
 config = DedupConfig(enable_minhash=True)
 dedup = DedupEngine(config)

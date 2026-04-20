@@ -24,7 +24,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-org/somali-dialect-classifier.git
+   git clone https://github.com/somali-nlp/somali-dialect-classifier.git
    cd somali-dialect-classifier
    ```
 
@@ -135,12 +135,29 @@ ruff format src/ tests/
 We use **mypy** for static type checking:
 
 ```bash
-# Type check the codebase
-mypy src/
+# Type check the CI-blocking core modules
+mypy src/somali_dialect_classifier/contracts src/somali_dialect_classifier/schema src/somali_dialect_classifier/quality src/somali_dialect_classifier/infra src/somali_dialect_classifier/orchestration
+
+# Type check the extended ingestion modules
+mypy src/somali_dialect_classifier/ingestion
 
 # Type check specific file
-mypy src/somali_dialect_classifier/preprocessing/base_pipeline.py
+mypy src/somali_dialect_classifier/ingestion/base_pipeline.py
 ```
+
+### CI Quality Gates
+
+Your PR must pass these checks:
+
+- **Type checking**: CI runs split `mypy` checks for the core modules and the extended ingestion modules; failures are currently surfaced for cleanup while legacy type debt is burned down
+- Core blocking set:
+  `contracts/ingestion_output.py`, `schema/registry.py`, `schema/validator.py`,
+  `schema/validation_service.py`, `quality/silver_writer.py`,
+  `quality/record_builder.py`, `quality/schema_mappers.py`,
+  `infra/aggregation.py`, `infra/config.py`, and `orchestration/flows.py`
+- **Coverage**: Tests must maintain `>=60%` line coverage
+- **Lint**: `ruff check src/ tests/` and `ruff format --check src/ tests/` must pass
+- **Tests**: The matrix runs on Python 3.9 through 3.11
 
 ### Pre-commit Checks
 
@@ -150,7 +167,8 @@ Before committing, run:
 # Run all checks
 ruff check --fix src/ tests/
 ruff format src/ tests/
-mypy src/
+mypy src/somali_dialect_classifier/contracts src/somali_dialect_classifier/schema src/somali_dialect_classifier/quality src/somali_dialect_classifier/infra src/somali_dialect_classifier/orchestration
+mypy src/somali_dialect_classifier/ingestion
 pytest
 ```
 
@@ -187,7 +205,7 @@ The project currently has **4 production data sources**: Wikipedia, BBC Somali, 
 
 ### 1. Create Processor Class
 
-Create `src/somali_dialect_classifier/preprocessing/your_source_somali_processor.py`:
+Create `src/somali_dialect_classifier/ingestion/processors/your_source_somali_processor.py`:
 
 **Note**: Follow the naming convention `<source>_somali_processor.py`
 
@@ -265,12 +283,12 @@ class YourSourceSomaliProcessor(BasePipeline):
 **Phase 0 provides production-ready MLOps infrastructure**. Integrate your processor:
 
 ```python
-from somali_dialect_classifier.utils.logging_utils import (
+from somali_dialect_classifier.infra.logging_utils import (
     StructuredLogger, set_run_context, get_run_id
 )
-from somali_dialect_classifier.utils.metrics import MetricsCollector, QualityReporter
-from somali_dialect_classifier.preprocessing.crawl_ledger import get_ledger
-from somali_dialect_classifier.preprocessing.dedup import DedupEngine
+from somali_dialect_classifier.infra.metrics import MetricsCollector, QualityReporter
+from somali_dialect_classifier.ingestion.crawl_ledger import get_ledger
+from somali_dialect_classifier.ingestion.dedup import DedupEngine
 
 class YourSourceSomaliProcessor(BasePipeline):
     def __init__(self, force: bool = False):

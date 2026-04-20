@@ -400,7 +400,7 @@ def test_function_name():
 
 **Test Files**: `test_<module_name>.py`
 ```
-src/somali_dialect_classifier/preprocessing/filters.py
+src/somali_dialect_classifier/quality/filters/catalog.py
 → tests/test_filters.py
 ```
 
@@ -644,7 +644,7 @@ pytest --cov=src/somali_dialect_classifier --cov-report=xml
 Name                                               Stmts   Miss  Cover   Missing
 --------------------------------------------------------------------------------
 src/somali_dialect_classifier/config.py               45      3    93%   78-80
-src/somali_dialect_classifier/preprocessing/
+src/somali_dialect_classifier/quality/
     filters.py                                        371      7    98%   234, 289-292
     text_cleaners.py                                  245     12    95%   134-137, 201-205
     record_utils.py                                    87      0   100%

@@ -6,6 +6,7 @@
  * catalog maintained in Python, eliminating manual label synchronization.
  */
 
+import { getDataPath } from '../config.js';
 import { Logger } from '../utils/logger.js';
 
 // In-memory cache to avoid repeated fetches
@@ -29,7 +30,7 @@ export async function loadFilterCatalog() {
     }
 
     try {
-        const response = await fetch('/data/filter_catalog.json');
+        const response = await fetch(getDataPath('filter_catalog.json'));
 
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);

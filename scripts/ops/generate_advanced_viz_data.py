@@ -26,8 +26,11 @@ from typing import Any
 
 import numpy as np
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
+
 try:
-    from somali_dialect_classifier.utils.metrics_schema import validate_processing_json
+    from somali_dialect_classifier.infra.metrics_schema import validate_processing_json
     SCHEMA_VALIDATION_AVAILABLE = True
 except ImportError:
     print("Warning: Schema validation not available. Install with: pip install -e '.[config]'", file=sys.stderr)
@@ -61,8 +64,10 @@ def load_processing_metrics(metrics_dir: Path) -> list[dict[str, Any]]:
             with open(metrics_file, encoding='utf-8') as f:
                 data = json.load(f)
 
-            # Basic validation - ensure required structure exists
-            if "_source" in data or "legacy_metrics" in data:
+            if SCHEMA_VALIDATION_AVAILABLE:
+                validate_processing_json(data)
+                all_metrics.append(data)
+            elif "_source" in data or "legacy_metrics" in data:
                 all_metrics.append(data)
             else:
                 print(f"Warning: Missing required fields in {metrics_file.name}", file=sys.stderr)

@@ -24,8 +24,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
+
 try:
-    from somali_dialect_classifier.utils.metrics_schema import (
+    from somali_dialect_classifier.infra.metrics_schema import (
         validate_consolidated_metrics,
         validate_dashboard_summary,
         validate_processing_json,

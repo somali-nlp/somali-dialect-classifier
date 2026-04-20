@@ -86,11 +86,11 @@ The dashboard system consists of four main components:
 
 #### MetricsCollector Class
 
-Located: `src/somali_dialect_classifier/utils/metrics.py`
+Located: `src/somali_dialect_classifier/infra/metrics.py`
 
 **Initialization**:
 ```python
-from somali_dialect_classifier.utils.metrics import MetricsCollector, PipelineType
+from somali_dialect_classifier.infra.metrics import MetricsCollector, PipelineType
 
 collector = MetricsCollector(
     run_id="20251027_120000_wikipedia",

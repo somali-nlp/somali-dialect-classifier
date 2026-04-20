@@ -68,7 +68,7 @@ Install "Live Server" extension and right-click `index.html` → "Open with Live
 
 ```bash
 # Clone and install
-git clone https://github.com/yourusername/somali-dialect-classifier.git
+git clone https://github.com/somali-nlp/somali-dialect-classifier.git
 cd somali-dialect-classifier
 pip install -e ".[config]"
 
@@ -422,7 +422,7 @@ If you use this project in your research, please cite:
   title = {Somali Dialect Classifier: Production Data Pipeline},
   author = {Somali NLP Contributors},
   year = {2025},
-  url = {https://github.com/yourusername/somali-dialect-classifier}
+  url = {https://github.com/somali-nlp/somali-dialect-classifier}
 }
 ```
 

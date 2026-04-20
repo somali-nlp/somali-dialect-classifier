@@ -722,7 +722,7 @@ INFO: Deduplication removed 30% of records
 
 4. **Check for workflow file**:
    ```bash
-   cat .github/workflows/deploy-dashboard.yml
+   cat .github/workflows/deploy-dashboard-v2.yml
    # Ensure file exists and is valid YAML
    ```
 
@@ -1220,8 +1220,8 @@ export SDC_LOG_LEVEL=DEBUG
 
 ### Community Support
 
-- **GitHub Issues**: https://github.com/YOUR-USERNAME/somali-dialect-classifier/issues
-- **GitHub Discussions**: https://github.com/YOUR-USERNAME/somali-dialect-classifier/discussions
+- **GitHub Issues**: https://github.com/somali-nlp/somali-dialect-classifier/issues
+- **GitHub Discussions**: https://github.com/somali-nlp/somali-dialect-classifier/discussions
 
 ### Report Bugs
 

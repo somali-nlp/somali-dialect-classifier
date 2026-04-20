@@ -157,3 +157,12 @@ export const DATA_COLORS = [
 export function configureApp(overrides) {
     Object.assign(Config, overrides);
 }
+
+/**
+ * Get a dashboard data asset path relative to the current deployment base.
+ * @param {string} filename - Data asset filename within the dashboard data directory
+ * @returns {string} Relative path to the requested asset
+ */
+export function getDataPath(filename) {
+    return `data/${filename}`;
+}

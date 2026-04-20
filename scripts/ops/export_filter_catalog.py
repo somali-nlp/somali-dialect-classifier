@@ -41,8 +41,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-# Add src to path to import filter catalog
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+# Add repo src to path to import filter catalog
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 # Configure logger
 logging.basicConfig(
@@ -67,14 +68,14 @@ def export_full_catalog(output_path: Path) -> dict[str, Any]:
         IOError: If output file cannot be written
     """
     try:
-        from somali_dialect_classifier.pipeline.filters.catalog import (
+        from somali_dialect_classifier.quality.filters.catalog import (
             FILTER_CATALOG,
             get_all_categories,
         )
     except ImportError as e:
         error_msg = (
             f"Failed to import filter catalog: {e}\n"
-            f"Ensure src/somali_dialect_classifier/pipeline/filters/catalog.py exists"
+            f"Ensure src/somali_dialect_classifier/quality/filters/catalog.py exists"
         )
         logger.error(error_msg)
         raise ImportError(error_msg) from e
@@ -210,12 +211,12 @@ def main():
         print(f"  Filters: {metadata['filter_count']}")
         print(f"  Categories: {metadata['category_count']}")
         print(f"  Output: {args.output}")
-        print("\n  Use in dashboard: fetch('/data/filter_catalog.json')")
+        print("\n  Use in dashboard: fetch('data/filter_catalog.json')")
 
     except ImportError as e:
         print(f"\n✗ Import Error: {e}", file=sys.stderr)
         print("\nTroubleshooting:")
-        print("  1. Verify filter catalog exists: src/somali_dialect_classifier/pipeline/filters/catalog.py")
+        print("  1. Verify filter catalog exists: src/somali_dialect_classifier/quality/filters/catalog.py")
         print("  2. Check Python path includes 'src' directory")
         sys.exit(1)
 

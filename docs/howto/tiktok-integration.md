@@ -366,7 +366,7 @@ This high filtering rate is expected for TikTok social media content and ensures
 
 ### Cross-References
 
-- **[Filter Catalog](../../src/somali_dialect_classifier/pipeline/filters/catalog.py)** - All filter definitions and labels
+- **[Filter Catalog](../../src/somali_dialect_classifier/quality/filters/catalog.py)** - All filter definitions and labels
 - **[Processing Pipelines Guide](processing-pipelines.md#filter-telemetry)** - General filter telemetry documentation
 - **[Metrics Schema](../reference/metrics-schema.md#filter-telemetry)** - `filter_breakdown` field specification
 

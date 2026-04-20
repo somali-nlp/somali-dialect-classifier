@@ -102,6 +102,7 @@ paths = [
   '''^\.locks/''',                         # Lock files (not in git)
   '''test_fixtures/''',                    # Test fixture data
   '''tests/fixtures/''',
+  '''scripts/demo_log_redaction\.py$''',   # Intentional fake-secret fixtures for redaction demo
   '''^docs/''',                            # Documentation files
   '''\.example\.''',                       # Any .example. files
   '''package-lock\.json$''',               # NPM lock file

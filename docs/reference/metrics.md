@@ -149,7 +149,7 @@ All metrics include a `_metric_semantics` field that provides human-readable des
 ### Programmatic Access
 
 ```python
-from somali_dialect_classifier.utils.metrics import MetricsCollector
+from somali_dialect_classifier.infra.metrics import MetricsCollector
 
 # Create collector
 metrics = MetricsCollector(run_id, source)

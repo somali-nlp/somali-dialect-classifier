@@ -551,4 +551,4 @@ If a security incident occurs:
 ---
 
 **Maintainers**: Somali NLP Contributors
-**Security Contact**: [Open an issue](https://github.com/yourusername/somali-dialect-classifier/issues) for security concerns
+**Security Contact**: [Open an issue](https://github.com/somali-nlp/somali-dialect-classifier/issues) for security concerns

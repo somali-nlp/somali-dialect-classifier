@@ -563,7 +563,7 @@ See `docs/reference/cli-reference.md` for patterns.
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/somali-dialect-classifier.git
+git clone https://github.com/somali-nlp/somali-dialect-classifier.git
 cd somali-dialect-classifier
 
 # Create virtual environment
@@ -607,8 +607,8 @@ If you have code using old imports:
 ```python
 from somali_dialect_classifier.preprocessing import BasePipeline
 from somali_dialect_classifier.pipeline import FilterEngine
-from somali_dialect_classifier.utils import get_logger
-from somali_dialect_classifier.config import get_config
+from somali_dialect_classifier.infra.logging_utils import get_logger
+from somali_dialect_classifier.infra.config import get_config
 ```
 
 **NEW (current):**

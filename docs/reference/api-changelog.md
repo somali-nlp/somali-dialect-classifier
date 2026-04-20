@@ -138,7 +138,7 @@ manager.cleanup_old_staging_files(stage="extracted", keep=5)
 ```
 
 **FilterEngine** - Filter execution and statistics
-- **Location**: `src/somali_dialect_classifier/pipeline/filter_engine.py`
+- **Location**: `src/somali_dialect_classifier/quality/filter_engine.py`
 - **Purpose**: Execute quality filters and track statistics
 - **Features**:
   - Register multiple filters
@@ -180,7 +180,7 @@ readable_stats = engine.get_human_readable_stats()
 ```
 
 **RecordBuilder** - Silver record construction
-- **Location**: `src/somali_dialect_classifier/preprocessing/record_builder.py`
+- **Location**: `src/somali_dialect_classifier/quality/record_builder.py`
 - **Purpose**: Build standardized silver dataset records
 - **Features**:
   - Consistent record structure across sources
@@ -266,7 +266,7 @@ print(f"Total validation failures: {failures}")
 #### HTTP Utilities
 
 **HTTPSessionFactory** - Session management for web scraping
-- **Location**: `src/somali_dialect_classifier/utils/http.py`
+- **Location**: `src/somali_dialect_classifier/infra/http.py`
 - **Purpose**: Create configured HTTP sessions with retries and rate limiting
 - **Features**:
   - Retry logic with exponential backoff
@@ -277,7 +277,7 @@ print(f"Total validation failures: {failures}")
 
 **Usage:**
 ```python
-from somali_dialect_classifier.utils.http import HTTPSessionFactory
+from somali_dialect_classifier.infra.http import HTTPSessionFactory
 
 # Create session with default settings
 session = HTTPSessionFactory.create_session()
@@ -297,7 +297,7 @@ response = session.get("https://example.com")
 #### Orchestration Enhancements
 
 **Distributed Locking** - Prevent concurrent pipeline runs
-- **Added to**: `src/somali_dialect_classifier/preprocessing/crawl_ledger.py`
+- **Added to**: `src/somali_dialect_classifier/ingestion/crawl_ledger.py`
 - **Purpose**: Prevent data corruption from concurrent runs
 - **Features**:
   - Acquire/release source locks
@@ -355,7 +355,7 @@ else:
 #### Incremental Processing
 
 **Timestamp-based Filtering** - Skip unchanged data (Wikipedia)
-- **Added to**: `src/somali_dialect_classifier/preprocessing/wikipedia_somali_processor.py`
+- **Added to**: `src/somali_dialect_classifier/ingestion/processors/wikipedia_somali_processor.py`
 - **Purpose**: Only process articles modified since last run
 - **Features**:
   - Query ledger for last processing time
@@ -364,7 +364,7 @@ else:
   - Automatic fallback to full processing
 
 **Resource ID Filtering** - Skip processed corpora (Språkbanken)
-- **Added to**: `src/somali_dialect_classifier/preprocessing/sprakbanken_somali_processor.py`
+- **Added to**: `src/somali_dialect_classifier/ingestion/processors/sprakbanken_somali_processor.py`
 - **Purpose**: Only download new corpora
 - **Features**:
   - Track processed corpus IDs in ledger
@@ -376,7 +376,7 @@ else:
 #### BasePipeline Refactoring (P3.1)
 
 **Reduced from 615 lines to 298 lines (52% reduction)**
-- **Location**: `src/somali_dialect_classifier/preprocessing/base_pipeline.py`
+- **Location**: `src/somali_dialect_classifier/ingestion/base_pipeline.py`
 - **Changes**:
   - Extracted FilterEngine service (filter execution logic)
   - Extracted RecordBuilder service (record construction logic)
@@ -528,7 +528,7 @@ None. All v1.0 APIs remain functional in v1.1 (backward compatible).
 #### Core Pipeline Architecture
 
 **BasePipeline** - Abstract base class for all processors
-- **Location**: `src/somali_dialect_classifier/preprocessing/base_pipeline.py`
+- **Location**: `src/somali_dialect_classifier/ingestion/base_pipeline.py`
 - **Features**:
   - Three-phase processing (download → extract → process)
   - Integrated metrics collection
@@ -538,29 +538,29 @@ None. All v1.0 APIs remain functional in v1.1 (backward compatible).
   - Deduplication integration
 
 **DataProcessor Protocol** - Interface for all processors
-- **Location**: `src/somali_dialect_classifier/preprocessing/data_processor.py`
+- **Location**: `src/somali_dialect_classifier/ingestion/data_processor.py`
 - **Purpose**: Define contract for processor implementations
 
 #### Data Source Processors
 
 1. **WikipediaSomaliProcessor** - Wikipedia dump processing
-   - Location: `src/somali_dialect_classifier/preprocessing/wikipedia_somali_processor.py`
+   - Location: `src/somali_dialect_classifier/ingestion/processors/wikipedia_somali_processor.py`
    - Features: XML parsing, namespace filtering, redirect handling
 
 2. **BBCSomaliProcessor** - BBC Somali news scraping
-   - Location: `src/somali_dialect_classifier/preprocessing/bbc_somali_processor.py`
+   - Location: `src/somali_dialect_classifier/ingestion/processors/bbc_somali_processor.py`
    - Features: RSS feed parsing, ethical rate limiting, topic enrichment
 
 3. **HuggingFaceSomaliProcessor** - HuggingFace dataset streaming
-   - Location: `src/somali_dialect_classifier/preprocessing/huggingface_somali_processor.py`
+   - Location: `src/somali_dialect_classifier/ingestion/processors/huggingface_somali_processor.py`
    - Features: Streaming datasets, continuous streaming, JSONL batching
 
 4. **SprakbankenSomaliProcessor** - Språkbanken corpus download
-   - Location: `src/somali_dialect_classifier/preprocessing/sprakbanken_somali_processor.py`
+   - Location: `src/somali_dialect_classifier/ingestion/processors/sprakbanken_somali_processor.py`
    - Features: 66 corpora support, XML token extraction, domain mapping
 
 5. **TikTokSomaliProcessor** - TikTok comment scraping via Apify
-   - Location: `src/somali_dialect_classifier/preprocessing/tiktok_somali_processor.py`
+   - Location: `src/somali_dialect_classifier/ingestion/processors/tiktok_somali_processor.py`
    - Features: Apify API integration, comment extraction, video metadata
 
 #### Deduplication System
@@ -649,7 +649,7 @@ summary = collector.get_summary()
 #### Crawl Ledger
 
 **SQLiteLedger** - Persistent state tracking
-- **Location**: `src/somali_dialect_classifier/preprocessing/crawl_ledger.py`
+- **Location**: `src/somali_dialect_classifier/ingestion/crawl_ledger.py`
 - **Features**:
   - URL state tracking (discovered → fetched → processed)
   - RSS feed tracking (last_crawled timestamps)

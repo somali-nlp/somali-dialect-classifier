@@ -73,7 +73,7 @@ All processors are integrated with production-ready MLOps infrastructure:
 **Structured Logging:**
 ```python
 # Automatic context injection
-from somali_dialect_classifier.utils.logging_utils import set_context, generate_run_id
+from somali_dialect_classifier.infra.logging_utils import set_context, generate_run_id
 
 run_id = generate_run_id("bbc")  # "20250119_103045_bbc_a1b2c3d4"
 set_context(run_id=run_id, source="BBC-Somali", phase="fetch")
@@ -85,7 +85,7 @@ logger.info("Article fetched", url="...", http_status=200)
 
 **Metrics Collection:**
 ```python
-from somali_dialect_classifier.utils.metrics import MetricsCollector, QualityReporter
+from somali_dialect_classifier.infra.metrics import MetricsCollector, QualityReporter
 
 metrics = MetricsCollector(run_id, "BBC-Somali")
 metrics.increment('urls_discovered', 100)
@@ -112,7 +112,7 @@ Automated reports include:
 
 **Crawl Ledger:**
 ```python
-from somali_dialect_classifier.preprocessing.crawl_ledger import get_ledger
+from somali_dialect_classifier.ingestion.crawl_ledger import get_ledger
 
 ledger = get_ledger()
 
@@ -144,7 +144,7 @@ ledger.mark_processed(url, text_hash="sha256...", silver_id="uuid...")
 - Saves bandwidth and enables cross-run idempotency
 
 ```python
-from somali_dialect_classifier.preprocessing.crawl_ledger import get_ledger
+from somali_dialect_classifier.ingestion.crawl_ledger import get_ledger
 
 ledger = get_ledger()
 
@@ -159,7 +159,7 @@ else:
 **Phase 2: Extraction-Stage Deduplication**
 1. **Exact Deduplication** (SHA256 hash):
 ```python
-from somali_dialect_classifier.preprocessing.dedup import DedupEngine, DedupConfig
+from somali_dialect_classifier.ingestion.dedup import DedupEngine, DedupConfig
 
 config = DedupConfig(hash_fields=["text", "url"], enable_minhash=True)
 dedup = DedupEngine(config)

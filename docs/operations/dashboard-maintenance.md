@@ -159,7 +159,7 @@ ls -l _site/data/*.json 2>/dev/null
 # Should show all_metrics.json, summary.json
 
 # Check GitHub Pages deployment
-curl -I https://YOUR-USERNAME.github.io/somali-dialect-classifier/data/all_metrics.json
+curl -I https://somali-nlp.github.io/somali-dialect-classifier/data/all_metrics.json
 # Should return 200 OK
 ```
 
@@ -425,7 +425,7 @@ import requests
 import sys
 from datetime import datetime, timedelta
 
-DASHBOARD_URL = "https://YOUR-USERNAME.github.io/somali-dialect-classifier/data/summary.json"
+DASHBOARD_URL = "https://somali-nlp.github.io/somali-dialect-classifier/data/summary.json"
 
 def check_dashboard_health():
     try:

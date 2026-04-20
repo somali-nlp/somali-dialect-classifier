@@ -12,8 +12,8 @@ This document outlines the implementation of the Principal MLE's feedback on sil
 
 ### Completed Components
 
-1. ✅ **Filter Framework** ([filters.py](src/somali_dialect_classifier/preprocessing/filters.py))
-2. ✅ **BasePipeline Hook Interface** ([base_pipeline.py](src/somali_dialect_classifier/preprocessing/base_pipeline.py))
+1. ✅ **Filter Framework** ([catalog.py](../../src/somali_dialect_classifier/quality/filters/catalog.py))
+2. ✅ **BasePipeline Hook Interface** ([base_pipeline.py](../../src/somali_dialect_classifier/ingestion/base_pipeline.py))
 3. ✅ **Filter Statistics Logging** with Counter
 4. ✅ **Wikipedia Processor Retrofit** with filters
 5. ✅ **BBC Processor Retrofit** with filters and topic enrichment
@@ -92,7 +92,7 @@ This document outlines the implementation of the Principal MLE's feedback on sil
 
 ### Architecture
 
-**Location**: `src/somali_dialect_classifier/preprocessing/filters.py`
+**Location**: `src/somali_dialect_classifier/quality/filters/catalog.py`
 
 All filters follow a **stateless function signature**:
 
@@ -156,7 +156,7 @@ filters = create_hf_filters(min_length=50, allowed_langs={"so"})
 
 ### Hook Interface
 
-**Location**: `src/somali_dialect_classifier/preprocessing/base_pipeline.py`
+**Location**: `src/somali_dialect_classifier/ingestion/base_pipeline.py`
 
 ```python
 class BasePipeline(DataProcessor, ABC):
@@ -233,7 +233,7 @@ Filter statistics:
 
 ### Wikipedia Processor
 
-**Location**: `src/somali_dialect_classifier/preprocessing/wikipedia_somali_processor.py`
+**Location**: `src/somali_dialect_classifier/ingestion/processors/wikipedia_somali_processor.py`
 
 ```python
 def _register_filters(self) -> None:
@@ -256,7 +256,7 @@ def _register_filters(self) -> None:
 
 ### BBC Processor
 
-**Location**: `src/somali_dialect_classifier/preprocessing/bbc_somali_processor.py`
+**Location**: `src/somali_dialect_classifier/ingestion/processors/bbc_somali_processor.py`
 
 ```python
 def _register_filters(self) -> None:

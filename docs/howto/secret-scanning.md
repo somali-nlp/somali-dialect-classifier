@@ -626,7 +626,7 @@ After setting up secret scanning, you might want to:
 
 Found an issue with this guide? Please:
 
-- Open an issue: [GitHub Issues](https://github.com/yourusername/somali-dialect-classifier/issues)
+- Open an issue: [GitHub Issues](https://github.com/somali-nlp/somali-dialect-classifier/issues)
 - Suggest improvements: Submit a PR
 - Ask questions: Use GitHub Discussions
 

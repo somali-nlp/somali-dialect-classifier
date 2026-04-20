@@ -702,7 +702,7 @@ somali-tools metrics consolidate
 
 ### Migration Guide
 
-See `docs/guides/module-restructuring.md` for complete migration guide.
+See `docs/guides/data-pipeline.md` for pipeline migration guidance.
 
 ---
 
@@ -847,7 +847,7 @@ somali-tools metrics validate --strict
 ## Additional Resources
 
 - **Architecture:** `docs/overview/architecture.md` - System design
-- **Module Restructuring:** `docs/guides/module-restructuring.md` - Migration guide
+- **Data Pipeline Guide:** `docs/guides/data-pipeline.md` - Pipeline guide
 - **Configuration:** `docs/howto/configuration.md` - Configuration reference
 - **API Reference:** `docs/reference/api.md` - Python API documentation
 

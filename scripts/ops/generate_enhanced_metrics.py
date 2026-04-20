@@ -22,31 +22,19 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 try:
-    from somali_dialect_classifier.utils.metrics_aggregation import (
-        extract_consolidated_metric,
-        load_all_processing_metrics,
-        load_metrics_from_file,
-    )
-    from somali_dialect_classifier.utils.metrics_comparison import (
-        compare_multiple_runs,
-        export_comparison_data,
-        export_trend_analysis,
-    )
-    from somali_dialect_classifier.utils.metrics_schema import (
+    from somali_dialect_classifier.infra.metrics_aggregation import load_all_processing_metrics
+    from somali_dialect_classifier.infra.metrics_comparison import export_trend_analysis
+    from somali_dialect_classifier.infra.metrics_schema import (
         AdvancedVisualizationData,
-        ConsolidatedMetric,
-        ConsolidatedMetricsOutput,
-        DashboardSummary,
-        EnhancedDashboardMetadata,
-        validate_processing_json,
     )
-    from somali_dialect_classifier.utils.visualization_aggregator import (
+    from somali_dialect_classifier.infra.visualization_aggregator import (
         calculate_summary_stats,
         export_visualization_data,
     )
@@ -156,7 +144,7 @@ def export_filter_catalog(output_dir: Path) -> None:
         output_dir: Directory where filter_catalog.json should be written
     """
     try:
-        from somali_dialect_classifier.pipeline.filters.catalog import (
+        from somali_dialect_classifier.quality.filters.catalog import (
             FILTER_CATALOG,
             get_all_categories,
         )
@@ -214,10 +202,8 @@ def main():
     args = parser.parse_args()
 
     # Determine paths
-    script_dir = Path(__file__).parent
-    project_root = script_dir.parent
-    metrics_dir = project_root / "data" / "metrics"
-    output_dir = project_root / "_site" / "data"
+    metrics_dir = PROJECT_ROOT / "data" / "metrics"
+    output_dir = PROJECT_ROOT / "_site" / "data"
 
     # Load metrics
     print(f"Loading metrics from: {metrics_dir}")
@@ -260,7 +246,7 @@ def main():
     source_mix_share = {}
     source_mix_volumes = {}
     source_mix_config = {}
-    targets_path = project_root / "dashboard" / "data" / "source_mix_targets.json"
+    targets_path = PROJECT_ROOT / "src" / "dashboard" / "data" / "source_mix_targets.json"
     if targets_path.exists():
         try:
             with open(targets_path, encoding='utf-8') as f:

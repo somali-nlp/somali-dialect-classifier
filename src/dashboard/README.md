@@ -111,7 +111,7 @@ dashboard/
 
 GitHub Actions workflow automatically deploys the dashboard to GitHub Pages on every push to `main` branch.
 
-See: [`.github/workflows/deploy-dashboard.yml`](../.github/workflows/deploy-dashboard.yml)
+See: [`.github/workflows/deploy-dashboard-v2.yml`](../.github/workflows/deploy-dashboard-v2.yml)
 
 ---
 
@@ -368,7 +368,7 @@ Logger.timeEnd('chart-render');
 
 Dashboard automatically deploys via GitHub Actions on push to `main`.
 
-**Workflow**: `.github/workflows/deploy-dashboard.yml`
+**Workflow**: `.github/workflows/deploy-dashboard-v2.yml`
 
 **Steps**:
 1. Checkout repository

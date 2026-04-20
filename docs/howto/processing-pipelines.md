@@ -1030,7 +1030,7 @@ cat _site/data/all_metrics.json | jq '.metrics[] | select(.source == "TikTok-Som
 
 ### Filter Catalog
 
-All available filters are defined in the central filter catalog: `src/somali_dialect_classifier/pipeline/filters/catalog.py`
+All available filters are defined in the central filter catalog: `src/somali_dialect_classifier/quality/filters/catalog.py`
 
 This catalog provides:
 - **Human-readable labels** - "Minimum length (50 chars)" instead of "min_length_filter"
@@ -1045,7 +1045,7 @@ For the complete list of available filters, see the [Filter Catalog Reference](.
 # Export filter catalog for dashboard
 python scripts/export_filter_catalog.py
 
-# Output: dashboard/data/filter_catalog.json
+# Output: src/dashboard/data/filter_catalog.json
 ```
 
 ### Filter Registration
@@ -1054,30 +1054,15 @@ python scripts/export_filter_catalog.py
 
 **Correct Pattern:**
 ```python
-from somali_dialect_classifier.preprocessing.filters import (
-    min_length_filter,
-    langid_filter,
-    topic_lexicon_enrichment_filter
+from somali_dialect_classifier.quality.filters.catalog import (
+    get_filter_category,
+    get_filter_label,
 )
 
-class BBCSomaliProcessor(BasePipeline):
-    def _register_filters(self):
-        """Register filters with correct signature."""
-        # CORRECT: Pass function and kwargs separately
-        self.filter_engine.register_filter(
-            min_length_filter,
-            {"threshold": 50}
-        )
-
-        self.filter_engine.register_filter(
-            langid_filter,
-            {"allowed_langs": {"so"}, "confidence_threshold": 0.5}
-        )
-
-        self.filter_engine.register_filter(
-            topic_lexicon_enrichment_filter,
-            {"ruleset": topic_lexicons, "enrich_only": True}
-        )
+# The filter metadata lives in the catalog, while processors register
+# callable filters inside their _register_filters() implementation.
+label = get_filter_label("min_length_filter")
+category = get_filter_category("langid_filter")
 ```
 
 **Incorrect Pattern (DO NOT USE):**
@@ -1106,7 +1091,7 @@ To add a new filter and have it tracked in telemetry:
 
 **Step 1:** Define filter in catalog
 ```python
-# src/somali_dialect_classifier/pipeline/filters/catalog.py
+# src/somali_dialect_classifier/quality/filters/catalog.py
 FILTER_CATALOG["my_new_filter"] = (
     "Filter Label",
     "Description of what this filter does",

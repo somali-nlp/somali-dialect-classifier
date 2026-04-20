@@ -93,7 +93,7 @@ source /opt/somali-nlp/venv/bin/activate
 pip install somali-dialect-classifier[config]
 
 # Or install from Git repository
-pip install git+https://github.com/your-org/somali-dialect-classifier.git
+pip install git+https://github.com/somali-nlp/somali-dialect-classifier.git
 
 # Verify installation
 wikisom-download --help
@@ -104,7 +104,7 @@ bbcsom-download --help
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/somali-dialect-classifier.git
+git clone https://github.com/somali-nlp/somali-dialect-classifier.git
 cd somali-dialect-classifier
 
 # Create virtual environment
@@ -598,7 +598,7 @@ docker run -d \
 sudo yum install -y python3.11 python3.11-pip git
 
 # Clone and install
-git clone https://github.com/your-org/somali-dialect-classifier.git
+git clone https://github.com/somali-nlp/somali-dialect-classifier.git
 cd somali-dialect-classifier
 python3.11 -m venv venv
 source venv/bin/activate

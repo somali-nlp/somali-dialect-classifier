@@ -72,7 +72,7 @@ Get your dashboard live on GitHub Pages in 5 minutes.
 
 ### Step 1: Enable GitHub Pages (30 seconds)
 
-1. Go to your repository settings: `https://github.com/YOUR-USERNAME/somali-dialect-classifier/settings/pages`
+1. Go to your repository settings: `https://github.com/somali-nlp/somali-dialect-classifier/settings/pages`
 2. Under **Source**, select: **GitHub Actions**
 3. Click **Save**
 
@@ -131,7 +131,7 @@ git push origin main
 1. Go to **Actions** tab in your GitHub repository
 2. Watch "Deploy Dashboard to GitHub Pages" workflow
 3. Wait for green checkmark (typically 2-3 minutes)
-4. Visit: `https://YOUR-USERNAME.github.io/somali-dialect-classifier/`
+4. Visit: `https://somali-nlp.github.io/somali-dialect-classifier/`
 
 **Your dashboard is now live!**
 
@@ -206,7 +206,7 @@ somali-deploy-dashboard --verbose
 somali-orchestrate --pipeline all --auto-deploy
 
 # Verify deployment
-# Visit: https://YOUR-USERNAME.github.io/somali-dialect-classifier/
+# Visit: https://somali-nlp.github.io/somali-dialect-classifier/
 ```
 
 **Development Testing:**
@@ -261,7 +261,7 @@ The project includes a modern ES6 modular dashboard:
 
 #### Static Dashboard (GitHub Pages)
 
-**URL**: `https://YOUR-USERNAME.github.io/somali-dialect-classifier/`
+**URL**: `https://somali-nlp.github.io/somali-dialect-classifier/`
 
 **Architecture**: ES6 modular JavaScript with Chart.js visualizations
 
@@ -322,7 +322,7 @@ cd _site && python3 -m http.server 8000
               ▼
 ┌─────────────────────────────────────────────────┐
 │ GitHub Actions Workflow                         │
-│ (.github/workflows/deploy-dashboard.yml)        │
+│ (.github/workflows/deploy-dashboard-v2.yml)     │
 └─────────────┬───────────────────────────────────┘
               │
               ├─► Aggregates metrics
@@ -331,7 +331,7 @@ cd _site && python3 -m http.server 8000
 
 ┌─────────────────────────────────────────────────┐
 │ Live Dashboard Updated                          │
-│ https://YOUR-USERNAME.github.io/...             │
+│ https://somali-nlp.github.io/...                │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -359,7 +359,7 @@ cd _site && python3 -m http.server 8000
 ├── scripts/
 │   └── export_dashboard_data.py  # Aggregates metrics for static site
 ├── .github/workflows/
-│   └── deploy-dashboard.yml      # Auto-deploys to GitHub Pages
+│   └── deploy-dashboard-v2.yml   # Auto-deploys to GitHub Pages
 └── data/
     ├── metrics/                  # JSON metrics (committed)
     └── reports/                  # Quality reports (committed)
@@ -1352,7 +1352,7 @@ cd /path/to/somali-dialect-classifier
 
 **Dashboard not updating:**
 
-1. Check GitHub Actions: https://github.com/YOUR-USERNAME/somali-dialect-classifier/actions
+1. Check GitHub Actions: https://github.com/somali-nlp/somali-dialect-classifier/actions
 2. Wait 2-3 minutes for build
 3. Hard refresh browser (Cmd+Shift+R or Ctrl+Shift+R)
 
@@ -1369,7 +1369,7 @@ ls -lh data/metrics/*.json
 somali-deploy-dashboard --dry-run --verbose
 
 # 4. Check GitHub Actions
-# Visit: https://github.com/YOUR-USERNAME/somali-dialect-classifier/actions
+# Visit: https://github.com/somali-nlp/somali-dialect-classifier/actions
 
 # 5. Manual deployment
 git add data/metrics/*_processing.json
@@ -2136,7 +2136,7 @@ st.metric("Success Rate", f"{current_run['metric'].mean():.1%}", delta=f"{delta:
 Add health checks in GitHub Actions:
 
 ```yaml
-# In .github/workflows/deploy-dashboard.yml
+# In .github/workflows/deploy-dashboard-v2.yml
 - name: Check Pipeline Health
   run: |
     python scripts/check_pipeline_health.py
