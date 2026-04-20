@@ -10,15 +10,14 @@ Validates:
 
 import pytest
 
+# Import processors package at module level to trigger registration
+# This must happen before any tests that clear the registry
+import somali_dialect_classifier.ingestion.processors  # noqa: E402, F401
 from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
 from somali_dialect_classifier.ingestion.processor_registry import (
     ProcessorRegistry,
     register_processor,
 )
-
-# Import processors package at module level to trigger registration
-# This must happen before any tests that clear the registry
-import somali_dialect_classifier.ingestion.processors  # noqa: E402, F401
 
 
 class MockProcessor(BasePipeline):
@@ -87,6 +86,7 @@ def test_register_processor_duplicate(clear_registry):
 
 def test_register_processor_invalid_class(clear_registry):
     """Test that registering non-BasePipeline class raises error."""
+
     class NotAProcessor:
         pass
 
@@ -161,6 +161,7 @@ def test_get_processor_class_unknown(clear_registry):
 
 def test_register_processor_decorator(clear_registry):
     """Test @register_processor decorator."""
+
     @register_processor("decorated_processor")
     class DecoratedProcessor(BasePipeline):
         def __init__(self):
@@ -214,6 +215,7 @@ def test_clear_registry(clear_registry):
 
 def test_multiple_processor_types(clear_registry):
     """Test registry with multiple different processor types."""
+
     @register_processor("type_a")
     class ProcessorA(BasePipeline):
         def __init__(self, param_a: str = None):

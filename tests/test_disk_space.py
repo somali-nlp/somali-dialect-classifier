@@ -10,9 +10,7 @@ Validates:
 - Configuration via environment variables
 """
 
-import shutil
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -69,9 +67,7 @@ class TestDiskUtils:
             mock.return_value = 110 * (1024**2)
 
             # Request 100MB with 20% buffer (needs 120MB total)
-            has_space, error = check_disk_space(
-                100 * (1024**2), tmp_path, buffer_pct=0.2
-            )
+            has_space, error = check_disk_space(100 * (1024**2), tmp_path, buffer_pct=0.2)
             assert has_space is False
             assert "includes 20% safety buffer" in error
 
@@ -95,9 +91,7 @@ class TestDiskUtils:
 
     def test_check_disk_space_error_handling(self, tmp_path):
         """Test check_disk_space handles errors gracefully."""
-        with patch(
-            "somali_dialect_classifier.infra.disk_utils.get_available_disk_space"
-        ) as mock:
+        with patch("somali_dialect_classifier.infra.disk_utils.get_available_disk_space") as mock:
             mock.side_effect = PermissionError("Access denied")
 
             has_space, error = check_disk_space(1024, tmp_path)
@@ -207,11 +201,18 @@ class TestDataManagerDiskSpace:
         """Test ensure_disk_space raises on insufficient space."""
         manager = DataManager("Test-Source", "run_001", base_dir=tmp_path)
 
-        with patch("somali_dialect_classifier.infra.data_manager.get_available_disk_space") as mock_avail:
-            with patch("somali_dialect_classifier.infra.data_manager.check_disk_space") as mock_check:
+        with patch(
+            "somali_dialect_classifier.infra.data_manager.get_available_disk_space"
+        ) as mock_avail:
+            with patch(
+                "somali_dialect_classifier.infra.data_manager.check_disk_space"
+            ) as mock_check:
                 # Mock insufficient space check
                 mock_avail.return_value = 100 * (1024**2)
-                mock_check.return_value = (False, "Insufficient disk space: need 5.21GB, have 0.10GB")
+                mock_check.return_value = (
+                    False,
+                    "Insufficient disk space: need 5.21GB, have 0.10GB",
+                )
 
                 # Request 200MB (should fail)
                 with pytest.raises(InsufficientDiskSpaceError) as exc_info:
@@ -261,8 +262,12 @@ class TestDataManagerDiskSpace:
 
         manager = DataManager("Test-Source", "run_001", base_dir=tmp_path)
 
-        with patch("somali_dialect_classifier.infra.data_manager.get_available_disk_space") as mock_avail:
-            with patch("somali_dialect_classifier.infra.data_manager.check_disk_space") as mock_check:
+        with patch(
+            "somali_dialect_classifier.infra.data_manager.get_available_disk_space"
+        ) as mock_avail:
+            with patch(
+                "somali_dialect_classifier.infra.data_manager.check_disk_space"
+            ) as mock_check:
                 # Mock passing check but tight margin
                 # Request 3GB, have 4GB available
                 # Buffered: 3.3GB, Min free: 5GB, Total: 8.3GB needed
@@ -294,7 +299,7 @@ class TestConfigurationIntegration:
         monkeypatch.setenv("SDC_DISK__SPACE_BUFFER_PCT", "0.2")
 
         # Reset config to pick up env vars
-        from somali_dialect_classifier.infra.config import reset_config, get_config
+        from somali_dialect_classifier.infra.config import get_config, reset_config
 
         reset_config()
         config = get_config()
@@ -307,8 +312,9 @@ class TestConfigurationIntegration:
 
     def test_disk_config_validation(self):
         """Test DiskConfig validates ranges."""
-        from somali_dialect_classifier.infra.config import DiskConfig
         from pydantic import ValidationError
+
+        from somali_dialect_classifier.infra.config import DiskConfig
 
         # Valid config
         config = DiskConfig(min_free_space_gb=5, space_buffer_pct=0.1)

@@ -427,6 +427,11 @@ def validate_url_for_source(url: str, source: str, allowed_domains: set[str]) ->
         except Exception as e:
             return False, f"Failed to parse URL: {e}"
 
+        # Reject unsafe schemes before the hostname check so callers see an
+        # SSRF-shaped error (e.g., file:/// legitimately has no hostname).
+        if parsed.scheme not in {"http", "https"}:
+            return False, f"SSRF attempt detected: unsafe scheme '{parsed.scheme}'"
+
         hostname = parsed.hostname
         if not hostname:
             return False, "URL missing hostname"
@@ -443,10 +448,12 @@ def validate_url_for_source(url: str, source: str, allowed_domains: set[str]) ->
                 ip = ipaddress.ip_address(hostname)
                 if ip.is_loopback:
                     return False, "SSRF attempt detected: loopback address blocked"
-                if ip.is_private:
-                    return False, "SSRF attempt detected: private IP range blocked"
+                # Check link-local before is_private because 169.254/16 satisfies
+                # both — callers expect the more specific diagnostic.
                 if ip.is_link_local:
                     return False, "SSRF attempt detected: link-local address blocked"
+                if ip.is_private:
+                    return False, "SSRF attempt detected: private IP range blocked"
             except ValueError:
                 pass
 
@@ -498,7 +505,9 @@ SENSITIVE_KEYS = {
 }
 
 
-def redact_secrets(data: dict | list | tuple | str | int | float | bool | None) -> dict | list | tuple | str | int | float | bool | None:
+def redact_secrets(
+    data: dict | list | tuple | str | int | float | bool | None,
+) -> dict | list | tuple | str | int | float | bool | None:
     """
     Recursively redact sensitive values from data structures.
 

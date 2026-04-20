@@ -120,6 +120,10 @@ ignore = [
   "E402",  # module level import not at top - allow in skipped tests
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/security/test_xxe_protection.py" = ["N817"]
+"src/somali_dialect_classifier/ingestion/processors/sprakbanken_somali_processor.py" = ["N817"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
@@ -134,10 +138,12 @@ addopts = [
   "-v",
   "--strict-markers",
   "--tb=short",
+  "-m", "not perf",
 ]
 timeout = 300
 markers = [
   "integration: marks tests as integration tests (may require network access)",
+  "perf: performance benchmarks — hardware-sensitive, run manually with `-m perf`",
 ]
 
 [tool.mypy]

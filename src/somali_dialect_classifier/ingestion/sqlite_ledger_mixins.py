@@ -141,14 +141,18 @@ class SQLiteQuotaMixin:
         with self.transaction() as conn:
             conn.execute(
                 """
-                UPDATE daily_quotas SET
+                INSERT INTO daily_quotas (
+                    date, source, records_ingested, quota_limit,
+                    quota_hit, items_remaining, updated_at
+                )
+                VALUES (?, ?, 0, ?, 1, ?, ?)
+                ON CONFLICT(date, source) DO UPDATE SET
                     quota_hit = 1,
-                    items_remaining = ?,
-                    quota_limit = ?,
-                    updated_at = ?
-                WHERE date = ? AND source = ?
+                    items_remaining = excluded.items_remaining,
+                    quota_limit = excluded.quota_limit,
+                    updated_at = excluded.updated_at
                 """,
-                (items_remaining, quota_limit, now.isoformat(), date, source),
+                (date, source, quota_limit, items_remaining, now.isoformat()),
             )
 
     def check_quota_available(

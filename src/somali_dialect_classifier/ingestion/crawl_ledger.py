@@ -689,8 +689,12 @@ class CrawlLedger:
 
                 # Load database config for connection pool and timeout settings
                 query_timeout = backend_kwargs.get("query_timeout", config.database.query_timeout)
-                min_connections = backend_kwargs.get("min_connections", config.database.min_connections)
-                max_connections = backend_kwargs.get("max_connections", config.database.max_connections)
+                min_connections = backend_kwargs.get(
+                    "min_connections", config.database.min_connections
+                )
+                max_connections = backend_kwargs.get(
+                    "max_connections", config.database.max_connections
+                )
 
                 self.backend = PostgresLedger(
                     host=host,

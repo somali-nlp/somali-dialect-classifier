@@ -13,8 +13,6 @@ from pathlib import Path
 from typing import Optional
 from unittest.mock import MagicMock, Mock, patch
 
-import pytest
-
 from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
 from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
     MAX_ARTICLE_LINES,
@@ -38,7 +36,9 @@ class TestM3MemoryLimits:
                 f.write(f"Line {i}\n")
 
         # Create processor with mocked dependencies
-        with patch("somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"):
+        with patch(
+            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+        ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
             processor.metrics = MagicMock()
@@ -59,7 +59,7 @@ class TestM3MemoryLimits:
         # Verify lines were limited to MAX_ARTICLE_LINES
         lines = record.text.split("\n")
         # Count non-empty lines
-        non_empty_lines = [l for l in lines if l]
+        non_empty_lines = [line for line in lines if line]
         assert len(non_empty_lines) <= MAX_ARTICLE_LINES
 
         # Metrics not incremented because we prevent overflow, not detect it
@@ -77,7 +77,9 @@ class TestM3MemoryLimits:
                 f.write(f"Line {i}\n")
 
         # Create processor with mocked dependencies
-        with patch("somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"):
+        with patch(
+            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+        ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
             processor.metrics = MagicMock()
@@ -105,7 +107,9 @@ class TestM3MemoryLimits:
                 f.write(f"Line {i}\n")
 
         # Create processor with mocked dependencies
-        with patch("somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"):
+        with patch(
+            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+        ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
             processor.metrics = MagicMock()
@@ -121,7 +125,7 @@ class TestM3MemoryLimits:
 
         # Verify content is limited (memory protection working)
         lines = record.text.split("\n")
-        non_empty_lines = [l for l in lines if l]
+        non_empty_lines = [line for line in lines if line]
         assert len(non_empty_lines) <= MAX_ARTICLE_LINES
 
     def test_multiple_articles_with_mixed_sizes(self, tmp_path):
@@ -145,7 +149,9 @@ class TestM3MemoryLimits:
                 f.write(f"Medium line {i}\n")
 
         # Create processor with mocked dependencies
-        with patch("somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"):
+        with patch(
+            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+        ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
             processor.metrics = MagicMock()
@@ -163,7 +169,7 @@ class TestM3MemoryLimits:
 
         # Verify large article was actually limited
         large_lines = records[1].text.split("\n")
-        large_non_empty = [l for l in large_lines if l]
+        large_non_empty = [line for line in large_lines if line]
         assert len(large_non_empty) <= MAX_ARTICLE_LINES
 
         # No metrics increment because we prevent, not detect
@@ -175,7 +181,6 @@ class TestM4OptionalPathReturn:
 
     def test_run_return_type_annotation(self):
         """Test that BasePipeline.run() has Optional[Path] return type."""
-        import typing
         from typing import Union, get_type_hints
 
         # Get type hints for BasePipeline.run()
@@ -199,7 +204,9 @@ class TestM4OptionalPathReturn:
 
     def test_wikipedia_processor_can_return_none(self):
         """Test that WikipediaSomaliProcessor.run() can return None."""
-        with patch("somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"):
+        with patch(
+            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+        ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
 
         # Mock download to return None (304 Not Modified)
@@ -217,7 +224,6 @@ class TestM4OptionalPathReturn:
 
     def test_base_pipeline_process_return_type(self):
         """Test that BasePipeline.process() has Optional[Path] return type."""
-        import typing
         from typing import Union, get_type_hints
 
         # Get type hints for BasePipeline.process()
@@ -242,7 +248,6 @@ class TestM10TypeHints:
 
     def test_get_http_session_has_return_type(self):
         """Test that _get_http_session() has proper return type hint."""
-        import inspect
         from typing import get_type_hints
 
         import requests
@@ -258,7 +263,9 @@ class TestM10TypeHints:
         """Test that _get_http_session() returns a requests.Session instance."""
         import requests
 
-        with patch("somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"):
+        with patch(
+            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+        ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
 
         # Get session
@@ -288,7 +295,11 @@ class TestM11LoggingLevels:
             passed, reason, metadata = engine.apply_filters("test text", "Test Record")
 
         # Verify DEBUG level was used
-        assert any("filtered by" in record.message for record in caplog.records if record.levelname == "DEBUG")
+        assert any(
+            "filtered by" in record.message
+            for record in caplog.records
+            if record.levelname == "DEBUG"
+        )
 
     def test_pipeline_lifecycle_uses_info(self, caplog, tmp_path):
         """Test that pipeline lifecycle events use INFO level."""
@@ -296,7 +307,9 @@ class TestM11LoggingLevels:
         staging_file = tmp_path / "staging.txt"
         staging_file.write_text("\x1e PAGE: Test\nTest content\n")
 
-        with patch("somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"):
+        with patch(
+            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+        ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
             processor.metrics = MagicMock()
@@ -327,6 +340,7 @@ class TestM11LoggingLevels:
 
             def _create_cleaner(self):
                 from somali_dialect_classifier.quality.text_cleaners import TextCleaningPipeline
+
                 return TextCleaningPipeline(cleaners=[])
 
             def _get_source_type(self):
@@ -354,6 +368,7 @@ class TestM11LoggingLevels:
         checkpoint_path = tmp_path / "checkpoint.json"
 
         import logging
+
         with caplog.at_level(logging.DEBUG, logger="somali_dialect_classifier"):
             pipeline._save_checkpoint(checkpoint_path, 100)
 
@@ -387,7 +402,6 @@ class TestTypeCheckerCompatibility:
 
 def test_all_fixes_integrated():
     """Integration test verifying all fixes work together."""
-    import tempfile
 
     with tempfile.TemporaryDirectory() as tmpdir:
         staging_file = Path(tmpdir) / "staging.txt"
@@ -404,7 +418,9 @@ def test_all_fixes_integrated():
                 f.write(f"Line {i}\n")
 
         # Create processor (tests M4, M10 type hints work)
-        with patch("somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"):
+        with patch(
+            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+        ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
             processor.metrics = MagicMock()
@@ -420,7 +436,7 @@ def test_all_fixes_integrated():
 
         # Verify large article was actually limited
         large_lines = records[1].text.split("\n")
-        large_non_empty = [l for l in large_lines if l]
+        large_non_empty = [line for line in large_lines if line]
         assert len(large_non_empty) <= MAX_ARTICLE_LINES
 
         # Verify HTTP session type hint (M10)

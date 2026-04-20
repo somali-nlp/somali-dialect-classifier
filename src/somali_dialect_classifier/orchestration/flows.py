@@ -314,6 +314,7 @@ def run_wikipedia_task(force: bool = False, run_seed: Optional[str] = None) -> d
     from ..ingestion import processors  # noqa: F401
     from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
     from ..ingestion.processor_registry import ProcessorRegistry
+
     return _run_locked_pipeline_task(
         processor_name="wikipedia",
         display_source="Wikipedia",
@@ -345,6 +346,7 @@ def run_bbc_task(
     from ..ingestion import processors  # noqa: F401
     from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
     from ..ingestion.processor_registry import ProcessorRegistry
+
     return _run_locked_pipeline_task(
         processor_name="bbc",
         display_source="BBC",
@@ -384,6 +386,7 @@ def run_huggingface_task(
     from ..ingestion import processors  # noqa: F401
     from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
     from ..ingestion.processor_registry import ProcessorRegistry
+
     return _run_locked_pipeline_task(
         processor_name="huggingface",
         display_source="HuggingFace",
@@ -428,6 +431,7 @@ def run_sprakbanken_task(
     from ..ingestion import processors  # noqa: F401
     from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
     from ..ingestion.processor_registry import ProcessorRegistry
+
     return _run_locked_pipeline_task(
         processor_name="sprakbanken",
         display_source="Språkbanken",
@@ -468,6 +472,7 @@ def run_tiktok_task(
     from ..ingestion import processors  # noqa: F401
     from ..ingestion.processor_config import get_processor_kwargs, get_processor_source_name
     from ..ingestion.processor_registry import ProcessorRegistry
+
     return _run_locked_pipeline_task(
         processor_name="tiktok",
         display_source="TikTok",

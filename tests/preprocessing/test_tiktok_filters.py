@@ -500,7 +500,7 @@ class TestTikTokFilterInstrumentation:
         assert isinstance(result["likes"], int)
         assert isinstance(result["replies"], int)
         assert isinstance(result["comment_id"], str)
-        assert isinstance(result["created_at"], int)  # unix timestamp
+        assert isinstance(result["created_at"], str)  # ISO 8601 timestamp
 
     def test_unicode_and_extended_characters(self, processor):
         """Verify that Somali text with extended characters passes filters correctly.

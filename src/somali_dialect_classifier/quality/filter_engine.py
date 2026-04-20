@@ -110,9 +110,7 @@ class FilterEngine:
         """
         # STRICT INPUT VALIDATION
         if not isinstance(cleaned_text, str):
-            raise ValueError(
-                f"cleaned_text must be string, got {type(cleaned_text).__name__}"
-            )
+            raise ValueError(f"cleaned_text must be string, got {type(cleaned_text).__name__}")
 
         if not cleaned_text.strip():
             # Empty text should fail early (not reach filters)
@@ -144,7 +142,7 @@ class FilterEngine:
                 # Log error with full traceback for debugging
                 logger.error(
                     f"Filter {filter_name} raised error on '{record_title[:50] if record_title else 'record'}': {e}",
-                    exc_info=True  # Include full traceback
+                    exc_info=True,  # Include full traceback
                 )
 
                 # Track filter failures for monitoring

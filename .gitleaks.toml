@@ -103,6 +103,7 @@ paths = [
   '''test_fixtures/''',                    # Test fixture data
   '''tests/fixtures/''',
   '''scripts/demo_log_redaction\.py$''',   # Intentional fake-secret fixtures for redaction demo
+  '''tests/utils/test_logging_utils\.py$''',  # Intentional fake-secret fixtures for redaction tests
   '''^docs/''',                            # Documentation files
   '''\.example\.''',                       # Any .example. files
   '''package-lock\.json$''',               # NPM lock file

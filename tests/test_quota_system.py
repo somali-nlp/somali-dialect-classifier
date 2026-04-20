@@ -116,7 +116,7 @@ def test_mark_quota_hit_records_remaining(ledger):
 def test_get_quota_returns_correct_limits(config):
     """Verify get_quota returns correct limits for each source."""
     assert config.orchestration.get_quota("bbc") == 350
-    assert config.orchestration.get_quota("huggingface") == 10000
+    assert config.orchestration.get_quota("huggingface") == 20000
     assert config.orchestration.get_quota("sprakbanken") == 10
 
 

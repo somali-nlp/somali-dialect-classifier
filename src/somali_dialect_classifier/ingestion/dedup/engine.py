@@ -136,7 +136,9 @@ class DedupEngine:
             logger.warning(f"Error checking URL state for {url}: {err}")
             return False
 
-    def check_file_duplicate(self, filepath: Path, ledger, source: str) -> tuple[bool, Optional[str]]:
+    def check_file_duplicate(
+        self, filepath: Path, ledger, source: str
+    ) -> tuple[bool, Optional[str]]:
         import hashlib
 
         sha256 = hashlib.sha256()

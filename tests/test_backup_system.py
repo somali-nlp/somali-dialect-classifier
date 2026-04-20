@@ -63,7 +63,7 @@ def sample_data(temp_dirs):
 
 def test_backup_creation(sample_data):
     """Test backup creation."""
-    from scripts.backup_system import BackupSystem
+    from scripts.ops.backup_system import BackupSystem
 
     backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
 
@@ -96,7 +96,7 @@ def test_backup_creation(sample_data):
 
 def test_backup_checksums(sample_data):
     """Test backup checksum calculation."""
-    from scripts.backup_system import BackupSystem
+    from scripts.ops.backup_system import BackupSystem
 
     backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
 
@@ -115,7 +115,7 @@ def test_backup_checksums(sample_data):
 
 def test_backup_cleanup(sample_data):
     """Test backup retention cleanup."""
-    from scripts.backup_system import BackupSystem
+    from scripts.ops.backup_system import BackupSystem
 
     backup_system = BackupSystem(
         source_dir=sample_data["data"],
@@ -152,7 +152,7 @@ def test_backup_cleanup(sample_data):
 
 def test_list_backups(sample_data):
     """Test listing available backups."""
-    from scripts.backup_system import BackupSystem
+    from scripts.ops.backup_system import BackupSystem
 
     backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
 
@@ -178,8 +178,8 @@ def test_list_backups(sample_data):
 @pytest.mark.xfail(reason="Restore system expects different directory structure")
 def test_restore_basic(sample_data):
     """Test basic restore functionality."""
-    from scripts.backup_system import BackupSystem
-    from scripts.restore_system import RestoreSystem
+    from scripts.ops.backup_system import BackupSystem
+    from scripts.ops.restore_system import RestoreSystem
 
     # Create backup
     backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
@@ -205,8 +205,8 @@ def test_restore_basic(sample_data):
 
 def test_restore_verification(sample_data):
     """Test restore checksum verification."""
-    from scripts.backup_system import BackupSystem
-    from scripts.restore_system import RestoreSystem
+    from scripts.ops.backup_system import BackupSystem
+    from scripts.ops.restore_system import RestoreSystem
 
     # Create backup
     backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
@@ -229,8 +229,8 @@ def test_restore_verification(sample_data):
 @pytest.mark.xfail(reason="Restore system expects different directory structure")
 def test_restore_dry_run(sample_data):
     """Test restore dry-run mode."""
-    from scripts.backup_system import BackupSystem
-    from scripts.restore_system import RestoreSystem
+    from scripts.ops.backup_system import BackupSystem
+    from scripts.ops.restore_system import RestoreSystem
 
     # Create backup
     backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
@@ -256,8 +256,8 @@ def test_restore_dry_run(sample_data):
 
 def test_restore_list_backups(sample_data):
     """Test listing backups via restore system."""
-    from scripts.backup_system import BackupSystem
-    from scripts.restore_system import RestoreSystem
+    from scripts.ops.backup_system import BackupSystem
+    from scripts.ops.restore_system import RestoreSystem
 
     # Create backup
     backup_system = BackupSystem(source_dir=sample_data["data"], backup_dir=sample_data["backup"])
@@ -275,7 +275,7 @@ def test_restore_list_backups(sample_data):
 
 def test_backup_with_missing_directories(temp_dirs):
     """Test backup handles missing directories gracefully."""
-    from scripts.backup_system import BackupSystem
+    from scripts.ops.backup_system import BackupSystem
 
     # Create minimal data directory (missing some subdirectories)
     data_dir = temp_dirs["data"]

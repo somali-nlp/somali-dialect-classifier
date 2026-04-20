@@ -421,9 +421,7 @@ class BasePipeline(DataProcessor, ABC):
                 source_metadata=self._get_source_metadata(),
             )
             metrics = self.metrics if hasattr(self, "metrics") else None
-            is_valid, errors = self.validation_service.validate_record(
-                record, self.source, metrics
-            )
+            is_valid, errors = self.validation_service.validate_record(record, self.source, metrics)
             if not is_valid:
                 records_filtered += 1
                 continue
@@ -599,24 +597,29 @@ class BasePipeline(DataProcessor, ABC):
         """Generate hash of current configuration state."""
         import hashlib
         import json
+        import logging
 
         from ..infra.config import get_config
 
         try:
             config = get_config()
-            # Serialize config to JSON string (handling non-serializable types if any)
-            # Using default=str to handle Path objects etc.
             if hasattr(config, "model_dump_json"):
                 config_str = config.model_dump_json()
             else:
-                # Fallback for dataclass
                 from dataclasses import asdict
 
                 config_str = json.dumps(asdict(config), default=str, sort_keys=True)
 
-            return hashlib.sha256(config_str.encode("utf-8")).hexdigest()[:12]
+            if not isinstance(config_str, (str, bytes)):
+                raise TypeError(f"config serialisation returned {type(config_str).__name__}")
+
+            payload = config_str.encode("utf-8") if isinstance(config_str, str) else config_str
+            return hashlib.sha256(payload).hexdigest()[:12]
         except Exception as e:
-            self.logger.warning(f"Failed to hash config: {e}")
+            # Called from __init__ before self.logger is wired up; fall back to a
+            # module-level logger so a mocked/partial config cannot wedge the
+            # constructor with AttributeError.
+            logging.getLogger(__name__).warning("Failed to hash config: %s", e)
             return "unknown"
 
     def _get_system_context(self) -> dict[str, str]:
@@ -712,9 +715,9 @@ class BasePipeline(DataProcessor, ABC):
             # Unexpected error - should be visible
             self.logger.warning(f"Failed to export {stage} metrics: {e}")
             # Track failure for monitoring
-            if hasattr(self, 'metrics') and self.metrics:
+            if hasattr(self, "metrics") and self.metrics:
                 try:
-                    self.metrics.increment('metrics_export_failed')
+                    self.metrics.increment("metrics_export_failed")
                 except Exception:
                     pass  # Don't fail on metric tracking failure
 

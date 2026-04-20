@@ -71,9 +71,7 @@ class ProcessorRegistry:
         """
         if name not in cls._processors:
             available = ", ".join(cls.list_processors())
-            raise ValueError(
-                f"Unknown processor: '{name}'. Available: {available}"
-            )
+            raise ValueError(f"Unknown processor: '{name}'. Available: {available}")
 
         processor_class = cls._processors[name]
         return processor_class(**kwargs)
@@ -139,7 +137,9 @@ def register_processor(name: str) -> Callable[[type[BasePipeline]], type[BasePip
     Returns:
         Decorator function that registers the class
     """
+
     def decorator(cls: type[BasePipeline]) -> type[BasePipeline]:
         ProcessorRegistry.register(name, cls)
         return cls
+
     return decorator

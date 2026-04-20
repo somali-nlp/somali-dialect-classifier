@@ -292,13 +292,17 @@ class TestHFProcessorFiles:
                 f.write(json.dumps(record) + "\n")
 
         result = processor.process()
-        table = processor.silver_writer.read(source=processor.source, date_accessed=processor.date_accessed)
+        table = processor.silver_writer.read(
+            source=processor.source, date_accessed=processor.date_accessed
+        )
 
         assert result is not None
         assert result.suffix == ".parquet"
         assert len(table) == 2
 
-    def test_process_with_all_filtered_records_returns_processed_path(self, temp_work_dir, monkeypatch):
+    def test_process_with_all_filtered_records_returns_processed_path(
+        self, temp_work_dir, monkeypatch
+    ):
         """Shared BasePipeline.process() returns the processed path even when nothing is written."""
         # Create mock dataset with text that will be filtered
         mock_data = [

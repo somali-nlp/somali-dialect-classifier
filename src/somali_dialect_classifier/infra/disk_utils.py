@@ -121,7 +121,7 @@ def check_disk_space(
     if available < total_required:
         required_gb = total_required / (1024**3)
         available_gb = available / (1024**3)
-        buffer_info = f" (includes {buffer_pct*100:.0f}% safety buffer)"
+        buffer_info = f" (includes {buffer_pct * 100:.0f}% safety buffer)"
         if min_free_gb:
             buffer_info += f" + {min_free_gb:.1f}GB minimum free"
 

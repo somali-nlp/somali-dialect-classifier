@@ -15,8 +15,8 @@ import logging
 from collections.abc import Iterator
 from pathlib import Path
 
-from pyarrow import dataset as ds
 import pyarrow.parquet as pq
+from pyarrow import dataset as ds
 
 from somali_dialect_classifier.contracts import validate_ingestion_output
 

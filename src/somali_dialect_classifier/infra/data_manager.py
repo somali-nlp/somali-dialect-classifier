@@ -30,7 +30,6 @@ from typing import Any
 from .disk_utils import (
     InsufficientDiskSpaceError,
     check_disk_space,
-    format_bytes,
     get_available_disk_space,
 )
 

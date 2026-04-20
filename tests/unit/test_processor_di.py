@@ -9,7 +9,8 @@ Tests that all 5 processors accept optional dependencies for testability:
 This enables full mocking and isolation in tests.
 """
 
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock, Mock
+
 import pytest
 import requests
 
@@ -32,15 +33,11 @@ class TestSprakbankenProcessorDI:
         mock_ledger.check_quota_available = Mock(return_value=(True, 100))
 
         # Act
-        processor = SprakbankenSomaliProcessor(
-            corpus_id="somali-cilmi", ledger=mock_ledger
-        )
+        processor = SprakbankenSomaliProcessor(corpus_id="somali-cilmi", ledger=mock_ledger)
 
         # Assert
         assert processor.ledger is mock_ledger
-        assert processor.ledger.get_url_state(
-            "https://example.com"
-        ) is None  # Test mock works
+        assert processor.ledger.get_url_state("https://example.com") is None  # Test mock works
 
     def test_accepts_mock_metrics_factory(self):
         """Test that processor accepts a mock metrics factory."""
@@ -69,9 +66,7 @@ class TestSprakbankenProcessorDI:
         mock_session.get = Mock(return_value=mock_response)
 
         # Act
-        processor = SprakbankenSomaliProcessor(
-            corpus_id="somali-cilmi", http_session=mock_session
-        )
+        processor = SprakbankenSomaliProcessor(corpus_id="somali-cilmi", http_session=mock_session)
 
         # Assert
         assert processor._http_session is mock_session
@@ -152,7 +147,9 @@ class TestDIIntegration:
 
         mock_metrics = MagicMock()
         mock_metrics.increment = MagicMock()
-        mock_factory = lambda run_id, source: mock_metrics
+
+        def mock_factory(run_id, source):
+            return mock_metrics
 
         mock_session = MagicMock(spec=requests.Session)
 

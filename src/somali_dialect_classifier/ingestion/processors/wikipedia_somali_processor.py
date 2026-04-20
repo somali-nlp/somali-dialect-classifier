@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 import requests
-from defusedxml import ElementTree as ET
 from tqdm import tqdm
 
 from ...infra.config import get_config
@@ -39,10 +38,10 @@ BUFFER_TRUNCATE_SIZE_MB = 1  # Keep last chunk for page boundary context
 LOG_FREQUENCY_PAGES = 1000  # Log every 1k pages (balance verbosity vs info)
 
 # Safety checks
-assert BUFFER_MAX_SIZE_MB >= BUFFER_CHUNK_SIZE_MB, \
-    "Max buffer must be at least one chunk size"
-assert BUFFER_TRUNCATE_SIZE_MB <= BUFFER_MAX_SIZE_MB, \
+assert BUFFER_MAX_SIZE_MB >= BUFFER_CHUNK_SIZE_MB, "Max buffer must be at least one chunk size"
+assert BUFFER_TRUNCATE_SIZE_MB <= BUFFER_MAX_SIZE_MB, (
     "Truncate size must be smaller than max buffer"
+)
 
 # Constants for article size limits
 MAX_ARTICLE_SIZE_MB = 10  # Maximum article size in MB
@@ -88,7 +87,6 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.ledger = ledger if ledger is not None else get_ledger()
 
         # Dependency injection: store metrics factory for lazy initialization
-        from ...infra.metrics import MetricsCollector, PipelineType
 
         self._metrics_factory = metrics_factory or (
             lambda run_id, source: MetricsCollector(

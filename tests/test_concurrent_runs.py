@@ -67,8 +67,12 @@ def test_lock_prevents_concurrent_runs_same_source(test_lock_dir):
     results = manager.list()
 
     # Run two workers for same source
-    p1 = Process(target=_same_source_worker, args=("wikipedia", 1, test_lock_dir, results, 1.5, 2.0))
-    p2 = Process(target=_same_source_worker, args=("wikipedia", 2, test_lock_dir, results, 0.1, 0.2))
+    p1 = Process(
+        target=_same_source_worker, args=("wikipedia", 1, test_lock_dir, results, 1.5, 2.0)
+    )
+    p2 = Process(
+        target=_same_source_worker, args=("wikipedia", 2, test_lock_dir, results, 0.1, 0.2)
+    )
 
     p1.start()
     lock_file = test_lock_dir / "wikipedia.lock"
@@ -98,9 +102,7 @@ def test_lock_allows_concurrent_runs_different_sources(test_lock_dir):
     results = manager.list()
 
     # Run two workers for DIFFERENT sources
-    p1 = Process(
-        target=_different_source_worker, args=("wikipedia", 1, test_lock_dir, results)
-    )
+    p1 = Process(target=_different_source_worker, args=("wikipedia", 1, test_lock_dir, results))
     p2 = Process(target=_different_source_worker, args=("bbc", 2, test_lock_dir, results))
 
     p1.start()

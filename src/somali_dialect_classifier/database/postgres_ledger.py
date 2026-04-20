@@ -664,7 +664,17 @@ class PostgresLedger(LedgerBackend):
             with conn.cursor() as cur:
                 cur.execute(
                     query,
-                    (run_id, source, pipeline_type, now, "STARTED", config_json, git_commit, now, now),
+                    (
+                        run_id,
+                        source,
+                        pipeline_type,
+                        now,
+                        "STARTED",
+                        config_json,
+                        git_commit,
+                        now,
+                        now,
+                    ),
                 )
 
     def update_pipeline_run(

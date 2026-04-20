@@ -99,7 +99,7 @@ def build_dashboard(clean: bool = False, verbose: bool = False) -> dict[str, Any
 
     except subprocess.CalledProcessError as e:
         logger.error(f"Build failed: {e.stderr}")
-        raise RuntimeError(f"Build failed: {e.stderr}")
+        raise RuntimeError(f"Build failed: {e.stderr}") from e
 
 
 # ============================================================================
@@ -221,8 +221,8 @@ def deploy_to_github_pages(site_dir: Path, dry_run: bool = False) -> dict[str, A
     # Check if gh-pages CLI is available
     try:
         subprocess.run(["gh-pages", "--version"], capture_output=True, check=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        raise RuntimeError("gh-pages CLI not found. Install with: npm install -g gh-pages")
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        raise RuntimeError("gh-pages CLI not found. Install with: npm install -g gh-pages") from e
 
     # Deploy
     logger.info("Deploying to GitHub Pages...")
@@ -237,7 +237,7 @@ def deploy_to_github_pages(site_dir: Path, dry_run: bool = False) -> dict[str, A
 
     except subprocess.CalledProcessError as e:
         logger.error(f"Deployment failed: {e.stderr}")
-        raise RuntimeError(f"Deployment failed: {e.stderr}")
+        raise RuntimeError(f"Deployment failed: {e.stderr}") from e
 
 
 def deploy_to_netlify(site_dir: Path, dry_run: bool = False) -> dict[str, Any]:
@@ -260,8 +260,8 @@ def deploy_to_netlify(site_dir: Path, dry_run: bool = False) -> dict[str, Any]:
     # Check if netlify CLI is available
     try:
         subprocess.run(["netlify", "--version"], capture_output=True, check=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        raise RuntimeError("Netlify CLI not found. Install with: npm install -g netlify-cli")
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        raise RuntimeError("Netlify CLI not found. Install with: npm install -g netlify-cli") from e
 
     # Deploy
     logger.info("Deploying to Netlify...")
@@ -281,7 +281,7 @@ def deploy_to_netlify(site_dir: Path, dry_run: bool = False) -> dict[str, Any]:
 
     except subprocess.CalledProcessError as e:
         logger.error(f"Deployment failed: {e.stderr}")
-        raise RuntimeError(f"Deployment failed: {e.stderr}")
+        raise RuntimeError(f"Deployment failed: {e.stderr}") from e
 
 
 def deploy_to_s3(site_dir: Path, dry_run: bool = False) -> dict[str, Any]:
@@ -304,8 +304,8 @@ def deploy_to_s3(site_dir: Path, dry_run: bool = False) -> dict[str, Any]:
     # Check if AWS CLI is available
     try:
         subprocess.run(["aws", "--version"], capture_output=True, check=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        raise RuntimeError("AWS CLI not found. Install with: pip install awscli")
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        raise RuntimeError("AWS CLI not found. Install with: pip install awscli") from e
 
     # Get S3 bucket from environment
     import os
@@ -334,4 +334,4 @@ def deploy_to_s3(site_dir: Path, dry_run: bool = False) -> dict[str, Any]:
 
     except subprocess.CalledProcessError as e:
         logger.error(f"Deployment failed: {e.stderr}")
-        raise RuntimeError(f"Deployment failed: {e.stderr}")
+        raise RuntimeError(f"Deployment failed: {e.stderr}") from e

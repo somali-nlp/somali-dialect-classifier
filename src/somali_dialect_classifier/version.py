@@ -4,7 +4,7 @@ Version information for Somali Dialect Classifier.
 This module provides a single source of truth for version numbers.
 """
 
-from importlib.metadata import version, PackageNotFoundError
+from importlib.metadata import PackageNotFoundError, version
 
 try:
     # Read version from installed package metadata

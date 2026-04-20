@@ -9,10 +9,7 @@ from typing import Any, Optional
 
 
 def get_processor_kwargs(
-    processor_name: str,
-    force: bool = False,
-    run_seed: Optional[str] = None,
-    **kwargs: Any
+    processor_name: str, force: bool = False, run_seed: Optional[str] = None, **kwargs: Any
 ) -> dict[str, Any]:
     """
     Get constructor kwargs for a processor by name.
@@ -52,12 +49,14 @@ def get_processor_kwargs(
     elif processor_name == "huggingface":
         # HuggingFace requires dataset configuration
         processor_kwargs = base_kwargs.copy()
-        processor_kwargs.update({
-            "dataset_name": kwargs.get("dataset_name", "allenai/c4"),
-            "dataset_config": kwargs.get("dataset_config", "so"),
-            "url_field": kwargs.get("url_field", "url"),
-            "max_records": kwargs.get("max_records"),
-        })
+        processor_kwargs.update(
+            {
+                "dataset_name": kwargs.get("dataset_name", "allenai/c4"),
+                "dataset_config": kwargs.get("dataset_config", "so"),
+                "url_field": kwargs.get("url_field", "url"),
+                "max_records": kwargs.get("max_records"),
+            }
+        )
         return processor_kwargs
 
     elif processor_name == "sprakbanken":
@@ -70,11 +69,13 @@ def get_processor_kwargs(
     elif processor_name == "tiktok":
         # TikTok requires Apify credentials and video URLs
         processor_kwargs = base_kwargs.copy()
-        processor_kwargs.update({
-            "apify_api_token": kwargs.get("apify_api_token"),
-            "apify_user_id": kwargs.get("apify_user_id"),
-            "video_urls": kwargs.get("video_urls"),
-        })
+        processor_kwargs.update(
+            {
+                "apify_api_token": kwargs.get("apify_api_token"),
+                "apify_user_id": kwargs.get("apify_user_id"),
+                "video_urls": kwargs.get("video_urls"),
+            }
+        )
         return processor_kwargs
 
     else:

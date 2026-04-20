@@ -8,16 +8,13 @@ These tests verify the improvements made to:
 """
 
 import logging
-from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
 from somali_dialect_classifier.ingestion.crawl_ledger import CrawlState
 from somali_dialect_classifier.quality.filter_engine import FilterEngine
-
 
 # ==============================================================================
 # Helper: Minimal Test Pipeline
@@ -72,8 +69,7 @@ class TestL2SpecificExceptionCatching:
     def test_valid_run_seed_with_run_prefix(self):
         """Test parsing valid run_seed with 'run_' prefix."""
         pipeline = MinimalTestPipeline(
-            source="wikipedia",
-            run_seed="run_20251230_123456_abc123def456"
+            source="wikipedia", run_seed="run_20251230_123456_abc123def456"
         )
 
         # Should parse correctly: timestamp + source + unique
@@ -82,10 +78,7 @@ class TestL2SpecificExceptionCatching:
 
     def test_valid_run_seed_without_prefix(self):
         """Test parsing valid run_seed without prefix."""
-        pipeline = MinimalTestPipeline(
-            source="bbc",
-            run_seed="20251230_123456_xyz789"
-        )
+        pipeline = MinimalTestPipeline(source="bbc", run_seed="20251230_123456_xyz789")
 
         # Should parse correctly
         assert pipeline.run_id.startswith("20251230_123456_bbc_")
@@ -93,10 +86,7 @@ class TestL2SpecificExceptionCatching:
 
     def test_invalid_run_seed_falls_back_gracefully(self):
         """Test invalid run_seed falls back to generate_run_id()."""
-        pipeline = MinimalTestPipeline(
-            source="wikipedia",
-            run_seed="invalid_seed_format"
-        )
+        pipeline = MinimalTestPipeline(source="wikipedia", run_seed="invalid_seed_format")
 
         # Should fall back to default format
         # Default format: source_uuid (no timestamp prefix)
@@ -110,7 +100,7 @@ class TestL2SpecificExceptionCatching:
         with caplog.at_level(logging.WARNING):
             pipeline = MinimalTestPipeline(
                 source="wikipedia",
-                run_seed="20251230_invalid_notdigit_xyz"  # parts[1] is not digit
+                run_seed="20251230_invalid_notdigit_xyz",  # parts[1] is not digit
             )
 
         # Should fall back without crashing
@@ -122,7 +112,7 @@ class TestL2SpecificExceptionCatching:
         with caplog.at_level(logging.WARNING):
             pipeline = MinimalTestPipeline(
                 source="wikipedia",
-                run_seed="run_incomplete"  # Too few parts
+                run_seed="run_incomplete",  # Too few parts
             )
 
         # Should fall back without crashing
@@ -131,10 +121,7 @@ class TestL2SpecificExceptionCatching:
 
     def test_empty_run_seed_uses_default(self):
         """Test empty string run_seed triggers default generation."""
-        pipeline = MinimalTestPipeline(
-            source="bbc",
-            run_seed=""
-        )
+        pipeline = MinimalTestPipeline(source="bbc", run_seed="")
 
         # Should use default generation (not parsed seed)
         assert pipeline.run_id is not None
@@ -142,10 +129,7 @@ class TestL2SpecificExceptionCatching:
 
     def test_none_run_seed_uses_default(self):
         """Test None run_seed uses default generation."""
-        pipeline = MinimalTestPipeline(
-            source="wikipedia",
-            run_seed=None
-        )
+        pipeline = MinimalTestPipeline(source="wikipedia", run_seed=None)
 
         # Should use default generation
         assert pipeline.run_id is not None
@@ -155,7 +139,7 @@ class TestL2SpecificExceptionCatching:
         """Test run_seed with malformed timestamp parts."""
         pipeline = MinimalTestPipeline(
             source="wikipedia",
-            run_seed="run_abc_def_xyz"  # Non-digit timestamp parts
+            run_seed="run_abc_def_xyz",  # Non-digit timestamp parts
         )
 
         # Should fall back gracefully
@@ -203,14 +187,17 @@ class TestL4CrawlStateEnumUsage:
         assert CrawlState.DISCOVERED.value == "discovered"
         assert str(CrawlState.PROCESSED.value) == "processed"
 
-    @pytest.mark.parametrize("state_value,expected_enum", [
-        ("discovered", CrawlState.DISCOVERED),
-        ("fetched", CrawlState.FETCHED),
-        ("processed", CrawlState.PROCESSED),
-        ("failed", CrawlState.FAILED),
-        ("skipped", CrawlState.SKIPPED),
-        ("duplicate", CrawlState.DUPLICATE),
-    ])
+    @pytest.mark.parametrize(
+        "state_value,expected_enum",
+        [
+            ("discovered", CrawlState.DISCOVERED),
+            ("fetched", CrawlState.FETCHED),
+            ("processed", CrawlState.PROCESSED),
+            ("failed", CrawlState.FAILED),
+            ("skipped", CrawlState.SKIPPED),
+            ("duplicate", CrawlState.DUPLICATE),
+        ],
+    )
     def test_crawl_state_from_string(self, state_value, expected_enum):
         """Test CrawlState can be constructed from string value."""
         state = CrawlState(state_value)
@@ -258,7 +245,7 @@ class TestL6FilterRegistrationRefactoring:
     def test_register_filters_called_during_init(self):
         """Test _register_filters() is called during pipeline initialization."""
         with patch.object(MinimalTestPipeline, "_register_filters") as mock_register:
-            pipeline = MinimalTestPipeline(source="wikipedia")
+            MinimalTestPipeline(source="wikipedia")
 
             # _register_filters should be called once during init
             # Note: It's only called if filter_engine is None in the constructor
@@ -272,6 +259,7 @@ class TestL6FilterRegistrationRefactoring:
             def _register_filters(self):
                 # Override to add custom filters
                 from somali_dialect_classifier.quality.filter_functions import min_length_filter
+
                 self.filter_engine.register_filter(min_length_filter, {"threshold": 100})
 
         pipeline = CustomPipeline(source="wikipedia")
@@ -298,11 +286,11 @@ class TestL6FilterRegistrationRefactoring:
 
     def test_processors_use_consistent_filter_registration_pattern(self):
         """Test all processors follow consistent filter registration pattern."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
-            WikipediaSomaliProcessor,
-        )
         from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
+        )
+        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+            WikipediaSomaliProcessor,
         )
 
         # All processors should have _register_filters method
@@ -329,8 +317,8 @@ class TestL6FilterRegistrationRefactoring:
     def test_multiple_processors_can_register_different_filters(self):
         """Test different processors can register different filter combinations."""
         from somali_dialect_classifier.quality.filter_functions import (
-            min_length_filter,
             langid_filter,
+            min_length_filter,
         )
 
         class Pipeline1(MinimalTestPipeline):
@@ -367,10 +355,7 @@ class TestIntegrationLowPriorityFixes:
             def _register_filters(self):
                 self.filter_engine.register_filter(min_length_filter, {"threshold": 50})
 
-        pipeline = TestPipeline(
-            source="wikipedia",
-            run_seed="run_20251230_120000_test123"
-        )
+        pipeline = TestPipeline(source="wikipedia", run_seed="run_20251230_120000_test123")
 
         # Should have correct run_id
         assert "20251230_120000_wikipedia_test123" in pipeline.run_id
@@ -386,10 +371,7 @@ class TestIntegrationLowPriorityFixes:
             def _register_filters(self):
                 self.filter_engine.register_filter(langid_filter, {"allowed_langs": {"so"}})
 
-        pipeline = TestPipeline(
-            source="wikipedia",
-            run_seed="invalid_seed"
-        )
+        pipeline = TestPipeline(source="wikipedia", run_seed="invalid_seed")
 
         # Should fall back to default run_id
         assert "wikipedia" in pipeline.run_id
@@ -419,10 +401,7 @@ class TestIntegrationLowPriorityFixes:
                 self.filter_engine.register_filter(min_length_filter, {"threshold": 50})
 
         # Even with malformed seed, filters should register
-        pipeline = TestPipeline(
-            source="wikipedia",
-            run_seed="malformed_seed_123"
-        )
+        pipeline = TestPipeline(source="wikipedia", run_seed="malformed_seed_123")
 
         # Filters should still be registered
         assert len(pipeline.filter_engine.filters) == 1

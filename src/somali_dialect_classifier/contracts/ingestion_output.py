@@ -181,7 +181,9 @@ def validate_ingestion_output(record: dict) -> tuple[bool, list[str]]:
 
             # Check for empty string (strict)
             if not isinstance(register_value, str) or not register_value.strip():
-                errors.append("Field 'linguistic_register' is empty or whitespace (required, must be non-empty)")
+                errors.append(
+                    "Field 'linguistic_register' is empty or whitespace (required, must be non-empty)"
+                )
         else:
             # Standard field check - STRICT
             if field not in record:
@@ -202,7 +204,9 @@ def validate_ingestion_output(record: dict) -> tuple[bool, list[str]]:
                         f"Field '{field}' has invalid type: {type(field_value).__name__} (expected str)"
                     )
                 elif not field_value.strip():
-                    errors.append(f"Field '{field}' is empty or whitespace (required, must be non-empty)")
+                    errors.append(
+                        f"Field '{field}' is empty or whitespace (required, must be non-empty)"
+                    )
 
     # STRICT: schema_version must be EXACTLY "1.0"
     if "schema_version" in record:
@@ -226,7 +230,9 @@ def validate_ingestion_output(record: dict) -> tuple[bool, list[str]]:
         tokens_value = record["tokens"]
         if tokens_value is not None:
             if not isinstance(tokens_value, int):
-                errors.append(f"Field 'tokens' has invalid type: {type(tokens_value).__name__} (expected int)")
+                errors.append(
+                    f"Field 'tokens' has invalid type: {type(tokens_value).__name__} (expected int)"
+                )
             elif tokens_value < 0:
                 errors.append(f"Field 'tokens' has invalid value: {tokens_value} (must be >= 0)")
 

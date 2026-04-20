@@ -16,12 +16,10 @@ logger = logging.getLogger(__name__)
 # Try to import schema validation and utilities
 try:
     from somali_dialect_classifier.infra.metrics_aggregation import (
-        extract_consolidated_metric,
         load_all_processing_metrics,
         load_metrics_from_file,
     )
     from somali_dialect_classifier.infra.metrics_schema import (
-        ConsolidatedMetric,
         ConsolidatedMetricsOutput,
         DashboardSummary,
         validate_processing_json,
@@ -94,7 +92,7 @@ def consolidate_metrics(
             logger.info("Schema validation passed for consolidated metrics")
         except Exception as e:
             logger.error(f"Schema validation failed: {e}")
-            raise ValueError(f"Schema validation failed: {e}")
+            raise ValueError(f"Schema validation failed: {e}") from e
 
     # Write consolidated file
     with open(output_path, "w", encoding="utf-8") as f:
@@ -543,10 +541,10 @@ def export_metrics(metrics_dir: Path, output_path: Path, format: str = "json") -
     elif format == "parquet":
         try:
             import pandas as pd
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
                 "Parquet export requires pandas. Install with: pip install pandas pyarrow"
-            )
+            ) from e
 
         # Convert to DataFrame
         df = pd.DataFrame(metrics)

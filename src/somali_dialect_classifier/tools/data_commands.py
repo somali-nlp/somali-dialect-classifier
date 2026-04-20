@@ -250,8 +250,10 @@ def export_sample_records(
         logger.info(f"Exported {len(df)} sample records to {output_path}")
         return output_path
 
-    except ImportError:
-        raise ImportError("DuckDB required for sample export. Install with: pip install duckdb")
+    except ImportError as e:
+        raise ImportError(
+            "DuckDB required for sample export. Install with: pip install duckdb"
+        ) from e
 
 
 # ============================================================================
@@ -347,5 +349,7 @@ def check_data_quality(silver_path: Path, output_path: Path | None = None) -> di
 
         return quality_metrics
 
-    except ImportError:
-        raise ImportError("DuckDB required for quality checks. Install with: pip install duckdb")
+    except ImportError as e:
+        raise ImportError(
+            "DuckDB required for quality checks. Install with: pip install duckdb"
+        ) from e

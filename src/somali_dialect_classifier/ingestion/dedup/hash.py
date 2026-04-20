@@ -56,7 +56,9 @@ class LRUHashSet:
 class TextHasher:
     """Computes deterministic hashes for text content."""
 
-    def __init__(self, algorithm: str = "sha256", fields: Optional[list[str]] = None, separator: str = "|"):
+    def __init__(
+        self, algorithm: str = "sha256", fields: Optional[list[str]] = None, separator: str = "|"
+    ):
         self.algorithm = algorithm
         self.fields = fields or ["text"]
         self.separator = separator

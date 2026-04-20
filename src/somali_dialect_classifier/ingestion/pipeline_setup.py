@@ -6,8 +6,6 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-import requests
-
 from ..infra.config import get_config
 from ..infra.data_manager import DataManager
 from ..infra.http import HTTPSessionFactory
@@ -161,7 +159,9 @@ class PipelineSetup:
         return ValidationService()
 
     @staticmethod
-    def create_dedup_engine(dedup_engine: Optional["DedupEngine"] = None) -> Optional["DedupEngine"]:
+    def create_dedup_engine(
+        dedup_engine: Optional["DedupEngine"] = None,
+    ) -> Optional["DedupEngine"]:
         """
         Create DedupEngine with centralized configuration.
 

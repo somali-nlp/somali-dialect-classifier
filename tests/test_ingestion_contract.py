@@ -127,7 +127,9 @@ class TestIngestionContractValidation:
 
         assert not is_valid
         # New error format: "Field 'tokens' has invalid value: -5 (must be >= 0)"
-        assert any("tokens" in err.lower() and ("negative" in err.lower() or ">=" in err) for err in errors)
+        assert any(
+            "tokens" in err.lower() and ("negative" in err.lower() or ">=" in err) for err in errors
+        )
 
     def test_empty_text_fails(self):
         """Record with empty text fails validation."""

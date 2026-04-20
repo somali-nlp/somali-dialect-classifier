@@ -28,7 +28,9 @@ class FakeLedger:
 
 
 class FakeProcessor:
-    def __init__(self, run_id="20260313_120000_bbc_deadbeef", result_path="data/out.parquet", fail=False):
+    def __init__(
+        self, run_id="20260313_120000_bbc_deadbeef", result_path="data/out.parquet", fail=False
+    ):
         self.run_id = run_id
         self.result_path = result_path
         self.fail = fail

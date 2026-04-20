@@ -22,7 +22,6 @@ import pytest
 
 from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
 
-
 # ==============================================================================
 # Realistic Somali Test Data
 # ==============================================================================
@@ -125,7 +124,7 @@ class TestCrossSourceDeduplication:
 
         Scenario: Wikipedia has full article, HuggingFace has very similar version with minor edits.
         Expected: Second document detected as near-duplicate with similarity score.
-        
+
         NOTE: Uses 0.70 threshold (not production 0.85) to accommodate realistic
         Somali text similarity. Minor word changes in Somali yield ~73% similarity.
         """
@@ -192,9 +191,7 @@ class TestCrossSourceDeduplication:
         # Test Case 1: BBC processes first
         engine1 = DedupEngine(dedup_config)
 
-        is_dup_bbc1, _, _, _, _ = engine1.process_document(
-            text=SOMALI_TEXT_ORIGINAL, url=URL_BBC
-        )
+        is_dup_bbc1, _, _, _, _ = engine1.process_document(text=SOMALI_TEXT_ORIGINAL, url=URL_BBC)
         is_dup_wiki1, dup_type1, similar_url1, _, _ = engine1.process_document(
             text=SOMALI_TEXT_EXACT_DUPLICATE, url=URL_WIKIPEDIA
         )
@@ -225,9 +222,7 @@ class TestCrossSourceDeduplication:
         Expected: Only first source accepted, others flagged as duplicates.
         """
         # BBC processes first
-        is_dup1, _, _, _, _ = dedup_engine.process_document(
-            text=SOMALI_TEXT_ORIGINAL, url=URL_BBC
-        )
+        is_dup1, _, _, _, _ = dedup_engine.process_document(text=SOMALI_TEXT_ORIGINAL, url=URL_BBC)
 
         # Wikipedia processes same text
         is_dup2, dup_type2, similar_url2, _, _ = dedup_engine.process_document(
@@ -252,7 +247,7 @@ class TestCrossSourceDeduplication:
 
         Scenario: Test text pairs at/near 0.65 similarity threshold.
         Expected: Content above threshold flagged, below threshold passes.
-        
+
         NOTE: Uses 0.65 threshold for LSH to reliably catch ~73% similarity.
         Production uses 0.85, but minor edits in Somali yield ~73% similarity.
         """
@@ -269,9 +264,7 @@ class TestCrossSourceDeduplication:
             pytest.skip("MinHash not available (datasketch not installed)")
 
         # Process original text
-        is_dup1, _, _, _, _ = dedup_engine.process_document(
-            text=SOMALI_TEXT_ORIGINAL, url=URL_BBC
-        )
+        is_dup1, _, _, _, _ = dedup_engine.process_document(text=SOMALI_TEXT_ORIGINAL, url=URL_BBC)
 
         # Process near-duplicate (should be above 0.70 threshold, ~73% similarity)
         is_dup2, dup_type2, similar_url2, _, _ = dedup_engine.process_document(
@@ -490,9 +483,7 @@ class TestDedupStatePersistence:
         Expected: get_canonical_url returns BBC URL for that hash.
         """
         # BBC processes first
-        is_dup1, _, _, hash1, _ = dedup_engine.process_document(
-            SOMALI_TEXT_ORIGINAL, URL_BBC
-        )
+        is_dup1, _, _, hash1, _ = dedup_engine.process_document(SOMALI_TEXT_ORIGINAL, URL_BBC)
 
         # Verify canonical URL
         canonical_url = dedup_engine.get_canonical_url(hash1)
@@ -618,9 +609,7 @@ class TestEdgeCases:
         """
         engine = DedupEngine(dedup_config)
 
-        is_dup, dup_type, similar_url, hash_val, sig = engine.process_document(
-            "   \n\t  ", URL_BBC
-        )
+        is_dup, dup_type, similar_url, hash_val, sig = engine.process_document("   \n\t  ", URL_BBC)
 
         assert not is_dup
         assert len(hash_val) == 64
@@ -639,7 +628,8 @@ class TestEdgeCases:
 
         # Process short text
         is_dup, dup_type, similar_url, hash_val, sig = engine.process_document(
-            "Waa fiican", URL_BBC  # Only 2 words
+            "Waa fiican",
+            URL_BBC,  # Only 2 words
         )
 
         assert not is_dup
@@ -658,9 +648,7 @@ class TestEdgeCases:
         # Create very long text by repeating Somali text
         long_text = (SOMALI_TEXT_ORIGINAL + " ") * 1000  # ~10k words
 
-        is_dup, dup_type, similar_url, hash_val, sig = engine.process_document(
-            long_text, URL_BBC
-        )
+        is_dup, dup_type, similar_url, hash_val, sig = engine.process_document(long_text, URL_BBC)
 
         assert not is_dup
         assert len(hash_val) == 64

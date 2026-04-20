@@ -158,9 +158,22 @@ class SilverDatasetWriter:
         """
         # Define required fields from IngestionOutputV1 contract + silver storage schema
         required_fields = {
-            "id", "text", "title", "source", "source_type", "url",
-            "date_accessed", "language", "license", "tokens", "text_hash",
-            "pipeline_version", "source_metadata", "domain", "register", "run_id",
+            "id",
+            "text",
+            "title",
+            "source",
+            "source_type",
+            "url",
+            "date_accessed",
+            "language",
+            "license",
+            "tokens",
+            "text_hash",
+            "pipeline_version",
+            "source_metadata",
+            "domain",
+            "register",
+            "run_id",
             "schema_version",
         }
 
@@ -232,7 +245,6 @@ class SilverDatasetWriter:
             enriched_records.append(normalized_record)
 
         return enriched_records
-
 
     def write(
         self,

@@ -66,7 +66,9 @@ class TestSilverDatasetWriter:
         assert str(table.schema.field("source_metadata").type) == "string"
 
         partition_dir = tmp_path / "source=Test-Source" / f"date_accessed={date_accessed}"
-        metadata_dir = tmp_path / "_metadata" / "source=Test-Source" / f"date_accessed={date_accessed}"
+        metadata_dir = (
+            tmp_path / "_metadata" / "source=Test-Source" / f"date_accessed={date_accessed}"
+        )
         metadata_files = list(metadata_dir.glob("*.json"))
 
         assert not list(partition_dir.glob("*.json"))

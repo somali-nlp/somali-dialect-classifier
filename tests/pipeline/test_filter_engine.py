@@ -74,7 +74,7 @@ class TestFilterEngine:
     def test_filter_stats(self):
         """Test filter statistics tracking."""
         engine = FilterEngine()
-        engine.register_filter(min_length_filter, {"threshold": 10})
+        engine.register_filter(min_length_filter, {"threshold": 14})
         engine.apply_filters("short text", "Test Record 1")
         engine.apply_filters("another short", "Test Record 2")
         engine.apply_filters("this text is long enough for the filter", "Test Record 3")

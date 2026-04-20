@@ -108,9 +108,7 @@ class TestLedgerDateValidation:
 
     def test_increment_daily_quota_valid_date(self, ledger):
         """Test increment_daily_quota accepts valid ISO date."""
-        usage = ledger.increment_daily_quota(
-            "bbc", count=10, quota_limit=350, date="2025-12-30"
-        )
+        usage = ledger.increment_daily_quota("bbc", count=10, quota_limit=350, date="2025-12-30")
 
         assert usage["date"] == "2025-12-30"
         assert usage["records_ingested"] == 10
@@ -213,17 +211,20 @@ class TestConfigurationLogging:
             WikipediaSomaliProcessor,
         )
 
-        with patch("somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config):
+        with patch(
+            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config
+        ):
             with caplog.at_level(logging.INFO):
                 # Initialize pipeline (should trigger config logging)
-                processor = WikipediaSomaliProcessor(force=True)
+                WikipediaSomaliProcessor(force=True)
 
                 # Verify configuration logging occurred
                 log_messages = [record.message for record in caplog.records]
 
                 # Check for configuration header
-                assert any("Pipeline Configuration:" in msg for msg in log_messages), \
+                assert any("Pipeline Configuration:" in msg for msg in log_messages), (
                     "Configuration header not found in logs"
+                )
 
                 # Check for JSON configuration
                 config_logs = [msg for msg in log_messages if msg.startswith("{")]
@@ -235,17 +236,20 @@ class TestConfigurationLogging:
             WikipediaSomaliProcessor,
         )
 
-        with patch("somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config):
+        with patch(
+            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config
+        ):
             with caplog.at_level(logging.INFO):
                 # Initialize pipeline
-                processor = WikipediaSomaliProcessor(force=True)
+                WikipediaSomaliProcessor(force=True)
 
                 # Get all log messages
                 all_logs = "\n".join([record.message for record in caplog.records])
 
                 # Verify API token is redacted (should show last 4 chars only)
-                assert "sk_live_secret_token_12345678" not in all_logs, \
+                assert "sk_live_secret_token_12345678" not in all_logs, (
                     "Unredacted API token found in logs!"
+                )
 
                 # Verify redaction occurred (should see *** prefix)
                 assert "***" in all_logs, "No redaction markers found in logs"
@@ -256,9 +260,11 @@ class TestConfigurationLogging:
             WikipediaSomaliProcessor,
         )
 
-        with patch("somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config):
+        with patch(
+            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config
+        ):
             with caplog.at_level(logging.INFO):
-                processor = WikipediaSomaliProcessor(force=True)
+                WikipediaSomaliProcessor(force=True)
 
                 all_logs = "\n".join([record.message for record in caplog.records])
 
@@ -281,9 +287,11 @@ class TestConfigurationLogging:
             WikipediaSomaliProcessor,
         )
 
-        with patch("somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config):
+        with patch(
+            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config
+        ):
             with caplog.at_level(logging.INFO):
-                processor = WikipediaSomaliProcessor(force=True)
+                WikipediaSomaliProcessor(force=True)
 
                 all_logs = "\n".join([record.message for record in caplog.records])
 
@@ -304,9 +312,11 @@ class TestConfigurationLogging:
             WikipediaSomaliProcessor,
         )
 
-        with patch("somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config):
+        with patch(
+            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config
+        ):
             with caplog.at_level(logging.INFO):
-                processor = WikipediaSomaliProcessor(force=True)
+                WikipediaSomaliProcessor(force=True)
 
                 all_logs = "\n".join([record.message for record in caplog.records])
 
@@ -324,12 +334,12 @@ class TestConfigurationLogging:
                 assert config_data["database"]["max_connections"] == 10
 
                 # Verify password is NOT in config (should not be in dict at all)
-                assert "password" not in config_data["database"], \
+                assert "password" not in config_data["database"], (
                     "Password should not be included in logged configuration!"
+                )
 
     def test_configuration_logging_failure_does_not_break_pipeline(self, mock_config):
         """Test that pipeline initialization succeeds even if config logging fails."""
-        from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
         from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
@@ -344,7 +354,9 @@ class TestConfigurationLogging:
         # Make logging attribute raise an exception
         bad_config.logging = MagicMock(side_effect=Exception("Logging config error"))
 
-        with patch("somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=bad_config):
+        with patch(
+            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=bad_config
+        ):
             # Pipeline should still initialize successfully
             # _log_configuration catches the exception and logs a warning
             processor = WikipediaSomaliProcessor(force=True)
@@ -359,9 +371,11 @@ class TestConfigurationLogging:
             WikipediaSomaliProcessor,
         )
 
-        with patch("somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config):
+        with patch(
+            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config
+        ):
             with caplog.at_level(logging.INFO):
-                processor = WikipediaSomaliProcessor(force=True)
+                WikipediaSomaliProcessor(force=True)
 
                 all_logs = "\n".join([record.message for record in caplog.records])
 

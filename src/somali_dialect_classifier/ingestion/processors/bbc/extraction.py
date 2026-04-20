@@ -142,9 +142,7 @@ def extract_async(processor) -> Path:
         processor.logger.info("Use force=True to re-scrape")
         return processor.staging_file
     if processor.staging_file.exists() and processor.force:
-        processor.logger.info(
-            f"Force re-scraping: removing existing file {processor.staging_file}"
-        )
+        processor.logger.info(f"Force re-scraping: removing existing file {processor.staging_file}")
         processor.staging_file.unlink()
 
     with open(processor.article_links_file, encoding="utf-8") as handle:
@@ -223,8 +221,8 @@ def extract_async(processor) -> Path:
                 failed_count += 1
                 continue
 
-            is_dup, dup_type, similar_url, text_hash, minhash_sig = processor.dedup.process_document(
-                article["text"], url
+            is_dup, dup_type, similar_url, text_hash, minhash_sig = (
+                processor.dedup.process_document(article["text"], url)
             )
             if is_dup:
                 processor.logger.info(
@@ -313,9 +311,7 @@ def extract_sync(processor) -> Path:
         processor.logger.info("Use force=True to re-scrape")
         return processor.staging_file
     if processor.staging_file.exists() and processor.force:
-        processor.logger.info(
-            f"Force re-scraping: removing existing file {processor.staging_file}"
-        )
+        processor.logger.info(f"Force re-scraping: removing existing file {processor.staging_file}")
         processor.staging_file.unlink()
 
     with open(processor.article_links_file, encoding="utf-8") as handle:

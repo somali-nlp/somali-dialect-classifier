@@ -8,11 +8,6 @@ These tests verify improvements made to:
 """
 
 import doctest
-import importlib
-import sys
-from pathlib import Path
-
-import pytest
 
 from somali_dialect_classifier.quality.filter_functions import (
     create_hf_filters,
@@ -24,7 +19,6 @@ from somali_dialect_classifier.quality.filter_functions import (
     namespace_filter,
     topic_lexicon_enrichment_filter,
 )
-
 
 # ==============================================================================
 # L1: Missing Docstring Examples
@@ -140,7 +134,6 @@ class TestL3ConsistentQuoteStyle:
         """Test that all filter functions can be imported after quote fixes."""
         # If quote changes broke anything, imports would fail
         from somali_dialect_classifier.quality.filter_functions import (
-            create_hf_filters,
             create_news_filters,
             create_wikipedia_filters,
             custom_filter,
@@ -339,23 +332,19 @@ class TestL5AllExports:
 
         # Test root package
         for name in somali_dialect_classifier.__all__:
-            assert hasattr(somali_dialect_classifier, name), \
-                f"{name} in __all__ but not accessible"
+            assert hasattr(somali_dialect_classifier, name), f"{name} in __all__ but not accessible"
 
         # Test ingestion
         for name in ingestion.__all__:
-            assert hasattr(ingestion, name), \
-                f"ingestion.{name} in __all__ but not accessible"
+            assert hasattr(ingestion, name), f"ingestion.{name} in __all__ but not accessible"
 
         # Test quality
         for name in quality.__all__:
-            assert hasattr(quality, name), \
-                f"quality.{name} in __all__ but not accessible"
+            assert hasattr(quality, name), f"quality.{name} in __all__ but not accessible"
 
         # Test infra
         for name in infra.__all__:
-            assert hasattr(infra, name), \
-                f"infra.{name} in __all__ but not accessible"
+            assert hasattr(infra, name), f"infra.{name} in __all__ but not accessible"
 
 
 # ==============================================================================
@@ -372,13 +361,13 @@ class TestIntegrationAllLowFixes:
         namespace = {}
         exec("from somali_dialect_classifier.quality import *", namespace)
 
-        FilterEngine = namespace["FilterEngine"]
+        filter_engine = namespace["FilterEngine"]
 
         # Create filter chain using factory functions (tests L1 examples)
         filters = create_wikipedia_filters(min_length=50)
 
         # Apply filters
-        engine = FilterEngine()
+        engine = filter_engine()
         for filter_func, kwargs in filters:
             engine.register_filter(filter_func, kwargs)
 

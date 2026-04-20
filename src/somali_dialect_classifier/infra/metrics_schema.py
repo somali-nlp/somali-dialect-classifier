@@ -185,6 +185,10 @@ class IncrementalFilteringMetrics(BaseModel):
     last_processing_time: Optional[str] = Field(
         default=None, description="Last processing timestamp"
     )
+    processed_corpus_ids: Optional[list[str]] = Field(
+        default=None,
+        description="Corpus IDs previously processed (Språkbanken incremental runs)",
+    )
 
     model_config = ConfigDict(extra="forbid")
 

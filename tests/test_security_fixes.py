@@ -12,9 +12,9 @@ Updated: 2025-12-30 (added HIGH-002 tests)
 """
 
 import os
+from unittest.mock import MagicMock, patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 from somali_dialect_classifier.ingestion.crawl_ledger import (
     CrawlLedger,
@@ -105,7 +105,9 @@ class TestSQLInjectionPrevention:
 
         # Try SQL injection via limit parameter
         with pytest.raises(ValueError) as exc_info:
-            ledger.get_urls_by_state("test", CrawlState.DISCOVERED, limit="10; DROP TABLE crawl_ledger;")
+            ledger.get_urls_by_state(
+                "test", CrawlState.DISCOVERED, limit="10; DROP TABLE crawl_ledger;"
+            )
 
         assert "must be a positive integer" in str(exc_info.value)
 
@@ -168,9 +170,7 @@ class TestSQLInjectionPrevention:
         assert len(results) == 1
 
         # Verify table still exists (wasn't dropped by injection attempt)
-        count = ledger.connection.execute(
-            "SELECT COUNT(*) as count FROM crawl_ledger"
-        ).fetchone()
+        count = ledger.connection.execute("SELECT COUNT(*) as count FROM crawl_ledger").fetchone()
         assert count["count"] == 1
 
     def test_postgres_limit_validation(self):
@@ -246,7 +246,7 @@ class TestInputValidation:
             ({}, "dict"),
         ]
 
-        for limit_value, description in invalid_limits:
+        for limit_value, _description in invalid_limits:
             if limit_value is None:
                 # None is valid - should not raise
                 continue
@@ -280,8 +280,9 @@ class TestSecurityRegression:
 
     def test_no_hardcoded_passwords_in_defaults(self):
         """Ensure no hardcoded passwords in PostgresLedger defaults."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
         import inspect
+
+        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
 
         sig = inspect.signature(PostgresLedger.__init__)
         password_param = sig.parameters.get("password")
@@ -292,13 +293,16 @@ class TestSecurityRegression:
     def test_no_f_string_sql_in_get_urls_by_state_sqlite(self, tmp_path):
         """Ensure no f-string SQL concatenation in SQLiteLedger.get_urls_by_state."""
         import inspect
+
         from somali_dialect_classifier.ingestion.crawl_ledger import SQLiteLedger
 
         # Get source code
         source = inspect.getsource(SQLiteLedger.get_urls_by_state)
 
         # Should NOT contain f-string SQL concatenation like f" LIMIT {limit}"
-        assert 'f" LIMIT {limit}"' not in source, "Found f-string SQL concatenation (SQL injection risk)"
+        assert 'f" LIMIT {limit}"' not in source, (
+            "Found f-string SQL concatenation (SQL injection risk)"
+        )
         assert 'f" LIMIT {' not in source, "Found f-string SQL concatenation variant"
 
         # Should contain parameterized LIMIT
@@ -307,13 +311,16 @@ class TestSecurityRegression:
     def test_no_f_string_sql_in_get_urls_by_state_postgres(self):
         """Ensure no f-string SQL concatenation in PostgresLedger.get_urls_by_state."""
         import inspect
+
         from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
 
         # Get source code
         source = inspect.getsource(PostgresLedger.get_urls_by_state)
 
         # Should NOT contain f-string SQL concatenation
-        assert 'f" LIMIT {limit}"' not in source, "Found f-string SQL concatenation (SQL injection risk)"
+        assert 'f" LIMIT {limit}"' not in source, (
+            "Found f-string SQL concatenation (SQL injection risk)"
+        )
         assert 'f" LIMIT {' not in source, "Found f-string SQL concatenation variant"
 
         # Should contain parameterized LIMIT
@@ -419,9 +426,7 @@ class TestURLValidationSSRFProtection:
         assert is_safe_url("https://bbc.co.uk/somali", allowed_domains=allowed_domains) is True
 
         # Blocked domains
-        assert (
-            is_safe_url("https://evil.com/article", allowed_domains=allowed_domains) is False
-        )
+        assert is_safe_url("https://evil.com/article", allowed_domains=allowed_domains) is False
         assert (
             is_safe_url("https://attacker.bbc.com.evil.com/", allowed_domains=allowed_domains)
             is False
@@ -439,9 +444,7 @@ class TestURLValidationSSRFProtection:
         assert valid is True
         assert msg == ""
 
-        valid, msg = validate_url_for_source(
-            "https://bbc.co.uk/somali/topics", "bbc", bbc_domains
-        )
+        valid, msg = validate_url_for_source("https://bbc.co.uk/somali/topics", "bbc", bbc_domains)
         assert valid is True
         assert msg == ""
 
@@ -461,7 +464,7 @@ class TestURLValidationSSRFProtection:
         valid, msg = validate_url_for_source("http://192.168.1.1/internal", "bbc", bbc_domains)
         assert valid is False
         assert "SSRF" in msg
-        assert "private IP" in msg.lower()
+        assert "private ip" in msg.lower()
 
         # Link-local (AWS metadata)
         valid, msg = validate_url_for_source(
@@ -536,7 +539,7 @@ class TestURLValidationSSRFProtection:
                 mock_feedparser.parse.return_value = mock_feed
 
                 # Call _scrape_rss_feeds
-                article_urls = processor._scrape_rss_feeds()
+                processor._scrape_rss_feeds()
 
                 # Verify:
                 # 1. Malicious URL was rejected (not passed to feedparser)
@@ -555,9 +558,7 @@ class TestURLValidationSSRFProtection:
         with patch(
             "somali_dialect_classifier.ingestion.processors.bbc_somali_processor.get_config"
         ) as mock_config:
-            mock_config.return_value.scraping.bbc.rss_feeds = [
-                "https://www.bbc.com/somali/rss.xml"
-            ]
+            mock_config.return_value.scraping.bbc.rss_feeds = ["https://www.bbc.com/somali/rss.xml"]
             mock_config.return_value.scraping.bbc.max_items_per_feed = 10
             mock_config.return_value.scraping.bbc.check_frequency_hours = 1
             mock_config.return_value.scraping.bbc.max_requests_per_hour = 100
@@ -617,6 +618,7 @@ class TestURLValidationRegression:
     def test_no_unvalidated_feedparser_calls(self):
         """Ensure feedparser.parse() is not called with unvalidated URLs."""
         import inspect
+
         from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
@@ -628,11 +630,14 @@ class TestURLValidationRegression:
         assert "validate_url_for_source" in source, "Missing URL validation import"
 
         # Should validate feed_url before feedparser.parse
-        assert "validate_url_for_source(feed_url" in source or "validate_url_for_source(\n" in source, "Feed URL not validated before parsing"
+        assert (
+            "validate_url_for_source(feed_url" in source or "validate_url_for_source(\n" in source
+        ), "Feed URL not validated before parsing"
 
     def test_security_metrics_exist(self):
         """Ensure urls_rejected_security metric is tracked."""
         import inspect
+
         from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
@@ -640,6 +645,6 @@ class TestURLValidationRegression:
         source = inspect.getsource(BBCSomaliProcessor._scrape_rss_feeds)
 
         # Should increment security rejection metric
-        assert (
-            'increment("urls_rejected_security")' in source
-        ), "Missing urls_rejected_security metric"
+        assert 'increment("urls_rejected_security")' in source, (
+            "Missing urls_rejected_security metric"
+        )

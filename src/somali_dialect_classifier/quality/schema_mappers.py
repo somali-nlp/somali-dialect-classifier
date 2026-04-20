@@ -13,8 +13,7 @@ Supported datasets:
 """
 
 import logging
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, cast
 
 logger = logging.getLogger(__name__)
@@ -162,9 +161,9 @@ class DatasetSchemaMapper:
         """
         metadata = {}
 
-        for field in self.mapping.metadata_fields:
-            if field in record:
-                metadata[field] = record[field]
+        for schema_field in self.mapping.metadata_fields:
+            if schema_field in record:
+                metadata[schema_field] = record[schema_field]
 
         return metadata
 

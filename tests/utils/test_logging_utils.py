@@ -21,7 +21,7 @@ from somali_dialect_classifier.infra.logging_utils import (
     set_context,
     setup_logging,
 )
-from somali_dialect_classifier.infra.security import redact_secrets, SENSITIVE_KEYS
+from somali_dialect_classifier.infra.security import redact_secrets
 
 
 class TestStructuredFormatter:
@@ -527,7 +527,7 @@ class TestSecretRedaction:
                 },
                 "api": {
                     "token": "secret_token_value",
-                }
+                },
             }
         }
 
@@ -601,7 +601,7 @@ class TestSecretRedaction:
             "huggingface_token",
         ]
 
-        data = {key: "secret_value_123456" for key in test_keys}
+        data = dict.fromkeys(test_keys, "secret_value_123456")
         redacted = redact_secrets(data)
 
         for key in test_keys:
@@ -665,11 +665,7 @@ class TestSecretRedaction:
     def test_formatter_redacts_context_secrets(self):
         """Test that StructuredFormatter redacts secrets in context."""
         clear_context()
-        set_context(
-            run_id="test_123",
-            apify_api_token="sk_live_abc123def456",
-            source="test"
-        )
+        set_context(run_id="test_123", apify_api_token="sk_live_abc123def456", source="test")
 
         formatter = StructuredFormatter(include_context=True)
         logger = logging.getLogger("test_redact_context")
@@ -730,10 +726,7 @@ class TestSecretRedaction:
     def test_colored_formatter_redacts_secrets(self):
         """Test that ColoredFormatter redacts secrets in context."""
         clear_context()
-        set_context(
-            run_id="test_123",
-            token="secret_token_123456"
-        )
+        set_context(run_id="test_123", token="secret_token_123456")
 
         formatter = ColoredFormatter(use_colors=False)
         logger = logging.getLogger("test_colored_redact")
@@ -791,7 +784,7 @@ class TestSecretRedaction:
                 "password": f"secret_{i}_123456",
                 "nested": {
                     "token": f"token_{i}_987654321",
-                }
+                },
             }
             for i in range(100)
         }

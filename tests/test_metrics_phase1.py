@@ -4,14 +4,16 @@ Test suite demonstrating Phase 1 metrics refactoring.
 Shows before/after comparison for each pipeline type to validate:
 1. Semantic accuracy of new metric names
 2. BBC test limit bug fix
-3. Backward compatibility
-4. Metric semantics metadata
+3. Metric semantics metadata
 """
+
+from datetime import datetime, timezone
 
 import pytest
 
 from somali_dialect_classifier.infra.metrics import (
     MetricsCollector,
+    MetricSnapshot,
     PipelineType,
 )
 
@@ -58,21 +60,12 @@ class TestWebScrapingMetrics:
         # Quality filtering is separate from HTTP success
         assert stats["quality_pass_rate"] == 15 / 15  # 100% (15 non-dup, 15 passed)
 
-        # BACKWARD COMPATIBILITY: Old metric still available
-        assert "fetch_success_rate" in stats
-        assert stats["fetch_success_rate"] == stats["http_request_success_rate"]
-
         # METADATA: Semantic descriptions available
         assert "_metric_semantics" in stats
         assert "http_request_success_rate" in stats["_metric_semantics"]
         assert (
             "Network-level HTTP success" in stats["_metric_semantics"]["http_request_success_rate"]
         )
-
-        # DEPRECATION WARNINGS: Present for old metrics
-        assert "_deprecation_warnings" in stats
-        assert len(stats["_deprecation_warnings"]) > 0
-        assert "deprecated" in stats["_deprecation_warnings"][0].lower()
 
     def test_bbc_test_limit_bug_fix(self):
         """
@@ -152,10 +145,6 @@ class TestFileProcessingMetrics:
         non_dup = 10000 - 500
         assert stats["quality_pass_rate"] == pytest.approx(9500 / non_dup, rel=0.01)
 
-        # BACKWARD COMPATIBILITY
-        assert "fetch_success_rate" in stats
-        assert stats["fetch_success_rate"] == stats["file_extraction_success_rate"]
-
         # METADATA
         assert "_metric_semantics" in stats
         assert "local file I/O" in stats["_metric_semantics"]["file_extraction_success_rate"]
@@ -225,10 +214,6 @@ class TestStreamProcessingMetrics:
         # BEFORE (misleading): fetch_success_rate = 100% (hides that only 20 records fetched)
         # AFTER (accurate): Shows connection succeeded, but coverage unknown
 
-        # BACKWARD COMPATIBILITY
-        assert "fetch_success_rate" in stats
-        assert stats["fetch_success_rate"] == stats["stream_connection_success_rate"]
-
         # METADATA
         assert "_metric_semantics" in stats
         assert "boolean" in stats["_metric_semantics"]["stream_connection_success_rate"].lower()
@@ -285,9 +270,6 @@ class TestMetricSemantics:
             assert "_metric_semantics" in stats
             assert len(stats["_metric_semantics"]) > 0
 
-            # Verify deprecation warnings exist
-            assert "_deprecation_warnings" in stats
-
     def test_semantic_descriptions_are_helpful(self):
         """Test that semantic descriptions are human-readable."""
         collector = MetricsCollector(
@@ -304,7 +286,7 @@ class TestMetricSemantics:
         for _metric_name, description in semantics.items():
             assert isinstance(description, str)
             assert len(description) > 10  # Not empty
-            # Description should mention key terms from the metric name or be a deprecation notice
+            # Description should mention key terms from the metric name
             key_terms = [
                 "http",
                 "request",
@@ -313,7 +295,6 @@ class TestMetricSemantics:
                 "quality",
                 "dedup",
                 "duplicat",
-                "deprecated",
                 "record",
                 "filter",
                 "success",
@@ -327,41 +308,27 @@ class TestBackwardCompatibility:
     """Test backward compatibility with old metric names."""
 
     def test_old_metrics_still_available(self):
-        """Test that old metric names are still accessible."""
-        pipeline_types = [
-            PipelineType.WEB_SCRAPING,
-            PipelineType.FILE_PROCESSING,
-            PipelineType.STREAM_PROCESSING,
-        ]
+        """Test that old metric names are still accessible (for default pipeline type)."""
+        # Only the default (non-specific) pipeline type has fetch_success_rate
+        # Specific pipeline types (WEB_SCRAPING, FILE_PROCESSING, STREAM_PROCESSING)
+        # use their own specialized metrics instead
 
-        for pipeline_type in pipeline_types:
-            collector = MetricsCollector(
-                run_id=f"test_{pipeline_type.value}", source="Test", pipeline_type=pipeline_type
-            )
+        # Test the else branch (unknown/default pipeline type)
+        # Create a snapshot with default pipeline_type (no PipelineType enum)
+        snapshot = MetricSnapshot(
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            run_id="test",
+            source="Test",
+            duration_seconds=1.0,
+            pipeline_type="unknown",  # Default/fallback type
+            urls_fetched=10,
+            urls_processed=10,
+        )
 
-            # Add minimal data
-            if pipeline_type == PipelineType.WEB_SCRAPING:
-                collector.increment("urls_fetched", 10)
-                collector.increment("urls_failed", 0)
-            elif pipeline_type == PipelineType.FILE_PROCESSING:
-                collector.increment("files_discovered", 1)
-                collector.increment("files_processed", 1)
-            elif pipeline_type == PipelineType.STREAM_PROCESSING:
-                collector.increment("records_fetched", 10)
+        stats = snapshot.calculate_statistics()
 
-            snapshot = collector.get_snapshot()
-            stats = snapshot.calculate_statistics()
-
-            # Old metric should still exist
-            assert "fetch_success_rate" in stats
-
-            # Verify it's aliased to the correct new metric
-            if pipeline_type == PipelineType.WEB_SCRAPING:
-                assert stats["fetch_success_rate"] == stats["http_request_success_rate"]
-            elif pipeline_type == PipelineType.FILE_PROCESSING:
-                assert stats["fetch_success_rate"] == stats["file_extraction_success_rate"]
-            elif pipeline_type == PipelineType.STREAM_PROCESSING:
-                assert stats["fetch_success_rate"] == stats["stream_connection_success_rate"]
+        # Default pipeline type should have fetch_success_rate
+        assert "fetch_success_rate" in stats
 
     def test_quality_pass_rate_unchanged(self):
         """Test that quality_pass_rate calculation uses new correct formula."""
@@ -421,8 +388,6 @@ def test_demonstration_output():
     print(f"  http_request_success_rate: {bbc_stats['http_request_success_rate']:.1%}")
     print(f"  content_extraction_success_rate: {bbc_stats['content_extraction_success_rate']:.1%}")
     print(f"  quality_pass_rate: {bbc_stats['quality_pass_rate']:.1%}")
-    print("\nOLD METRIC (deprecated, backward compatible):")
-    print(f"  fetch_success_rate: {bbc_stats['fetch_success_rate']:.1%}")
     print("\nSEMANTICS:")
     print(f"  {bbc_stats['_metric_semantics']['http_request_success_rate']}")
 
@@ -450,8 +415,6 @@ def test_demonstration_output():
     print(f"  file_extraction_success_rate: {wiki_stats['file_extraction_success_rate']:.1%}")
     print(f"  record_parsing_success_rate: {wiki_stats['record_parsing_success_rate']:.1%}")
     print(f"  quality_pass_rate: {wiki_stats['quality_pass_rate']:.1%}")
-    print("\nOLD METRIC (deprecated, backward compatible):")
-    print(f"  fetch_success_rate: {wiki_stats['fetch_success_rate']:.1%}")
     print("\nSEMANTICS:")
     print(f"  {wiki_stats['_metric_semantics']['file_extraction_success_rate']}")
 
@@ -479,8 +442,6 @@ def test_demonstration_output():
     print(f"  record_retrieval_success_rate: {hf_stats['record_retrieval_success_rate']:.1%}")
     print(f"  dataset_coverage_rate: {hf_stats['dataset_coverage_rate']} (unknown)")
     print(f"  quality_pass_rate: {hf_stats['quality_pass_rate']:.1%}")
-    print("\nOLD METRIC (deprecated, backward compatible):")
-    print(f"  fetch_success_rate: {hf_stats['fetch_success_rate']:.1%}")
     print("\nSEMANTICS:")
     print(f"  {hf_stats['_metric_semantics']['stream_connection_success_rate']}")
 

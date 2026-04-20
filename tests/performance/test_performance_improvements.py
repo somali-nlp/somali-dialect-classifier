@@ -90,6 +90,7 @@ class TestAsyncHTTPPerformance:
             pytest.skip("aiohttp not installed")
 
 
+@pytest.mark.perf
 class TestShardedLSHPerformance:
     """Test ShardedLSH performance improvements."""
 
@@ -229,6 +230,7 @@ class TestShardedLSHPerformance:
         assert len(results) > 0
 
 
+@pytest.mark.perf
 class TestFileIOPerformance:
     """Test file I/O optimization improvements."""
 
@@ -375,6 +377,7 @@ class TestFileIOPerformance:
         assert speedup >= 1.2, f"Expected 1.2x+ speedup, got {speedup:.1f}x"
 
 
+@pytest.mark.perf
 class TestIntegratedPerformance:
     """Test integrated performance improvements."""
 

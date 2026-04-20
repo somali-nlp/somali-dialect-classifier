@@ -7,7 +7,6 @@ Verifies:
 """
 
 import os
-import time
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -16,7 +15,6 @@ import requests
 from somali_dialect_classifier.infra.config import get_config
 from somali_dialect_classifier.infra.http import HTTPSessionFactory, TimeoutHTTPSession
 from somali_dialect_classifier.ingestion.pipeline_setup import PipelineSetup
-
 
 # ============================================================================
 # Connection Pool Tests
@@ -326,9 +324,7 @@ class TestPipelineSetupTimeout:
 
     def test_create_default_http_session_loads_from_config(self):
         """Test that create_default_http_session uses config timeout by default."""
-        with patch(
-            "somali_dialect_classifier.infra.config.get_config"
-        ) as mock_get_config:
+        with patch("somali_dialect_classifier.infra.config.get_config") as mock_get_config:
             mock_config = MagicMock()
             mock_config.http.request_timeout = 25
             mock_get_config.return_value = mock_config
@@ -419,9 +415,7 @@ class TestTimeoutIntegration:
         default_timeout = config.http.request_timeout
 
         # 2. Create session via factory (should use config)
-        with patch(
-            "somali_dialect_classifier.infra.config.get_config"
-        ) as mock_get_config:
+        with patch("somali_dialect_classifier.infra.config.get_config") as mock_get_config:
             mock_config = MagicMock()
             mock_config.http.request_timeout = default_timeout
             mock_get_config.return_value = mock_config

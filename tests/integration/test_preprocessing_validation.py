@@ -427,7 +427,10 @@ class TestStrictValidation:
         assert len(errors) == 1
         assert any("run_id" in err for err in errors[0]["errors"])
         # Error message will say "is None" or "missing" depending on how field is absent
-        assert any("run_id" in err and ("none" in err.lower() or "missing" in err.lower()) for err in errors[0]["errors"])
+        assert any(
+            "run_id" in err and ("none" in err.lower() or "missing" in err.lower())
+            for err in errors[0]["errors"]
+        )
 
     def test_validation_rejects_invalid_schema_version(self, temp_silver_dir):
         """Test that validation rejects records with schema_version != '1.0'."""

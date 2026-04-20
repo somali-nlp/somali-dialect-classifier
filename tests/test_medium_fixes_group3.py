@@ -5,8 +5,6 @@ Tests M5, M6, M9, M12 from L1 peer review.
 """
 
 import os
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -88,8 +86,9 @@ class TestM5FileChecksumDeduplication:
 
     def test_dedup_check_file_checksum_integration(self, tmp_path):
         """Test check_file_checksum() is called correctly during file duplication check."""
-        from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger, CrawlState
         import hashlib
+
+        from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger, CrawlState
 
         db_path = tmp_path / "test.db"
         ledger = CrawlLedger(db_path=db_path, backend_type="sqlite")
@@ -222,13 +221,16 @@ class TestM9VersionCentralization:
         # Should be in format X.Y.Z
         parts = __pipeline_version__.split(".")
         assert len(parts) >= 2  # At least major.minor
-        assert all(part.replace("-", "").replace("dev", "").isdigit() or "dev" in part for part in parts)
+        assert all(
+            part.replace("-", "").replace("dev", "").isdigit() or "dev" in part for part in parts
+        )
 
     def test_record_builder_uses_centralized_version(self):
         """Test RecordBuilder uses centralized version."""
-        from somali_dialect_classifier.quality.record_utils import build_silver_record
-        from somali_dialect_classifier import __pipeline_version__
         import inspect
+
+        from somali_dialect_classifier import __pipeline_version__
+        from somali_dialect_classifier.quality.record_utils import build_silver_record
 
         # Check default parameter value
         sig = inspect.signature(build_silver_record)
@@ -250,6 +252,7 @@ class TestM9VersionCentralization:
 
         # Test that the version is accessible from package
         import somali_dialect_classifier
+
         assert somali_dialect_classifier.__pipeline_version__ == __pipeline_version__
 
 
@@ -273,8 +276,9 @@ class TestM12QueryTimeout:
 
     def test_database_config_validation(self):
         """Test DatabaseConfig validates timeout ranges."""
-        from somali_dialect_classifier.infra.config import DatabaseConfig
         from pydantic import ValidationError
+
+        from somali_dialect_classifier.infra.config import DatabaseConfig
 
         # Valid timeout
         config = DatabaseConfig(query_timeout=60)
@@ -290,8 +294,9 @@ class TestM12QueryTimeout:
 
     def test_postgres_ledger_accepts_timeout(self):
         """Test PostgresLedger accepts query_timeout parameter."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
         import inspect
+
+        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
 
         # Check __init__ signature
         sig = inspect.signature(PostgresLedger.__init__)
@@ -321,9 +326,8 @@ class TestM12QueryTimeout:
 
     def test_crawl_ledger_passes_timeout_to_postgres(self, monkeypatch):
         """Test CrawlLedger passes timeout config to PostgresLedger."""
-        from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
         from somali_dialect_classifier.infra.config import reset_config
-        from unittest.mock import MagicMock
+        from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
 
         # Mock PostgresLedger to avoid actual connection
         mock_postgres = MagicMock()
@@ -342,7 +346,7 @@ class TestM12QueryTimeout:
                 "somali_dialect_classifier.database.postgres_ledger.PostgresLedger",
                 return_value=mock_postgres,
             ) as mock_class:
-                ledger = CrawlLedger()
+                CrawlLedger()
 
                 # Check PostgresLedger was called with timeout from config
                 call_kwargs = mock_class.call_args.kwargs
@@ -352,7 +356,6 @@ class TestM12QueryTimeout:
     def test_timeout_override_via_backend_kwargs(self):
         """Test query_timeout can be overridden via backend_kwargs."""
         from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
-        from unittest.mock import MagicMock
 
         mock_postgres = MagicMock()
 
@@ -368,7 +371,7 @@ class TestM12QueryTimeout:
                 return_value=mock_postgres,
             ) as mock_class:
                 # Override timeout via backend_kwargs
-                ledger = CrawlLedger(query_timeout=90)
+                CrawlLedger(query_timeout=90)
 
                 call_kwargs = mock_class.call_args.kwargs
                 assert call_kwargs["query_timeout"] == 90

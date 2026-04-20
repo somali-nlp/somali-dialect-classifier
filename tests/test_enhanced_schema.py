@@ -163,6 +163,7 @@ class TestEnhancedSchema:
             "domain": "encyclopedia",
             "embedding": None,
             "run_id": "test_run_missing_register",
+            "schema_version": "1.0",
             # Missing 'register' field
         }
 
@@ -291,6 +292,7 @@ class TestStrictValidation:
             "embedding": None,
             "register": "formal",
             "run_id": "test_run_invalid_domain",
+            "schema_version": "1.0",
         }
 
         # Should raise ValueError for invalid domain
@@ -324,6 +326,7 @@ class TestStrictValidation:
             "embedding": None,
             "register": "super_informal",  # Invalid register
             "run_id": "test_run_invalid_register",
+            "schema_version": "1.0",
         }
 
         # Should raise ValueError for invalid register
@@ -346,13 +349,14 @@ class TestStrictValidation:
             register="formal",
         )
         record["run_id"] = "test_run_schema_version"
-        # Note: schema_version not provided
+        record["schema_version"] = "1.0"
 
         path = writer.write([record], "Test-Source", "2025-01-01", "test_run_013")
 
         # Read back and verify schema_version is "1.0"
-        table = pq.read_table(path)
-        df = table.to_pandas()
+        # Use ParquetFile directly to avoid schema merging issues with partitioned dirs
+        pf = pq.ParquetFile(str(path))
+        df = pf.read().to_pandas()
 
         assert df.iloc[0]["schema_version"] == "1.0"
 

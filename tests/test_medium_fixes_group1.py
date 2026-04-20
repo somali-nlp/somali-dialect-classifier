@@ -8,18 +8,14 @@ These tests verify the improvements made to:
 - M8: SilverWriter enhanced error messages
 """
 
-import json
 import logging
-from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
 from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
 from somali_dialect_classifier.quality.filter_engine import FilterEngine
 from somali_dialect_classifier.quality.silver_writer import SilverDatasetWriter
-
 
 # ==============================================================================
 # Helper: Minimal Test Pipeline
@@ -73,10 +69,7 @@ class TestM1MetricsExportErrorHandling:
 
     def test_metrics_export_attribute_error_debug_logged(self, tmp_path, caplog):
         """Test AttributeError is logged at DEBUG level (test environment)."""
-        pipeline = MinimalTestPipeline(
-            source="wikipedia",
-            force=False
-        )
+        pipeline = MinimalTestPipeline(source="wikipedia", force=False)
 
         # Mock metrics with AttributeError on export_json
         pipeline.metrics = Mock()
@@ -89,19 +82,17 @@ class TestM1MetricsExportErrorHandling:
         # Should log at DEBUG level (not WARNING)
         # We verify that an AttributeError doesn't raise WARNING
         warning_messages = [r.message for r in caplog.records if r.levelname == "WARNING"]
-        assert not any("Failed to export" in msg for msg in warning_messages), \
+        assert not any("Failed to export" in msg for msg in warning_messages), (
             "AttributeError should not trigger WARNING log"
+        )
 
     def test_metrics_export_unexpected_error_warning_logged(self, tmp_path, caplog):
         """Test unexpected errors are logged at WARNING level."""
-        pipeline = MinimalTestPipeline(
-            source="wikipedia",
-            force=False
-        )
+        pipeline = MinimalTestPipeline(source="wikipedia", force=False)
 
         # Mock metrics with unexpected error
         pipeline.metrics = Mock()
-        pipeline.metrics.export_json.side_effect = IOError("Disk full")
+        pipeline.metrics.export_json.side_effect = OSError("Disk full")
 
         with caplog.at_level(logging.WARNING):
             pipeline._export_stage_metrics("extraction")
@@ -112,17 +103,14 @@ class TestM1MetricsExportErrorHandling:
 
     def test_metrics_export_failure_tracked_in_metrics(self, tmp_path):
         """Test metric export failures are tracked in metrics counter."""
-        pipeline = MinimalTestPipeline(
-            source="wikipedia",
-            force=False
-        )
+        pipeline = MinimalTestPipeline(source="wikipedia", force=False)
 
         # Create real metrics object that can track increment
         from somali_dialect_classifier.infra.metrics import MetricsCollector
+
         pipeline.metrics = MetricsCollector(run_id="test-run", source="wikipedia")
 
         # Mock export_json to raise error
-        original_increment = pipeline.metrics.increment
         pipeline.metrics.export_json = Mock(side_effect=ValueError("Test error"))
 
         pipeline._export_stage_metrics("processing")
@@ -132,10 +120,7 @@ class TestM1MetricsExportErrorHandling:
 
     def test_metrics_export_success_info_logged(self, tmp_path, caplog):
         """Test successful export is logged at INFO level."""
-        pipeline = MinimalTestPipeline(
-            source="wikipedia",
-            force=False
-        )
+        pipeline = MinimalTestPipeline(source="wikipedia", force=False)
 
         # Mock metrics with successful export
         pipeline.metrics = Mock()
@@ -382,6 +367,7 @@ class TestM8SilverWriterEnhancedErrors:
                 "domain": "invalid_domain",  # INVALID
                 "register": "formal",
                 "date_accessed": "2025-12-30",
+                "schema_version": "1.0",
             }
         ]
 
@@ -390,7 +376,7 @@ class TestM8SilverWriterEnhancedErrors:
                 records=records,
                 source="Wikipedia-Somali",
                 date_accessed="2025-12-30",
-                run_id="run-abc123"
+                run_id="run-abc123",
             )
 
         error_msg = str(exc_info.value)
@@ -432,6 +418,7 @@ class TestM8SilverWriterEnhancedErrors:
                 "domain": "news",
                 "register": "invalid_register",  # INVALID
                 "date_accessed": "2025-12-30",
+                "schema_version": "1.0",
             }
         ]
 
@@ -440,7 +427,7 @@ class TestM8SilverWriterEnhancedErrors:
                 records=records,
                 source="BBC-Somali",
                 date_accessed="2025-12-30",
-                run_id="run-xyz789"
+                run_id="run-xyz789",
             )
 
         error_msg = str(exc_info.value)
@@ -482,6 +469,7 @@ class TestM8SilverWriterEnhancedErrors:
                 "domain": "invalid_domain",  # Invalid to trigger error
                 "register": "formal",
                 "date_accessed": "2025-12-30",
+                "schema_version": "1.0",
             }
         ]
 
@@ -491,7 +479,7 @@ class TestM8SilverWriterEnhancedErrors:
                 records=records,
                 source="Unknown-Source",
                 date_accessed="2025-12-30",
-                run_id="unknown-run"
+                run_id="unknown-run",
             )
 
         error_msg = str(exc_info.value)
@@ -521,6 +509,7 @@ class TestM8SilverWriterEnhancedErrors:
                 "domain": "encyclopedia",
                 "register": "formal",
                 "date_accessed": "2025-12-30",
+                "schema_version": "1.0",
             }
         ]
 
@@ -529,7 +518,7 @@ class TestM8SilverWriterEnhancedErrors:
             records=records,
             source="Wikipedia-Somali",
             date_accessed="2025-12-30",
-            run_id="run-valid-123"
+            run_id="run-valid-123",
         )
 
         assert result_path is not None
@@ -565,10 +554,7 @@ class TestMediumFixesIntegration:
             def _create_cleaner(self):
                 return MagicMock(clean=lambda x: x)
 
-        pipeline = StrictTestPipeline(
-            source="wikipedia",
-            force=True
-        )
+        pipeline = StrictTestPipeline(source="wikipedia", force=True)
 
         # This should work (no "error" in text)
         # Note: This test verifies integration, not full pipeline run
@@ -596,6 +582,7 @@ class TestMediumFixesIntegration:
             "domain": "wrong_domain",  # Invalid
             "register": "formal",
             "date_accessed": "2025-12-30",
+            "schema_version": "1.0",
         }
 
         with pytest.raises(ValueError) as exc_info:
@@ -603,12 +590,12 @@ class TestMediumFixesIntegration:
                 records=[invalid_record],
                 source="HuggingFace-MC4",
                 date_accessed="2025-12-30",
-                run_id="run-debug-001"
+                run_id="run-debug-001",
             )
 
         # Error message should give clear debugging path
         error_msg = str(exc_info.value)
         assert "HuggingFace-MC4" in error_msg  # Know which processor
-        assert "run-debug-001" in error_msg    # Know which run
-        assert "debug-test-1" in error_msg     # Know which record
-        assert "_get_domain()" in error_msg    # Know which method to fix
+        assert "run-debug-001" in error_msg  # Know which run
+        assert "debug-test-1" in error_msg  # Know which record
+        assert "_get_domain()" in error_msg  # Know which method to fix

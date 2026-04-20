@@ -294,8 +294,11 @@ class TestMetrics:
         snapshot = collector.get_snapshot()
         stats = snapshot.calculate_statistics()
 
-        assert "fetch_success_rate" in stats
-        assert abs(stats["fetch_success_rate"] - 0.9) < 0.01  # Approximately 90/100
+        # Web scraping pipeline uses http_request_success_rate
+        assert "http_request_success_rate" in stats
+        # Total attempted = urls_fetched + urls_failed = 110
+        # http_request_success_rate = urls_fetched / total = 100 / 110
+        assert abs(stats["http_request_success_rate"] - (100.0 / 110)) < 0.01
 
     def test_quality_reporter(self, tmp_path):
         """Test quality report generation."""

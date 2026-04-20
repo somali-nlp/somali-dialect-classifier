@@ -72,9 +72,7 @@ def parsing_timeout(seconds: int, file_path: Path):
     """
 
     def timeout_handler(signum, frame):
-        raise XMLParseTimeoutError(
-            f"XML parsing exceeded {seconds}s timeout for file: {file_path}"
-        )
+        raise XMLParseTimeoutError(f"XML parsing exceeded {seconds}s timeout for file: {file_path}")
 
     # Set alarm signal handler (Unix-only, gracefully degrades on Windows)
     if hasattr(signal, "SIGALRM"):
@@ -87,9 +85,7 @@ def parsing_timeout(seconds: int, file_path: Path):
             signal.signal(signal.SIGALRM, original_handler)
     else:
         # On Windows, no timeout protection (log warning)
-        logger.warning(
-            f"Timeout protection unavailable on this platform (parsing {file_path})"
-        )
+        logger.warning(f"Timeout protection unavailable on this platform (parsing {file_path})")
         yield
 
 
@@ -909,9 +905,7 @@ class SprakbankenSomaliProcessor(BasePipeline):
                         current_text.clear()
 
         except XMLParseTimeoutError as e:
-            self.logger.error(
-                f"XML parsing timeout ({timeout_seconds}s) for {corpus_file}: {e}"
-            )
+            self.logger.error(f"XML parsing timeout ({timeout_seconds}s) for {corpus_file}: {e}")
             self.metrics.increment("xml_parse_timeout")
         except ET.ParseError as e:
             self.logger.error(f"XML parse error in {corpus_file}: {e}")
