@@ -14,27 +14,27 @@ ENV/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
-# Data (don't commit large files - regenerate via pipelines)
-# Explicitly ignore subdirectories except metrics and reports
-data/silver/          # Exclude processed data files
-data/bronze/          # Exclude raw data files
-data/gold/            # Exclude final datasets
-data/staging/         # Exclude staging data files
-data/processed/       # Exclude processed data files
-data/raw/             # Exclude raw data files
-data/ledger/          # Exclude crawl ledger database
-data/analysis/        # Exclude analysis artifacts
-data/metrics/         # Exclude metrics (regenerate via pipelines)
-data/reports/         # Exclude reports (regenerate via pipelines)
-data/manifests/       # Exclude run manifests (regenerate via pipelines)
+# Data: regenerate via pipelines, do not commit.
+# Note: gitignore does NOT support inline comments; patterns must stand alone.
+data/silver/
+data/bronze/
+data/gold/
+data/staging/
+data/processed/
+data/raw/
+data/ledger/
+data/analysis/
+data/metrics/
+data/reports/
+data/manifests/
 *.pkl
 *.h5
 *.parquet
-*.jsonl              # Exclude large JSONL data files
-*.db                 # Exclude database files
+*.jsonl
+*.db
 
 # Dashboard cache
-dashboard/data/       # Exclude dashboard cache files
+dashboard/data/
 
 # Models (use Git LFS or external storage)
 models/*.bin
@@ -66,11 +66,17 @@ logs/*
 # Development artifacts (archived planning documents)
 .archive/
 .backups/
+audits/
+
+# Internal governance (rubrics, threat model, RAI register, SLO/SLI, scorecards)
+# Public subset lives under docs/governance/ and stays tracked.
+governance/
 
 # Testing and coverage artifacts
 .coverage
 coverage.json
-test_*.py  # Temporary test files at root level
+# Temporary test files at root level
+/test_*.py
 
 # Internal deployment and operational documents (archive before committing)
 *_DEPLOYMENT_SUCCESS.md
@@ -79,6 +85,9 @@ POSTGRES_DEPLOYMENT_SUCCESS.md
 
 # GitHub Pages build artifacts
 _site/
+
+# MLflow experiment artifacts (regenerate via pipelines)
+mlruns/
 
 # Local testing artifacts (Playwright, etc.)
 .playwright-mcp/
@@ -100,3 +109,9 @@ node_modules/
 # Claude Code configuration
 .claude/
 CLAUDE.md
+
+# Codex local configuration and project-local agent/skill assets
+.agents/
+.codex/
+AGENTS.md
+AGENTS.override.md
