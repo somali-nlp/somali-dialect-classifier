@@ -194,12 +194,9 @@ class WikipediaSomaliProcessor(BasePipeline):
         Return linguistic register for silver records.
 
         Returns:
-            Register string ("formal", "informal", "colloquial")
-
-        Note:
-            Wikipedia articles are encyclopedic content classified as "formal"
+            Content-type register string for Wikipedia encyclopedic articles.
         """
-        return "formal"
+        return "encyclopedic"
 
     def _compute_text_hash(self, text: str, url: str) -> str:
         """

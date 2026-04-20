@@ -20,6 +20,7 @@ from ..infra.logging_utils import generate_run_id
 from ..infra.tracking import MLFlowTracker
 from ..quality.filter_engine import FilterEngine
 from ..quality.record_builder import RecordBuilder
+from ..quality.script_detection import compute_cs_ratio, detect_scripts
 from ..quality.silver_writer import SilverDatasetWriter
 from ..quality.text_cleaners import TextCleaningPipeline
 from ..schema.validation_service import ValidationService
@@ -409,6 +410,14 @@ class BasePipeline(DataProcessor, ABC):
                 continue
 
             fout.write(f"=== {raw_record.title} ===\n{cleaned}\n\n")
+            script_info = detect_scripts(cleaned)
+            base_meta = self._get_source_metadata()
+            augmented_meta = {
+                **base_meta,
+                "scripts": script_info["scripts"],
+                "dominant_script": script_info["dominant_script"],
+                "cs_ratio": compute_cs_ratio(cleaned),
+            }
             record = self.record_builder.build_silver_record(
                 raw_record=raw_record,
                 cleaned_text=cleaned,
@@ -418,7 +427,7 @@ class BasePipeline(DataProcessor, ABC):
                 domain=self._get_domain(),
                 register=self._get_register(),
                 language=self._get_language(),
-                source_metadata=self._get_source_metadata(),
+                source_metadata=augmented_meta,
             )
             metrics = self.metrics if hasattr(self, "metrics") else None
             is_valid, errors = self.validation_service.validate_record(record, self.source, metrics)

@@ -104,7 +104,19 @@ REQUIRED_FIELDS = {
 }
 
 # Valid values for linguistic_register field
-VALID_REGISTERS = {"formal", "informal", "colloquial"}
+VALID_REGISTERS = {
+    # Linguistic registers
+    "formal",
+    "informal",
+    "colloquial",
+    # Content-type registers
+    "news",
+    "encyclopedic",
+    "corpus",
+    "social-media",
+    "web",
+    "other",
+}
 
 
 def validate_ingestion_output(record: dict) -> tuple[bool, list[str]]:

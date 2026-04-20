@@ -903,19 +903,9 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         Return linguistic register for silver records.
 
         Returns:
-            Register string ("formal", "informal", "colloquial")
-
-        Note:
-            - MC4 and other web-scraped corpora are classified as "formal"
-            - Future social media sources (TikTok) would use "informal"
+            Content-type register string for HuggingFace web-scraped corpora.
         """
-        # Infer from source type
-        source_type = self._get_source_type()
-        if source_type == "social":
-            return "informal"
-        else:
-            # MC4 and web corpora are formal written text
-            return "formal"
+        return "web"
 
     def _get_processed_urls(self) -> set[str]:
         """

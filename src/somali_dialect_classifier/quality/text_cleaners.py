@@ -5,6 +5,7 @@ Pure functions with no side effects - easily testable and reusable.
 """
 
 import re
+import unicodedata
 from typing import Optional, Protocol
 
 
@@ -12,6 +13,13 @@ class Cleaner(Protocol):
     """Protocol for text cleaner objects."""
 
     def clean(self, text: str) -> str: ...
+
+
+class UnicodeNormalizationCleaner:
+    """Applies NFKC Unicode normalisation to canonicalise characters."""
+
+    def clean(self, text: str) -> str:
+        return unicodedata.normalize("NFKC", text)
 
 
 class WikiMarkupCleaner:
@@ -182,6 +190,7 @@ def create_wikipedia_cleaner() -> TextCleaningPipeline:
     """
     return TextCleaningPipeline(
         [
+            UnicodeNormalizationCleaner(),
             WikiMarkupCleaner(),
             WhitespaceCleaner(),
         ]
@@ -197,6 +206,7 @@ def create_html_cleaner() -> TextCleaningPipeline:
     """
     return TextCleaningPipeline(
         [
+            UnicodeNormalizationCleaner(),
             HTMLCleaner(),
             WhitespaceCleaner(),
         ]

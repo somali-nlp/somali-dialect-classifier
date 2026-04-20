@@ -31,11 +31,19 @@ class SourceType(str, Enum):
 
 
 class Register(str, Enum):
-    """Valid linguistic registers."""
+    """Content-type and linguistic registers for silver dataset records."""
 
+    # Linguistic registers
     FORMAL = "formal"
     INFORMAL = "informal"
     COLLOQUIAL = "colloquial"
+    # Content-type registers (added for D5 phase-gate compliance)
+    NEWS = "news"
+    ENCYCLOPEDIC = "encyclopedic"
+    CORPUS = "corpus"
+    SOCIAL_MEDIA = "social-media"
+    WEB = "web"
+    OTHER = "other"
 
 
 class SchemaV1_0(BaseModel):

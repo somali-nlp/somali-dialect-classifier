@@ -269,10 +269,11 @@ class TestBasePipelineContract:
         """Test that _get_register returns valid register value."""
         processor = _instantiate_processor(processor_class)
         register = processor._get_register()
-        valid_registers = ["formal", "informal", "colloquial"]
-        assert register in valid_registers, (
+        from somali_dialect_classifier.contracts.ingestion_output import VALID_REGISTERS
+
+        assert register in VALID_REGISTERS, (
             f"{processor_class.__name__}._get_register() returned '{register}', "
-            f"expected one of {valid_registers}"
+            f"expected one of {sorted(VALID_REGISTERS)}"
         )
 
     @pytest.mark.parametrize("processor_class", PROCESSOR_CLASSES)

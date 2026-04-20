@@ -1,0 +1,33 @@
+# Locked dependencies for somali-dialect-classifier
+# Generated: 2026-04-20
+# Python: 3.12.3 (production target: >=3.9)
+# Regenerate: pip freeze | grep <package> or pip-compile pyproject.toml
+
+# Core pipeline
+aiohttp==3.10.5
+aiodns==3.5.0
+anyio==4.11.0
+apify-client==1.7.1
+apify-shared==1.1.2
+beautifulsoup4==4.13.4
+click==8.3.1
+datasketch==1.6.5
+defusedxml==0.7.1
+feedparser==6.0.12
+filelock==3.13.1
+lxml==5.2.2
+mlflow==3.6.0
+pandas==2.2.2
+psycopg2-binary==2.9.11
+pyarrow==21.0.0
+pydantic==2.12.5
+requests==2.32.5
+SQLAlchemy==2.0.44
+tqdm==4.66.5
+
+# Development / quality gates
+mypy==1.11.2
+pytest==7.4.4
+pytest-cov==7.0.0
+pytest-timeout==2.4.0
+ruff==0.14.3

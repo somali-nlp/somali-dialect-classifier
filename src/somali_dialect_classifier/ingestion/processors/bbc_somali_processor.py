@@ -187,12 +187,9 @@ class BBCSomaliProcessor(BasePipeline):
         Return linguistic register for silver records.
 
         Returns:
-            Register string ("formal", "informal", "colloquial")
-
-        Note:
-            BBC news articles are professional journalism classified as "formal"
+            Content-type register string for BBC Somali news articles.
         """
-        return "formal"
+        return "news"
 
     def _scrape_rss_feeds(self) -> list[str]:
         """

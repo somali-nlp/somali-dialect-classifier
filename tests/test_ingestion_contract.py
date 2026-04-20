@@ -194,7 +194,16 @@ class TestIngestionContractValidation:
 
     def test_valid_registers(self):
         """All valid register values pass validation."""
-        for register_value in ["formal", "informal", "colloquial"]:
+        for register_value in [
+            "formal",
+            "informal",
+            "colloquial",
+            "news",
+            "encyclopedic",
+            "corpus",
+            "social-media",
+            "web",
+        ]:
             record = {
                 "id": "abc123",
                 "text": "Test text",

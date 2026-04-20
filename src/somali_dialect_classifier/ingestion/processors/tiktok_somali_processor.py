@@ -120,18 +120,16 @@ class TikTokSomaliProcessor(BasePipeline):
         """Create text cleaner for TikTok comments."""
         from somali_dialect_classifier.quality.text_cleaners import (
             TextCleaningPipeline,
+            UnicodeNormalizationCleaner,
             WhitespaceCleaner,
         )
 
-        # MINIMAL cleaning - preserve EVERYTHING including emojis!
-        # User paid for these comments, so we keep them as-is.
-        # Only normalize whitespace to prevent formatting issues.
+        # NFKC normalisation canonicalises characters without removing content;
+        # only whitespace is further normalised. Emojis and special chars preserved.
         return TextCleaningPipeline(
             [
-                WhitespaceCleaner(),  # Just normalize whitespace
-                # NO emoji removal
-                # NO special character removal
-                # NO length filtering
+                UnicodeNormalizationCleaner(),
+                WhitespaceCleaner(),
             ]
         )
 
@@ -166,12 +164,9 @@ class TikTokSomaliProcessor(BasePipeline):
         Return linguistic register for silver records.
 
         Returns:
-            Register string ("formal", "informal", "colloquial")
-
-        Note:
-            TikTok comments are social media content, inherently colloquial
+            Content-type register string for TikTok social media comments.
         """
-        return "colloquial"
+        return "social-media"
 
     def download(self) -> Path:
         """

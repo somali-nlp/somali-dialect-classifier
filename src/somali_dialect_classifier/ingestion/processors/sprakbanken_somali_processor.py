@@ -360,12 +360,9 @@ class SprakbankenSomaliProcessor(BasePipeline):
         Return linguistic register for silver records.
 
         Returns:
-            Register string ("formal", "informal", "colloquial")
-
-        Note:
-            Språkbanken corpora are academic/institutional content classified as "formal"
+            Content-type register string for Språkbanken corpus data.
         """
-        return "formal"
+        return "corpus"
 
     def _compute_text_hash(self, text: str, url: str) -> str:
         """

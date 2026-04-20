@@ -506,7 +506,7 @@ class TestBBCMetadataExtraction:
         processor = BBCSomaliProcessor()
         register = processor._get_register()
 
-        assert register in ["formal", "informal", "colloquial"]
+        assert register == "news"
 
     def test_get_source_metadata(self):
         """Test source metadata extraction."""

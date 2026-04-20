@@ -409,6 +409,16 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
 All contributors must follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
+## Responsible AI
+
+This project collects and curates Somali-language text to support dialect classification research. Key commitments:
+
+- **No personal data.** Text only — no usernames, email addresses, or user identifiers are stored in the silver dataset.
+- **Source licensing tracked.** Every record carries a `license` field (CC-BY-SA-3.0, ODC-BY-1.0, CC BY 4.0, or TikTok ToS). Downstream users must honour per-record licensing.
+- **Dialect coverage is limited.** Northern/Standard Somali dominates current data. Models trained on this dataset will perform unevenly across dialects. See the [data sheet](docs/governance/datasheet.md) for coverage estimates.
+- **Feedback and takedowns.** To report concerns, flag harmful content, or request data deletion, open a [GitHub Issue](../../issues) with the label `responsible-ai`. Acknowledged within 30 days.
+- **Full governance.** Ethics risk register, threat model, and evaluation protocol are maintained at `docs/governance/`. See [responsible-ai-statement.md](docs/governance/responsible-ai-statement.md).
+
 ## License
 
 This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
