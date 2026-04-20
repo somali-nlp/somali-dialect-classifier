@@ -31,10 +31,40 @@ jobs:
         run: |
           ruff format --check src/ tests/
 
-      - name: Run mypy type checker
+      - name: Run mypy type checker (core modules)
         run: |
-          mypy src/ || echo "::warning::mypy found type errors - please fix gradually"
+          mypy --follow-imports=skip \
+            src/somali_dialect_classifier/contracts/ingestion_output.py \
+            src/somali_dialect_classifier/schema/registry.py \
+            src/somali_dialect_classifier/schema/validator.py \
+            src/somali_dialect_classifier/schema/validation_service.py \
+            src/somali_dialect_classifier/quality/silver_writer.py \
+            src/somali_dialect_classifier/quality/record_builder.py \
+            src/somali_dialect_classifier/quality/schema_mappers.py \
+            src/somali_dialect_classifier/infra/aggregation.py \
+            src/somali_dialect_classifier/infra/config.py \
+            src/somali_dialect_classifier/orchestration/flows.py
+
+      - name: Run mypy type checker (extended ingestion)
+        run: |
+          mypy src/somali_dialect_classifier/ingestion || echo "::warning::mypy found type errors in ingestion - fix gradually"
         continue-on-error: true
+
+      - name: Check for stale repo and module references
+        run: |
+          ! rg -n "your-org|your-username|yourusername|YOUR-USERNAME|preprocessing/base_pipeline|preprocessing/filters|somali_dialect_classifier\\.utils|deploy-dashboard\\.yml" \
+            README.md CONTRIBUTING.md src/dashboard/README.md \
+            docs/guides/dashboard.md docs/guides/data-pipeline.md \
+            docs/guides/portfolio.md \
+            docs/howto/troubleshooting.md docs/overview/data-pipeline-architecture.md \
+            docs/overview/codebase-tour.md \
+            docs/reference/dashboard-architecture.md docs/reference/metrics.md \
+            docs/reference/metrics-schema.md docs/reference/api-changelog.md \
+            docs/howto/processing-pipelines.md \
+            docs/howto/tiktok-integration.md docs/operations/deployment.md \
+            docs/howto/secret-scanning.md docs/howto/security-hardening.md \
+            docs/operations/dashboard-maintenance.md docs/operations/testing.md \
+            docs/decisions/002-filter-framework.md docs/decisions/003-madlad-400-exclusion.md
 
   test:
     runs-on: ${{ matrix.os }}
@@ -71,7 +101,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest --cov --cov-report=xml --cov-report=term-missing
+          pytest --cov --cov-fail-under=60 --cov-report=xml --cov-report=term-missing
 
       - name: Check for metrics anomalies
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
@@ -164,9 +194,9 @@ jobs:
             ### What This Means
 
             The CI pipeline detected metrics calculation anomalies. These indicate potential bugs in:
-            - \`src/somali_dialect_classifier/utils/metrics.py\`
-            - \`src/somali_dialect_classifier/utils/metrics_schema.py\`
-            - Data source processors (e.g., \`preprocessing/*_processor.py\`)
+            - \`src/somali_dialect_classifier/infra/metrics.py\`
+            - \`src/somali_dialect_classifier/infra/metrics_schema.py\`
+            - Data source processors (e.g., \`ingestion/processors/*_processor.py\`)
 
             ### Action Required
 
