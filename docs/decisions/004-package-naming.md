@@ -1,10 +1,8 @@
-# ADR-004: Package Naming — Rename `somali_dialect_classifier` to `somnlp`
+# ADR-004: Package Naming — Rename `somali_dialect_classifier` to `somdialc`
 
-**Template for Architecture Decision Records documenting important technical and design decisions.**
+**Last Updated:** 2026-04-21
 
-**Last Updated:** 2026-04-20
-
-**Status**: Proposed  
+**Status**: Accepted  
 **Date**: 2026-04-20  
 **Deciders**: ilyasibrahim  
 **Supersedes**: N/A
@@ -47,7 +45,7 @@
 
 **What is the issue that we're addressing?**
 
-The current Python import path `somali_dialect_classifier` is too long for everyday use and encodes a scope that the project is already outgrowing. As the project expands toward corpus curation, preprocessing, and model training for Somali NLP broadly, locking the import name to "dialect classifier" creates a naming mismatch that will require a rename under worse conditions later.
+The current Python import path `somali_dialect_classifier` is too long for everyday use (26 characters) and creates friction in daily development. A shorter, accurate abbreviation is needed before the first external publication or HuggingFace Hub release.
 
 ### Background
 
@@ -61,22 +59,24 @@ The `pyproject.toml` `[project].name` is `somali-dialect-classifier`, which is a
 
 ### Problem Statement
 
-`somali_dialect_classifier` is 26 characters, too long for routine imports, and scoped too narrowly (dialect classification) for a project that covers corpus curation, quality filtering, orchestration, dashboard observability, and future model training across all Somali NLP tasks.
+`somali_dialect_classifier` is 26 characters — too long for routine imports. The project's core mission through Phase 3 is specifically Somali dialect classification (data curation, quality filtering, model training, evaluation). The name should be short and accurately reflect that scope without overstating it.
 
 ---
 
 ## Decision
 
-**We will rename the Python package import path from `somali_dialect_classifier` to `somnlp`.**
+**We will rename the Python package import path from `somali_dialect_classifier` to `somdialc`.**
+
+`somdialc` = **Som**ali + **Dial**ect + **C**lassifier. It is 8 characters, accurately scoped to the project's mission, and does not overstate ambitions beyond dialect classification.
 
 The PyPI distribution name (`somali-dialect-classifier` in `pyproject.toml [project].name`) is not changed — it remains distinct and descriptive for discovery. Only the importable package name changes.
 
 ### Implementation Details
 
-1. Rename `src/somali_dialect_classifier/` → `src/somnlp/`
+1. Rename `src/somali_dialect_classifier/` → `src/somdialc/`
 2. Update all `import somali_dialect_classifier.*` and `from somali_dialect_classifier.*` statements — approximately 90 source files
 3. Update all test imports — approximately 70 test files
-4. Update all 10 CLI entry points in `pyproject.toml` (e.g., `somali_dialect_classifier.tools.cli:main` → `somnlp.tools.cli:main`)
+4. Update all 10 CLI entry points in `pyproject.toml` (e.g., `somali_dialect_classifier.tools.cli:main` → `somdialc.tools.cli:main`)
 5. Update `pyproject.toml` `[tool.mypy]` and `[tool.ruff]` source paths
 6. Update all documentation, docstring examples, and README code blocks referencing the old import path
 7. Update CI workflow steps that reference the package path directly
@@ -89,17 +89,17 @@ The PyPI distribution name (`somali-dialect-classifier` in `pyproject.toml [proj
 
 ### Key Benefits
 
-1. **Brevity and ergonomics**: `from somnlp.ingestion import BasePipeline` is readable and typeable. `from somali_dialect_classifier.ingestion import BasePipeline` is 26 characters for the module path alone.
-2. **Scope-neutral**: `somnlp` ("Somali NLP") does not encode the current phase's focus (dialect classification). As the project adds preprocessing, training, and serving layers, the import path remains accurate.
-3. **PyPI-safe**: `somnlp` is short enough to be unlikely to conflict with existing packages. (Verify with `pip index versions somnlp` before executing the rename.)
-4. **Pronounceable**: Can be verbalized as "som-NLP" in verbal communication and documentation.
+1. **Brevity and ergonomics**: `from somdialc.ingestion import BasePipeline` is readable and typeable. `from somali_dialect_classifier.ingestion import BasePipeline` is 26 characters for the module path alone.
+2. **Accurately scoped**: `somdialc` encodes the project's actual mission — Somali dialect classification — without overstating it as a general-purpose Somali NLP toolkit. The name will remain accurate through Phase 3.
+3. **PyPI-safe**: `somdialc` is unlikely to conflict with existing packages. (Verify with `pip index versions somdialc` before executing the rename.)
+4. **Pronounceable**: Can be verbalized as "som-dial-see" in verbal communication and documentation.
 5. **Consistent with ecosystem conventions**: Short, project-specific abbreviations are standard in the Python NLP ecosystem (`spacy`, `nltk`, `stanza`, `flair`).
 
 ### Trade-offs Accepted
 
 - **Import churn**: Every file that imports from the old path requires updating — approximately 160 files (90 source + 70 test). A grep-based automated refactor mitigates manual effort.
 - **Temporary documentation drift**: Any external references, blog posts, or citations using the old import path will break. Since the project has not been formally published externally, this risk is low at this stage.
-- **PyPI name divergence**: The installable name (`somali-dialect-classifier`) and the importable name (`somnlp`) will differ. This is a common and accepted pattern (`scikit-learn` / `sklearn`, `pillow` / `PIL`).
+- **PyPI name divergence**: The installable name (`somali-dialect-classifier`) and the importable name (`somdialc`) will differ. This is a common and accepted pattern (`scikit-learn` / `sklearn`, `pillow` / `PIL`).
 
 ---
 
@@ -107,24 +107,39 @@ The PyPI distribution name (`somali-dialect-classifier` in `pyproject.toml [proj
 
 **What other options did we evaluate?**
 
-### Alternative 1: sdc
+### Alternative 1: somnlp
+
+**Description**: Somali NLP → `somnlp`.
+
+**Pros**:
+- Very short (6 characters)
+- Scope-neutral name that doesn't lock the project to dialect classification
+
+**Cons**:
+- Too broad: the project is not a general-purpose Somali NLP toolkit. It is specifically a dialect classifier covering data curation, quality filtering, and model training for that task. Claiming "Somali NLP" overstates the project's mission and creates identity confusion if the broader NLP ecosystem produces other Somali language tools.
+- A contributor seeing `import somnlp` has no signal that the tool is about dialect classification.
+
+**Why Rejected**: Scope too broad relative to the project's actual and planned deliverables through Phase 3.
+
+---
+
+### Alternative 2: sdc
 
 **Description**: Abbreviate to the project's initials: `sdc`.
 
 **Pros**:
 - Very short (3 characters)
-- Obvious abbreviation of the current name
 
 **Cons**:
-- `sdc` is a generic abbreviation with multiple meanings in the Python ecosystem
-- Does not convey the Somali language domain to new contributors
-- Carries the same "dialect classifier" scope limitation as the current name
+- Generic abbreviation with multiple meanings in the Python ecosystem
+- No Somali language signal for new contributors
+- High collision risk on PyPI
 
 **Why Rejected**: Poor discoverability and high collision risk.
 
 ---
 
-### Alternative 2: sodic
+### Alternative 3: sodic
 
 **Description**: Somali Dialect Classifier → `sodic`.
 
@@ -133,15 +148,14 @@ The PyPI distribution name (`somali-dialect-classifier` in `pyproject.toml [proj
 - Retains the "dialect" framing
 
 **Cons**:
-- Still encodes "dialect" in the name, locking scope
 - Not an established abbreviation; a new contributor would not guess it
-- 5 characters — not significantly shorter than `somnlp`
+- 5 characters without the "classifier" signal that distinguishes it from a lexicon or corpus tool
 
-**Why Rejected**: Scope-limiting and unintuitive.
+**Why Rejected**: Unintuitive and incomplete mapping to the project name.
 
 ---
 
-### Alternative 3: afsoom
+### Alternative 4: afsoom
 
 **Description**: From "Af-Soomaali" (the Somali language in Somali) → `afsoom`.
 
@@ -151,14 +165,14 @@ The PyPI distribution name (`somali-dialect-classifier` in `pyproject.toml [proj
 
 **Cons**:
 - Not immediately recognizable to non-Somali speakers
-- Harder to search for without context
-- 6 characters with no NLP signal
+- No NLP or classification signal
+- 6 characters with no domain hint
 
 **Why Rejected**: Meaningful but opaque to the broader NLP community.
 
 ---
 
-### Alternative 4: Keep as-is
+### Alternative 5: Keep as-is
 
 **Description**: Retain `somali_dialect_classifier` as the import path.
 
@@ -168,10 +182,9 @@ The PyPI distribution name (`somali-dialect-classifier` in `pyproject.toml [proj
 
 **Cons**:
 - 26-character import path is ergonomically painful in day-to-day development
-- Name will require a rename under worse conditions if the project scope expands and the name becomes misleading (e.g., when Phase 3/4 add non-dialect functionality)
 - Best time to rename is before the project has significant external citations or users
 
-**Why Rejected**: Technical debt that grows with each phase. The cost of renaming now (before external publication) is far lower than the cost of renaming after Phase 4 release.
+**Why Rejected**: Technical debt that grows with each phase. The cost of renaming now (before external publication) is far lower than after Phase 4 release.
 
 ---
 
@@ -204,37 +217,37 @@ The PyPI distribution name (`somali-dialect-classifier` in `pyproject.toml [proj
 
 ### Phase 1: Preparation
 
-- Verify `somnlp` is not taken on PyPI: `pip index versions somnlp`
-- Create a feature branch: `refactor/rename-somnlp`
+- Verify `somdialc` is not taken on PyPI: `pip index versions somdialc`
+- Create a feature branch: `refactor/rename-somdialc`
 - Tag current `main` as `pre-rename` for rollback reference
 
 ### Phase 2: Rename
 
-1. `mv src/somali_dialect_classifier src/somnlp`
-2. Grep-based refactor: `find . -type f -name "*.py" | xargs sed -i 's/somali_dialect_classifier/somnlp/g'`
+1. `mv src/somali_dialect_classifier src/somdialc`
+2. Grep-based refactor: `find . -type f -name "*.py" | xargs sed -i 's/somali_dialect_classifier/somdialc/g'`
 3. Update `pyproject.toml`:
-   - `[tool.mypy] packages = ["somnlp"]`
-   - All `[project.scripts]` entry points (`somnlp.tools.cli:main`, etc.)
+   - `[tool.mypy] packages = ["somdialc"]`
+   - All `[project.scripts]` entry points (`somdialc.tools.cli:main`, etc.)
    - `[tool.ruff.lint] src = ["src"]` — unchanged
-4. Update documentation: `find docs/ -name "*.md" | xargs grep -l "somali_dialect_classifier" | xargs sed -i 's/somali_dialect_classifier/somnlp/g'`
+4. Update documentation: `find docs/ -name "*.md" | xargs grep -l "somali_dialect_classifier" | xargs sed -i 's/somali_dialect_classifier/somdialc/g'`
 5. Update `README.md`, `CONTRIBUTING.md`, `CLAUDE.md`
 6. Update `src/dashboard/README.md` and any JS files referencing the package path
 
 ### Phase 3: Verification
 
-1. `pip install -e ".[dev]"` — confirm `somnlp` is importable
-2. `python -c "import somnlp; print(somnlp.__version__)"` — smoke test
+1. `pip install -e ".[dev]"` — confirm `somdialc` is importable
+2. `python -c "import somdialc; print(somdialc.__version__)"` — smoke test
 3. `pytest` — full test suite must pass
 4. `ruff check src/` and `mypy src/` — no new errors
 5. `grep -r "somali_dialect_classifier" src/ tests/` — must return 0 results
 
 ### Success Criteria
 
-- All tests pass under `somnlp` import path
+- All tests pass under `somdialc` import path
 - `grep -r "somali_dialect_classifier" src/ tests/` returns no results
 - All CLI entry points work: `wikisom-download --help`, `somali-tools --help`
 - No ruff or mypy regressions
-- `pip install -e .` succeeds and `import somnlp` works in a clean virtual environment
+- `pip install -e .` succeeds and `import somdialc` works in a clean virtual environment
 
 ---
 
@@ -249,20 +262,22 @@ The PyPI distribution name (`somali-dialect-classifier` in `pyproject.toml [proj
 
 | Date | Change | Author |
 |------|--------|--------|
-| 2026-04-20 | Initial draft | ilyasibrahim |
+| 2026-04-20 | Initial draft (proposed `somnlp`) | ilyasibrahim |
+| 2026-04-21 | Revised decision to `somdialc`; `somnlp` moved to rejected alternatives (scope too broad); status → Accepted | ilyasibrahim |
 
 ---
 
 ## Notes
 
 - This rename must happen before any Phase 4 external publication or HuggingFace Hub model/dataset card, since those will reference the import path in code examples.
-- The `dedup.py` F-003 bug fix (Phase 2 prerequisite) should land on the same branch or immediately prior to this rename to keep diff scopes clean.
-- After rename, update the `CLAUDE.md` `[Key Files]` table to reflect the new path.
+- F-003 (dedup refactor) was committed prior to this rename — branch is clean.
+- After rename, update the `CLAUDE.md` `[Key Files]` table to reflect the new `somdialc` path.
+- The `somnlp` name was evaluated and rejected on 2026-04-21 as too broad for a project with a specific dialect-classification mission.
 
 ---
 
-**Date**: 2026-04-20  
-**Status**: Proposed
+**Date**: 2026-04-21  
+**Status**: Accepted
 
 ---
 
