@@ -150,7 +150,7 @@ EOF
 ### ✅ CORRECT: Check table existence
 
 ```python
-from somali_dialect_classifier.database.migrations import verify_schema_initialized
+from somdialc.database.migrations import verify_schema_initialized
 
 # In your code
 conn = get_connection()

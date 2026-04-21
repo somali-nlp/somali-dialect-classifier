@@ -52,7 +52,7 @@ except ImportError as e:
 
 # Import filter catalog functions
 try:
-    from somali_dialect_classifier.quality.filters.catalog import (
+    from somdialc.quality.filters.catalog import (
         get_filter_category,
         get_filter_label,
     )

@@ -30,7 +30,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 try:
-    from somali_dialect_classifier.infra.metrics_schema import validate_processing_json
+    from somdialc.infra.metrics_schema import validate_processing_json
     SCHEMA_VALIDATION_AVAILABLE = True
 except ImportError:
     print("Warning: Schema validation not available. Install with: pip install -e '.[config]'", file=sys.stderr)

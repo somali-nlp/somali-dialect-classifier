@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from somali_dialect_classifier.infra.manifest_writer import ManifestWriter
+from somdialc.infra.manifest_writer import ManifestWriter
 
 
 @pytest.fixture

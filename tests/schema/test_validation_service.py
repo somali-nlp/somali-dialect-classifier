@@ -6,7 +6,7 @@ Verifies schema validation functionality.
 
 import pytest
 
-from somali_dialect_classifier.schema.validation_service import ValidationService
+from somdialc.schema.validation_service import ValidationService
 
 
 class TestValidationService:

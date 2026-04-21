@@ -270,7 +270,7 @@ EOF
 Or programmatically:
 
 ```python
-from somali_dialect_classifier.config import get_config
+from somdialc.config import get_config
 
 config = get_config()
 print(config.data.raw_dir)
@@ -428,7 +428,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 If you use this project in your research, please cite:
 
 ```bibtex
-@software{somali_dialect_classifier,
+@software{somdialc,
   title = {Somali Dialect Classifier: Production Data Pipeline},
   author = {Somali NLP Contributors},
   year = {2025},

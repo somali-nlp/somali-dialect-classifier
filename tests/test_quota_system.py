@@ -15,8 +15,8 @@ from pathlib import Path
 
 import pytest
 
-from somali_dialect_classifier.infra.config import get_config, reset_config
-from somali_dialect_classifier.ingestion.crawl_ledger import (
+from somdialc.infra.config import get_config, reset_config
+from somdialc.ingestion.crawl_ledger import (
     CrawlLedger,
     SQLiteLedger,
     reset_ledger,

@@ -313,7 +313,7 @@ class TestXXEProtection:
     def test_defusedxml_imported_correctly(self):
         """Test that Språkbanken processor imports defusedxml, not standard xml.etree."""
         # Check Språkbanken processor imports (it should have ET)
-        from somali_dialect_classifier.ingestion.processors import (
+        from somdialc.ingestion.processors import (
             sprakbanken_somali_processor,
         )
 
@@ -336,7 +336,7 @@ class TestXXEDocumentation:
 
     def test_wikipedia_processor_has_security_documentation(self):
         """Test Wikipedia processor docstring mentions XXE protection."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -353,7 +353,7 @@ class TestXXEDocumentation:
 
     def test_sprakbanken_processor_has_security_documentation(self):
         """Test Språkbanken processor docstring mentions XXE protection."""
-        from somali_dialect_classifier.ingestion.processors.sprakbanken_somali_processor import (
+        from somdialc.ingestion.processors.sprakbanken_somali_processor import (
             SprakbankenSomaliProcessor,
         )
 
@@ -370,7 +370,7 @@ class TestXXEDocumentation:
 
     def test_bbc_processor_sitemap_has_security_documentation(self):
         """Test BBC processor _scrape_sitemap method documents XXE protection."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
 

@@ -21,8 +21,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from somali_dialect_classifier.infra.logging_utils import validate_iso_date
-from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger, SQLiteLedger
+from somdialc.infra.logging_utils import validate_iso_date
+from somdialc.ingestion.crawl_ledger import CrawlLedger, SQLiteLedger
 
 
 class TestIsoDateValidation:
@@ -207,12 +207,12 @@ class TestConfigurationLogging:
 
     def test_configuration_logging_at_startup(self, mock_config, caplog):
         """Test that configuration is logged when pipeline is initialized."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
         with patch(
-            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config
+            "somdialc.ingestion.base_pipeline.get_config", return_value=mock_config
         ):
             with caplog.at_level(logging.INFO):
                 # Initialize pipeline (should trigger config logging)
@@ -232,12 +232,12 @@ class TestConfigurationLogging:
 
     def test_secrets_are_redacted_in_logs(self, mock_config, caplog):
         """Test that secrets (API tokens, passwords) are redacted in logged configuration."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
         with patch(
-            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config
+            "somdialc.ingestion.base_pipeline.get_config", return_value=mock_config
         ):
             with caplog.at_level(logging.INFO):
                 # Initialize pipeline
@@ -256,12 +256,12 @@ class TestConfigurationLogging:
 
     def test_configuration_includes_data_directories(self, mock_config, caplog):
         """Test that logged configuration includes data directory paths."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
         with patch(
-            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config
+            "somdialc.ingestion.base_pipeline.get_config", return_value=mock_config
         ):
             with caplog.at_level(logging.INFO):
                 WikipediaSomaliProcessor(force=True)
@@ -283,12 +283,12 @@ class TestConfigurationLogging:
 
     def test_configuration_includes_scraping_settings(self, mock_config, caplog):
         """Test that logged configuration includes scraping settings."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
         with patch(
-            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config
+            "somdialc.ingestion.base_pipeline.get_config", return_value=mock_config
         ):
             with caplog.at_level(logging.INFO):
                 WikipediaSomaliProcessor(force=True)
@@ -308,12 +308,12 @@ class TestConfigurationLogging:
 
     def test_configuration_includes_database_settings_without_password(self, mock_config, caplog):
         """Test that database config is logged but password is excluded."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
         with patch(
-            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config
+            "somdialc.ingestion.base_pipeline.get_config", return_value=mock_config
         ):
             with caplog.at_level(logging.INFO):
                 WikipediaSomaliProcessor(force=True)
@@ -340,7 +340,7 @@ class TestConfigurationLogging:
 
     def test_configuration_logging_failure_does_not_break_pipeline(self, mock_config):
         """Test that pipeline initialization succeeds even if config logging fails."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -355,7 +355,7 @@ class TestConfigurationLogging:
         bad_config.logging = MagicMock(side_effect=Exception("Logging config error"))
 
         with patch(
-            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=bad_config
+            "somdialc.ingestion.base_pipeline.get_config", return_value=bad_config
         ):
             # Pipeline should still initialize successfully
             # _log_configuration catches the exception and logs a warning
@@ -367,12 +367,12 @@ class TestConfigurationLogging:
 
     def test_pipeline_specific_settings_logged(self, mock_config, caplog):
         """Test that pipeline-specific settings (run_id, source, etc.) are logged."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
         with patch(
-            "somali_dialect_classifier.ingestion.base_pipeline.get_config", return_value=mock_config
+            "somdialc.ingestion.base_pipeline.get_config", return_value=mock_config
         ):
             with caplog.at_level(logging.INFO):
                 WikipediaSomaliProcessor(force=True)

@@ -119,7 +119,7 @@ See: [`.github/workflows/deploy-dashboard-v2.yml`](../.github/workflows/deploy-d
 
 ### Adding Metrics
 
-1. Update `MetricsCollector` in `src/somali_dialect_classifier/utils/metrics.py`
+1. Update `MetricsCollector` in `src/somdialc/utils/metrics.py`
 2. Add metric to export script `scripts/ops/export_dashboard_data.py`
 3. Create chart function in `dashboard/js/core/charts.js`
 4. Add canvas element to `dashboard/index.html`

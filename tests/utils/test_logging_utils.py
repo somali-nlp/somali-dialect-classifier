@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from somali_dialect_classifier.infra.logging_utils import (
+from somdialc.infra.logging_utils import (
     ColoredFormatter,
     LogEvent,
     StructuredFormatter,
@@ -21,7 +21,7 @@ from somali_dialect_classifier.infra.logging_utils import (
     set_context,
     setup_logging,
 )
-from somali_dialect_classifier.infra.security import redact_secrets
+from somdialc.infra.security import redact_secrets
 
 
 class TestStructuredFormatter:
@@ -466,7 +466,7 @@ class TestSetupLogging:
         logger = setup_logging(environment="development")
 
         assert logger is not None
-        assert logger.logger.name == "somali_dialect_classifier"
+        assert logger.logger.name == "somdialc"
 
     def test_setup_logging_production_environment(self):
         """Test setup logging in production environment."""

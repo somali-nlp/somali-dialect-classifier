@@ -22,7 +22,7 @@ class TestLRUHashSet:
 
     def test_initialization(self):
         """Verify LRUHashSet initializes correctly."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         cache = LRUHashSet(maxsize=100)
 
@@ -31,7 +31,7 @@ class TestLRUHashSet:
 
     def test_initialization_invalid_maxsize(self):
         """Verify raises ValueError for invalid maxsize."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         with pytest.raises(ValueError, match="maxsize must be positive"):
             LRUHashSet(maxsize=0)
@@ -41,7 +41,7 @@ class TestLRUHashSet:
 
     def test_add_single_hash(self):
         """Verify adding single hash works."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         cache = LRUHashSet(maxsize=10)
         cache.add("hash1")
@@ -51,7 +51,7 @@ class TestLRUHashSet:
 
     def test_add_multiple_hashes(self):
         """Verify adding multiple hashes works."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         cache = LRUHashSet(maxsize=10)
         cache.add("hash1")
@@ -65,7 +65,7 @@ class TestLRUHashSet:
 
     def test_add_duplicate_hash_no_size_increase(self):
         """Verify adding duplicate hash doesn't increase size."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         cache = LRUHashSet(maxsize=10)
         cache.add("hash1")
@@ -77,7 +77,7 @@ class TestLRUHashSet:
 
     def test_lru_eviction_at_capacity(self):
         """Verify LRU eviction when at capacity."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         cache = LRUHashSet(maxsize=3)
 
@@ -99,7 +99,7 @@ class TestLRUHashSet:
 
     def test_lru_eviction_order(self):
         """Verify LRU evicts oldest unused entries first."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         cache = LRUHashSet(maxsize=3)
 
@@ -121,7 +121,7 @@ class TestLRUHashSet:
 
     def test_contains_updates_access_order(self):
         """Verify __contains__ updates access order."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         cache = LRUHashSet(maxsize=3)
 
@@ -145,7 +145,7 @@ class TestLRUHashSet:
 
     def test_no_false_positives(self):
         """Verify NEVER marks unique items as duplicate."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         cache = LRUHashSet(maxsize=10)
 
@@ -160,7 +160,7 @@ class TestLRUHashSet:
 
     def test_false_negatives_acceptable(self):
         """Verify false negatives occur after eviction (expected behavior)."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         cache = LRUHashSet(maxsize=2)
 
@@ -175,7 +175,7 @@ class TestLRUHashSet:
 
     def test_clear(self):
         """Verify clear() removes all hashes."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         cache = LRUHashSet(maxsize=10)
 
@@ -194,7 +194,7 @@ class TestLRUHashSet:
 
     def test_large_scale_eviction(self):
         """Verify eviction works correctly with many entries."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         cache = LRUHashSet(maxsize=100)
 
@@ -214,7 +214,7 @@ class TestLRUHashSet:
 
     def test_memory_bounded(self):
         """Verify memory stays bounded even with unlimited additions."""
-        from somali_dialect_classifier.ingestion.dedup import LRUHashSet
+        from somdialc.ingestion.dedup import LRUHashSet
 
         maxsize = 1000
         cache = LRUHashSet(maxsize=maxsize)
@@ -233,7 +233,7 @@ class TestDedupEngineWithLRU:
 
     def test_check_file_duplicate_uses_passed_ledger(self, tmp_path):
         """File dedup queries the ledger argument rather than a missing instance attribute."""
-        from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine
 
         engine = DedupEngine(config=DedupConfig(enable_minhash=False))
         test_file = tmp_path / "test.txt"
@@ -254,7 +254,7 @@ class TestDedupEngineWithLRU:
 
     def test_dedup_engine_uses_lru_cache(self):
         """Verify DedupEngine initializes with LRUHashSet."""
-        from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine, LRUHashSet
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine, LRUHashSet
 
         config = DedupConfig(enable_minhash=False)
         engine = DedupEngine(config=config)
@@ -263,7 +263,7 @@ class TestDedupEngineWithLRU:
 
     def test_dedup_engine_respects_env_cache_size(self, monkeypatch):
         """Verify DEDUP_CACHE_SIZE environment variable is respected."""
-        from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine
 
         monkeypatch.setenv("DEDUP_CACHE_SIZE", "5000")
 
@@ -274,7 +274,7 @@ class TestDedupEngineWithLRU:
 
     def test_dedup_engine_default_cache_size(self):
         """Verify default cache size is 100,000."""
-        from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine
 
         # Ensure env var not set
         if "DEDUP_CACHE_SIZE" in os.environ:
@@ -287,7 +287,7 @@ class TestDedupEngineWithLRU:
 
     def test_exact_duplicate_detection_with_lru(self):
         """Verify exact duplicate detection works with LRU cache."""
-        from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine
 
         config = DedupConfig(enable_minhash=False, hash_fields=["text"])
         engine = DedupEngine(config=config)
@@ -302,7 +302,7 @@ class TestDedupEngineWithLRU:
 
     def test_hash_to_url_bounded(self, monkeypatch):
         """Verify hash_to_url dict is bounded to same capacity."""
-        from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine
 
         monkeypatch.setenv("DEDUP_CACHE_SIZE", "10")
 
@@ -318,7 +318,7 @@ class TestDedupEngineWithLRU:
 
     def test_no_false_positives_in_dedup_engine(self):
         """Verify DedupEngine never has false positives."""
-        from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine
 
         config = DedupConfig(enable_minhash=False, hash_fields=["text"])
         engine = DedupEngine(config=config)
@@ -334,7 +334,7 @@ class TestDedupEngineWithLRU:
 
     def test_false_negatives_after_eviction(self, monkeypatch):
         """Verify false negatives occur after LRU eviction."""
-        from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine
 
         monkeypatch.setenv("DEDUP_CACHE_SIZE", "5")
 
@@ -363,7 +363,7 @@ class TestMemoryBenchmark:
         """Benchmark: Verify memory stays bounded with large dataset."""
         import sys
 
-        from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine
 
         monkeypatch.setenv("DEDUP_CACHE_SIZE", "10000")
 

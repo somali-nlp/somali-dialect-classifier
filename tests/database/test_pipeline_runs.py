@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger, SQLiteLedger
+from somdialc.ingestion.crawl_ledger import CrawlLedger, SQLiteLedger
 
 
 @pytest.fixture

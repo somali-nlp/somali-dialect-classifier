@@ -15,7 +15,7 @@ class TestM5FileChecksumDeduplication:
 
     def test_sqlite_check_file_checksum_found(self, tmp_path):
         """Test SQLite check_file_checksum() returns existing record."""
-        from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger, CrawlState
+        from somdialc.ingestion.crawl_ledger import CrawlLedger, CrawlState
 
         db_path = tmp_path / "test.db"
         ledger = CrawlLedger(db_path=db_path, backend_type="sqlite")
@@ -41,7 +41,7 @@ class TestM5FileChecksumDeduplication:
 
     def test_sqlite_check_file_checksum_not_found(self, tmp_path):
         """Test SQLite check_file_checksum() returns None for non-existent checksum."""
-        from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+        from somdialc.ingestion.crawl_ledger import CrawlLedger
 
         db_path = tmp_path / "test.db"
         ledger = CrawlLedger(db_path=db_path, backend_type="sqlite")
@@ -57,7 +57,7 @@ class TestM5FileChecksumDeduplication:
     )
     def test_postgres_check_file_checksum(self):
         """Test PostgreSQL check_file_checksum() implementation."""
-        from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger, CrawlState
+        from somdialc.ingestion.crawl_ledger import CrawlLedger, CrawlState
 
         # Create PostgreSQL ledger
         ledger = CrawlLedger(backend_type="postgres")
@@ -88,7 +88,7 @@ class TestM5FileChecksumDeduplication:
         """Test check_file_checksum() is called correctly during file duplication check."""
         import hashlib
 
-        from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger, CrawlState
+        from somdialc.ingestion.crawl_ledger import CrawlLedger, CrawlState
 
         db_path = tmp_path / "test.db"
         ledger = CrawlLedger(db_path=db_path, backend_type="sqlite")
@@ -120,7 +120,7 @@ class TestM6BufferConfiguration:
 
     def test_buffer_constants_documented(self):
         """Test that buffer constants have documentation."""
-        from somali_dialect_classifier.ingestion.processors import (
+        from somdialc.ingestion.processors import (
             wikipedia_somali_processor,
         )
 
@@ -141,7 +141,7 @@ class TestM6BufferConfiguration:
 
     def test_buffer_config_in_settings(self):
         """Test buffer settings are configurable via config."""
-        from somali_dialect_classifier.infra.config import WikipediaScrapingConfig
+        from somdialc.infra.config import WikipediaScrapingConfig
 
         config = WikipediaScrapingConfig()
 
@@ -157,7 +157,7 @@ class TestM6BufferConfiguration:
 
     def test_buffer_config_loaded_by_processor(self):
         """Test processor loads buffer config from settings."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -184,7 +184,7 @@ class TestM6BufferConfiguration:
                 "SDC_SCRAPING__WIKIPEDIA__BUFFER_TRUNCATE_SIZE_MB": "2",
             },
         ):
-            from somali_dialect_classifier.infra.config import (
+            from somdialc.infra.config import (
                 WikipediaScrapingConfig,
                 reset_config,
             )
@@ -202,21 +202,21 @@ class TestM9VersionCentralization:
 
     def test_version_module_exists(self):
         """Test version.py module exists with required attributes."""
-        from somali_dialect_classifier import version
+        from somdialc import version
 
         assert hasattr(version, "__version__")
         assert hasattr(version, "__pipeline_version__")
 
     def test_version_exposed_in_package_init(self):
         """Test version is exposed in package __init__."""
-        import somali_dialect_classifier
+        import somdialc
 
-        assert hasattr(somali_dialect_classifier, "__version__")
-        assert hasattr(somali_dialect_classifier, "__pipeline_version__")
+        assert hasattr(somdialc, "__version__")
+        assert hasattr(somdialc, "__pipeline_version__")
 
     def test_pipeline_version_format(self):
         """Test pipeline version follows semantic versioning."""
-        from somali_dialect_classifier import __pipeline_version__
+        from somdialc import __pipeline_version__
 
         # Should be in format X.Y.Z
         parts = __pipeline_version__.split(".")
@@ -229,8 +229,8 @@ class TestM9VersionCentralization:
         """Test RecordBuilder uses centralized version."""
         import inspect
 
-        from somali_dialect_classifier import __pipeline_version__
-        from somali_dialect_classifier.quality.record_utils import build_silver_record
+        from somdialc import __pipeline_version__
+        from somdialc.quality.record_utils import build_silver_record
 
         # Check default parameter value
         sig = inspect.signature(build_silver_record)
@@ -242,7 +242,7 @@ class TestM9VersionCentralization:
 
     def test_silver_writer_metadata_uses_centralized_version(self):
         """Test silver metadata uses centralized version (simpler test)."""
-        from somali_dialect_classifier import __pipeline_version__
+        from somdialc import __pipeline_version__
 
         # Just verify the version constant is used
         # Full integration test would be too complex for this unit test
@@ -251,9 +251,9 @@ class TestM9VersionCentralization:
         assert isinstance(__pipeline_version__, str)
 
         # Test that the version is accessible from package
-        import somali_dialect_classifier
+        import somdialc
 
-        assert somali_dialect_classifier.__pipeline_version__ == __pipeline_version__
+        assert somdialc.__pipeline_version__ == __pipeline_version__
 
 
 class TestM12QueryTimeout:
@@ -261,7 +261,7 @@ class TestM12QueryTimeout:
 
     def test_database_config_exists(self):
         """Test DatabaseConfig exists with query_timeout."""
-        from somali_dialect_classifier.infra.config import DatabaseConfig
+        from somdialc.infra.config import DatabaseConfig
 
         config = DatabaseConfig()
 
@@ -278,7 +278,7 @@ class TestM12QueryTimeout:
         """Test DatabaseConfig validates timeout ranges."""
         from pydantic import ValidationError
 
-        from somali_dialect_classifier.infra.config import DatabaseConfig
+        from somdialc.infra.config import DatabaseConfig
 
         # Valid timeout
         config = DatabaseConfig(query_timeout=60)
@@ -296,7 +296,7 @@ class TestM12QueryTimeout:
         """Test PostgresLedger accepts query_timeout parameter."""
         import inspect
 
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         # Check __init__ signature
         sig = inspect.signature(PostgresLedger.__init__)
@@ -311,7 +311,7 @@ class TestM12QueryTimeout:
     )
     def test_postgres_ledger_connection_string_includes_timeout(self):
         """Test PostgresLedger connection string includes statement_timeout."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         ledger = PostgresLedger(
             password=os.getenv("POSTGRES_PASSWORD"),
@@ -326,8 +326,8 @@ class TestM12QueryTimeout:
 
     def test_crawl_ledger_passes_timeout_to_postgres(self, monkeypatch):
         """Test CrawlLedger passes timeout config to PostgresLedger."""
-        from somali_dialect_classifier.infra.config import reset_config
-        from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+        from somdialc.infra.config import reset_config
+        from somdialc.ingestion.crawl_ledger import CrawlLedger
 
         # Mock PostgresLedger to avoid actual connection
         mock_postgres = MagicMock()
@@ -343,7 +343,7 @@ class TestM12QueryTimeout:
             reset_config()
 
             with patch(
-                "somali_dialect_classifier.database.postgres_ledger.PostgresLedger",
+                "somdialc.database.postgres_ledger.PostgresLedger",
                 return_value=mock_postgres,
             ) as mock_class:
                 CrawlLedger()
@@ -355,7 +355,7 @@ class TestM12QueryTimeout:
 
     def test_timeout_override_via_backend_kwargs(self):
         """Test query_timeout can be overridden via backend_kwargs."""
-        from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+        from somdialc.ingestion.crawl_ledger import CrawlLedger
 
         mock_postgres = MagicMock()
 
@@ -367,7 +367,7 @@ class TestM12QueryTimeout:
             },
         ):
             with patch(
-                "somali_dialect_classifier.database.postgres_ledger.PostgresLedger",
+                "somdialc.database.postgres_ledger.PostgresLedger",
                 return_value=mock_postgres,
             ) as mock_class:
                 # Override timeout via backend_kwargs

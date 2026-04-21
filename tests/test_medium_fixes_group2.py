@@ -13,12 +13,12 @@ from pathlib import Path
 from typing import Optional
 from unittest.mock import MagicMock, Mock, patch
 
-from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
-from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+from somdialc.ingestion.base_pipeline import BasePipeline
+from somdialc.ingestion.processors.wikipedia_somali_processor import (
     MAX_ARTICLE_LINES,
     WikipediaSomaliProcessor,
 )
-from somali_dialect_classifier.ingestion.raw_record import RawRecord
+from somdialc.ingestion.raw_record import RawRecord
 
 
 class TestM3MemoryLimits:
@@ -37,7 +37,7 @@ class TestM3MemoryLimits:
 
         # Create processor with mocked dependencies
         with patch(
-            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
         ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
@@ -78,7 +78,7 @@ class TestM3MemoryLimits:
 
         # Create processor with mocked dependencies
         with patch(
-            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
         ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
@@ -108,7 +108,7 @@ class TestM3MemoryLimits:
 
         # Create processor with mocked dependencies
         with patch(
-            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
         ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
@@ -150,7 +150,7 @@ class TestM3MemoryLimits:
 
         # Create processor with mocked dependencies
         with patch(
-            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
         ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
@@ -205,7 +205,7 @@ class TestM4OptionalPathReturn:
     def test_wikipedia_processor_can_return_none(self):
         """Test that WikipediaSomaliProcessor.run() can return None."""
         with patch(
-            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
         ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
 
@@ -264,7 +264,7 @@ class TestM10TypeHints:
         import requests
 
         with patch(
-            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
         ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
 
@@ -280,7 +280,7 @@ class TestM11LoggingLevels:
 
     def test_filter_rejection_uses_debug(self, caplog):
         """Test that individual filter rejections use DEBUG level."""
-        from somali_dialect_classifier.quality.filter_engine import FilterEngine
+        from somdialc.quality.filter_engine import FilterEngine
 
         engine = FilterEngine()
 
@@ -308,7 +308,7 @@ class TestM11LoggingLevels:
         staging_file.write_text("\x1e PAGE: Test\nTest content\n")
 
         with patch(
-            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
         ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
@@ -325,7 +325,7 @@ class TestM11LoggingLevels:
 
     def test_checkpoint_save_uses_debug(self, caplog, tmp_path):
         """Test that checkpoint saves use DEBUG level."""
-        from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
+        from somdialc.ingestion.base_pipeline import BasePipeline
 
         # Create a minimal concrete implementation
         class TestPipeline(BasePipeline):
@@ -339,7 +339,7 @@ class TestM11LoggingLevels:
                 yield RawRecord(title="Test", text="Test", url="http://test.com", metadata={})
 
             def _create_cleaner(self):
-                from somali_dialect_classifier.quality.text_cleaners import TextCleaningPipeline
+                from somdialc.quality.text_cleaners import TextCleaningPipeline
 
                 return TextCleaningPipeline(cleaners=[])
 
@@ -369,7 +369,7 @@ class TestM11LoggingLevels:
 
         import logging
 
-        with caplog.at_level(logging.DEBUG, logger="somali_dialect_classifier"):
+        with caplog.at_level(logging.DEBUG, logger="somdialc"):
             pipeline._save_checkpoint(checkpoint_path, 100)
 
         # Verify DEBUG level was used for checkpoint save
@@ -419,7 +419,7 @@ def test_all_fixes_integrated():
 
         # Create processor (tests M4, M10 type hints work)
         with patch(
-            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
         ):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file

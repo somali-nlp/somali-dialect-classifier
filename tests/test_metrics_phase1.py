@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from somali_dialect_classifier.infra.metrics import (
+from somdialc.infra.metrics import (
     MetricsCollector,
     MetricSnapshot,
     PipelineType,

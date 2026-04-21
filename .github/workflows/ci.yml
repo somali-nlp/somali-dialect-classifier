@@ -34,25 +34,25 @@ jobs:
       - name: Run mypy type checker (core modules)
         run: |
           mypy --follow-imports=skip \
-            src/somali_dialect_classifier/contracts/ingestion_output.py \
-            src/somali_dialect_classifier/schema/registry.py \
-            src/somali_dialect_classifier/schema/validator.py \
-            src/somali_dialect_classifier/schema/validation_service.py \
-            src/somali_dialect_classifier/quality/silver_writer.py \
-            src/somali_dialect_classifier/quality/record_builder.py \
-            src/somali_dialect_classifier/quality/schema_mappers.py \
-            src/somali_dialect_classifier/infra/aggregation.py \
-            src/somali_dialect_classifier/infra/config.py \
-            src/somali_dialect_classifier/orchestration/flows.py
+            src/somdialc/contracts/ingestion_output.py \
+            src/somdialc/schema/registry.py \
+            src/somdialc/schema/validator.py \
+            src/somdialc/schema/validation_service.py \
+            src/somdialc/quality/silver_writer.py \
+            src/somdialc/quality/record_builder.py \
+            src/somdialc/quality/schema_mappers.py \
+            src/somdialc/infra/aggregation.py \
+            src/somdialc/infra/config.py \
+            src/somdialc/orchestration/flows.py
 
       - name: Run mypy type checker (extended ingestion)
         run: |
-          mypy src/somali_dialect_classifier/ingestion || echo "::warning::mypy found type errors in ingestion - fix gradually"
+          mypy src/somdialc/ingestion || echo "::warning::mypy found type errors in ingestion - fix gradually"
         continue-on-error: true
 
       - name: Check for stale repo and module references
         run: |
-          ! rg -n "your-org|your-username|yourusername|YOUR-USERNAME|preprocessing/base_pipeline|preprocessing/filters|somali_dialect_classifier\\.utils|deploy-dashboard\\.yml" \
+          ! rg -n "your-org|your-username|yourusername|YOUR-USERNAME|preprocessing/base_pipeline|preprocessing/filters|somdialc\\.utils|deploy-dashboard\\.yml" \
             README.md CONTRIBUTING.md src/dashboard/README.md \
             docs/guides/dashboard.md docs/guides/data-pipeline.md \
             docs/guides/portfolio.md \
@@ -194,8 +194,8 @@ jobs:
             ### What This Means
 
             The CI pipeline detected metrics calculation anomalies. These indicate potential bugs in:
-            - \`src/somali_dialect_classifier/infra/metrics.py\`
-            - \`src/somali_dialect_classifier/infra/metrics_schema.py\`
+            - \`src/somdialc/infra/metrics.py\`
+            - \`src/somdialc/infra/metrics_schema.py\`
             - Data source processors (e.g., \`ingestion/processors/*_processor.py\`)
 
             ### Action Required

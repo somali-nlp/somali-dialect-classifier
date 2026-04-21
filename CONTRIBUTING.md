@@ -64,7 +64,7 @@ pytest
 
 ```bash
 # Run with coverage report
-pytest --cov=src/somali_dialect_classifier --cov-report=html
+pytest --cov=src/somdialc --cov-report=html
 
 # Run specific test file
 pytest tests/test_wikipedia_integration.py
@@ -136,13 +136,13 @@ We use **mypy** for static type checking:
 
 ```bash
 # Type check the CI-blocking core modules
-mypy src/somali_dialect_classifier/contracts src/somali_dialect_classifier/schema src/somali_dialect_classifier/quality src/somali_dialect_classifier/infra src/somali_dialect_classifier/orchestration
+mypy src/somdialc/contracts src/somdialc/schema src/somdialc/quality src/somdialc/infra src/somdialc/orchestration
 
 # Type check the extended ingestion modules
-mypy src/somali_dialect_classifier/ingestion
+mypy src/somdialc/ingestion
 
 # Type check specific file
-mypy src/somali_dialect_classifier/ingestion/base_pipeline.py
+mypy src/somdialc/ingestion/base_pipeline.py
 ```
 
 ### CI Quality Gates
@@ -167,8 +167,8 @@ Before committing, run:
 # Run all checks
 ruff check --fix src/ tests/
 ruff format src/ tests/
-mypy src/somali_dialect_classifier/contracts src/somali_dialect_classifier/schema src/somali_dialect_classifier/quality src/somali_dialect_classifier/infra src/somali_dialect_classifier/orchestration
-mypy src/somali_dialect_classifier/ingestion
+mypy src/somdialc/contracts src/somdialc/schema src/somdialc/quality src/somdialc/infra src/somdialc/orchestration
+mypy src/somdialc/ingestion
 pytest
 ```
 
@@ -205,7 +205,7 @@ The project currently has **4 production data sources**: Wikipedia, BBC Somali, 
 
 ### 1. Create Processor Class
 
-Create `src/somali_dialect_classifier/ingestion/processors/your_source_somali_processor.py`:
+Create `src/somdialc/ingestion/processors/your_source_somali_processor.py`:
 
 **Note**: Follow the naming convention `<source>_somali_processor.py`
 
@@ -248,7 +248,7 @@ class YourSourceSomaliProcessor(BasePipeline):
 
     def _register_filters(self):
         """Register quality filters."""
-        from somali_dialect_classifier.preprocessing.filters import (
+        from somdialc.preprocessing.filters import (
             min_length_filter,
             langid_filter
         )
@@ -283,12 +283,12 @@ class YourSourceSomaliProcessor(BasePipeline):
 **Phase 0 provides production-ready MLOps infrastructure**. Integrate your processor:
 
 ```python
-from somali_dialect_classifier.infra.logging_utils import (
+from somdialc.infra.logging_utils import (
     StructuredLogger, set_run_context, get_run_id
 )
-from somali_dialect_classifier.infra.metrics import MetricsCollector, QualityReporter
-from somali_dialect_classifier.ingestion.crawl_ledger import get_ledger
-from somali_dialect_classifier.ingestion.dedup import DedupEngine
+from somdialc.infra.metrics import MetricsCollector, QualityReporter
+from somdialc.ingestion.crawl_ledger import get_ledger
+from somdialc.ingestion.dedup import DedupEngine
 
 class YourSourceSomaliProcessor(BasePipeline):
     def __init__(self, force: bool = False):
@@ -350,7 +350,7 @@ class YourSourceSomaliProcessor(BasePipeline):
 
 ### 3. Create CLI Entry Point
 
-Create `src/somali_dialect_classifier/cli/download_yoursourcesom.py`:
+Create `src/somdialc/cli/download_yoursourcesom.py`:
 
 **Note**: Follow the naming convention `download_<source>som.py`
 
@@ -363,12 +363,12 @@ def main() -> None:
 Add to `pyproject.toml`:
 ```toml
 [project.scripts]
-yoursourcesom-download = "somali_dialect_classifier.cli.download_yoursourcesom:main"
+yoursourcesom-download = "somdialc.cli.download_yoursourcesom:main"
 ```
 
 ### 4. Add Configuration
 
-Add to `src/somali_dialect_classifier/config/production.yaml`:
+Add to `src/somdialc/config/production.yaml`:
 
 ```yaml
 yoursource:
@@ -425,7 +425,7 @@ mypy src/
 pytest
 
 # Check coverage
-pytest --cov=src/somali_dialect_classifier --cov-report=term-missing
+pytest --cov=src/somdialc --cov-report=term-missing
 ```
 
 ### 4. Commit Your Changes

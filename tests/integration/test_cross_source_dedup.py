@@ -20,7 +20,7 @@ accurate MinHash shingle creation and similarity scoring.
 
 import pytest
 
-from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine
+from somdialc.ingestion.dedup import DedupConfig, DedupEngine
 
 # ==============================================================================
 # Realistic Somali Test Data

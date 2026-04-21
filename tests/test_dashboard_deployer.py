@@ -12,7 +12,7 @@ pytestmark = pytest.mark.skip(
     reason="Requires external metrics data files - not available in test environment"
 )
 
-from somali_dialect_classifier.deployment import (
+from somdialc.deployment import (
     DashboardDeployer,
     DeploymentConfig,
     GitOperations,

@@ -10,7 +10,7 @@ Tests:
 
 import pytest
 
-from somali_dialect_classifier.infra.logging_utils import (
+from somdialc.infra.logging_utils import (
     StructuredLogger,
     Timer,
     clear_context,
@@ -18,12 +18,12 @@ from somali_dialect_classifier.infra.logging_utils import (
     get_context,
     set_context,
 )
-from somali_dialect_classifier.infra.metrics import MetricsCollector, QualityReporter
-from somali_dialect_classifier.ingestion.crawl_ledger import (
+from somdialc.infra.metrics import MetricsCollector, QualityReporter
+from somdialc.ingestion.crawl_ledger import (
     CrawlLedger,
     CrawlState,
 )
-from somali_dialect_classifier.ingestion.dedup import DedupConfig, DedupEngine, TextHasher
+from somdialc.ingestion.dedup import DedupConfig, DedupEngine, TextHasher
 
 
 class TestCrawlLedger:

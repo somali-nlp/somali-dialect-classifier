@@ -14,10 +14,10 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from somali_dialect_classifier.ingestion.crawl_ledger import (
+from somdialc.ingestion.crawl_ledger import (
     CrawlLedger,
 )
-from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+from somdialc.ingestion.processors.wikipedia_somali_processor import (
     WikipediaSomaliProcessor,
 )
 
@@ -38,12 +38,12 @@ def temp_ledger():
 def mock_processor(temp_ledger):
     """Create Wikipedia processor with mocked dependencies."""
     with patch(
-        "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_ledger"
+        "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
     ) as mock_get_ledger:
         mock_get_ledger.return_value = temp_ledger
 
         with patch(
-            "somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor.get_config"
+            "somdialc.ingestion.processors.wikipedia_somali_processor.get_config"
         ) as mock_config:
             # Mock config to avoid file system dependencies
             config = Mock()

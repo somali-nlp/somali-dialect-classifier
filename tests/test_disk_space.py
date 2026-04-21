@@ -14,8 +14,8 @@ from unittest.mock import patch
 
 import pytest
 
-from somali_dialect_classifier.infra.data_manager import DataManager
-from somali_dialect_classifier.infra.disk_utils import (
+from somdialc.infra.data_manager import DataManager
+from somdialc.infra.disk_utils import (
     InsufficientDiskSpaceError,
     check_disk_space,
     estimate_required_space,
@@ -49,7 +49,7 @@ class TestDiskUtils:
 
     def test_check_disk_space_insufficient_mocked(self, tmp_path):
         """Test check_disk_space with mocked insufficient space."""
-        with patch("somali_dialect_classifier.infra.disk_utils.get_available_disk_space") as mock:
+        with patch("somdialc.infra.disk_utils.get_available_disk_space") as mock:
             # Mock only 100MB available
             mock.return_value = 100 * (1024**2)
 
@@ -62,7 +62,7 @@ class TestDiskUtils:
 
     def test_check_disk_space_with_buffer(self, tmp_path):
         """Test check_disk_space applies buffer percentage."""
-        with patch("somali_dialect_classifier.infra.disk_utils.get_available_disk_space") as mock:
+        with patch("somdialc.infra.disk_utils.get_available_disk_space") as mock:
             # Mock 110MB available
             mock.return_value = 110 * (1024**2)
 
@@ -73,7 +73,7 @@ class TestDiskUtils:
 
     def test_check_disk_space_with_min_free(self, tmp_path):
         """Test check_disk_space with minimum free space requirement."""
-        with patch("somali_dialect_classifier.infra.disk_utils.get_available_disk_space") as mock:
+        with patch("somdialc.infra.disk_utils.get_available_disk_space") as mock:
             # Mock 6GB available
             mock.return_value = 6 * (1024**3)
 
@@ -91,7 +91,7 @@ class TestDiskUtils:
 
     def test_check_disk_space_error_handling(self, tmp_path):
         """Test check_disk_space handles errors gracefully."""
-        with patch("somali_dialect_classifier.infra.disk_utils.get_available_disk_space") as mock:
+        with patch("somdialc.infra.disk_utils.get_available_disk_space") as mock:
             mock.side_effect = PermissionError("Access denied")
 
             has_space, error = check_disk_space(1024, tmp_path)
@@ -202,10 +202,10 @@ class TestDataManagerDiskSpace:
         manager = DataManager("Test-Source", "run_001", base_dir=tmp_path)
 
         with patch(
-            "somali_dialect_classifier.infra.data_manager.get_available_disk_space"
+            "somdialc.infra.data_manager.get_available_disk_space"
         ) as mock_avail:
             with patch(
-                "somali_dialect_classifier.infra.data_manager.check_disk_space"
+                "somdialc.infra.data_manager.check_disk_space"
             ) as mock_check:
                 # Mock insufficient space check
                 mock_avail.return_value = 100 * (1024**2)
@@ -233,7 +233,7 @@ class TestDataManagerDiskSpace:
 
     def test_ensure_disk_space_uses_config(self, tmp_path):
         """Test ensure_disk_space uses configuration settings."""
-        from somali_dialect_classifier.infra.config import get_config
+        from somdialc.infra.config import get_config
 
         manager = DataManager("Test-Source", "run_001", base_dir=tmp_path)
         config = get_config()
@@ -243,7 +243,7 @@ class TestDataManagerDiskSpace:
         assert config.disk.space_buffer_pct == 0.1
 
         # Should apply buffer and minimum free space from config
-        with patch("somali_dialect_classifier.infra.data_manager.check_disk_space") as mock:
+        with patch("somdialc.infra.data_manager.check_disk_space") as mock:
             mock.return_value = (True, "")
 
             manager.ensure_disk_space(1024)
@@ -263,10 +263,10 @@ class TestDataManagerDiskSpace:
         manager = DataManager("Test-Source", "run_001", base_dir=tmp_path)
 
         with patch(
-            "somali_dialect_classifier.infra.data_manager.get_available_disk_space"
+            "somdialc.infra.data_manager.get_available_disk_space"
         ) as mock_avail:
             with patch(
-                "somali_dialect_classifier.infra.data_manager.check_disk_space"
+                "somdialc.infra.data_manager.check_disk_space"
             ) as mock_check:
                 # Mock passing check but tight margin
                 # Request 3GB, have 4GB available
@@ -287,7 +287,7 @@ class TestConfigurationIntegration:
 
     def test_disk_config_defaults(self):
         """Test DiskConfig has correct defaults."""
-        from somali_dialect_classifier.infra.config import get_config
+        from somdialc.infra.config import get_config
 
         config = get_config()
         assert config.disk.min_free_space_gb == 5
@@ -299,7 +299,7 @@ class TestConfigurationIntegration:
         monkeypatch.setenv("SDC_DISK__SPACE_BUFFER_PCT", "0.2")
 
         # Reset config to pick up env vars
-        from somali_dialect_classifier.infra.config import get_config, reset_config
+        from somdialc.infra.config import get_config, reset_config
 
         reset_config()
         config = get_config()
@@ -314,7 +314,7 @@ class TestConfigurationIntegration:
         """Test DiskConfig validates ranges."""
         from pydantic import ValidationError
 
-        from somali_dialect_classifier.infra.config import DiskConfig
+        from somdialc.infra.config import DiskConfig
 
         # Valid config
         config = DiskConfig(min_free_space_gb=5, space_buffer_pct=0.1)
@@ -334,8 +334,8 @@ class TestBasePipelineIntegration:
 
     def test_estimate_processing_space_from_staging(self, tmp_path):
         """Test _estimate_processing_space uses staging file size."""
-        from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
-        from somali_dialect_classifier.quality.text_cleaners import TextCleaningPipeline
+        from somdialc.ingestion.base_pipeline import BasePipeline
+        from somdialc.quality.text_cleaners import TextCleaningPipeline
 
         # Create mock staging file
         staging_file = tmp_path / "staging.jsonl"
@@ -383,8 +383,8 @@ class TestBasePipelineIntegration:
 
     def test_check_disk_space_for_processing_raises(self, tmp_path):
         """Test _check_disk_space_for_processing raises on insufficient space."""
-        from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
-        from somali_dialect_classifier.quality.text_cleaners import TextCleaningPipeline
+        from somdialc.ingestion.base_pipeline import BasePipeline
+        from somdialc.quality.text_cleaners import TextCleaningPipeline
 
         # Create minimal pipeline subclass
         class TestPipeline(BasePipeline):
@@ -425,10 +425,10 @@ class TestBasePipelineIntegration:
         pipeline.processed_dir.mkdir()
 
         with patch(
-            "somali_dialect_classifier.infra.data_manager.get_available_disk_space"
+            "somdialc.infra.data_manager.get_available_disk_space"
         ) as mock_avail:
             with patch(
-                "somali_dialect_classifier.infra.data_manager.check_disk_space"
+                "somdialc.infra.data_manager.check_disk_space"
             ) as mock_check:
                 # Mock insufficient space
                 mock_avail.return_value = 1024  # Only 1KB available

@@ -11,7 +11,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from somali_dialect_classifier.preprocessing.validator import (
+from somdialc.preprocessing.validator import (
     ValidationError,
     iter_validated_records,
     validate_silver_directory,

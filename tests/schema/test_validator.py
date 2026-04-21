@@ -7,7 +7,7 @@ Tests record and DataFrame validation.
 import pandas as pd
 import pytest
 
-from somali_dialect_classifier.schema.validator import SchemaValidator
+from somdialc.schema.validator import SchemaValidator
 
 
 class TestSchemaValidator:

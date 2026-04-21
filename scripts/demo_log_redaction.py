@@ -13,14 +13,14 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from somali_dialect_classifier.infra.logging_utils import (
+from somdialc.infra.logging_utils import (
     StructuredFormatter,
     set_context,
     clear_context,
     log_event,
     LogEvent,
 )
-from somali_dialect_classifier.infra.security import redact_secrets
+from somdialc.infra.security import redact_secrets
 
 
 def demo_basic_redaction():

@@ -9,7 +9,7 @@ These tests verify improvements made to:
 
 import doctest
 
-from somali_dialect_classifier.quality.filter_functions import (
+from somdialc.quality.filter_functions import (
     create_hf_filters,
     create_news_filters,
     create_wikipedia_filters,
@@ -112,7 +112,7 @@ class TestL1DocstringExamples:
 
     def test_docstring_examples_are_executable(self):
         """Test that all docstring examples can be found and executed."""
-        import somali_dialect_classifier.quality.filter_functions as filter_mod
+        import somdialc.quality.filter_functions as filter_mod
 
         # Run doctest on the module
         results = doctest.testmod(filter_mod, verbose=False)
@@ -133,7 +133,7 @@ class TestL3ConsistentQuoteStyle:
     def test_filter_functions_imports_work(self):
         """Test that all filter functions can be imported after quote fixes."""
         # If quote changes broke anything, imports would fail
-        from somali_dialect_classifier.quality.filter_functions import (
+        from somdialc.quality.filter_functions import (
             create_news_filters,
             create_wikipedia_filters,
             custom_filter,
@@ -211,19 +211,19 @@ class TestL5AllExports:
 
     def test_root_package_all_exports(self):
         """Test that root package __all__ is defined and correct."""
-        import somali_dialect_classifier
+        import somdialc
 
-        assert hasattr(somali_dialect_classifier, "__all__")
-        assert "__version__" in somali_dialect_classifier.__all__
-        assert "__pipeline_version__" in somali_dialect_classifier.__all__
+        assert hasattr(somdialc, "__all__")
+        assert "__version__" in somdialc.__all__
+        assert "__pipeline_version__" in somdialc.__all__
 
         # Verify exports are accessible
-        assert hasattr(somali_dialect_classifier, "__version__")
-        assert hasattr(somali_dialect_classifier, "__pipeline_version__")
+        assert hasattr(somdialc, "__version__")
+        assert hasattr(somdialc, "__pipeline_version__")
 
     def test_ingestion_package_all_exports(self):
         """Test that ingestion package __all__ is defined and correct."""
-        import somali_dialect_classifier.ingestion as ingestion
+        import somdialc.ingestion as ingestion
 
         assert hasattr(ingestion, "__all__")
 
@@ -239,7 +239,7 @@ class TestL5AllExports:
 
     def test_quality_package_all_exports(self):
         """Test that quality package __all__ is defined and correct."""
-        import somali_dialect_classifier.quality as quality
+        import somdialc.quality as quality
 
         assert hasattr(quality, "__all__")
 
@@ -264,7 +264,7 @@ class TestL5AllExports:
 
     def test_infra_package_all_exports(self):
         """Test that infra package __all__ is defined and correct."""
-        import somali_dialect_classifier.infra as infra
+        import somdialc.infra as infra
 
         assert hasattr(infra, "__all__")
 
@@ -281,7 +281,7 @@ class TestL5AllExports:
         """Test that wildcard import from ingestion works correctly."""
         # Create isolated namespace for wildcard import
         namespace = {}
-        exec("from somali_dialect_classifier.ingestion import *", namespace)
+        exec("from somdialc.ingestion import *", namespace)
 
         # Should have exactly __all__ exports
         expected_exports = ["BasePipeline", "CrawlLedger", "DedupEngine"]
@@ -297,7 +297,7 @@ class TestL5AllExports:
     def test_wildcard_import_quality(self):
         """Test that wildcard import from quality works correctly."""
         namespace = {}
-        exec("from somali_dialect_classifier.quality import *", namespace)
+        exec("from somdialc.quality import *", namespace)
 
         expected_exports = [
             "FilterEngine",
@@ -314,7 +314,7 @@ class TestL5AllExports:
     def test_wildcard_import_infra(self):
         """Test that wildcard import from infra works correctly."""
         namespace = {}
-        exec("from somali_dialect_classifier.infra import *", namespace)
+        exec("from somdialc.infra import *", namespace)
 
         expected_exports = ["get_config", "DataManager"]
         for export in expected_exports:
@@ -325,14 +325,14 @@ class TestL5AllExports:
 
     def test_all_exports_are_importable(self):
         """Test that all exports listed in __all__ can actually be imported."""
-        import somali_dialect_classifier
-        import somali_dialect_classifier.infra as infra
-        import somali_dialect_classifier.ingestion as ingestion
-        import somali_dialect_classifier.quality as quality
+        import somdialc
+        import somdialc.infra as infra
+        import somdialc.ingestion as ingestion
+        import somdialc.quality as quality
 
         # Test root package
-        for name in somali_dialect_classifier.__all__:
-            assert hasattr(somali_dialect_classifier, name), f"{name} in __all__ but not accessible"
+        for name in somdialc.__all__:
+            assert hasattr(somdialc, name), f"{name} in __all__ but not accessible"
 
         # Test ingestion
         for name in ingestion.__all__:
@@ -359,7 +359,7 @@ class TestIntegrationAllLowFixes:
         """Test complete filter chain using documented examples and clean imports."""
         # Use wildcard import (tests L5)
         namespace = {}
-        exec("from somali_dialect_classifier.quality import *", namespace)
+        exec("from somdialc.quality import *", namespace)
 
         filter_engine = namespace["FilterEngine"]
 
@@ -382,7 +382,7 @@ class TestIntegrationAllLowFixes:
     def test_end_to_end_filter_usage(self):
         """Test end-to-end filter usage with all fixes applied."""
         # Import using clean API (L5)
-        from somali_dialect_classifier.quality import FilterEngine
+        from somdialc.quality import FilterEngine
 
         # Create filters using examples (L1)
         ruleset = {"sports": ["kubadda"], "politics": ["xukuumad"]}
@@ -405,10 +405,10 @@ class TestIntegrationAllLowFixes:
     def test_public_api_documentation_consistency(self):
         """Test that public API matches documentation expectations."""
         # These imports should work as documented
-        from somali_dialect_classifier import __version__
-        from somali_dialect_classifier.infra import DataManager, get_config
-        from somali_dialect_classifier.ingestion import BasePipeline, CrawlLedger
-        from somali_dialect_classifier.quality import (
+        from somdialc import __version__
+        from somdialc.infra import DataManager, get_config
+        from somdialc.ingestion import BasePipeline, CrawlLedger
+        from somdialc.quality import (
             FilterEngine,
             RecordBuilder,
             SilverDatasetWriter,

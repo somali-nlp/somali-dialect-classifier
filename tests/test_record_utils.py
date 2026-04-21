@@ -6,7 +6,7 @@ Pure functions are trivial to test without mocks.
 
 import json
 
-from somali_dialect_classifier.quality.record_utils import (
+from somdialc.quality.record_utils import (
     build_silver_record,
     count_tokens,
     generate_record_id,

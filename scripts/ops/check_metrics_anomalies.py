@@ -37,7 +37,7 @@ print("  Please use: somali-tools metrics check-anomalies")
 print("  Falling back to CLI...\n")
 
 try:
-    from somali_dialect_classifier.tools.cli import cli
+    from somdialc.tools.cli import cli
 
     # Rewrite argv to call CLI command
     # Preserve arguments (--output, --threshold, etc.)

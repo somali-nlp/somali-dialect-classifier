@@ -10,7 +10,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from somali_dialect_classifier.ingestion.processors.huggingface_somali_processor import (
+from somdialc.ingestion.processors.huggingface_somali_processor import (
     create_mc4_processor,
 )
 
@@ -51,7 +51,7 @@ class TestHFProcessorFiles:
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
-                "somali_dialect_classifier.ingestion.processors.huggingface_somali_processor.load_dataset",
+                "somdialc.ingestion.processors.huggingface_somali_processor.load_dataset",
                 mock_load_dataset,
             )
 
@@ -86,7 +86,7 @@ class TestHFProcessorFiles:
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
-                "somali_dialect_classifier.ingestion.processors.huggingface_somali_processor.load_dataset",
+                "somdialc.ingestion.processors.huggingface_somali_processor.load_dataset",
                 mock_load_dataset,
             )
 
@@ -136,7 +136,7 @@ class TestHFProcessorFiles:
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
-                "somali_dialect_classifier.ingestion.processors.huggingface_somali_processor.load_dataset",
+                "somdialc.ingestion.processors.huggingface_somali_processor.load_dataset",
                 mock_load_dataset,
             )
 
@@ -175,7 +175,7 @@ class TestHFProcessorFiles:
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
-                "somali_dialect_classifier.ingestion.processors.huggingface_somali_processor.load_dataset",
+                "somdialc.ingestion.processors.huggingface_somali_processor.load_dataset",
                 mock_load_dataset,
             )
 
@@ -224,7 +224,7 @@ class TestHFProcessorFiles:
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
-                "somali_dialect_classifier.ingestion.processors.huggingface_somali_processor.load_dataset",
+                "somdialc.ingestion.processors.huggingface_somali_processor.load_dataset",
                 mock_load_dataset,
             )
 
@@ -272,7 +272,7 @@ class TestHFProcessorFiles:
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
-                "somali_dialect_classifier.ingestion.processors.huggingface_somali_processor.load_dataset",
+                "somdialc.ingestion.processors.huggingface_somali_processor.load_dataset",
                 mock_load_dataset,
             )
 
@@ -318,7 +318,7 @@ class TestHFProcessorFiles:
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
-                "somali_dialect_classifier.ingestion.processors.huggingface_somali_processor.load_dataset",
+                "somdialc.ingestion.processors.huggingface_somali_processor.load_dataset",
                 mock_load_dataset,
             )
 

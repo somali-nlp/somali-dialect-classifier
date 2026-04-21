@@ -17,7 +17,7 @@ from datetime import datetime
 
 import pytest
 
-from somali_dialect_classifier.ingestion.crawl_ledger import CrawlState
+from somdialc.ingestion.crawl_ledger import CrawlState
 
 # Skip all tests if PostgreSQL is not available
 postgres_available = os.getenv("POSTGRES_HOST") is not None
@@ -30,7 +30,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture
 def postgres_ledger():
     """Create PostgreSQL ledger for testing."""
-    from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+    from somdialc.database.postgres_ledger import PostgresLedger
 
     ledger = PostgresLedger(
         host=os.getenv("POSTGRES_HOST", "localhost"),

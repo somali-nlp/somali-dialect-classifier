@@ -81,7 +81,7 @@ services:
           memory: 4G
 
     # Default production command - run orchestrator
-    command: python -m somali_dialect_classifier.orchestration.flows --pipeline all
+    command: python -m somdialc.orchestration.flows --pipeline all
 
     networks:
       - somali-nlp-network

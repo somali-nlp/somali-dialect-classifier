@@ -26,7 +26,7 @@ import click
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from somali_dialect_classifier.preprocessing.crawl_ledger import CrawlLedger
+from somdialc.preprocessing.crawl_ledger import CrawlLedger
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -123,7 +123,7 @@ def migrate(
                             metadata = None
 
                     # Use backend.upsert_url for direct access
-                    from somali_dialect_classifier.preprocessing.crawl_ledger import CrawlState
+                    from somdialc.preprocessing.crawl_ledger import CrawlState
 
                     postgres_ledger.backend.upsert_url(
                         url=url_dict["url"],

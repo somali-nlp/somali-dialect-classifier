@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 def main():
-    cli_file = Path(__file__).parent.parent / "src" / "somali_dialect_classifier" / "tools" / "cli.py"
+    cli_file = Path(__file__).parent.parent / "src" / "somdialc" / "tools" / "cli.py"
 
     # Read the current file
     with open(cli_file) as f:

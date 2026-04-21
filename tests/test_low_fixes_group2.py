@@ -12,9 +12,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
-from somali_dialect_classifier.ingestion.crawl_ledger import CrawlState
-from somali_dialect_classifier.quality.filter_engine import FilterEngine
+from somdialc.ingestion.base_pipeline import BasePipeline
+from somdialc.ingestion.crawl_ledger import CrawlState
+from somdialc.quality.filter_engine import FilterEngine
 
 # ==============================================================================
 # Helper: Minimal Test Pipeline
@@ -258,7 +258,7 @@ class TestL6FilterRegistrationRefactoring:
         class CustomPipeline(MinimalTestPipeline):
             def _register_filters(self):
                 # Override to add custom filters
-                from somali_dialect_classifier.quality.filter_functions import min_length_filter
+                from somdialc.quality.filter_functions import min_length_filter
 
                 self.filter_engine.register_filter(min_length_filter, {"threshold": 100})
 
@@ -271,7 +271,7 @@ class TestL6FilterRegistrationRefactoring:
         """Test filter registration doesn't add duplicates on multiple calls."""
         pipeline = MinimalTestPipeline(source="wikipedia")
 
-        from somali_dialect_classifier.quality.filter_functions import min_length_filter
+        from somdialc.quality.filter_functions import min_length_filter
 
         # Register same filter twice
         pipeline.filter_engine.register_filter(min_length_filter, {"threshold": 50})
@@ -286,10 +286,10 @@ class TestL6FilterRegistrationRefactoring:
 
     def test_processors_use_consistent_filter_registration_pattern(self):
         """Test all processors follow consistent filter registration pattern."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -305,7 +305,7 @@ class TestL6FilterRegistrationRefactoring:
         """Test filter registration uses FilterEngine.register_filter() API."""
         pipeline = MinimalTestPipeline(source="wikipedia")
 
-        from somali_dialect_classifier.quality.filter_functions import min_length_filter
+        from somdialc.quality.filter_functions import min_length_filter
 
         # Should use register_filter API
         pipeline.filter_engine.register_filter(min_length_filter, {"threshold": 50})
@@ -316,7 +316,7 @@ class TestL6FilterRegistrationRefactoring:
 
     def test_multiple_processors_can_register_different_filters(self):
         """Test different processors can register different filter combinations."""
-        from somali_dialect_classifier.quality.filter_functions import (
+        from somdialc.quality.filter_functions import (
             langid_filter,
             min_length_filter,
         )
@@ -349,7 +349,7 @@ class TestIntegrationLowPriorityFixes:
 
     def test_pipeline_with_valid_seed_and_filters(self):
         """Test pipeline initialization with valid seed and filter registration."""
-        from somali_dialect_classifier.quality.filter_functions import min_length_filter
+        from somdialc.quality.filter_functions import min_length_filter
 
         class TestPipeline(MinimalTestPipeline):
             def _register_filters(self):
@@ -365,7 +365,7 @@ class TestIntegrationLowPriorityFixes:
 
     def test_pipeline_with_invalid_seed_still_registers_filters(self):
         """Test pipeline with invalid seed still registers filters correctly."""
-        from somali_dialect_classifier.quality.filter_functions import langid_filter
+        from somdialc.quality.filter_functions import langid_filter
 
         class TestPipeline(MinimalTestPipeline):
             def _register_filters(self):
@@ -394,7 +394,7 @@ class TestIntegrationLowPriorityFixes:
 
     def test_exception_handling_doesnt_break_filter_registration(self):
         """Test exception in run_id parsing doesn't affect filter registration."""
-        from somali_dialect_classifier.quality.filter_functions import min_length_filter
+        from somdialc.quality.filter_functions import min_length_filter
 
         class TestPipeline(MinimalTestPipeline):
             def _register_filters(self):

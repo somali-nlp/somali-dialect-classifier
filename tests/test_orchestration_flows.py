@@ -1,4 +1,4 @@
-from somali_dialect_classifier.orchestration.flows import _run_locked_pipeline_task
+from somdialc.orchestration.flows import _run_locked_pipeline_task
 
 
 class FakeLedger:

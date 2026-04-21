@@ -12,9 +12,9 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 import requests
 
-from somali_dialect_classifier.infra.config import get_config
-from somali_dialect_classifier.infra.http import HTTPSessionFactory, TimeoutHTTPSession
-from somali_dialect_classifier.ingestion.pipeline_setup import PipelineSetup
+from somdialc.infra.config import get_config
+from somdialc.infra.http import HTTPSessionFactory, TimeoutHTTPSession
+from somdialc.ingestion.pipeline_setup import PipelineSetup
 
 # ============================================================================
 # Connection Pool Tests
@@ -30,7 +30,7 @@ class TestConnectionPoolResourceLeak:
 
     def test_context_manager_cleanup(self):
         """Test that connection pool is properly closed when using context manager."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         with patch.dict(os.environ, {"SDC_DB_PASSWORD": "test_password"}):
             with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
@@ -52,7 +52,7 @@ class TestConnectionPoolResourceLeak:
 
     def test_context_manager_cleanup_on_exception(self):
         """Test that connection pool is closed even if exception occurs in context."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         with patch.dict(os.environ, {"SDC_DB_PASSWORD": "test_password"}):
             with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
@@ -76,7 +76,7 @@ class TestConnectionPoolResourceLeak:
 
     def test_close_with_error_handling(self):
         """Test that close() handles errors gracefully and sets pool to None."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         with patch.dict(os.environ, {"SDC_DB_PASSWORD": "test_password"}):
             with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
@@ -100,7 +100,7 @@ class TestConnectionPoolResourceLeak:
 
     def test_destructor_cleanup(self):
         """Test that destructor cleans up pool if not explicitly closed."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         with patch.dict(os.environ, {"SDC_DB_PASSWORD": "test_password"}):
             with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
@@ -123,7 +123,7 @@ class TestConnectionPoolResourceLeak:
 
     def test_get_pool_status(self):
         """Test connection pool status reporting."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         with patch.dict(os.environ, {"SDC_DB_PASSWORD": "test_password"}):
             with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
@@ -150,7 +150,7 @@ class TestConnectionPoolResourceLeak:
 
     def test_get_pool_status_when_closed(self):
         """Test pool status reporting when pool is closed."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         with patch.dict(os.environ, {"SDC_DB_PASSWORD": "test_password"}):
             with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
@@ -174,7 +174,7 @@ class TestConnectionPoolResourceLeak:
 
     def test_check_connection_health_success(self):
         """Test connection health check when pool is healthy."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         with patch.dict(os.environ, {"SDC_DB_PASSWORD": "test_password"}):
             with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
@@ -204,7 +204,7 @@ class TestConnectionPoolResourceLeak:
 
     def test_check_connection_health_failure(self):
         """Test connection health check when pool is unhealthy."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         with patch.dict(os.environ, {"SDC_DB_PASSWORD": "test_password"}):
             with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
@@ -287,7 +287,7 @@ class TestHTTPSessionFactoryTimeout:
 
     def test_create_session_with_default_timeout_from_config(self):
         """Test that create_session loads timeout from config when not provided."""
-        with patch("somali_dialect_classifier.infra.config.get_config") as mock_get_config:
+        with patch("somdialc.infra.config.get_config") as mock_get_config:
             mock_config = MagicMock()
             mock_config.http.request_timeout = 45
             mock_get_config.return_value = mock_config
@@ -324,7 +324,7 @@ class TestPipelineSetupTimeout:
 
     def test_create_default_http_session_loads_from_config(self):
         """Test that create_default_http_session uses config timeout by default."""
-        with patch("somali_dialect_classifier.infra.config.get_config") as mock_get_config:
+        with patch("somdialc.infra.config.get_config") as mock_get_config:
             mock_config = MagicMock()
             mock_config.http.request_timeout = 25
             mock_get_config.return_value = mock_config
@@ -365,7 +365,7 @@ class TestHTTPTimeoutConfiguration:
             },
         ):
             # Force config reload
-            from somali_dialect_classifier.infra.config import Config
+            from somdialc.infra.config import Config
 
             config = Config()
 
@@ -380,7 +380,7 @@ class TestTimeoutExceptionHandling:
         """Test that Wikipedia processor catches timeout exceptions."""
         # This is a smoke test - actual timeout handling is in requests.RequestException
         # which includes Timeout exceptions. The Wikipedia processor already has this.
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -391,7 +391,7 @@ class TestTimeoutExceptionHandling:
     def test_bbc_processor_handles_timeout(self):
         """Test that BBC processor catches timeout exceptions."""
         # BBC processor has explicit asyncio.TimeoutError and requests.Timeout handling
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
 
@@ -415,7 +415,7 @@ class TestTimeoutIntegration:
         default_timeout = config.http.request_timeout
 
         # 2. Create session via factory (should use config)
-        with patch("somali_dialect_classifier.infra.config.get_config") as mock_get_config:
+        with patch("somdialc.infra.config.get_config") as mock_get_config:
             mock_config = MagicMock()
             mock_config.http.request_timeout = default_timeout
             mock_get_config.return_value = mock_config

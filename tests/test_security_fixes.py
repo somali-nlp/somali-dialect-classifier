@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from somali_dialect_classifier.ingestion.crawl_ledger import (
+from somdialc.ingestion.crawl_ledger import (
     CrawlLedger,
     CrawlState,
     SQLiteLedger,
@@ -28,7 +28,7 @@ class TestPasswordValidation:
 
     def test_postgres_ledger_requires_password(self):
         """PostgresLedger should raise ValueError if password is None."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         with pytest.raises(ValueError) as exc_info:
             PostgresLedger(password=None)
@@ -40,11 +40,11 @@ class TestPasswordValidation:
 
     def test_postgres_ledger_accepts_explicit_password(self):
         """PostgresLedger should accept explicitly provided password."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         # Mock psycopg2 to avoid actual database connection
         with patch(
-            "somali_dialect_classifier.database.postgres_ledger.ThreadedConnectionPool"
+            "somdialc.database.postgres_ledger.ThreadedConnectionPool"
         ) as mock_pool:
             mock_pool.return_value = MagicMock()
 
@@ -56,7 +56,7 @@ class TestPasswordValidation:
     def test_crawl_ledger_uses_sdc_db_password(self):
         """CrawlLedger should use SDC_DB_PASSWORD environment variable."""
         with patch(
-            "somali_dialect_classifier.database.postgres_ledger.ThreadedConnectionPool"
+            "somdialc.database.postgres_ledger.ThreadedConnectionPool"
         ) as mock_pool:
             mock_pool.return_value = MagicMock()
 
@@ -68,7 +68,7 @@ class TestPasswordValidation:
     def test_crawl_ledger_uses_postgres_password_fallback(self):
         """CrawlLedger should use POSTGRES_PASSWORD as fallback."""
         with patch(
-            "somali_dialect_classifier.database.postgres_ledger.ThreadedConnectionPool"
+            "somdialc.database.postgres_ledger.ThreadedConnectionPool"
         ) as mock_pool:
             mock_pool.return_value = MagicMock()
 
@@ -175,10 +175,10 @@ class TestSQLInjectionPrevention:
 
     def test_postgres_limit_validation(self):
         """PostgresLedger should validate limit parameter."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         with patch(
-            "somali_dialect_classifier.database.postgres_ledger.ThreadedConnectionPool"
+            "somdialc.database.postgres_ledger.ThreadedConnectionPool"
         ) as mock_pool:
             mock_pool.return_value = MagicMock()
             ledger = PostgresLedger(password="test_password")
@@ -197,10 +197,10 @@ class TestSQLInjectionPrevention:
 
     def test_postgres_parameterized_query_structure(self):
         """Verify PostgresLedger uses parameterized queries for LIMIT."""
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         with patch(
-            "somali_dialect_classifier.database.postgres_ledger.ThreadedConnectionPool"
+            "somdialc.database.postgres_ledger.ThreadedConnectionPool"
         ) as mock_pool:
             mock_pool.return_value = MagicMock()
             ledger = PostgresLedger(password="test_password")
@@ -282,7 +282,7 @@ class TestSecurityRegression:
         """Ensure no hardcoded passwords in PostgresLedger defaults."""
         import inspect
 
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         sig = inspect.signature(PostgresLedger.__init__)
         password_param = sig.parameters.get("password")
@@ -294,7 +294,7 @@ class TestSecurityRegression:
         """Ensure no f-string SQL concatenation in SQLiteLedger.get_urls_by_state."""
         import inspect
 
-        from somali_dialect_classifier.ingestion.crawl_ledger import SQLiteLedger
+        from somdialc.ingestion.crawl_ledger import SQLiteLedger
 
         # Get source code
         source = inspect.getsource(SQLiteLedger.get_urls_by_state)
@@ -312,7 +312,7 @@ class TestSecurityRegression:
         """Ensure no f-string SQL concatenation in PostgresLedger.get_urls_by_state."""
         import inspect
 
-        from somali_dialect_classifier.database.postgres_ledger import PostgresLedger
+        from somdialc.database.postgres_ledger import PostgresLedger
 
         # Get source code
         source = inspect.getsource(PostgresLedger.get_urls_by_state)
@@ -332,7 +332,7 @@ class TestURLValidationSSRFProtection:
 
     def test_is_safe_url_allows_valid_urls(self):
         """Valid HTTP/HTTPS URLs should pass."""
-        from somali_dialect_classifier.infra.security import is_safe_url
+        from somdialc.infra.security import is_safe_url
 
         assert is_safe_url("https://example.com/page") is True
         assert is_safe_url("http://example.com/page") is True
@@ -341,14 +341,14 @@ class TestURLValidationSSRFProtection:
 
     def test_is_safe_url_blocks_file_urls(self):
         """File:// URLs should be blocked."""
-        from somali_dialect_classifier.infra.security import is_safe_url
+        from somdialc.infra.security import is_safe_url
 
         assert is_safe_url("file:///etc/passwd") is False
         assert is_safe_url("file://C:/Windows/System32/config") is False
 
     def test_is_safe_url_blocks_localhost(self):
         """Localhost addresses should be blocked."""
-        from somali_dialect_classifier.infra.security import is_safe_url
+        from somdialc.infra.security import is_safe_url
 
         assert is_safe_url("http://localhost:8080") is False
         assert is_safe_url("http://localhost/admin") is False
@@ -356,7 +356,7 @@ class TestURLValidationSSRFProtection:
 
     def test_is_safe_url_blocks_loopback_ips(self):
         """Loopback IP addresses should be blocked."""
-        from somali_dialect_classifier.infra.security import is_safe_url
+        from somdialc.infra.security import is_safe_url
 
         assert is_safe_url("http://127.0.0.1:8080") is False
         assert is_safe_url("http://127.0.0.1/") is False
@@ -365,7 +365,7 @@ class TestURLValidationSSRFProtection:
 
     def test_is_safe_url_blocks_private_ips(self):
         """Private IP ranges (RFC 1918) should be blocked."""
-        from somali_dialect_classifier.infra.security import is_safe_url
+        from somdialc.infra.security import is_safe_url
 
         # 10.0.0.0/8
         assert is_safe_url("http://10.0.0.1/") is False
@@ -382,7 +382,7 @@ class TestURLValidationSSRFProtection:
 
     def test_is_safe_url_blocks_link_local(self):
         """Link-local addresses should be blocked."""
-        from somali_dialect_classifier.infra.security import is_safe_url
+        from somdialc.infra.security import is_safe_url
 
         # AWS/Azure metadata endpoint
         assert is_safe_url("http://169.254.169.254/latest/meta-data/") is False
@@ -390,7 +390,7 @@ class TestURLValidationSSRFProtection:
 
     def test_is_safe_url_blocks_metadata_endpoints(self):
         """Cloud metadata endpoints should be blocked."""
-        from somali_dialect_classifier.infra.security import is_safe_url
+        from somdialc.infra.security import is_safe_url
 
         assert is_safe_url("http://metadata.google.internal/") is False
         assert is_safe_url("http://metadata.azure.com/") is False
@@ -398,25 +398,25 @@ class TestURLValidationSSRFProtection:
 
     def test_is_safe_url_blocks_data_urls(self):
         """Data: URLs should be blocked."""
-        from somali_dialect_classifier.infra.security import is_safe_url
+        from somdialc.infra.security import is_safe_url
 
         assert is_safe_url("data:text/html,<script>alert('xss')</script>") is False
 
     def test_is_safe_url_blocks_ftp_urls(self):
         """FTP URLs should be blocked."""
-        from somali_dialect_classifier.infra.security import is_safe_url
+        from somdialc.infra.security import is_safe_url
 
         assert is_safe_url("ftp://ftp.example.com/file.txt") is False
 
     def test_is_safe_url_blocks_javascript_urls(self):
         """JavaScript: URLs should be blocked."""
-        from somali_dialect_classifier.infra.security import is_safe_url
+        from somdialc.infra.security import is_safe_url
 
         assert is_safe_url("javascript:alert('xss')") is False
 
     def test_is_safe_url_domain_whitelist(self):
         """Domain whitelist should be enforced when provided."""
-        from somali_dialect_classifier.infra.security import is_safe_url
+        from somdialc.infra.security import is_safe_url
 
         allowed_domains = {"bbc.com", "bbc.co.uk"}
 
@@ -434,7 +434,7 @@ class TestURLValidationSSRFProtection:
 
     def test_validate_url_for_source_valid_bbc_urls(self):
         """Valid BBC URLs should pass validation."""
-        from somali_dialect_classifier.infra.security import validate_url_for_source
+        from somdialc.infra.security import validate_url_for_source
 
         bbc_domains = {"bbc.com", "bbc.co.uk"}
 
@@ -450,7 +450,7 @@ class TestURLValidationSSRFProtection:
 
     def test_validate_url_for_source_rejects_ssrf(self):
         """SSRF attempts should be rejected with clear error messages."""
-        from somali_dialect_classifier.infra.security import validate_url_for_source
+        from somdialc.infra.security import validate_url_for_source
 
         bbc_domains = {"bbc.com", "bbc.co.uk"}
 
@@ -476,7 +476,7 @@ class TestURLValidationSSRFProtection:
 
     def test_validate_url_for_source_rejects_wrong_domain(self):
         """URLs from wrong domains should be rejected."""
-        from somali_dialect_classifier.infra.security import validate_url_for_source
+        from somdialc.infra.security import validate_url_for_source
 
         bbc_domains = {"bbc.com", "bbc.co.uk"}
 
@@ -488,7 +488,7 @@ class TestURLValidationSSRFProtection:
 
     def test_validate_url_for_source_rejects_unsafe_scheme(self):
         """Unsafe URL schemes should be rejected."""
-        from somali_dialect_classifier.infra.security import validate_url_for_source
+        from somdialc.infra.security import validate_url_for_source
 
         bbc_domains = {"bbc.com", "bbc.co.uk"}
 
@@ -500,13 +500,13 @@ class TestURLValidationSSRFProtection:
 
     def test_bbc_processor_validates_rss_urls(self, tmp_path):
         """BBC processor should validate RSS feed URLs."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
 
         # Mock config with malicious RSS feed
         with patch(
-            "somali_dialect_classifier.ingestion.processors.bbc_somali_processor.get_config"
+            "somdialc.ingestion.processors.bbc_somali_processor.get_config"
         ) as mock_config:
             mock_config.return_value.scraping.bbc.rss_feeds = [
                 "http://127.0.0.1:8080/malicious-feed",  # SSRF attempt
@@ -532,7 +532,7 @@ class TestURLValidationSSRFProtection:
 
             # Mock feedparser
             with patch(
-                "somali_dialect_classifier.ingestion.processors.bbc_somali_processor.feedparser"
+                "somdialc.ingestion.processors.bbc_somali_processor.feedparser"
             ) as mock_feedparser:
                 mock_feed = MagicMock()
                 mock_feed.entries = []
@@ -551,12 +551,12 @@ class TestURLValidationSSRFProtection:
 
     def test_bbc_processor_validates_article_urls_from_rss(self, tmp_path):
         """BBC processor should validate article URLs extracted from RSS."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
 
         with patch(
-            "somali_dialect_classifier.ingestion.processors.bbc_somali_processor.get_config"
+            "somdialc.ingestion.processors.bbc_somali_processor.get_config"
         ) as mock_config:
             mock_config.return_value.scraping.bbc.rss_feeds = ["https://www.bbc.com/somali/rss.xml"]
             mock_config.return_value.scraping.bbc.max_items_per_feed = 10
@@ -579,7 +579,7 @@ class TestURLValidationSSRFProtection:
 
             # Mock feedparser with mix of valid and malicious URLs
             with patch(
-                "somali_dialect_classifier.ingestion.processors.bbc_somali_processor.feedparser"
+                "somdialc.ingestion.processors.bbc_somali_processor.feedparser"
             ) as mock_feedparser:
                 mock_entry1 = MagicMock()
                 mock_entry1.get.return_value = (
@@ -619,7 +619,7 @@ class TestURLValidationRegression:
         """Ensure feedparser.parse() is not called with unvalidated URLs."""
         import inspect
 
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
 
@@ -638,7 +638,7 @@ class TestURLValidationRegression:
         """Ensure urls_rejected_security metric is tracked."""
         import inspect
 
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
 

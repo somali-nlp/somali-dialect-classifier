@@ -26,7 +26,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 try:
-    from somali_dialect_classifier.infra.metrics_schema import (
+    from somdialc.infra.metrics_schema import (
         ConsolidatedMetric,
         validate_consolidated_metrics,
         validate_dashboard_summary,

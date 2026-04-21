@@ -36,7 +36,7 @@ print("  Please use: somali-tools metrics consolidate")
 print("  Falling back to CLI...\n")
 
 try:
-    from somali_dialect_classifier.tools.cli import cli
+    from somdialc.tools.cli import cli
 
     # Rewrite argv to call CLI command
     # Preserve any custom arguments from original script if needed

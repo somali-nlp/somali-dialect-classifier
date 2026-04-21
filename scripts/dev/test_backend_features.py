@@ -20,13 +20,13 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from somali_dialect_classifier.infra.metrics_comparison import (
+from somdialc.infra.metrics_comparison import (
     calculate_delta,
     compare_multiple_runs,
     generate_comparison_summary,
     identify_trends,
 )
-from somali_dialect_classifier.infra.metrics_filters import (
+from somdialc.infra.metrics_filters import (
     apply_filters,
     filter_by_date_range,
     filter_by_quality,
@@ -35,7 +35,7 @@ from somali_dialect_classifier.infra.metrics_filters import (
     get_top_performers,
     search_metrics,
 )
-from somali_dialect_classifier.infra.visualization_aggregator import (
+from somdialc.infra.visualization_aggregator import (
     calculate_pipeline_flow,
     calculate_text_length_distribution,
     calculate_time_series,

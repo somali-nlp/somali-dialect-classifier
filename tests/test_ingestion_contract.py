@@ -9,12 +9,12 @@ Validates:
 
 import pytest
 
-from somali_dialect_classifier.contracts import (
+from somdialc.contracts import (
     REQUIRED_FIELDS,
     IngestionOutputV1,
     validate_ingestion_output,
 )
-from somali_dialect_classifier.schema.registry import SchemaV1_0
+from somdialc.schema.registry import SchemaV1_0
 
 
 class TestIngestionContractValidation:
@@ -328,8 +328,8 @@ class TestContractSchemaCompatibility:
         assert "linguistic_register" in REQUIRED_FIELDS
 
         # Both should accept the same values
-        from somali_dialect_classifier.contracts.ingestion_output import VALID_REGISTERS
-        from somali_dialect_classifier.schema.registry import Register
+        from somdialc.contracts.ingestion_output import VALID_REGISTERS
+        from somdialc.schema.registry import Register
 
         schema_registers = {r.value for r in Register}
         assert VALID_REGISTERS == schema_registers
@@ -350,7 +350,7 @@ class TestContractDocumentation:
 
     def test_versioning_strategy_documented(self):
         """Contract includes versioning strategy documentation."""
-        from somali_dialect_classifier.contracts import ingestion_output
+        from somdialc.contracts import ingestion_output
 
         module_docstring = ingestion_output.__doc__
         assert module_docstring is not None
@@ -360,7 +360,7 @@ class TestContractDocumentation:
 
     def test_relationship_to_schema_documented(self):
         """Contract documents relationship to SchemaV1_0."""
-        from somali_dialect_classifier.contracts import ingestion_output
+        from somdialc.contracts import ingestion_output
 
         module_docstring = ingestion_output.__doc__
         assert module_docstring is not None

@@ -12,8 +12,8 @@ import pytest
 # Skip integration tests - require Språkbanken processor features not fully implemented
 pytestmark = pytest.mark.skip(reason="Språkbanken processor features not fully implemented")
 
-from somali_dialect_classifier.ingestion.base_pipeline import RawRecord
-from somali_dialect_classifier.ingestion.processors.sprakbanken_somali_processor import (
+from somdialc.ingestion.base_pipeline import RawRecord
+from somdialc.ingestion.processors.sprakbanken_somali_processor import (
     CORPUS_INFO,
     SprakbankenSomaliProcessor,
     get_corpus_info,
@@ -27,7 +27,7 @@ class TestSprakbankenSomaliProcessor:
     @pytest.fixture
     def processor(self, tmp_path):
         """Create processor instance with temp directory."""
-        with patch("somali_dialect_classifier.config.get_config") as mock_config:
+        with patch("somdialc.config.get_config") as mock_config:
             # Mock config
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
@@ -47,7 +47,7 @@ class TestSprakbankenSomaliProcessor:
 
     def test_processor_all_corpora(self, tmp_path):
         """Test processor with all corpora."""
-        with patch("somali_dialect_classifier.config.get_config") as mock_config:
+        with patch("somdialc.config.get_config") as mock_config:
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
             config.data.staging_dir = tmp_path / "staging"
@@ -64,7 +64,7 @@ class TestSprakbankenSomaliProcessor:
 
     def test_invalid_corpus_id(self, tmp_path):
         """Test that invalid corpus ID raises error."""
-        with patch("somali_dialect_classifier.config.get_config") as mock_config:
+        with patch("somdialc.config.get_config") as mock_config:
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
             config.data.staging_dir = tmp_path / "staging"

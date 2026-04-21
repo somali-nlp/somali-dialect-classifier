@@ -9,9 +9,9 @@ import os
 
 import pytest
 
-from somali_dialect_classifier.infra.config import get_config, reset_config
-from somali_dialect_classifier.ingestion.dedup import DedupEngine
-from somali_dialect_classifier.ingestion.pipeline_setup import PipelineSetup
+from somdialc.infra.config import get_config, reset_config
+from somdialc.ingestion.dedup import DedupEngine
+from somdialc.ingestion.pipeline_setup import PipelineSetup
 
 
 class TestDedupConfiguration:
@@ -131,7 +131,7 @@ class TestDedupConfigIntegration:
 
     def test_wikipedia_processor_uses_centralized_config(self, monkeypatch):
         """Test Wikipedia processor gets config from central system."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -145,7 +145,7 @@ class TestDedupConfigIntegration:
 
     def test_bbc_processor_uses_centralized_config(self, monkeypatch):
         """Test BBC processor gets config from central system."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
 

@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from somali_dialect_classifier.infra.metrics_aggregation import (
+from somdialc.infra.metrics_aggregation import (
     aggregate_metrics_across_sources,
     calculate_metric_statistics,
     extract_consolidated_metric,

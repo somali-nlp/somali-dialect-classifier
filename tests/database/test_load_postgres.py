@@ -11,7 +11,7 @@ import time
 
 import pytest
 
-from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger, CrawlState
+from somdialc.ingestion.crawl_ledger import CrawlLedger, CrawlState
 
 # Skip all tests if PostgreSQL is not available
 postgres_available = os.getenv("POSTGRES_HOST") is not None

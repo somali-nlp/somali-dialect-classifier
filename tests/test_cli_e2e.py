@@ -46,20 +46,20 @@ class TestWikipediaCLI:
         """Test that CLI module can be imported."""
         import importlib.util
 
-        spec = importlib.util.find_spec("somali_dialect_classifier.cli.download_wikisom")
+        spec = importlib.util.find_spec("somdialc.cli.download_wikisom")
         if spec is None:
             pytest.fail("Failed to import CLI module: download_wikisom not found")
 
     def test_cli_main_function_exists(self):
         """Test that main() function exists in CLI module."""
-        from somali_dialect_classifier.cli import download_wikisom
+        from somdialc.cli import download_wikisom
 
         assert hasattr(download_wikisom, "main")
         assert callable(download_wikisom.main)
 
     def test_cli_help_output(self, capsys):
         """Test that CLI help output is informative."""
-        from somali_dialect_classifier.cli import download_wikisom
+        from somdialc.cli import download_wikisom
 
         # CLI uses a bare main() that runs the pipeline directly (no argparse),
         # so --help will not short-circuit. Accept SystemExit (argparse) or any
@@ -84,20 +84,20 @@ class TestBBCCLI:
         """Test that BBC CLI module can be imported."""
         import importlib.util
 
-        spec = importlib.util.find_spec("somali_dialect_classifier.cli.download_bbcsom")
+        spec = importlib.util.find_spec("somdialc.cli.download_bbcsom")
         if spec is None:
             pytest.fail("Failed to import BBC CLI module: download_bbcsom not found")
 
     def test_cli_main_function_exists(self):
         """Test that main() function exists in BBC CLI module."""
-        from somali_dialect_classifier.cli import download_bbcsom
+        from somdialc.cli import download_bbcsom
 
         assert hasattr(download_bbcsom, "main")
         assert callable(download_bbcsom.main)
 
     def test_cli_help_output(self, capsys):
         """Test that BBC CLI help output is informative."""
-        from somali_dialect_classifier.cli import download_bbcsom
+        from somdialc.cli import download_bbcsom
 
         # Try to get help
         try:
@@ -118,7 +118,7 @@ class TestCLILogging:
 
     def test_wikipedia_cli_creates_log_file(self, cli_env, capsys, monkeypatch):
         """Test that Wikipedia CLI creates log file."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -134,7 +134,7 @@ class TestCLILogging:
 
     def test_bbc_cli_creates_log_file(self, cli_env, capsys):
         """Test that BBC CLI creates log file."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
 
@@ -151,7 +151,7 @@ class TestCLIDataDirectories:
 
     def test_wikipedia_creates_partitioned_directories(self, cli_env):
         """Test that Wikipedia processor creates partitioned directories."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -163,7 +163,7 @@ class TestCLIDataDirectories:
 
     def test_bbc_creates_partitioned_directories(self, cli_env):
         """Test that BBC processor creates partitioned directories."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
 
@@ -179,7 +179,7 @@ class TestCLIErrorHandling:
 
     def test_wikipedia_handles_missing_dump_gracefully(self, cli_env, capsys):
         """Test that processor handles missing dump file gracefully."""
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -194,7 +194,7 @@ class TestCLIErrorHandling:
 
     def test_bbc_handles_missing_staging_gracefully(self, cli_env):
         """Test that BBC processor handles missing staging file gracefully."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
 
@@ -213,10 +213,10 @@ class TestCLIOutput:
 
     def test_processors_have_consistent_logging_format(self, cli_env, capsys):
         """Test that both processors use consistent logging."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -242,7 +242,7 @@ class TestCLIIntegration:
         """Test full Wikipedia pipeline with fixture data."""
         import bz2
 
-        from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+        from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
@@ -275,7 +275,7 @@ class TestCLIIntegration:
 
     def test_bbc_cli_full_pipeline_with_fixture(self, cli_env, bbc_fixture):
         """Test full BBC pipeline with fixture data."""
-        from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import (
+        from somdialc.ingestion.processors.bbc_somali_processor import (
             BBCSomaliProcessor,
         )
 
@@ -306,14 +306,14 @@ class TestCLIDocumentation:
 
     def test_wikipedia_cli_has_docstring(self):
         """Test that Wikipedia CLI has docstring."""
-        from somali_dialect_classifier.cli import download_wikisom
+        from somdialc.cli import download_wikisom
 
         assert download_wikisom.__doc__ is not None
         assert len(download_wikisom.__doc__.strip()) > 0
 
     def test_bbc_cli_has_docstring(self):
         """Test that BBC CLI has docstring."""
-        from somali_dialect_classifier.cli import download_bbcsom
+        from somdialc.cli import download_bbcsom
 
         assert download_bbcsom.__doc__ is not None
         assert len(download_bbcsom.__doc__.strip()) > 0

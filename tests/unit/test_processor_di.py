@@ -14,10 +14,10 @@ from unittest.mock import MagicMock, Mock
 import pytest
 import requests
 
-from somali_dialect_classifier.ingestion.processors.sprakbanken_somali_processor import (
+from somdialc.ingestion.processors.sprakbanken_somali_processor import (
     SprakbankenSomaliProcessor,
 )
-from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+from somdialc.ingestion.processors.wikipedia_somali_processor import (
     WikipediaSomaliProcessor,
 )
 

@@ -68,14 +68,14 @@ def export_full_catalog(output_path: Path) -> dict[str, Any]:
         IOError: If output file cannot be written
     """
     try:
-        from somali_dialect_classifier.quality.filters.catalog import (
+        from somdialc.quality.filters.catalog import (
             FILTER_CATALOG,
             get_all_categories,
         )
     except ImportError as e:
         error_msg = (
             f"Failed to import filter catalog: {e}\n"
-            f"Ensure src/somali_dialect_classifier/quality/filters/catalog.py exists"
+            f"Ensure src/somdialc/quality/filters/catalog.py exists"
         )
         logger.error(error_msg)
         raise ImportError(error_msg) from e
@@ -216,7 +216,7 @@ def main():
     except ImportError as e:
         print(f"\n✗ Import Error: {e}", file=sys.stderr)
         print("\nTroubleshooting:")
-        print("  1. Verify filter catalog exists: src/somali_dialect_classifier/quality/filters/catalog.py")
+        print("  1. Verify filter catalog exists: src/somdialc/quality/filters/catalog.py")
         print("  2. Check Python path includes 'src' directory")
         sys.exit(1)
 

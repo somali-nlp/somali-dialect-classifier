@@ -29,8 +29,8 @@ else
 fi
 
 # 2 — Package installed
-python -c "import somali_dialect_classifier" 2>/dev/null
-check "somali_dialect_classifier importable" $?
+python -c "import somdialc" 2>/dev/null
+check "somdialc importable" $?
 
 # 3 — Core CLI entry points present
 command -v wikisom-download >/dev/null 2>&1

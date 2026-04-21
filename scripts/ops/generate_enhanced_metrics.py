@@ -29,12 +29,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 try:
-    from somali_dialect_classifier.infra.metrics_aggregation import load_all_processing_metrics
-    from somali_dialect_classifier.infra.metrics_comparison import export_trend_analysis
-    from somali_dialect_classifier.infra.metrics_schema import (
+    from somdialc.infra.metrics_aggregation import load_all_processing_metrics
+    from somdialc.infra.metrics_comparison import export_trend_analysis
+    from somdialc.infra.metrics_schema import (
         AdvancedVisualizationData,
     )
-    from somali_dialect_classifier.infra.visualization_aggregator import (
+    from somdialc.infra.visualization_aggregator import (
         calculate_summary_stats,
         export_visualization_data,
     )
@@ -144,7 +144,7 @@ def export_filter_catalog(output_dir: Path) -> None:
         output_dir: Directory where filter_catalog.json should be written
     """
     try:
-        from somali_dialect_classifier.quality.filters.catalog import (
+        from somdialc.quality.filters.catalog import (
             FILTER_CATALOG,
             get_all_categories,
         )

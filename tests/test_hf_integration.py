@@ -18,7 +18,7 @@ except ImportError:
 
 pytestmark = pytest.mark.skipif(not DATASETS_AVAILABLE, reason="datasets library not installed")
 
-from somali_dialect_classifier.ingestion.processors.huggingface_somali_processor import (
+from somdialc.ingestion.processors.huggingface_somali_processor import (
     HuggingFaceSomaliProcessor,
     create_mc4_processor,
 )
@@ -97,7 +97,7 @@ class TestHuggingFaceSomaliProcessor:
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
-                "somali_dialect_classifier.ingestion.processors.huggingface_somali_processor.load_dataset",
+                "somdialc.ingestion.processors.huggingface_somali_processor.load_dataset",
                 mock_load_dataset,
             )
 
@@ -356,7 +356,7 @@ class TestHFIntegration:
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
-                "somali_dialect_classifier.ingestion.processors.huggingface_somali_processor.load_dataset",
+                "somdialc.ingestion.processors.huggingface_somali_processor.load_dataset",
                 mock_load_dataset,
             )
 
@@ -380,7 +380,7 @@ class TestHFConfiguration:
         monkeypatch.setenv("SDC_SCRAPING__HUGGINGFACE__MIN_LENGTH_THRESHOLD", "200")
 
         # Force reload config with new env vars
-        from somali_dialect_classifier.infra.config import reset_config
+        from somdialc.infra.config import reset_config
 
         reset_config()
 
@@ -396,7 +396,7 @@ class TestHFConfiguration:
     def test_filter_threshold_from_config(self):
         """Test filter uses threshold from config."""
         # Reset config to defaults
-        from somali_dialect_classifier.infra.config import reset_config
+        from somdialc.infra.config import reset_config
 
         reset_config()
 
@@ -461,7 +461,7 @@ class TestHFErrorHandling:
 
         if DATASETS_AVAILABLE:
             monkeypatch.setattr(
-                "somali_dialect_classifier.ingestion.processors.huggingface_somali_processor.load_dataset",
+                "somdialc.ingestion.processors.huggingface_somali_processor.load_dataset",
                 mock_load_dataset,
             )
 

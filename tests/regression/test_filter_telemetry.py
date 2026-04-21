@@ -23,7 +23,7 @@ from typing import Any
 import pytest
 
 # Import filter catalog for validation
-from somali_dialect_classifier.quality.filters.catalog import FILTER_CATALOG
+from somdialc.quality.filters.catalog import FILTER_CATALOG
 
 # Test data locations
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -260,7 +260,7 @@ def test_all_filter_keys_in_catalog(metrics_dir):
 
     Regression Scenario:
         Developer adds new filter but forgets to register it in:
-        `src/somali_dialect_classifier/quality/filters/catalog.py`
+        `src/somdialc/quality/filters/catalog.py`
 
         Result:
         - Filter data collected in metrics
@@ -302,7 +302,7 @@ def test_all_filter_keys_in_catalog(metrics_dir):
             error_msg += f"❌ '{filter_key}' (used by: {sources})\n"
 
         error_msg += "\n💡 Fix: Add missing filters to FILTER_CATALOG\n"
-        error_msg += "   File: src/somali_dialect_classifier/pipeline/filters/catalog.py\n\n"
+        error_msg += "   File: src/somdialc/pipeline/filters/catalog.py\n\n"
         error_msg += "   Example:\n"
         error_msg += '   "your_filter_name": (\n'
         error_msg += '       "Human-readable label",\n'

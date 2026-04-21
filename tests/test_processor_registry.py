@@ -12,9 +12,9 @@ import pytest
 
 # Import processors package at module level to trigger registration
 # This must happen before any tests that clear the registry
-import somali_dialect_classifier.ingestion.processors  # noqa: E402, F401
-from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
-from somali_dialect_classifier.ingestion.processor_registry import (
+import somdialc.ingestion.processors  # noqa: E402, F401
+from somdialc.ingestion.base_pipeline import BasePipeline
+from somdialc.ingestion.processor_registry import (
     ProcessorRegistry,
     register_processor,
 )
@@ -299,7 +299,7 @@ def test_multiple_processor_types(clear_registry):
 def test_actual_processors_are_registered():
     """Test that actual processors are registered when module is imported."""
     # Manually register all processors (registry may have been cleared by previous tests)
-    from somali_dialect_classifier.ingestion.processors import (
+    from somdialc.ingestion.processors import (
         BBCSomaliProcessor,
         HuggingFaceSomaliProcessor,
         SprakbankenSomaliProcessor,
@@ -327,7 +327,7 @@ def test_actual_processors_are_registered():
 def test_processor_creation_with_actual_processors():
     """Test creating actual processor instances via registry."""
     # Import and manually register processors (if not already registered)
-    from somali_dialect_classifier.ingestion.processors import (
+    from somdialc.ingestion.processors import (
         BBCSomaliProcessor,
         HuggingFaceSomaliProcessor,
         SprakbankenSomaliProcessor,

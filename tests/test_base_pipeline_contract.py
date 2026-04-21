@@ -14,15 +14,15 @@ from pathlib import Path
 
 import pytest
 
-from somali_dialect_classifier.ingestion.base_pipeline import RawRecord
-from somali_dialect_classifier.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
-from somali_dialect_classifier.ingestion.processors.wikipedia_somali_processor import (
+from somdialc.ingestion.base_pipeline import RawRecord
+from somdialc.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
+from somdialc.ingestion.processors.wikipedia_somali_processor import (
     WikipediaSomaliProcessor,
 )
 
 # Optional: HuggingFaceSomaliProcessor requires the datasets library
 try:
-    from somali_dialect_classifier.ingestion.processors.huggingface_somali_processor import (
+    from somdialc.ingestion.processors.huggingface_somali_processor import (
         HuggingFaceSomaliProcessor,
     )
 
@@ -33,7 +33,7 @@ except ImportError:
 
 # Optional: SprakbankenSomaliProcessor
 try:
-    from somali_dialect_classifier.ingestion.processors.sprakbanken_somali_processor import (
+    from somdialc.ingestion.processors.sprakbanken_somali_processor import (
         SprakbankenSomaliProcessor,
     )
 
@@ -44,7 +44,7 @@ except ImportError:
 
 # Optional: TikTokSomaliProcessor (requires apify_api_token)
 try:
-    from somali_dialect_classifier.ingestion.processors.tiktok_somali_processor import (
+    from somdialc.ingestion.processors.tiktok_somali_processor import (
         TikTokSomaliProcessor,
     )
 
@@ -269,7 +269,7 @@ class TestBasePipelineContract:
         """Test that _get_register returns valid register value."""
         processor = _instantiate_processor(processor_class)
         register = processor._get_register()
-        from somali_dialect_classifier.contracts.ingestion_output import VALID_REGISTERS
+        from somdialc.contracts.ingestion_output import VALID_REGISTERS
 
         assert register in VALID_REGISTERS, (
             f"{processor_class.__name__}._get_register() returned '{register}', "

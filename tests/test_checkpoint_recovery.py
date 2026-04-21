@@ -15,9 +15,9 @@ from unittest.mock import patch
 
 import pytest
 
-from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
-from somali_dialect_classifier.ingestion.raw_record import RawRecord
-from somali_dialect_classifier.quality.text_cleaners import TextCleaningPipeline
+from somdialc.ingestion.base_pipeline import BasePipeline
+from somdialc.ingestion.raw_record import RawRecord
+from somdialc.quality.text_cleaners import TextCleaningPipeline
 
 
 class MockPipeline(BasePipeline):
@@ -98,7 +98,7 @@ class TestCheckpointCreation:
     def test_checkpoint_created_at_interval(self, temp_work_dir, sample_records):
         """Test that checkpoint is created every CHECKPOINT_INTERVAL records."""
         # Use smaller checkpoint interval for testing
-        with patch("somali_dialect_classifier.ingestion.base_pipeline.CHECKPOINT_INTERVAL", 5):
+        with patch("somdialc.ingestion.base_pipeline.CHECKPOINT_INTERVAL", 5):
             processor = MockPipeline(test_records=sample_records[:7])
             processor.extract()
 
@@ -287,7 +287,7 @@ class TestCheckpointCleanup:
             return None
 
         # Force checkpoint interval to 2 for testing
-        with patch("somali_dialect_classifier.ingestion.base_pipeline.CHECKPOINT_INTERVAL", 2):
+        with patch("somdialc.ingestion.base_pipeline.CHECKPOINT_INTERVAL", 2):
             with patch.object(processor.silver_writer, "write", side_effect=failing_write):
                 with pytest.raises(RuntimeError):
                     processor.process()

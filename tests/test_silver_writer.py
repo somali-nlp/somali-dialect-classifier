@@ -9,8 +9,8 @@ import json
 import pyarrow.parquet as pq
 import pytest
 
-from somali_dialect_classifier.quality.record_utils import build_silver_record
-from somali_dialect_classifier.quality.silver_writer import SilverDatasetWriter
+from somdialc.quality.record_utils import build_silver_record
+from somdialc.quality.silver_writer import SilverDatasetWriter
 
 
 def _build_test_record(source: str, url: str, date_accessed: str, **overrides) -> dict:

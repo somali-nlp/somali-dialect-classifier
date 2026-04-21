@@ -10,9 +10,9 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from somali_dialect_classifier.contracts import validate_ingestion_output
-from somali_dialect_classifier.quality.record_builder import RecordBuilder
-from somali_dialect_classifier.quality.silver_writer import SilverDatasetWriter
+from somdialc.contracts import validate_ingestion_output
+from somdialc.quality.record_builder import RecordBuilder
+from somdialc.quality.silver_writer import SilverDatasetWriter
 
 
 class RawRecordMock:

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from somali_dialect_classifier.ingestion.crawl_ledger import LockManager
+from somdialc.ingestion.crawl_ledger import LockManager
 
 
 def _same_source_worker(

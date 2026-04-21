@@ -13,9 +13,9 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
-from somali_dialect_classifier.quality.filter_engine import FilterEngine
-from somali_dialect_classifier.quality.silver_writer import SilverDatasetWriter
+from somdialc.ingestion.base_pipeline import BasePipeline
+from somdialc.quality.filter_engine import FilterEngine
+from somdialc.quality.silver_writer import SilverDatasetWriter
 
 # ==============================================================================
 # Helper: Minimal Test Pipeline
@@ -106,7 +106,7 @@ class TestM1MetricsExportErrorHandling:
         pipeline = MinimalTestPipeline(source="wikipedia", force=False)
 
         # Create real metrics object that can track increment
-        from somali_dialect_classifier.infra.metrics import MetricsCollector
+        from somdialc.infra.metrics import MetricsCollector
 
         pipeline.metrics = MetricsCollector(run_id="test-run", source="wikipedia")
 

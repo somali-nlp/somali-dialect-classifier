@@ -15,7 +15,7 @@ pytestmark = pytest.mark.skip(
     reason="Requires external metrics data files - not available in test environment"
 )
 
-from somali_dialect_classifier.infra.metrics import (
+from somdialc.infra.metrics import (
     ConnectivityMetrics,
     FileProcessingExtractionMetrics,
     MetricsCollector,

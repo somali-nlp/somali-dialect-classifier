@@ -5,9 +5,9 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-from somali_dialect_classifier.ingestion.base_pipeline import BasePipeline
-from somali_dialect_classifier.ingestion.raw_record import RawRecord
-from somali_dialect_classifier.quality.text_cleaners import TextCleaningPipeline
+from somdialc.ingestion.base_pipeline import BasePipeline
+from somdialc.ingestion.raw_record import RawRecord
+from somdialc.quality.text_cleaners import TextCleaningPipeline
 
 
 class DummyPipeline(BasePipeline):
@@ -68,8 +68,8 @@ class TestMLflowIntegration(unittest.TestCase):
         if self.test_dir.exists():
             shutil.rmtree(self.test_dir)
 
-    @patch("somali_dialect_classifier.ingestion.base_pipeline.MLFlowTracker")
-    @patch("somali_dialect_classifier.ingestion.base_pipeline.PipelineSetup")
+    @patch("somdialc.ingestion.base_pipeline.MLFlowTracker")
+    @patch("somdialc.ingestion.base_pipeline.PipelineSetup")
     def test_pipeline_success_flow(self, mock_setup, mock_tracker_cls):
         # Setup mocks
         mock_tracker = mock_tracker_cls.return_value
@@ -121,8 +121,8 @@ class TestMLflowIntegration(unittest.TestCase):
         mock_tracker.set_tag.assert_any_call("status", "success")
         mock_tracker.end_run.assert_called_once()
 
-    @patch("somali_dialect_classifier.ingestion.base_pipeline.MLFlowTracker")
-    @patch("somali_dialect_classifier.ingestion.base_pipeline.PipelineSetup")
+    @patch("somdialc.ingestion.base_pipeline.MLFlowTracker")
+    @patch("somdialc.ingestion.base_pipeline.PipelineSetup")
     def test_pipeline_failure_flow(self, mock_setup, mock_tracker_cls):
         # Setup mocks
         mock_tracker = mock_tracker_cls.return_value

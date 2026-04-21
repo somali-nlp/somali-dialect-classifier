@@ -7,7 +7,7 @@ Tests SchemaV1_0 validation and schema retrieval.
 import pytest
 from pydantic import ValidationError
 
-from somali_dialect_classifier.schema.registry import (
+from somdialc.schema.registry import (
     CURRENT_SCHEMA_VERSION,
     SCHEMA_REGISTRY,
     SchemaV1_0,

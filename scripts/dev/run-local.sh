@@ -26,5 +26,5 @@ echo "================================================"
 echo ""
 
 # Run the command passed as arguments
-# Usage: ./run-local.sh python -m somali_dialect_classifier.orchestration.flows --pipeline wikipedia
+# Usage: ./run-local.sh python -m somdialc.orchestration.flows --pipeline wikipedia
 exec "$@"
