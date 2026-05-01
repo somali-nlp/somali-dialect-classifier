@@ -662,6 +662,34 @@ class TestSecretRedaction:
         assert redacted["token"] == ["list", "items"]
         assert redacted["api_key"] == {"nested": "dict"}
 
+    def test_redact_secrets_pydantic_secretstr(self):
+        """SecretStr values must be unwrapped+masked, never leaked or left as objects."""
+        import json
+
+        pydantic = pytest.importorskip("pydantic")
+        SecretStr = pydantic.SecretStr
+
+        data = {
+            "scraping": {
+                "tiktok": {
+                    "apify_api_token": SecretStr("sk_live_abc123def456"),
+                    "max_comments_per_video": 100,
+                },
+            },
+            "loose_secret": SecretStr("topsecret_value"),
+        }
+
+        redacted = redact_secrets(data)
+
+        # SecretStr is masked by mask_secret(), not left as a SecretStr object
+        assert redacted["scraping"]["tiktok"]["apify_api_token"] == "***f456"
+        assert redacted["loose_secret"] == "***alue"
+        assert redacted["scraping"]["tiktok"]["max_comments_per_video"] == 100
+
+        # Critically, the result must be JSON-serialisable — this is the
+        # exact failure mode that hit base_pipeline._log_configuration.
+        json.dumps(redacted)
+
     def test_formatter_redacts_context_secrets(self):
         """Test that StructuredFormatter redacts secrets in context."""
         clear_context()

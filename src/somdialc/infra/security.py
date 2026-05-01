@@ -539,6 +539,13 @@ def redact_secrets(
     if data is None:
         return None
 
+    # Handle Pydantic SecretStr / SecretBytes (or any wrapper exposing
+    # get_secret_value()). Without this, json-style serialisers further down
+    # the logging stack hit the SecretStr instance and raise TypeError.
+    if hasattr(data, "get_secret_value"):
+        secret = data.get_secret_value()
+        return mask_secret(secret if isinstance(secret, str) else str(secret))
+
     # Handle dictionaries
     if isinstance(data, dict):
         redacted = {}

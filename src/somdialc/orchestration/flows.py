@@ -1013,7 +1013,12 @@ def main():
 
             # Get API token (CLI arg > env var). Gracefully skip if config lacks TikTok section.
             try:
-                tiktok_api_token = args.tiktok_api_token or config.scraping.tiktok.apify_api_token
+                _raw_token = args.tiktok_api_token or config.scraping.tiktok.apify_api_token
+                tiktok_api_token = (
+                    _raw_token.get_secret_value()
+                    if hasattr(_raw_token, "get_secret_value")
+                    else _raw_token
+                )
                 tiktok_user_id = getattr(config.scraping.tiktok, "apify_user_id", None)
             except AttributeError:
                 logger.warning("TikTok config not found; skipping TikTok pipeline.")
@@ -1090,7 +1095,12 @@ def main():
         config = get_config()
 
         # Get API token (CLI arg > env var)
-        api_token = args.tiktok_api_token or config.scraping.tiktok.apify_api_token
+        _raw_token = args.tiktok_api_token or config.scraping.tiktok.apify_api_token
+        api_token = (
+            _raw_token.get_secret_value()
+            if hasattr(_raw_token, "get_secret_value")
+            else _raw_token
+        )
 
         if not api_token:
             logger.error("Apify API token not provided!")
