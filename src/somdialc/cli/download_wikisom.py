@@ -64,7 +64,17 @@ def main() -> None:
     try:
         processor = WikipediaSomaliProcessor()
         dump_file = processor.download()
+        if dump_file is None:
+            # 304 Not Modified — dump unchanged since last run, nothing to do.
+            print("\n✓ Wikipedia dump unchanged since last run (304 Not Modified). Nothing to process.")
+            return
+
         staging_file = processor.extract()
+        if staging_file is None:
+            # All articles already in ledger — Level-2 dedup short-circuits.
+            print("\n✓ No new Wikipedia articles to process (all already in ledger).")
+            return
+
         processed_file = processor.process()
 
         print("\n✓ Pipeline completed successfully!")

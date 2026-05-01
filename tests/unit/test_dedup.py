@@ -395,4 +395,50 @@ class TestMemoryBenchmark:
         assert final_size < 10_000_000  # Less than 10MB for 10k entries
 
 
+class TestMinHashLSHURLCollision:
+    """LSH must accept multiple texts that share a URL (e.g., Sprakbanken corpora)."""
+
+    def test_add_document_distinct_texts_same_url(self):
+        """Distinct texts under one URL must both be indexed without raising."""
+        pytest.importorskip("datasketch")
+
+        from somdialc.ingestion.dedup.lsh import MinHashDeduplicator
+
+        dedup = MinHashDeduplicator(
+            enable_sharding=False,  # exercise the monolithic path explicitly
+            similarity_threshold=0.5,
+        )
+
+        # Sprakbanken-style: corpus URL reused across many distinct texts.
+        corpus_url = "https://spraakbanken.gu.se/korp/?mode=somali#?corpus=somali-1971-79"
+
+        sig1 = dedup.add_document(
+            corpus_url, "Buugaagta xisaabta hooyo iyo aabbe waxay barteen carruurta."
+        )
+        sig2 = dedup.add_document(
+            corpus_url, "Geel iyo lo' iyo idaad badan ayuu reer guuraaga lahaa."
+        )
+
+        assert sig1 != sig2
+        assert len(dedup.document_hashes) == 2
+        # Both signatures map back to the shared URL.
+        assert dedup.document_hashes[sig1] == corpus_url
+        assert dedup.document_hashes[sig2] == corpus_url
+
+    def test_add_document_idempotent_on_same_text(self):
+        """Inserting the same text twice is a no-op, never raises."""
+        pytest.importorskip("datasketch")
+
+        from somdialc.ingestion.dedup.lsh import MinHashDeduplicator
+
+        dedup = MinHashDeduplicator(enable_sharding=False)
+        text = "Soomaaliya waa dal weyn oo ku yaalla geeska Afrika."
+
+        sig_a = dedup.add_document("https://example.com/a", text)
+        sig_b = dedup.add_document("https://example.com/b", text)
+
+        assert sig_a == sig_b
+        assert len(dedup.document_hashes) == 1
+
+
 # Run with: pytest tests/unit/test_dedup.py -v -s

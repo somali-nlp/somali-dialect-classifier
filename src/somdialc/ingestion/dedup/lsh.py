@@ -146,7 +146,10 @@ class MinHashDeduplicator:
             self.is_sharded = False
             logger.info("Using monolithic LSH index")
 
-        self.document_hashes = {}
+        # signature -> url mapping. Content-keyed so callers can safely reuse
+        # URLs across documents (e.g., Sprakbanken corpus URLs that span many
+        # texts). LSH itself is also keyed by signature; see add_document().
+        self.document_hashes: dict[str, str] = {}
         if storage_path and storage_path.exists():
             self._load_lsh_index()
 
@@ -176,23 +179,32 @@ class MinHashDeduplicator:
 
     def add_document(self, url: str, text: str) -> str:
         minhash = self.compute_minhash(text)
-        self.lsh.insert(url, minhash)
         signature = ",".join(str(value) for value in minhash.hashvalues)
-        self.document_hashes[url] = signature
+
+        # Index by signature, not URL: MinHash signatures are content-derived
+        # and unique per text, so callers can reuse URLs (Sprakbanken corpus
+        # URLs map to many texts) without colliding inside datasketch's LSH.
+        if signature in self.document_hashes:
+            return signature
+
+        self.lsh.insert(signature, minhash)
+        self.document_hashes[signature] = url
         return signature
 
     def find_similar(self, text: str, threshold: Optional[float] = None) -> list[tuple[str, float]]:
         threshold = self.similarity_threshold if threshold is None else threshold
         query_minhash = self.compute_minhash(text)
-        similar_urls = self.lsh.query(query_minhash)
+        similar_signatures = self.lsh.query(query_minhash)
 
         results = []
-        for url in similar_urls:
-            if url in self.document_hashes:
-                doc_minhash = self.signature_from_string(self.document_hashes[url])
-                similarity = query_minhash.jaccard(doc_minhash)
-                if similarity >= threshold:
-                    results.append((url, similarity))
+        for signature in similar_signatures:
+            url = self.document_hashes.get(signature)
+            if url is None:
+                continue
+            doc_minhash = self.signature_from_string(signature)
+            similarity = query_minhash.jaccard(doc_minhash)
+            if similarity >= threshold:
+                results.append((url, similarity))
 
         results.sort(key=lambda item: item[1], reverse=True)
         return results

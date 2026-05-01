@@ -120,6 +120,14 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.dump_url = self.dump_base + f"{self.current_code}-latest-pages-articles.xml.bz2"
         self.dump_file = self.raw_dir / f"wikipedia-somali_{self.run_id}_raw_dump.xml.bz2"
 
+        # download() coordinates with extract(): _download_called flips to True
+        # once download() returns, and _dump_path_from_download holds the dump
+        # path on success or None on 304-Not-Modified. extract() uses these to
+        # distinguish "called standalone before download" from "download said
+        # nothing changed".
+        self._download_called: bool = False
+        self._dump_path_from_download: Optional[Path] = None
+
         # Override staging and processed file paths for Wikipedia-specific naming
         # Pattern: {source_slug}_{run_id}_{layer}_{descriptive_name}.{ext}
         self.staging_file = (
@@ -259,6 +267,8 @@ class WikipediaSomaliProcessor(BasePipeline):
                     )
                     self.metrics.increment("dumps_skipped_not_modified")
                     self._export_stage_metrics("discovery")
+                    self._download_called = True
+                    self._dump_path_from_download = None
                     return None  # Signal to skip all processing
 
                 elif response.status_code == 200:
@@ -279,6 +289,8 @@ class WikipediaSomaliProcessor(BasePipeline):
         # Check if dump file already exists locally
         if self.dump_file.exists() and not self.force:
             self.logger.info(f"Dump already exists locally: {self.dump_file}")
+            self._download_called = True
+            self._dump_path_from_download = self.dump_file
             return self.dump_file
 
         self.logger.info(f"Downloading from: {self.dump_url}")
@@ -343,6 +355,8 @@ class WikipediaSomaliProcessor(BasePipeline):
         # Export metrics
         self._export_stage_metrics("discovery")
 
+        self._download_called = True
+        self._dump_path_from_download = self.dump_file
         return self.dump_file
 
     def extract(self) -> Optional[Path]:
@@ -357,15 +371,29 @@ class WikipediaSomaliProcessor(BasePipeline):
         Returns:
             Path to staging file, or None if no new articles to process
         """
-        # Check if download returned None (304 Not Modified)
-        if not hasattr(self, "_dump_path_from_download"):
-            # This is called standalone, check if dump file exists
-            if not self.dump_file.exists():
-                raise FileNotFoundError(f"Dump file not found: {self.dump_file}")
-        elif self._dump_path_from_download is None:
-            # download() returned None (304), skip extraction
+        # Coordinate with download(): three cases to handle.
+        if self._download_called and self._dump_path_from_download is None:
+            # download() returned None (304 Not Modified) — nothing changed.
             self.logger.info("Dump unchanged - skipping extraction and processing")
             return None
+        if not self._download_called:
+            # extract() called without a prior download() in this process. Use
+            # the run-id-named file if present, else fall back to any existing
+            # Wikipedia dump in raw_dir (lets re-runs reuse a dump from a
+            # previous run without re-downloading).
+            if self.dump_file.exists():
+                self._dump_path_from_download = self.dump_file
+            else:
+                existing = sorted(self.raw_dir.glob("wikipedia-somali_*_raw_dump.xml.bz2"))
+                if not existing:
+                    raise FileNotFoundError(
+                        f"No Wikipedia dump found in {self.raw_dir}. "
+                        f"Call download() first or place a dump file at {self.dump_file}."
+                    )
+                self._dump_path_from_download = existing[-1]
+                self.logger.info(
+                    f"Reusing existing dump from prior run: {self._dump_path_from_download}"
+                )
 
         self.staging_dir.mkdir(parents=True, exist_ok=True)
 
