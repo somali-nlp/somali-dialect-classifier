@@ -21,6 +21,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Optional, Union
 
+logger = logging.getLogger(__name__)
+
 
 class PipelineType(Enum):
     """
@@ -702,7 +704,7 @@ class MetricSnapshot:
         if "quality_pass_rate" in stats:
             qpr = stats["quality_pass_rate"]
             if qpr < 0 or qpr > 1:
-                self.logger.error(
+                logger.error(
                     f"VALIDATION ERROR: quality_pass_rate out of range: {qpr} "
                     f"(should be 0-1). This indicates a bug in metric calculation. "
                     f"Pipeline: {self.pipeline_type}, "
@@ -1104,8 +1106,6 @@ class MetricsCollector:
                 )
                 if not is_valid:
                     metrics_data["_validation_warnings"] = errors
-                    # Log warnings
-                    logger = logging.getLogger(__name__)
                     for error in errors:
                         logger.warning(f"Metric validation warning: {error}")
             except Exception as e:
@@ -1899,34 +1899,3 @@ class QualityReporter:
         if total == 0:
             return 0
         return (value / total) * 100
-
-
-# Example usage
-if __name__ == "__main__":
-    # Create metrics collector
-    collector = MetricsCollector(run_id="20250119_103045_bbc", source="BBC-Somali")
-
-    # Simulate metrics collection
-    collector.increment("urls_discovered", 1000)
-    collector.increment("urls_fetched", 950)
-    collector.increment("urls_processed", 900)
-    collector.increment("urls_failed", 50)
-    collector.increment("bytes_downloaded", 50_000_000)
-
-    # Record some timings
-    for _ in range(100):
-        collector.record_fetch_duration(500 + (time.time() % 1000))
-        collector.record_process_duration(100 + (time.time() % 500))
-
-    # Record HTTP status codes
-    for _ in range(900):
-        collector.record_http_status(200)
-    for _ in range(50):
-        collector.record_http_status(404)
-
-    # Export metrics
-    collector.export_json(Path("metrics_example.json"))
-
-    # Generate quality report
-    reporter = QualityReporter(collector)
-    reporter.generate_markdown_report(Path("quality_report_example.md"))

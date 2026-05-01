@@ -82,15 +82,19 @@ class PostgresLedger(LedgerBackend):
                 "Set SDC_DB_PASSWORD or POSTGRES_PASSWORD environment variable."
             )
 
-        self.connection_string = (
-            f"host={host} port={port} dbname={database} user={user} password={password} "
-            f"options='-c statement_timeout={query_timeout * 1000}'"  # PostgreSQL uses milliseconds
-        )
+        self._dsn_summary = f"{user}@{host}:{port}/{database}"
 
         # Create connection pool
         try:
             self.pool = ThreadedConnectionPool(
-                min_connections, max_connections, self.connection_string
+                min_connections,
+                max_connections,
+                host=host,
+                port=port,
+                dbname=database,
+                user=user,
+                password=password,
+                options=f"-c statement_timeout={query_timeout * 1000}",
             )
             logger.info(
                 f"PostgreSQL connection pool created ({min_connections}-{max_connections} connections)"
@@ -800,6 +804,21 @@ class PostgresLedger(LedgerBackend):
             return result[0]
         return None
 
+    def get_last_processing_time(self, source: str) -> Optional[datetime]:
+        """Get timestamp of last successful processing for a source."""
+        query = """
+            SELECT MAX(updated_at) as last_processing_time
+            FROM crawl_ledger
+            WHERE source = %s AND state = %s
+        """
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (source, "PROCESSED"))
+                result = cur.fetchone()
+        if result and result[0]:
+            return result[0]
+        return None
+
     def get_campaign_status(self, campaign_id: str) -> Optional[str]:
         """Get status of a campaign."""
         query = "SELECT status FROM campaigns WHERE campaign_id = %s"
@@ -860,14 +879,8 @@ class PostgresLedger(LedgerBackend):
         self.close()
         return False  # Don't suppress exceptions
 
-    def __del__(self):
-        """Destructor - last resort cleanup."""
-        if hasattr(self, "pool") and self.pool is not None:
-            logger.warning("PostgresLedger not explicitly closed, cleaning up in destructor")
-            try:
-                self.pool.closeall()
-            except Exception:
-                pass  # Destructors should never raise
+    def __repr__(self):
+        return f"PostgresLedger({self._dsn_summary})"
 
     def get_pool_status(self) -> dict[str, Any]:
         """
@@ -937,17 +950,3 @@ class PostgresLedger(LedgerBackend):
 
         return result
 
-    @property
-    def connection(self):
-        """
-        Property for backward compatibility with SQLiteLedger.
-
-        Note: For PostgreSQL, always use _get_connection() context manager
-        instead of direct connection access.
-        """
-        # This is for compatibility only - return a connection but log warning
-        logger.warning(
-            "Direct connection access is not recommended for PostgreSQL. "
-            "Use _get_connection() context manager instead."
-        )
-        return self.pool.getconn()

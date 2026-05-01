@@ -12,6 +12,8 @@ from bs4 import BeautifulSoup
 from ....infra.logging_utils import set_context
 from ....infra.metrics import MetricsCollector, PipelineType
 
+_REQUEST_TIMEOUT = 30
+
 
 def download(processor) -> Path:
     """Discover and persist BBC article links."""
@@ -115,7 +117,7 @@ def extract_article_links_from_soup(processor, soup: BeautifulSoup) -> set[str]:
             if is_valid:
                 links.add(full_url)
             else:
-                processor.logger.debug(f"  ⊘ Rejected link from soup: {full_url}")
+                processor.logger.debug(f"  REJECTED: {full_url}")
                 processor.metrics.increment("urls_rejected_security")
     return links
 
@@ -128,7 +130,7 @@ def scrape_homepage(
     processor.logger.info("Scraping homepage...")
 
     try:
-        response = session.get(processor.base_url, headers=processor.headers, timeout=30)
+        response = session.get(processor.base_url, headers=processor.headers, timeout=_REQUEST_TIMEOUT)
         response.raise_for_status()
 
         homepage_soup = BeautifulSoup(response.content, "html.parser")
@@ -155,7 +157,7 @@ def scrape_topic_sections(
 
     for section_url, section_name in topic_sections:
         try:
-            response = session.get(section_url, headers=processor.headers, timeout=30)
+            response = session.get(section_url, headers=processor.headers, timeout=_REQUEST_TIMEOUT)
             response.raise_for_status()
 
             soup = BeautifulSoup(response.content, "html.parser")

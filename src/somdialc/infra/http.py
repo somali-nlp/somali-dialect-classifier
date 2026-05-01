@@ -41,9 +41,7 @@ class HTTPSessionFactory:
     """Factory for creating configured HTTP sessions."""
 
     DEFAULT_USER_AGENT = (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/91.0.4472.124 Safari/537.36"
+        "somdialc-research/1.0 (+https://github.com/ilyasibrahim/somali-dialect-classifier; academic research)"
     )
 
     @staticmethod
@@ -73,7 +71,7 @@ class HTTPSessionFactory:
             status_forcelist = [500, 502, 503, 504]
 
         if allowed_methods is None:
-            allowed_methods = ["GET", "POST", "HEAD", "OPTIONS"]
+            allowed_methods = frozenset({"GET", "HEAD", "OPTIONS"})
 
         # Load timeout from config if not provided
         if timeout is None:

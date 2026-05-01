@@ -174,7 +174,8 @@ def main():
     config = get_config()
 
     # Get API token (CLI arg > env var)
-    api_token = args.api_token or config.scraping.tiktok.apify_api_token
+    _raw_token = config.scraping.tiktok.apify_api_token
+    api_token = args.api_token or (_raw_token.get_secret_value() if _raw_token else None)
     if not api_token:
         logger.error("Apify API token not provided!")
         logger.error("Please set SDC_SCRAPING__TIKTOK__APIFY_API_TOKEN environment variable")

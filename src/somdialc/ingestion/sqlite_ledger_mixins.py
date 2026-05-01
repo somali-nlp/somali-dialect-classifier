@@ -315,3 +315,16 @@ class SQLitePipelineRunsMixin:
         if result and result["first_run_time"]:
             return datetime.fromisoformat(result["first_run_time"].replace("Z", "+00:00"))
         return None
+
+    def get_last_processing_time(self, source: str) -> Optional[datetime]:
+        query = """
+            SELECT MAX(updated_at) as last_processing_time
+            FROM crawl_ledger
+            WHERE source = ? AND state = ?
+        """
+        result = self.connection.execute(
+            query, (source, "processed")
+        ).fetchone()
+        if result and result["last_processing_time"]:
+            return datetime.fromisoformat(result["last_processing_time"].replace("Z", "+00:00"))
+        return None

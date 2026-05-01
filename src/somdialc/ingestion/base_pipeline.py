@@ -63,6 +63,7 @@ class BasePipeline(DataProcessor, ABC):
         self.log_frequency = log_frequency
         self.batch_size = batch_size
         self.force = force
+        self.metrics: Optional[Any] = None
 
         self.logger = PipelineSetup.create_logger(self.source, self.run_id)
         self.data_manager = PipelineSetup.create_data_manager(
@@ -99,9 +100,6 @@ class BasePipeline(DataProcessor, ABC):
         Logs all relevant config values at INFO level, ensuring secrets
         (passwords, tokens, API keys) are properly redacted.
         """
-        import json
-
-        from ..infra.config import get_config
         from ..infra.security import redact_secrets
 
         try:
@@ -202,7 +200,6 @@ class BasePipeline(DataProcessor, ABC):
         """Return license (e.g., CC-BY-SA-3.0, ODC-BY-1.0)."""
         pass
 
-    @abstractmethod
     def _get_language(self) -> str:
         """Return ISO 639-1 language code (default: so)."""
         return "so"
@@ -244,7 +241,6 @@ class BasePipeline(DataProcessor, ABC):
 
         # Atomic write: write to temp file, then rename
         try:
-            # Ensure checkpoint directory exists
             checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Create temp file in same directory as checkpoint for atomic rename
@@ -429,7 +425,7 @@ class BasePipeline(DataProcessor, ABC):
                 language=self._get_language(),
                 source_metadata=augmented_meta,
             )
-            metrics = self.metrics if hasattr(self, "metrics") else None
+            metrics = self.metrics
             is_valid, errors = self.validation_service.validate_record(record, self.source, metrics)
             if not is_valid:
                 records_filtered += 1
@@ -481,7 +477,7 @@ class BasePipeline(DataProcessor, ABC):
 
     def _record_filter_metric(self, filter_reason: str) -> None:
         """Record filter reason in metrics if available."""
-        if hasattr(self, "metrics") and self.metrics is not None:
+        if self.metrics is not None:
             self.metrics.record_filter_reason(filter_reason)
 
     def _mark_url_processed(self, raw_record: RawRecord, record: dict) -> None:
@@ -527,7 +523,7 @@ class BasePipeline(DataProcessor, ABC):
 
     def _export_metrics(self, records_processed: int, records_filtered: int) -> None:
         """Export processing metrics and generate quality report."""
-        if hasattr(self, "metrics") and self.metrics is not None:
+        if self.metrics is not None:
             # Update metrics with processing stats
             self.metrics.increment("urls_processed", records_processed)
             self.metrics.increment("records_written", records_processed)
@@ -574,12 +570,6 @@ class BasePipeline(DataProcessor, ABC):
         """Save processed data (no-op: handled by process() via SilverDatasetWriter)."""
         pass
 
-    def _generate_run_id_for_tracking(self) -> str:
-        """Generate unique run ID for pipeline tracking."""
-        import uuid
-
-        return f"{self.source}_{uuid.uuid4().hex[:12]}"
-
     def _build_run_id_from_seed(self, run_seed: str) -> str:
         """
         Build a run_id using a shared orchestrator seed when provided.
@@ -605,10 +595,7 @@ class BasePipeline(DataProcessor, ABC):
     def _get_config_hash(self) -> str:
         """Generate hash of current configuration state."""
         import hashlib
-        import json
         import logging
-
-        from ..infra.config import get_config
 
         try:
             config = get_config()
@@ -705,12 +692,10 @@ class BasePipeline(DataProcessor, ABC):
         Args:
             stage: Pipeline stage name (discovery, extraction, processing)
         """
-        if not hasattr(self, "metrics") or self.metrics is None:
+        if self.metrics is None:
             return
 
         try:
-            from ..infra.config import get_config
-
             config = get_config()
             metrics_path = config.data.metrics_dir / f"{self.run_id}_{stage}.json"
 
@@ -724,7 +709,7 @@ class BasePipeline(DataProcessor, ABC):
             # Unexpected error - should be visible
             self.logger.warning(f"Failed to export {stage} metrics: {e}")
             # Track failure for monitoring
-            if hasattr(self, "metrics") and self.metrics:
+            if self.metrics:
                 try:
                     self.metrics.increment("metrics_export_failed")
                 except Exception:
@@ -737,10 +722,9 @@ class BasePipeline(DataProcessor, ABC):
         Args:
             stage: Pipeline stage name (discovery, extraction, processing)
         """
-        if not hasattr(self, "metrics") or self.metrics is None:
+        if self.metrics is None:
             return
 
-        from ..infra.config import get_config
         from ..infra.metrics import QualityReporter
 
         config = get_config()
@@ -750,57 +734,3 @@ class BasePipeline(DataProcessor, ABC):
 
         self.logger.info(f"Generated quality report: {report_path}")
 
-    def _validate_directory(self, path: Path, create: bool = True) -> bool:
-        """
-        Validate directory exists or create it.
-
-        Args:
-            path: Directory path to validate
-            create: Create directory if it doesn't exist
-
-        Returns:
-            True if directory exists or was created, False otherwise
-        """
-        if not path.exists():
-            if create:
-                path.mkdir(parents=True, exist_ok=True)
-                return True
-            return False
-        return path.is_dir()
-
-    def _file_exists_and_valid(self, path: Path, min_size: int = 0) -> bool:
-        """
-        Check if file exists and meets minimum size requirement.
-
-        Args:
-            path: File path to check
-            min_size: Minimum file size in bytes (default: 0)
-
-        Returns:
-            True if file exists and meets size requirement
-        """
-        return path.exists() and path.stat().st_size >= min_size
-
-    def _safe_write_staging(self, data: Any, filename: str, format: str = "jsonl") -> bool:
-        """
-        Safely write data to staging with error handling.
-
-        Args:
-            data: Data to write
-            filename: Output filename
-            format: Data format (jsonl, txt)
-
-        Returns:
-            True if write succeeded, False otherwise
-        """
-        try:
-            if format == "jsonl":
-                self.data_manager.write_to_staging(data, filename, format="jsonl")
-            elif format == "txt":
-                self.data_manager.write_to_staging(data, filename, format="txt")
-            else:
-                raise ValueError(f"Unsupported format: {format}")
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to write staging file {filename}: {e}")
-            return False

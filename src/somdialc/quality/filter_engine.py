@@ -67,7 +67,7 @@ class FilterEngine:
         self.filter_stats: Counter = Counter()
         self.strict_mode = strict_mode
 
-    def register_filter(self, filter_func: Callable, kwargs: dict[str, Any] = None) -> None:
+    def register_filter(self, filter_func: Callable, kwargs: Optional[dict[str, Any]] = None) -> None:
         """
         Register a filter function to be applied.
 

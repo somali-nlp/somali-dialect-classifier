@@ -248,16 +248,6 @@ def validate_ingestion_output(record: dict) -> tuple[bool, list[str]]:
             elif tokens_value < 0:
                 errors.append(f"Field 'tokens' has invalid value: {tokens_value} (must be >= 0)")
 
-    # STRICT: text must be non-empty string (already checked above, but double-check for clarity)
-    if "text" in record and record["text"] is not None:
-        text_value = record["text"]
-        if not isinstance(text_value, str):
-            # Already caught above, but include for completeness
-            pass
-        elif not text_value.strip():
-            # Already caught above
-            pass
-
     # OPTIONAL field validation: lang_confidence (if present, must be valid)
     if "lang_confidence" in record and record["lang_confidence"] is not None:
         conf_value = record["lang_confidence"]

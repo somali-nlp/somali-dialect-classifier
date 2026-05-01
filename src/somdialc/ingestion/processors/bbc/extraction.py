@@ -22,6 +22,26 @@ try:
 except ImportError:
     aiohttp = None
 
+_REQUEST_TIMEOUT = 30
+
+
+def _extract_paragraphs_from_soup(soup: BeautifulSoup) -> str:
+    """Extract paragraph text from BBC article HTML using fallback selectors."""
+    main_content = soup.find("main") or soup.find(role="main")
+    if main_content:
+        paragraphs = main_content.find_all("p")
+    else:
+        article_tag = soup.find("article")
+        if article_tag:
+            paragraphs = article_tag.find_all("p")
+        else:
+            article_body = soup.find(attrs={"data-component": "text-block"})
+            if article_body:
+                paragraphs = article_body.find_all("p")
+            else:
+                paragraphs = soup.find_all("p")
+    return "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
+
 
 def compute_text_hash(processor, text: str, url: str) -> str:
     """Compute text hash via the processor's dedup hasher."""
@@ -37,7 +57,7 @@ async def fetch_article_async(
             conditional_headers = processor.ledger.get_conditional_headers(url)
             headers = {**processor.headers, **conditional_headers}
 
-            async with session.get(url, headers=headers, timeout=30) as response:
+            async with session.get(url, headers=headers, timeout=_REQUEST_TIMEOUT) as response:
                 if response.status == 304:
                     processor.logger.info(f"Article not modified: {url}")
                     processor.metrics.increment("urls_not_modified")
@@ -90,23 +110,7 @@ def parse_article_from_html(processor, html: str, url: str) -> Optional[dict]:
         title_tag = soup.find("h1")
         title = title_tag.text.strip() if title_tag else "No title"
 
-        main_content = soup.find("main") or soup.find(role="main")
-        if main_content:
-            paragraphs = main_content.find_all("p")
-            text = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
-        else:
-            article_tag = soup.find("article")
-            if article_tag:
-                paragraphs = article_tag.find_all("p")
-                text = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
-            else:
-                article_body = soup.find(attrs={"data-component": "text-block"})
-                if article_body:
-                    paragraphs = article_body.find_all("p")
-                    text = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
-                else:
-                    paragraphs = soup.find_all("p")
-                    text = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
+        text = _extract_paragraphs_from_soup(soup)
 
         if not text:
             processor.logger.warning(
@@ -177,7 +181,6 @@ def extract_async(processor) -> Path:
             processor.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
-    processor.logger.info("")
     processor.logger.info("=" * 60)
     processor.logger.info("PHASE 2: Article Extraction (Async)")
     processor.logger.info("=" * 60)
@@ -346,7 +349,6 @@ def extract_sync(processor) -> Path:
             processor.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
         )
 
-    processor.logger.info("")
     processor.logger.info("=" * 60)
     processor.logger.info("PHASE 2: Article Extraction (Sync)")
     processor.logger.info("=" * 60)
@@ -506,7 +508,7 @@ def scrape_article(processor, session: requests.Session, url: str) -> Optional[d
     try:
         conditional_headers = processor.ledger.get_conditional_headers(url)
         headers = {**processor.headers, **conditional_headers}
-        response = session.get(url, headers=headers, timeout=30)
+        response = session.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
 
         if response.status_code == 304:
             processor.logger.info(f"Article not modified: {url}")
@@ -521,23 +523,7 @@ def scrape_article(processor, session: requests.Session, url: str) -> Optional[d
         title_tag = soup.find("h1")
         title = title_tag.text.strip() if title_tag else "No title"
 
-        main_content = soup.find("main") or soup.find(role="main")
-        if main_content:
-            paragraphs = main_content.find_all("p")
-            text = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
-        else:
-            article_tag = soup.find("article")
-            if article_tag:
-                paragraphs = article_tag.find_all("p")
-                text = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
-            else:
-                article_body = soup.find(attrs={"data-component": "text-block"})
-                if article_body:
-                    paragraphs = article_body.find_all("p")
-                    text = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
-                else:
-                    paragraphs = soup.find_all("p")
-                    text = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
+        text = _extract_paragraphs_from_soup(soup)
 
         if not text:
             processor.logger.warning(

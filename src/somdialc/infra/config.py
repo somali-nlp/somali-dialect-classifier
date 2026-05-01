@@ -38,7 +38,7 @@ from pathlib import Path
 from typing import Optional
 
 try:
-    from pydantic import Field
+    from pydantic import Field, SecretStr
     from pydantic_settings import BaseSettings, SettingsConfigDict
 
     PYDANTIC_AVAILABLE = True
@@ -247,7 +247,7 @@ if PYDANTIC_AVAILABLE:
         )
 
         # Apify credentials
-        apify_api_token: Optional[str] = Field(
+        apify_api_token: Optional[SecretStr] = Field(
             default=None, description="Apify API token (required for TikTok scraping)"
         )
         apify_user_id: Optional[str] = Field(

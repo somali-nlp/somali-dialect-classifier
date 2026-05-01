@@ -418,27 +418,9 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
     def check_near_duplicate_by_minhash(
         self, minhash_signature: str, threshold: float = 0.85
     ) -> Optional[list[tuple[str, float]]]:
-        """
-        Check for near-duplicates using MinHash.
-
-        Note: This is a placeholder. Actual MinHash similarity requires
-        comparing signature components, which will be implemented with
-        the datasketch library in dedup.py
-        """
-        # For now, just do exact match on signature
-        # Real implementation would compute Jaccard similarity
-        results = self.connection.execute(
-            "SELECT url, minhash_signature FROM crawl_ledger WHERE minhash_signature IS NOT NULL"
-        ).fetchall()
-
-        similar_urls = []
-        for row in results:
-            # Placeholder: real implementation would compute similarity
-            # For now, just return exact matches
-            if row["minhash_signature"] == minhash_signature:
-                similar_urls.append((row["url"], 1.0))
-
-        return similar_urls if similar_urls else None
+        raise NotImplementedError(
+            "MinHash similarity search requires an index. Use check_url_processed() for exact-match dedup."
+        )
 
     def get_last_rss_fetch(self, feed_url: str) -> Optional[datetime]:
         """Get last RSS feed fetch time."""
@@ -451,7 +433,7 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
             return datetime.fromisoformat(result["last_fetched_at"].replace("Z", "+00:00"))
         return None
 
-    def record_rss_fetch(self, feed_url: str, items_found: int) -> None:
+    def record_rss_fetch(self, feed_url: str, items_found: int, source: str = "bbc") -> None:
         """Record RSS feed fetch."""
         now = datetime.now(timezone.utc)
 
@@ -460,13 +442,13 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
             conn.execute(
                 """
                 INSERT INTO rss_feeds (feed_url, source, last_fetched_at, items_found, fetch_count)
-                VALUES (?, 'bbc', ?, ?, 1)
+                VALUES (?, ?, ?, ?, 1)
                 ON CONFLICT(feed_url) DO UPDATE SET
                     last_fetched_at = excluded.last_fetched_at,
                     items_found = excluded.items_found,
                     fetch_count = fetch_count + 1
             """,
-                (feed_url, now.isoformat(), items_found),
+                (feed_url, source, now.isoformat(), items_found),
             )
 
     def should_fetch_rss(self, feed_url: str, min_hours: int = 6) -> bool:
@@ -483,7 +465,7 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
         """Get ledger statistics."""
         stats = {}
 
-        # Total URLs (parameterized query - SECURITY FIX: prevents SQL injection)
+        # Total URLs
         if source:
             result = self.connection.execute(
                 "SELECT COUNT(*) as count FROM crawl_ledger WHERE source = ?", (source,)
@@ -494,7 +476,7 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
             ).fetchone()
         stats["total_urls"] = result["count"]
 
-        # URLs by state (parameterized query - SECURITY FIX: prevents SQL injection)
+        # URLs by state
         if source:
             state_query = """
                 SELECT state, COUNT(*) as count
@@ -516,7 +498,7 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
             state_counts[row["state"]] = row["count"]
         stats["by_state"] = state_counts
 
-        # Duplicate statistics (parameterized query - SECURITY FIX: prevents SQL injection)
+        # Duplicate statistics
         if source:
             result = self.connection.execute(
                 """
@@ -544,7 +526,7 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
         else:
             stats["dedup_rate"] = 0
 
-        # Error statistics (parameterized query - SECURITY FIX: prevents SQL injection)
+        # Error statistics
         if source:
             result = self.connection.execute(
                 """
@@ -879,15 +861,8 @@ class CrawlLedger:
             WHERE source = ? AND state = ?
         """
 
-        result = self.backend.connection.execute(
-            query, (source, CrawlState.PROCESSED.value)
-        ).fetchone()
-
-        if result and result["last_processing_time"]:
-            # Parse ISO format timestamp
-            return datetime.fromisoformat(result["last_processing_time"].replace("Z", "+00:00"))
-
-        return None
+        result = self.backend.get_last_processing_time(source)
+        return result
 
     def get_processed_urls(self, source: str, limit: Optional[int] = None) -> list[dict[str, Any]]:
         """
@@ -1331,6 +1306,3 @@ def get_ledger(
     return CrawlLedger(backend=backend, db_path=db_path)
 
 
-def reset_ledger():
-    """Compatibility shim retained for tests after singleton removal."""
-    return None

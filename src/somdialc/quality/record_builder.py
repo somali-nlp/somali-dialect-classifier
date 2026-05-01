@@ -11,6 +11,7 @@ Responsibilities:
 import logging
 from typing import Any, Optional, cast
 
+from ..ingestion.raw_record import RawRecord
 from ..version import __pipeline_version__
 from .record_utils import build_silver_record
 
@@ -58,7 +59,7 @@ class RecordBuilder:
 
     def build_silver_record(
         self,
-        raw_record: Any,  # RawRecord instance
+        raw_record: RawRecord,
         cleaned_text: str,
         filter_metadata: dict[str, Any],
         source_type: str,

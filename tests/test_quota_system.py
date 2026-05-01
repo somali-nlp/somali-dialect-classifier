@@ -19,7 +19,6 @@ from somdialc.infra.config import get_config, reset_config
 from somdialc.ingestion.crawl_ledger import (
     CrawlLedger,
     SQLiteLedger,
-    reset_ledger,
 )
 
 
@@ -39,7 +38,6 @@ def ledger(temp_db):
     ledger = CrawlLedger(backend=backend)
     yield ledger
     ledger.close()
-    reset_ledger()
 
 
 @pytest.fixture

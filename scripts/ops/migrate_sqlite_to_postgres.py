@@ -17,6 +17,7 @@ Usage:
         --dry-run
 """
 
+import json
 import logging
 import sys
 from pathlib import Path
@@ -26,7 +27,7 @@ import click
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from somdialc.preprocessing.crawl_ledger import CrawlLedger
+from somdialc.ingestion.crawl_ledger import CrawlLedger, CrawlState
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -112,18 +113,12 @@ def migrate(
                 url_dict = dict(url_record)
 
                 if not dry_run:
-                    # Import metadata from JSON string
-                    import json
-
                     metadata = None
                     if url_dict.get("metadata"):
                         try:
                             metadata = json.loads(url_dict["metadata"])
                         except Exception:
                             metadata = None
-
-                    # Use backend.upsert_url for direct access
-                    from somdialc.preprocessing.crawl_ledger import CrawlState
 
                     postgres_ledger.backend.upsert_url(
                         url=url_dict["url"],

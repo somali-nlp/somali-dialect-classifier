@@ -186,6 +186,11 @@ class LedgerBackend(ABC):
         pass
 
     @abstractmethod
+    def get_last_processing_time(self, source: str) -> Optional[datetime]:
+        """Get timestamp of last successful processing for a source."""
+        pass
+
+    @abstractmethod
     def get_campaign_status(self, campaign_id: str) -> Optional[str]:
         """Get status of a campaign."""
         pass

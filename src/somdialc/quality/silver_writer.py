@@ -10,6 +10,7 @@ from typing import Optional
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from ..contracts.ingestion_output import VALID_REGISTERS as _VALID_REGISTERS
 from ..infra.config import get_config
 from ..schema.registry import CURRENT_SCHEMA_VERSION
 from ..version import __pipeline_version__
@@ -51,19 +52,7 @@ class SilverDatasetWriter:
         ]
     )
 
-    VALID_REGISTERS = {
-        # Linguistic registers
-        "formal",
-        "informal",
-        "colloquial",
-        # Content-type registers
-        "news",
-        "encyclopedic",
-        "corpus",
-        "social-media",
-        "web",
-        "other",
-    }
+    VALID_REGISTERS = _VALID_REGISTERS
 
     DOMAINS = {
         "news",

@@ -64,7 +64,7 @@ class ApifyTikTokClient:
             total=5,
             backoff_factor=1.0,
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "POST", "OPTIONS"],
+            allowed_methods=frozenset({"GET", "HEAD", "OPTIONS"}),
         )
         adapter = HTTPAdapter(max_retries=retries)
         session.mount("http://", adapter)
@@ -106,7 +106,7 @@ class ApifyTikTokClient:
         }
 
         self.logger.info(f"Starting actor run for {len(video_urls)} videos...")
-        self.logger.debug(f"Actor input: {actor_input}")
+        self.logger.debug("Starting actor run with %d video URLs", len(video_urls))
 
         # Start actor run
         url = f"{self.BASE_URL}/acts/{self.ACTOR_ID}/runs"

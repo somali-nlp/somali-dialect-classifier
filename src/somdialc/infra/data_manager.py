@@ -22,7 +22,6 @@ Performance Optimizations:
 import hashlib
 import json
 import logging
-import mmap
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -511,33 +510,6 @@ class DataManager:
 
     # Performance-Optimized I/O Methods
 
-    def read_large_file_optimized(
-        self, filepath: Path, chunk_size: int = 8192, buffer_size: int = 819200
-    ) -> Iterator[str]:
-        """
-        Read large files with optimized buffering (1.5-2x faster than standard read).
-
-        Uses increased buffer size to reduce I/O syscalls.
-
-        Args:
-            filepath: Path to file to read
-            chunk_size: Size of each chunk to read (bytes)
-            buffer_size: Buffer size for file operations (default: 800KB)
-
-        Yields:
-            Text chunks
-
-        Example:
-            >>> for chunk in manager.read_large_file_optimized(Path("large.txt")):
-            ...     process(chunk)
-        """
-        with open(filepath, encoding="utf-8", buffering=buffer_size) as f:
-            while True:
-                chunk = f.read(chunk_size)
-                if not chunk:
-                    break
-                yield chunk
-
     def read_jsonl_optimized(
         self, filepath: Path, buffer_size: int = 819200
     ) -> Iterator[dict[str, Any]]:
@@ -593,66 +565,6 @@ class DataManager:
 
         self.logger.info(f"Wrote {len(records)} records to {filepath} (batch-optimized)")
 
-    def write_jsonl_streaming(
-        self,
-        records: Iterator[dict[str, Any]],
-        filepath: Path,
-        flush_interval: int = 100,
-        buffer_size: int = 819200,
-    ) -> int:
-        """
-        Write JSONL streaming with periodic flushes (memory efficient).
-
-        Args:
-            records: Iterator of records
-            filepath: Output file path
-            flush_interval: Number of records between flushes
-            buffer_size: Buffer size for file operations (default: 800KB)
-
-        Returns:
-            Number of records written
-
-        Example:
-            >>> def record_generator():
-            ...     for i in range(1000000):
-            ...         yield {"text": f"Record {i}"}
-            >>> count = manager.write_jsonl_streaming(record_generator(), Path("huge.jsonl"))
-        """
-        filepath.parent.mkdir(parents=True, exist_ok=True)
-
-        count = 0
-        with open(filepath, "w", encoding="utf-8", buffering=buffer_size) as f:
-            for record in records:
-                f.write(json.dumps(record, ensure_ascii=False) + "\n")
-                count += 1
-
-                if count % flush_interval == 0:
-                    f.flush()
-
-        self.logger.info(f"Wrote {count} records to {filepath} (streaming)")
-        return count
-
-    def read_mmap_large_file(self, filepath: Path) -> bytes:
-        """
-        Read large file using memory mapping (useful for files >100MB).
-
-        Memory-mapped files allow the OS to handle paging, which can be
-        faster than reading entire file into memory.
-
-        Args:
-            filepath: Path to file
-
-        Returns:
-            File contents as bytes
-
-        Example:
-            >>> data = manager.read_mmap_large_file(Path("huge_dump.xml"))
-            >>> # Process without loading entire file into Python memory
-        """
-        with open(filepath, "r+b") as f:
-            with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmapped:
-                return mmapped.read()
-
     def compute_checksum_optimized(
         self, filepath: Path, algorithm: str = "sha256", chunk_size: int = 65536
     ) -> str:
@@ -685,39 +597,3 @@ class DataManager:
                 hasher.update(chunk)
 
         return hasher.hexdigest()
-
-    def read_text_optimized(self, filepath: Path, buffer_size: int = 819200) -> str:
-        """
-        Read entire text file with optimized buffering.
-
-        Args:
-            filepath: Path to text file
-            buffer_size: Buffer size (default: 800KB)
-
-        Returns:
-            File contents as string
-
-        Example:
-            >>> text = manager.read_text_optimized(Path("article.txt"))
-        """
-        with open(filepath, encoding="utf-8", buffering=buffer_size) as f:
-            return f.read()
-
-    def write_text_optimized(self, text: str, filepath: Path, buffer_size: int = 819200) -> None:
-        """
-        Write text file with optimized buffering.
-
-        Args:
-            text: Text content to write
-            filepath: Output file path
-            buffer_size: Buffer size (default: 800KB)
-
-        Example:
-            >>> manager.write_text_optimized("Large text content...", Path("output.txt"))
-        """
-        filepath.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(filepath, "w", encoding="utf-8", buffering=buffer_size) as f:
-            f.write(text)
-
-        self.logger.info(f"Wrote text to {filepath} (optimized)")
