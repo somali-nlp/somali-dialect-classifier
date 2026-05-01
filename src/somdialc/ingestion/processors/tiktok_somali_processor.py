@@ -50,6 +50,8 @@ class TikTokSomaliProcessor(BasePipeline):
         force: bool = False,
         run_seed: Optional[str] = None,
         ledger=None,
+        max_comments_per_video: Optional[int] = None,
+        max_total_comments: Optional[int] = None,
     ):
         """
         Initialize TikTok Somali processor.
@@ -59,10 +61,16 @@ class TikTokSomaliProcessor(BasePipeline):
             apify_user_id: Apify user ID (optional, for reference)
             video_urls: List of TikTok video URLs to scrape (optional)
             force: Force reprocessing even if output exists
+            max_comments_per_video: Hard cap on Apify's `commentsPerPost` (None = no cap).
+                Pre-filter cost control — Apify never returns more than this per video.
+            max_total_comments: Total-comments budget across all videos in this run
+                (None = no cap). Implemented as a per-video cap of
+                `ceil(max_total_comments / len(video_urls))`, since Apify has no
+                cross-video coordination.
 
         Note:
-            ALL comments from Apify are preserved. No limits, no fuzzy deduplication.
-            You pay for every comment Apify scrapes, so we keep them all.
+            ALL comments returned by Apify are preserved (no post-filter dedup).
+            The two caps above are the only knobs that limit paid Apify spend.
         """
         # Initialize Apify client
         self.apify_api_token = apify_api_token
@@ -71,6 +79,15 @@ class TikTokSomaliProcessor(BasePipeline):
 
         # TikTok-specific configuration
         self.video_urls = video_urls or []
+        # Snapshot of the as-supplied video URL list, kept across the discovery
+        # filter so process() can mark each one processed in the ledger after
+        # silver is written. Without this, every retry re-scrapes (paid) — see
+        # exec/phase1-clean-retest-20260501.md TD-013.
+        self._original_video_urls: list[str] = list(self.video_urls)
+        # Cost-control caps (TD-014). Either or both may be set; the effective
+        # per-video limit passed to Apify is the min of any caps that apply.
+        self.max_comments_per_video = max_comments_per_video
+        self.max_total_comments = max_total_comments
 
         # Initialize deduplication and ledger BEFORE BasePipeline
         from somdialc.ingestion.crawl_ledger import get_ledger
@@ -168,15 +185,36 @@ class TikTokSomaliProcessor(BasePipeline):
         """
         return "social-media"
 
-    def download(self) -> Path:
+    def _effective_max_per_video(self, video_count: int) -> Optional[int]:
         """
-        Download TikTok comments using Apify actor.
+        Resolve the per-video Apify cap from the two configured limits.
+
+        Apify's actor only honours `commentsPerPost` (per-video). When the
+        operator passes only `--max-comments` (total budget), distribute it
+        across the video list so the actor enforces the budget per call.
+
+        Returns the smaller of any configured caps, or None if neither is set.
+        """
+        import math
+
+        candidates: list[int] = []
+        if self.max_comments_per_video is not None:
+            candidates.append(self.max_comments_per_video)
+        if self.max_total_comments is not None and video_count > 0:
+            candidates.append(math.ceil(self.max_total_comments / video_count))
+        return min(candidates) if candidates else None
+
+    def download(self) -> Optional[Path]:
+        """
+        Discover TikTok video URLs to scrape.
 
         Returns:
-            Path to video URLs file
+            Path to video URLs file with new URLs to scrape, or None if every
+            input video URL is already in the ledger as processed (TD-013).
+            Callers must respect the None signal and skip extract()/process().
 
         Raises:
-            ValueError: If no video URLs provided
+            ValueError: If no video URLs were supplied at construction time.
         """
         from somdialc.infra.logging_utils import set_context
         from somdialc.infra.metrics import MetricsCollector, PipelineType
@@ -215,11 +253,14 @@ class TikTokSomaliProcessor(BasePipeline):
         self.logger.info("PHASE 1: TikTok Video URL Discovery")
         self.logger.info("=" * 60)
 
-        # FIX: Filter out already-processed video URLs from ledger
-        processed_video_urls = set()
-        if not self.force and hasattr(self, "ledger") and self.ledger is not None:
+        # Filter out already-processed video URLs from ledger so we don't
+        # re-charge Apify on retries (TD-013). Uses self.source rather than a
+        # hardcoded string so the discover/process write paths and this read
+        # path stay locked together.
+        processed_video_urls: set[str] = set()
+        if not self.force and self.ledger is not None:
             try:
-                processed_records = self.ledger.get_processed_urls(source="tiktok-somali")
+                processed_records = self.ledger.get_processed_urls(source=self.source)
                 processed_video_urls = {record["url"] for record in processed_records}
                 self.logger.info(
                     f"Loaded {len(processed_video_urls)} already-processed video URLs from ledger"
@@ -234,7 +275,8 @@ class TikTokSomaliProcessor(BasePipeline):
             self.logger.info(
                 f"All {len(self.video_urls)} video URLs already processed - skipping Apify call"
             )
-            # Save empty file and return to skip extraction
+            # Persist a marker file for audit trail, then return None so the
+            # CLI/orchestrator skips extract() and process() entirely (TD-013).
             with open(self.video_urls_file, "w", encoding="utf-8") as f:
                 json.dump(
                     {
@@ -247,7 +289,7 @@ class TikTokSomaliProcessor(BasePipeline):
                     ensure_ascii=False,
                     indent=2,
                 )
-            return self.video_urls_file
+            return None
 
         self.logger.info(
             f"Filtered {len(self.video_urls) - len(new_video_urls)} already-processed videos, "
@@ -272,9 +314,13 @@ class TikTokSomaliProcessor(BasePipeline):
 
         self.logger.info(f"Saved {len(self.video_urls)} video URLs -> {self.video_urls_file}")
 
-        # Mark URLs as discovered in ledger
+        # Mark URLs as discovered in ledger. Use self.source ("tiktok-somali")
+        # so the discovery filter at the top of download() can find the same
+        # rows on the next run and skip already-processed videos (TD-013).
         for url in self.video_urls:
-            self.ledger.discover_url(url, "tiktok", metadata={"discovered_at": self.date_accessed})
+            self.ledger.discover_url(
+                url, self.source, metadata={"discovered_at": self.date_accessed}
+            )
             self.metrics.increment("urls_discovered")
 
         # Export metrics
@@ -339,12 +385,24 @@ class TikTokSomaliProcessor(BasePipeline):
         except Exception as e:
             self.logger.warning(f"Could not fetch account info: {e}")
 
+        # Compute the effective per-video cap from the configured limits (TD-014).
+        # Apify only supports `commentsPerPost`, so a total-comments budget is
+        # converted into a per-video cap of ceil(budget / video_count).
+        effective_cap = self._effective_max_per_video(len(self.video_urls))
+
         # Start Apify actor run
         self.logger.info(f"Starting Apify actor for {len(self.video_urls)} videos...")
-        self.logger.info("ALL comments will be scraped - no limits applied")
+        if effective_cap is None:
+            self.logger.info("No comment limit configured - scraping ALL comments per video")
+        else:
+            self.logger.info(
+                f"Per-video Apify cap: {effective_cap} comments "
+                f"(max_per_video={self.max_comments_per_video}, "
+                f"max_total={self.max_total_comments})"
+            )
         scrape_result = self.apify_client.scrape_comments(
             video_urls=self.video_urls,
-            max_comments_per_video=None,  # No limit - scrape ALL comments
+            max_comments_per_video=effective_cap,
             wait_for_completion=True,
             poll_interval=15,
         )
@@ -419,7 +477,11 @@ class TikTokSomaliProcessor(BasePipeline):
         self.logger.info(f"  Raw items from Apify: {apify_items_count}")
         self.logger.info(f"  Staging comments saved: {comments_count}")
         self.logger.info(f"  Skipped (empty text): {skipped_empty}")
-        self.logger.info(f"  Preservation rate: {100 * comments_count / apify_items_count:.1f}%")
+        if apify_items_count > 0:
+            preservation_rate = 100 * comments_count / apify_items_count
+            self.logger.info(f"  Preservation rate: {preservation_rate:.1f}%")
+        else:
+            self.logger.info("  Preservation rate: n/a (no items returned by Apify)")
         self.logger.info("=" * 60)
 
         # Export metrics
@@ -569,3 +631,29 @@ class TikTokSomaliProcessor(BasePipeline):
                         "minhash_signature": str(comment.get("minhash_signature", "")),
                     },
                 )
+
+    def process(self) -> Optional[Path]:
+        """
+        Run the standard BasePipeline silver write, then mark each input
+        video URL as processed in the ledger so subsequent runs skip them
+        in download() (TD-013). Without this hook the discovery filter only
+        sees the per-comment URLs, which never match the parent video URL,
+        and every retry re-charges the Apify account.
+        """
+        silver_path = super().process()
+        if silver_path is None:
+            return None
+        for video_url in self._original_video_urls:
+            try:
+                self.ledger.mark_processed(
+                    url=video_url,
+                    source=self.source,
+                    text_hash="",
+                    silver_id="",
+                )
+            except Exception as exc:
+                # Don't fail the run for a ledger write that was best-effort.
+                self.logger.warning(
+                    f"Failed to mark video URL processed in ledger: {video_url}: {exc}"
+                )
+        return silver_path

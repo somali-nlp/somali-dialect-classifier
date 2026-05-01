@@ -650,14 +650,21 @@ class BasePipeline(DataProcessor, ABC):
 
     def run(self) -> Optional[Path]:
         """
-        Template method: download→extract→process.
+        Template method: download → extract → process.
 
-        Returns:
-            Path to silver Parquet file, or None if no data to process
-            (e.g., 304 Not Modified for Wikipedia, no new articles)
+        Each phase may return None to signal "nothing to do" — Wikipedia's
+        download() returns None on 304 Not Modified, TikTok's download()
+        returns None when every input video URL is already in the ledger as
+        processed, extract() returns None when ledger-level dedup empties
+        the article set. We must short-circuit on None at each step or we
+        leak paid API calls and divide-by-zero in the empty case.
         """
-        self.download()
-        self.extract()
+        if self.download() is None:
+            self.logger.info("Pipeline short-circuit at download (no work to do)")
+            return None
+        if self.extract() is None:
+            self.logger.info("Pipeline short-circuit at extract (no work to do)")
+            return None
         return self.process()
 
     def _cleanup_old_raw_files(self):

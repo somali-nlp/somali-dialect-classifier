@@ -612,3 +612,53 @@ class TestTikTokProcessorIntegration:
                 assert isinstance(result, expected_type), (
                     f"Comment '{description}' should pass filter"
                 )
+
+
+class TestTikTokCostCaps:
+    """Regression tests for TD-013/TD-014: cost-control plumbing."""
+
+    def _make_processor(self, **kwargs):
+        from somdialc.ingestion.processors.tiktok_somali_processor import TikTokSomaliProcessor
+
+        defaults = {"apify_api_token": "dummy", "video_urls": ["a", "b", "c", "d"]}
+        defaults.update(kwargs)
+        return TikTokSomaliProcessor(**defaults)
+
+    def test_no_caps_returns_none(self):
+        """No --max-comments and no --max-per-video means no per-video cap."""
+        p = self._make_processor()
+        assert p._effective_max_per_video(4) is None
+
+    def test_only_per_video_cap(self):
+        p = self._make_processor(max_comments_per_video=100)
+        assert p._effective_max_per_video(4) == 100
+
+    def test_only_total_cap_distributes_across_videos(self):
+        """--max-comments=300 over 4 videos → ceil(300/4)=75 per video."""
+        p = self._make_processor(max_total_comments=300)
+        assert p._effective_max_per_video(4) == 75
+
+    def test_both_caps_takes_smaller(self):
+        """Both caps configured: the tighter of the two wins."""
+        p = self._make_processor(max_comments_per_video=100, max_total_comments=300)
+        # per_video=100, total/N = 75 → 75 wins
+        assert p._effective_max_per_video(4) == 75
+
+        p2 = self._make_processor(max_comments_per_video=50, max_total_comments=1000)
+        # per_video=50, total/N = 250 → 50 wins
+        assert p2._effective_max_per_video(4) == 50
+
+    def test_total_cap_with_zero_videos_is_safe(self):
+        """Empty video list shouldn't divide by zero."""
+        p = self._make_processor(max_total_comments=300)
+        assert p._effective_max_per_video(0) is None
+
+    def test_original_video_urls_preserved_for_dedup(self):
+        """The discovery filter mutates self.video_urls; the snapshot used by
+        process() to mark URLs as processed (TD-013) must remain intact."""
+        p = self._make_processor(video_urls=["u1", "u2", "u3"])
+        assert p._original_video_urls == ["u1", "u2", "u3"]
+        # Simulate the discovery filter: only one video survives.
+        p.video_urls = ["u3"]
+        # Snapshot still has all three so process() marks them all processed.
+        assert p._original_video_urls == ["u1", "u2", "u3"]

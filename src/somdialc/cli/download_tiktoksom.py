@@ -217,6 +217,8 @@ def main():
         apify_user_id=config.scraping.tiktok.apify_user_id,
         video_urls=video_urls,
         force=args.force,
+        max_comments_per_video=args.max_per_video,
+        max_total_comments=args.max_comments,
     )
 
     # Run pipeline: download → extract → process → silver
@@ -226,6 +228,14 @@ def main():
         # Phase 1: Discovery (save video URLs)
         logger.info("\n[1/4] Discovery: Saving video URLs...")
         video_urls_file = processor.download()
+        if video_urls_file is None:
+            # Every input video URL was already in the ledger as processed
+            # (TD-013). No paid Apify call, no extraction, no silver write.
+            logger.info(
+                "\n✓ All video URLs already processed in a prior run "
+                "(skipped Apify, no charge). Pass --force to re-scrape."
+            )
+            return
         logger.info(f"✓ Video URLs saved: {video_urls_file}")
 
         # Phase 2: Extraction (scrape via Apify)
