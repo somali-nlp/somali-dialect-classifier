@@ -39,11 +39,15 @@ except ImportError:
 
 def extract_consolidated_metric(data: dict[str, Any], source_file: str) -> Optional[dict[str, Any]]:
     """
-    Extract consolidated metric from Phase 3 *_processing.json.
+    Extract consolidated metric from a Phase-3 *_processing.json.
 
-    This function transforms Phase 3 processing JSON into a consolidated
-    metric dictionary suitable for dashboard consumption. It properly
-    surfaces layered_metrics and computes derived statistics.
+    Reads from `layered_metrics` (the current schema). If the older
+    `legacy_metrics.snapshot/statistics` block is also present (test
+    fixtures and pre-Phase-3 files), its richer fields — `duration_seconds`,
+    `throughput`, `text_length_stats`, `fetch_duration_stats` — are used
+    to enrich the output. Files without a `legacy_metrics` block return
+    derived counts from `layered_metrics` only and zeros for the
+    duration/throughput fields.
 
     Args:
         data: Loaded JSON from *_processing.json
@@ -58,139 +62,168 @@ def extract_consolidated_metric(data: dict[str, Any], source_file: str) -> Optio
         >>> print(metric['records_written'])  # 9960
     """
     try:
-        # Try schema validation if available
-        use_validation = False
-        validated = None
-
+        # Best-effort schema validation. Validation only catches malformed
+        # files; extraction below uses dict access so the function works for
+        # both validated and non-validated payloads.
         if SCHEMA_VALIDATION_AVAILABLE:
             try:
-                validated = validate_processing_json(data)
-                use_validation = True
+                validate_processing_json(data)
             except Exception as validation_error:
                 logger.debug(
-                    f"Schema validation failed for {source_file}, using fallback: {validation_error}"
+                    f"Schema validation failed for {source_file}, "
+                    f"continuing with raw extraction: {validation_error}"
                 )
-                use_validation = False
 
-        if use_validation and validated:
-            # Guard against null sources (stale data)
-            source = validated.source
-            run_id = validated.run_id
+        # Top-level identity fields (Phase-3 underscore-prefixed names).
+        layered = data.get("layered_metrics", {}) or {}
+        legacy = data.get("legacy_metrics", {}) or {}
+        snapshot = legacy.get("snapshot", {}) or {}
+        stats = legacy.get("statistics", {}) or {}
 
-            # Access Pydantic model attributes directly
-            layered = validated.layered_metrics
-            legacy = validated.legacy_metrics
-            snapshot = legacy.snapshot
-            stats = legacy.statistics
+        source = data.get("_source") or snapshot.get("source")
+        if not source:
+            logger.warning(f"No source found in {source_file}, skipping")
+            return None
+        run_id = data.get("_run_id") or snapshot.get("run_id")
+        if not run_id:
+            logger.warning(f"No run_id found in {source_file}, skipping")
+            return None
 
-            quality = layered.quality
-            volume = layered.volume
-        else:
-            # Fallback to dict access
-            layered = data.get("layered_metrics", {})
-            legacy = data.get("legacy_metrics", {})
-            snapshot = legacy.get("snapshot", {})
-            stats = legacy.get("statistics", {})
+        # Layered-metrics sublayers.
+        connectivity = layered.get("connectivity", {}) or {}
+        extraction = layered.get("extraction", {}) or {}
+        quality = layered.get("quality", {}) or {}
+        volume = layered.get("volume", {}) or {}
 
-            # Guard against null sources (stale data)
-            source = data.get("_source") or snapshot.get("source")
-            if not source:
-                logger.warning(f"No source found in {source_file}, skipping")
-                return None
+        # Helpers to derive counts from the new schema, with legacy fallback.
+        def _first_present(*candidates: Any) -> Any:
+            for value in candidates:
+                if value is not None:
+                    return value
+            return None
 
-            run_id = data.get("_run_id") or snapshot.get("run_id")
-            if not run_id:
-                logger.warning(f"No run_id found in {source_file}, skipping")
-                return None
+        def _safe_ratio(num: Any, denom: Any) -> float:
+            try:
+                if denom in (None, 0, 0.0):
+                    return 0.0
+                return float(num or 0) / float(denom)
+            except (TypeError, ValueError):
+                return 0.0
 
-            quality = layered.get("quality", {})
-            volume = layered.get("volume", {})
+        # Discovery / fetch counts. Different pipeline types populate
+        # different fields under `extraction`; pick the first that applies,
+        # falling back to the legacy snapshot for older files.
+        urls_discovered = _first_present(
+            extraction.get("http_requests_attempted"),
+            extraction.get("files_discovered"),
+            extraction.get("records_fetched"),
+            snapshot.get("urls_discovered"),
+            0,
+        )
+        urls_fetched = _first_present(
+            extraction.get("http_requests_successful"),
+            extraction.get("files_processed"),
+            extraction.get("records_fetched"),
+            snapshot.get("urls_fetched"),
+            0,
+        )
+        urls_processed = _first_present(
+            quality.get("records_received"),
+            snapshot.get("urls_processed"),
+            0,
+        )
+        records_extracted = _first_present(
+            extraction.get("records_extracted"),
+            snapshot.get("records_extracted"),
+            urls_processed,
+        )
 
-        # Build consolidated metric (handle both Pydantic and dict access)
-        if use_validation and validated:
-            metric = {
-                "run_id": run_id,
-                "source": source,
-                "timestamp": validated.timestamp,
-                "duration_seconds": snapshot.duration_seconds,
-                "pipeline_type": snapshot.pipeline_type,
-                # Discovery metrics (from legacy for backward compatibility)
-                "urls_discovered": snapshot.urls_discovered,
-                "urls_fetched": snapshot.urls_fetched,
-                "urls_processed": snapshot.urls_processed,
-                "records_extracted": snapshot.records_extracted,
-                # Volume metrics (from layered_metrics.volume)
-                "records_written": volume.records_written,
-                "bytes_downloaded": volume.bytes_downloaded,
-                "total_chars": volume.total_chars,
-                # Quality metrics (from statistics)
-                "http_request_success_rate": stats.http_request_success_rate,
-                "content_extraction_success_rate": stats.content_extraction_success_rate,
-                "quality_pass_rate": stats.quality_pass_rate,
-                "deduplication_rate": stats.deduplication_rate,
-                # Throughput metrics (from statistics.throughput)
-                "urls_per_second": stats.throughput.urls_per_second,
-                "bytes_per_second": stats.throughput.bytes_per_second,
-                "records_per_minute": stats.throughput.records_per_minute,
-            }
+        # Derived success rates. Prefer the legacy stats block when it is
+        # present (operators may rely on the precomputed values), otherwise
+        # compute from raw counts.
+        http_success_rate = _first_present(
+            stats.get("http_request_success_rate"),
+            (
+                _safe_ratio(
+                    extraction.get("http_requests_successful"),
+                    extraction.get("http_requests_attempted"),
+                )
+                if extraction.get("http_requests_attempted") is not None
+                else None
+            ),
+            0,
+        )
+        content_extraction_rate = _first_present(
+            stats.get("content_extraction_success_rate"),
+            (
+                _safe_ratio(extraction.get("content_extracted"), extraction.get("pages_parsed"))
+                if extraction.get("pages_parsed") is not None
+                else None
+            ),
+            (
+                _safe_ratio(extraction.get("files_processed"), extraction.get("files_discovered"))
+                if extraction.get("files_discovered") is not None
+                else None
+            ),
+            1.0 if connectivity.get("connection_successful") else 0.0,
+        )
+        quality_pass_rate = _first_present(
+            stats.get("quality_pass_rate"),
+            _safe_ratio(quality.get("records_passed_filters"), quality.get("records_received")),
+        )
 
-            # Optional: Include detailed stats
-            if stats.text_length_stats:
-                metric["text_length_stats"] = stats.text_length_stats.model_dump()
+        # Throughput requires a duration. Phase-3 payloads do not carry one;
+        # fall back to the legacy statistics block when available, else 0.
+        throughput = stats.get("throughput", {}) or {}
 
-            if stats.fetch_duration_stats:
-                metric["fetch_duration_stats"] = stats.fetch_duration_stats.model_dump()
+        metric: dict[str, Any] = {
+            "run_id": run_id,
+            "source": source,
+            "timestamp": data.get("_timestamp") or snapshot.get("timestamp", ""),
+            "duration_seconds": snapshot.get("duration_seconds", 0),
+            "pipeline_type": data.get("_pipeline_type")
+            or snapshot.get("pipeline_type", "unknown"),
+            # Discovery / fetch counts (from layered_metrics, legacy fallback)
+            "urls_discovered": urls_discovered or 0,
+            "urls_fetched": urls_fetched or 0,
+            "urls_processed": urls_processed or 0,
+            "records_extracted": records_extracted or 0,
+            # Volume (from layered_metrics.volume)
+            "records_written": volume.get("records_written", 0),
+            "bytes_downloaded": volume.get("bytes_downloaded", 0),
+            "total_chars": volume.get("total_chars", 0),
+            # Quality / success rates (computed from raw counts when the
+            # legacy stats block is absent)
+            "http_request_success_rate": http_success_rate or 0,
+            "content_extraction_success_rate": content_extraction_rate or 0,
+            "quality_pass_rate": quality_pass_rate or 0,
+            "deduplication_rate": stats.get("deduplication_rate", 0),
+            # Throughput (only in legacy schema; defaults to 0 for Phase-3)
+            "urls_per_second": throughput.get("urls_per_second", 0),
+            "bytes_per_second": throughput.get("bytes_per_second", 0),
+            "records_per_minute": throughput.get("records_per_minute", 0),
+        }
 
-            # Include filter breakdown from quality layer
-            if quality.filter_breakdown:
-                metric["filter_breakdown"] = quality.filter_breakdown
-        else:
-            metric = {
-                "run_id": run_id,
-                "source": source,
-                "timestamp": data.get("_timestamp") or snapshot.get("timestamp", ""),
-                "duration_seconds": snapshot.get("duration_seconds", 0),
-                "pipeline_type": data.get("_pipeline_type")
-                or snapshot.get("pipeline_type", "unknown"),
-                # Discovery metrics (from legacy for backward compatibility)
-                "urls_discovered": snapshot.get("urls_discovered", 0),
-                "urls_fetched": snapshot.get("urls_fetched", 0),
-                "urls_processed": snapshot.get("urls_processed", 0),
-                "records_extracted": snapshot.get("records_extracted", 0),
-                # Volume metrics (from layered_metrics.volume)
-                "records_written": volume.get("records_written", 0),
-                "bytes_downloaded": volume.get("bytes_downloaded", 0),
-                "total_chars": volume.get("total_chars", 0),
-                # Quality metrics (from statistics)
-                "http_request_success_rate": stats.get("http_request_success_rate", 0),
-                "content_extraction_success_rate": stats.get("content_extraction_success_rate", 0),
-                "quality_pass_rate": stats.get("quality_pass_rate", 0),
-                "deduplication_rate": stats.get("deduplication_rate", 0),
-                # Throughput metrics (from statistics.throughput)
-                "urls_per_second": stats.get("throughput", {}).get("urls_per_second", 0),
-                "bytes_per_second": stats.get("throughput", {}).get("bytes_per_second", 0),
-                "records_per_minute": stats.get("throughput", {}).get("records_per_minute", 0),
-            }
+        # Optional richer stats from the legacy block.
+        if stats.get("text_length_stats"):
+            metric["text_length_stats"] = stats["text_length_stats"]
+        if stats.get("fetch_duration_stats"):
+            metric["fetch_duration_stats"] = stats["fetch_duration_stats"]
 
-            # Optional: Include detailed stats
-            if "text_length_stats" in stats and stats["text_length_stats"]:
-                metric["text_length_stats"] = stats["text_length_stats"]
+        # Filter breakdown — surface from layered_metrics.quality (Phase-3)
+        # OR legacy filter_reasons (older snapshots).
+        filter_breakdown = quality.get("filter_breakdown") or snapshot.get("filter_reasons")
+        if filter_breakdown:
+            metric["filter_breakdown"] = filter_breakdown
 
-            if "fetch_duration_stats" in stats and stats["fetch_duration_stats"]:
-                metric["fetch_duration_stats"] = stats["fetch_duration_stats"]
-
-            # Include filter breakdown from quality layer
-            filter_breakdown = quality.get("filter_breakdown", {})
-            if filter_breakdown:
-                metric["filter_breakdown"] = filter_breakdown
-
-        # Validate consolidated metric if validation was used
-        if use_validation and SCHEMA_VALIDATION_AVAILABLE:
+        # Best-effort consolidated-shape validation. Failures are logged but
+        # don't suppress the metric — schema drift here should not silently
+        # blank the dashboard.
+        if SCHEMA_VALIDATION_AVAILABLE:
             try:
                 ConsolidatedMetric.model_validate(metric)
             except Exception as e:
                 logger.debug(f"Consolidated metric validation failed for {source_file}: {e}")
-                # Continue anyway, metric is still usable
 
         return metric
 
