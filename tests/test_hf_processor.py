@@ -348,6 +348,105 @@ class TestHFProcessorFiles:
 
 
 # ============================================================================
+# TD-022 / TD-024: source_id and date_published populated for HF records
+# ============================================================================
+
+
+class TestHFRawRecordMetadata:
+    """
+    Verify that _map_to_raw_record populates source_id and date_published
+    so RecordBuilder can propagate them into silver records (TD-022/024).
+    """
+
+    def test_source_id_populated_from_url(self):
+        """RawRecord.metadata must contain a non-empty source_id derived from the URL."""
+        import hashlib
+
+        processor = create_mc4_processor(max_records=5)
+        record = {
+            "text": "Muqdisho waa caasimadda Soomaaliya.",
+            "url": "http://puntlandmirror.net/kiiskii-fayruska/",
+            "timestamp": "2021-04-10T05:23:03Z",
+        }
+        raw = processor._map_to_raw_record(record)
+        assert "source_id" in raw.metadata
+        assert raw.metadata["source_id"] != ""
+        expected = hashlib.sha256(record["url"].encode()).hexdigest()[:16]
+        assert raw.metadata["source_id"] == expected
+
+    def test_date_published_extracted_from_iso_timestamp(self):
+        """When timestamp is ISO 8601, date_published must be YYYY-MM-DD."""
+        processor = create_mc4_processor(max_records=5)
+        record = {
+            "text": "Hargeysa waa magaalo weyn.",
+            "url": "http://example.com/article",
+            "timestamp": "2022-07-15T12:34:56Z",
+        }
+        raw = processor._map_to_raw_record(record)
+        assert "date_published" in raw.metadata
+        assert raw.metadata["date_published"] == "2022-07-15"
+
+    def test_date_published_absent_when_no_timestamp(self):
+        """When no timestamp field is present, date_published must not appear."""
+        processor = create_mc4_processor(max_records=5)
+        record = {
+            "text": "Kismaayo waa magaalo muhiim ah.",
+            "url": "http://example.com/no-ts",
+        }
+        raw = processor._map_to_raw_record(record)
+        assert raw.metadata.get("date_published") is None
+
+    def test_silver_record_has_source_id_and_date_published(self, temp_work_dir, monkeypatch):
+        """
+        End-to-end: silver Parquet rows written by the HF processor must
+        have non-null source_id and date_published columns (TD-022/024).
+        """
+        import json
+
+        def mock_load_dataset(*args, **kwargs):
+            class MockDataset:
+                revision = "test"
+                info = None
+
+            return MockDataset()
+
+        if DATASETS_AVAILABLE:
+            monkeypatch.setattr(
+                "somdialc.ingestion.processors.huggingface_somali_processor.load_dataset",
+                mock_load_dataset,
+            )
+
+        processor = create_mc4_processor(max_records=10, force=True)
+        processor.download()
+
+        staging_dir = processor.staging_dir
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        processor.staging_file = staging_dir
+
+        mock_data = [
+            {
+                "text": "Muqdisho waa magaalada caasimadda ah ee Soomaaliya. Waxay ku taalla xeebta Badweynta Hindi ee koonfurta Soomaaliya.",
+                "url": "http://puntlandmirror.net/article-1",
+                "timestamp": "2021-04-10T05:23:03Z",
+            },
+        ]
+        batch_file = staging_dir / "batch_000000.jsonl"
+        with open(batch_file, "w", encoding="utf-8") as f:
+            for r in mock_data:
+                f.write(json.dumps(r) + "\n")
+
+        result = processor.process()
+        row = pq.ParquetFile(result).read().to_pylist()[0]
+
+        assert row.get("source_id") not in (None, ""), (
+            f"source_id must be non-null/non-empty in silver row; got {row.get('source_id')!r}"
+        )
+        assert row.get("date_published") == "2021-04-10", (
+            f"date_published must be '2021-04-10'; got {row.get('date_published')!r}"
+        )
+
+
+# ============================================================================
 # REMOVED: MADLAD-400 and OSCAR Tests
 # ============================================================================
 #

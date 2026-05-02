@@ -757,6 +757,8 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         Returns:
             RawRecord with title, text, url, and metadata
         """
+        import hashlib
+
         # Extract text (required)
         text = record.get(self.text_field, "")
 
@@ -784,6 +786,34 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         metadata["hf_dataset"] = self.dataset_name
         metadata["hf_config"] = self.dataset_config
         metadata["hf_split"] = self.split
+
+        # TD-022: populate source_id — use SHA256 of the URL as a stable,
+        # content-derived identifier.  This ensures every HF record has a
+        # non-null source_id that the RecordBuilder resolver picks up via the
+        # "source_id" key without further changes downstream.
+        metadata["source_id"] = hashlib.sha256(url.encode("utf-8")).hexdigest()[:16]
+
+        # TD-024: populate date_published from the HF timestamp field.
+        # MC4 / allenai-c4 rows carry a "timestamp" key that is already an
+        # ISO 8601 string (e.g. "2021-04-10T05:23:03Z").  We normalise to the
+        # first 10 characters (YYYY-MM-DD) which is what all other sources use.
+        raw_ts = record.get("timestamp") or metadata.get("timestamp")
+        if raw_ts:
+            ts_str = str(raw_ts)
+            # Handle both ISO strings and Unix integer/float timestamps
+            if ts_str[:1].isdigit() and not ts_str[4:5] == "-":
+                # Looks like a numeric Unix timestamp
+                try:
+                    from datetime import timezone
+
+                    epoch = float(ts_str)
+                    dt = datetime.fromtimestamp(epoch, tz=timezone.utc)
+                    metadata["date_published"] = dt.date().isoformat()
+                except (ValueError, OSError, OverflowError):
+                    pass
+            else:
+                # ISO 8601 — take first 10 chars (YYYY-MM-DD)
+                metadata["date_published"] = ts_str[:10]
 
         # Preserve dedup metadata if present (for ledger tracking)
         if "_minhash_signature" in record:
