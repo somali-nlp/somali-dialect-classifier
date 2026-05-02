@@ -82,6 +82,33 @@ def download(processor) -> Path:
     processor.logger.info(
         f"Saved {len(links_to_scrape)} article links -> {processor.article_links_file}"
     )
+
+    # Record daily quota consumption so the ledger enforces the 350 articles/day
+    # cap regardless of whether this run was started via the orchestrator or the
+    # bbcsom-download CLI directly.
+    try:
+        from ....infra.config import get_config as _get_config
+
+        _quota_limit = _get_config().orchestration.get_quota("bbc")
+        processor.ledger.increment_daily_quota(
+            source="bbc",
+            count=len(links_to_scrape),
+            quota_limit=_quota_limit,
+        )
+        if _quota_limit and len(links_to_scrape) >= _quota_limit:
+            items_remaining = len(article_links) - len(links_to_scrape)
+            processor.ledger.mark_quota_hit(
+                source="bbc",
+                items_remaining=max(0, items_remaining),
+                quota_limit=_quota_limit,
+            )
+            processor.logger.info(
+                f"BBC daily quota reached ({_quota_limit}); "
+                f"{max(0, items_remaining)} articles deferred."
+            )
+    except Exception as _quota_exc:
+        processor.logger.warning(f"Could not record BBC daily quota: {_quota_exc}")
+
     processor._export_stage_metrics("discovery")
     return processor.article_links_file
 

@@ -668,6 +668,72 @@ class BasePipeline(DataProcessor, ABC):
         except Exception:
             return None
 
+    # ---------------------------------------------------------------------------
+    # Pipeline run types (source → ledger pipeline_type value).
+    # Override in subclass or set as class attribute if different from "web".
+    # ---------------------------------------------------------------------------
+    _PIPELINE_RUN_TYPES: dict[str, str] = {
+        "wikipedia": "file",
+        "bbc-somali": "web",
+        "huggingface": "stream",
+        "sprakbanken": "file",
+        "tiktok": "stream",
+    }
+
+    def _get_pipeline_type(self) -> str:
+        """Return the ledger pipeline_type string for this source."""
+        return self._PIPELINE_RUN_TYPES.get(self.source.lower(), "web")
+
+    def _ensure_pipeline_run_registered(self) -> bool:
+        """
+        Register this run in pipeline_runs if not already present.
+
+        Called at the start of run() so CLI invocations (which bypass the
+        orchestrator's _run_locked_pipeline_task) still populate the table.
+
+        Returns True when this method performed the registration (CLI path);
+        False when the row already existed (orchestrator pre-registered it).
+        """
+        ledger = getattr(self, "ledger", None)
+        if ledger is None:
+            return False
+        try:
+            existing = ledger.get_pipeline_run(self.run_id)
+            if existing is not None:
+                # Orchestrator already registered; nothing to do.
+                return False
+            ledger.register_pipeline_run(
+                run_id=self.run_id,
+                source=self.source,
+                pipeline_type=self._get_pipeline_type(),
+                git_commit=self.git_commit,
+            )
+            ledger.update_pipeline_run(run_id=self.run_id, status="RUNNING")
+            return True
+        except Exception as exc:
+            self.logger.warning(f"Could not register pipeline run in ledger: {exc}")
+            return False
+
+    def _finalise_pipeline_run(self, *, status: str, error: Optional[str] = None) -> None:
+        """
+        Update pipeline_runs status at the end of run().
+
+        Only updates rows that were registered by _ensure_pipeline_run_registered
+        (i.e. the CLI path).  The orchestrator path owns its own status updates.
+        """
+        ledger = getattr(self, "ledger", None)
+        if ledger is None:
+            return
+        try:
+            ledger.update_pipeline_run(
+                run_id=self.run_id,
+                status=status,
+                errors=error,
+                end_time=datetime.now(timezone.utc),
+            )
+        except Exception as exc:
+            self.logger.warning(f"Could not update pipeline run status in ledger: {exc}")
+
     def run(self) -> Optional[Path]:
         """
         Template method: download → extract → process.
@@ -678,14 +744,30 @@ class BasePipeline(DataProcessor, ABC):
         processed, extract() returns None when ledger-level dedup empties
         the article set. We must short-circuit on None at each step or we
         leak paid API calls and divide-by-zero in the empty case.
+
+        When invoked directly from a CLI (bypassing the orchestrator), this
+        method also populates pipeline_runs so the run is always trackable.
         """
-        if self.download() is None:
-            self.logger.info("Pipeline short-circuit at download (no work to do)")
-            return None
-        if self.extract() is None:
-            self.logger.info("Pipeline short-circuit at extract (no work to do)")
-            return None
-        return self.process()
+        registered_here = self._ensure_pipeline_run_registered()
+        try:
+            if self.download() is None:
+                self.logger.info("Pipeline short-circuit at download (no work to do)")
+                if registered_here:
+                    self._finalise_pipeline_run(status="COMPLETED")
+                return None
+            if self.extract() is None:
+                self.logger.info("Pipeline short-circuit at extract (no work to do)")
+                if registered_here:
+                    self._finalise_pipeline_run(status="COMPLETED")
+                return None
+            result = self.process()
+            if registered_here:
+                self._finalise_pipeline_run(status="COMPLETED")
+            return result
+        except Exception as exc:
+            if registered_here:
+                self._finalise_pipeline_run(status="FAILED", error=str(exc))
+            raise
 
     def _cleanup_old_raw_files(self):
         """Clean up old raw files, keeping only recent N files (config: raw_files_to_keep)."""
