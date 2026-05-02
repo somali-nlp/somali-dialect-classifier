@@ -231,6 +231,7 @@ def main():
         if video_urls_file is None:
             # Every input video URL was already in the ledger as processed
             # (TD-013). No paid Apify call, no extraction, no silver write.
+            processor._finalise_pipeline_run(status="COMPLETED", records_processed=0)
             logger.info(
                 "\n✓ All video URLs already processed in a prior run "
                 "(skipped Apify, no charge). Pass --force to re-scrape."
@@ -276,11 +277,21 @@ def main():
         logger.info("3. Review logs: logs/")
         logger.info("=" * 60)
 
+        processor._finalise_pipeline_run(status="COMPLETED")
+
     except KeyboardInterrupt:
         logger.warning("\n⚠️  Pipeline interrupted by user")
+        try:
+            processor._finalise_pipeline_run(status="FAILED", error="interrupted by user")
+        except Exception:
+            pass
         sys.exit(1)
     except Exception as e:
         logger.error(f"\n❌ Pipeline failed: {e}", exc_info=True)
+        try:
+            processor._finalise_pipeline_run(status="FAILED", error=str(e))
+        except Exception:
+            pass
         sys.exit(1)
 
 

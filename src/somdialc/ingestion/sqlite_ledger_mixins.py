@@ -213,9 +213,12 @@ class SQLitePipelineRunsMixin:
         now = datetime.now(timezone.utc)
         config_json = json.dumps(config) if config else None
         with self.transaction() as conn:
+            # INSERT OR IGNORE so that a second call (e.g. the orchestrator
+            # calling register after __init__ already created the row) is a
+            # no-op rather than raising a UNIQUE constraint error.
             conn.execute(
                 """
-                INSERT INTO pipeline_runs (
+                INSERT OR IGNORE INTO pipeline_runs (
                     run_id, source, pipeline_type, start_time, status,
                     config_snapshot, git_commit, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)

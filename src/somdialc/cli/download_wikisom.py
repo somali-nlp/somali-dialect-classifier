@@ -66,16 +66,19 @@ def main() -> None:
         dump_file = processor.download()
         if dump_file is None:
             # 304 Not Modified — dump unchanged since last run, nothing to do.
+            processor._finalise_pipeline_run(status="COMPLETED", records_processed=0)
             print("\n✓ Wikipedia dump unchanged since last run (304 Not Modified). Nothing to process.")
             return
 
         staging_file = processor.extract()
         if staging_file is None:
             # All articles already in ledger — Level-2 dedup short-circuits.
+            processor._finalise_pipeline_run(status="COMPLETED", records_processed=0)
             print("\n✓ No new Wikipedia articles to process (all already in ledger).")
             return
 
         processed_file = processor.process()
+        processor._finalise_pipeline_run(status="COMPLETED")
 
         print("\n✓ Pipeline completed successfully!")
         print(f"  Dump: {dump_file}")
@@ -84,6 +87,10 @@ def main() -> None:
 
     except Exception as e:
         logging.error(f"Pipeline failed: {e}")
+        try:
+            processor._finalise_pipeline_run(status="FAILED", error=str(e))
+        except Exception:
+            pass
         raise
 
 

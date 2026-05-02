@@ -96,6 +96,7 @@ def main() -> None:
         article_links_file = processor.download()
         staging_file = processor.extract()
         processed_file = processor.process()
+        processor._finalise_pipeline_run(status="COMPLETED")
 
         print("\n✓ Pipeline completed successfully!")
         print(f"  Article links: {article_links_file}")
@@ -104,6 +105,10 @@ def main() -> None:
 
     except Exception as e:
         logging.error(f"Pipeline failed: {e}")
+        try:
+            processor._finalise_pipeline_run(status="FAILED", error=str(e))
+        except Exception:
+            pass
         raise
 
 

@@ -216,15 +216,24 @@ def main():
         silver_path = processor.process()
         logger.info(f"Silver dataset written: {silver_path}")
 
+        processor._finalise_pipeline_run(status="COMPLETED")
         logger.info("✓ HuggingFace dataset processing complete!")
         sys.exit(0)
 
     except KeyboardInterrupt:
         logger.info("Process interrupted by user")
+        try:
+            processor._finalise_pipeline_run(status="FAILED", error="interrupted by user")
+        except Exception:
+            pass
         sys.exit(130)
 
     except Exception as e:
         logger.error(f"Processing failed: {e}", exc_info=True)
+        try:
+            processor._finalise_pipeline_run(status="FAILED", error=str(e))
+        except Exception:
+            pass
         sys.exit(1)
 
 
