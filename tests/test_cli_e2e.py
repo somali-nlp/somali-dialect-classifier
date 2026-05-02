@@ -8,6 +8,7 @@ Tests the command-line interface with temporary directories to ensure:
 - Help text is accurate
 """
 
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -17,14 +18,71 @@ import pytest
 
 @pytest.fixture
 def cli_env(tmp_path, monkeypatch):
-    """Set up CLI test environment with temp directories."""
+    """Set up CLI test environment with temp directories and isolated config.
+
+    Fixes TD-016 and TD-017 by:
+    1. Setting environment variables for all data paths (bypasses hardcoded defaults)
+    2. Resetting the config singleton before and after test
+    3. Changing working directory to temp directory
+    4. Verifying no files are created in real project data directories
+    """
+    from somdialc.infra.config import reset_config
+
+    # Reset config singleton BEFORE setting new env vars
+    reset_config()
+
+    # Set environment variables for all data paths to point to temp directory
+    # These override the Pydantic Field defaults
+    data_dirs = {
+        "SDC_DATA__RAW_DIR": str(tmp_path / "data" / "raw"),
+        "SDC_DATA__STAGING_DIR": str(tmp_path / "data" / "staging"),
+        "SDC_DATA__PROCESSED_DIR": str(tmp_path / "data" / "processed"),
+        "SDC_DATA__SILVER_DIR": str(tmp_path / "data" / "processed" / "silver"),
+        "SDC_DATA__METRICS_DIR": str(tmp_path / "data" / "metrics"),
+        "SDC_DATA__REPORTS_DIR": str(tmp_path / "data" / "reports"),
+        "SDC_DATABASE__LEDGER_PATH": str(tmp_path / "data" / "ledger"),
+    }
+
+    for env_key, env_value in data_dirs.items():
+        monkeypatch.setenv(env_key, env_value)
+
     # Change to temp directory
     monkeypatch.chdir(tmp_path)
 
     # Create data directory structure
     (tmp_path / "data").mkdir()
 
+    # Take snapshot of real project data directory before test
+    real_project_root = Path(__file__).parent.parent
+    real_silver_dir = real_project_root / "data" / "processed" / "silver"
+    real_raw_dir = real_project_root / "data" / "raw"
+
+    pre_silver_files = set(real_silver_dir.rglob("*")) if real_silver_dir.exists() else set()
+    pre_raw_files = set(real_raw_dir.rglob("*")) if real_raw_dir.exists() else set()
+
     yield tmp_path
+
+    # Reset config singleton AFTER test to ensure clean state for next test
+    reset_config()
+
+    # Verify no new files were created in real project directories
+    # This catches the TD-017 data leak scenario
+    post_silver_files = set(real_silver_dir.rglob("*")) if real_silver_dir.exists() else set()
+    post_raw_files = set(real_raw_dir.rglob("*")) if real_raw_dir.exists() else set()
+
+    new_silver_files = post_silver_files - pre_silver_files
+    new_raw_files = post_raw_files - pre_raw_files
+
+    # Filter out only newly created wikipedia-somali files to match TD-017 symptom
+    new_wiki_files = [
+        f for f in (new_silver_files | new_raw_files)
+        if "wikipedia-somali" in str(f)
+    ]
+
+    assert len(new_wiki_files) == 0, (
+        f"Test leaked {len(new_wiki_files)} Wikipedia files to real project directory: "
+        f"{new_wiki_files}"
+    )
 
 
 @pytest.fixture
@@ -239,14 +297,20 @@ class TestCLIIntegration:
     """Integration tests for CLI with fixture data."""
 
     def test_wikipedia_cli_full_pipeline_with_fixture(self, cli_env, wiki_fixture):
-        """Test full Wikipedia pipeline with fixture data."""
+        """Test full Wikipedia pipeline with fixture data.
+
+        TD-016 fix: Remove force=True flag to allow local dump cache to be used.
+        The fixture file is pre-staged at processor.dump_file, so the existing-dump
+        check will fire and skip re-download.
+        """
         import bz2
 
         from somdialc.ingestion.processors.wikipedia_somali_processor import (
             WikipediaSomaliProcessor,
         )
 
-        processor = WikipediaSomaliProcessor(force=True)
+        # Create processor WITHOUT force=True (allows local-dump-exists short-circuit)
+        processor = WikipediaSomaliProcessor(force=False)
 
         # Set up fixture
         processor.raw_dir.mkdir(parents=True, exist_ok=True)
