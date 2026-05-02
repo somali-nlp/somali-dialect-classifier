@@ -45,12 +45,12 @@ leeyahay xeeb dheer oo ku taal Badweynta Hindi. Cimilada Soomaaliya waa kulul oo
 qalalan, roobabka waxay ku da'aan laba xilli oo ah Gu iyo Deyr.
 """.strip()
 
-# Near-duplicate: Minor edits (different word choices) but same overall content
+# Near-duplicate: Minimal edit (~92% Jaccard similarity) that WILL be caught at production 0.85 threshold
 SOMALI_TEXT_NEAR_DUPLICATE = """
-Soomaaliya waa dal ku yaal Geeska Afrika oo leh dhaqan iyo taariikh aad u qani ah.
+Soomaaliya waa waddan ku yaal Geeska Afrika oo leh dhaqan iyo taariikh aad u qani ah.
 Caasimadda Soomaaliya waa Muqdisho, oo ah magaalada ugu weyn dalkaan. Dadka Soomaaliyeed
 waxay ku hadlaan luqadda Soomaaliga, oo ah luqadda rasmiga ah ee dalka. Dhaqaalaha
-Soomaaliya wuxuu ku salaysan yahay xoolaha, kalluumaysiga, iyo ganacsiga. Dalku wuxuu
+Soomaaliya wuxuu ku salaysan yahay xoolaha, kalluumaysiga, iyo ganacsiga. Dalka wuxuu
 leeyahay xeeb dheer oo ku taal Badweynta Hindi. Cimilada Soomaaliya waa kulul oo
 qalalan, roobabka waxay ku da'aan laba xilli oo ah Gu iyo Deyr.
 """.strip()
@@ -132,7 +132,7 @@ class TestCrossSourceDeduplication:
         config = DedupConfig(
             hash_fields=["text"],
             enable_minhash=True,
-            similarity_threshold=0.65,  # Lower for realistic near-duplicate testing (~73% actual similarity)
+            similarity_threshold=0.85,  # Production threshold - tests verify near-duplicates ARE caught
         )
         dedup_engine = DedupEngine(config)
 
@@ -248,14 +248,14 @@ class TestCrossSourceDeduplication:
         Scenario: Test text pairs at/near 0.65 similarity threshold.
         Expected: Content above threshold flagged, below threshold passes.
 
-        NOTE: Uses 0.65 threshold for LSH to reliably catch ~73% similarity.
-        Production uses 0.85, but minor edits in Somali yield ~73% similarity.
+        NOTE: Uses production threshold 0.85 with test text that has ~92% similarity (one word change).
+        This ensures the dedup engine correctly flags near-duplicates at production settings.
         """
         # Create engine with lower threshold for this test
         config = DedupConfig(
             hash_fields=["text"],
             enable_minhash=True,
-            similarity_threshold=0.65,
+            similarity_threshold=0.85,
         )
         dedup_engine = DedupEngine(config)
 
@@ -357,11 +357,13 @@ class TestDedupStatePersistence:
             assert len(engine.seen_hashes) == 0
 
             # Process 4 unique documents (capacity = 3, so eviction happens)
+            # NOTE: Use genuinely different texts since SOMALI_TEXT_NEAR_DUPLICATE
+            # is now 92% similar and WILL be flagged at 0.85 threshold
             unique_texts = [
                 SOMALI_TEXT_ORIGINAL,
-                SOMALI_TEXT_NEAR_DUPLICATE,
                 SOMALI_TEXT_DIFFERENT,
-                "Qoraalkan waa ka duwan yahay dhammaan qoraallada kale.",  # 4th unique text
+                "Qoraalkan waa ka duwan yahay dhammaan qoraallada kale.",  # 2nd unique text
+                "Waxyaalaha casriga ah wax badan ayay beddelayaan nolosha qof.",  # 3rd unique text
             ]
 
             for i, text in enumerate(unique_texts):
@@ -405,16 +407,18 @@ class TestDedupStatePersistence:
             assert not is_dup_a1
 
             # Process B (index 1)
+            text_b = "Casriga waxaa jira technology aad u weyn oo beddel ku yimid."
             is_dup_b, _, _, hash_b, _ = engine.process_document(
-                SOMALI_TEXT_NEAR_DUPLICATE, "https://example.com/B"
+                text_b, "https://example.com/B"
             )
-            assert not is_dup_b
+            assert not is_dup_b, "B should NOT be duplicate (completely different text)"
 
             # Process C (index 2, cache full)
+            text_c = "Kaluumayska Soomaaliya waa mid ka mid ah in yar ee aduunka."
             is_dup_c, _, _, hash_c, _ = engine.process_document(
-                SOMALI_TEXT_DIFFERENT, "https://example.com/C"
+                text_c, "https://example.com/C"
             )
-            assert not is_dup_c
+            assert not is_dup_c, "C should NOT be duplicate (completely different text)"
 
             # Process A again (should be detected as duplicate AND move to end)
             is_dup_a2, dup_type_a2, similar_url_a2, hash_a2, _ = engine.process_document(
