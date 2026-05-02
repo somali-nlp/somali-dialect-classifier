@@ -107,14 +107,17 @@ class RecordBuilder:
         merged_metadata.update(filter_metadata)
 
         # Extract source_id from metadata if available
-        # This allows sources to populate source_id field (e.g., corpus_id for Språkbanken)
-        source_id = (
+        # This allows sources to populate source_id field (e.g., corpus_id for Språkbanken).
+        # Coerce to str so non-string ids in metadata (e.g., int article_id) don't break
+        # SchemaV1_0's `source_id: Optional[str]` validation. None stays None.
+        source_id_raw = (
             raw_record.metadata.get("source_id")
             or raw_record.metadata.get("corpus_id")
             or raw_record.metadata.get("article_id")
             or raw_record.metadata.get("page_id")
             or raw_record.metadata.get("comment_id")
         )
+        source_id = str(source_id_raw) if source_id_raw is not None else None
 
         # Resolve topic: prefer explicit metadata field, then hoist primary_topic
         # from filter-enriched source_metadata (TD-023)

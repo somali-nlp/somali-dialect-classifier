@@ -71,6 +71,12 @@ FILTER_CATALOG: dict[str, tuple[str, str, str]] = {
         "Record failed schema validation checks (missing fields, invalid types, etc.)",
         "schema",
     ),
+    # Deduplication filters
+    "exact_text_duplicate": (
+        "Exact text duplicate",
+        "Record's text hash already seen earlier in this run (e.g., Wikipedia redirect targets and stub pages that share content with another article).",
+        "dedup",
+    ),
     # Placeholder filters for future enhancements
     "profanity_filter": (
         "Profanity detected",
