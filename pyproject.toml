@@ -27,6 +27,9 @@ dependencies = [
   "aiodns>=3.1",  # Async DNS resolution for aiohttp performance (P3.5)
   "click>=8.0",  # CLI framework for somali-tools commands
   "defusedxml>=0.7.1",  # XXE protection for XML parsing (SEC-MED-002)
+  "pydantic>=2.5",  # Configuration validation (required)
+  "pydantic-settings>=2.1",  # Environment variable configuration (required)
+  "python-dotenv>=1.0",  # .env file support for configuration
 ]
 
 [project.optional-dependencies]
