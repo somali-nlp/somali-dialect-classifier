@@ -208,6 +208,7 @@ class TestBBCDailyQuotaRecording:
             processor = MagicMock()
             processor.run_id = "test_bbc_quota_run"
             processor.date_accessed = "2026-05-01"
+            processor.source = "bbc-somali"  # canonical source name (TD-019)
             processor.ledger = tmp_ledger
             processor.force = False
             processor.max_articles = max_articles
