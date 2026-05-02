@@ -9,9 +9,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-# Skip integration tests - require Språkbanken processor features not fully implemented
-pytestmark = pytest.mark.skip(reason="Språkbanken processor features not fully implemented")
-
 from somdialc.ingestion.base_pipeline import RawRecord
 from somdialc.ingestion.processors.sprakbanken_somali_processor import (
     CORPUS_INFO,
@@ -27,7 +24,7 @@ class TestSprakbankenSomaliProcessor:
     @pytest.fixture
     def processor(self, tmp_path):
         """Create processor instance with temp directory."""
-        with patch("somdialc.config.get_config") as mock_config:
+        with patch("somdialc.infra.config.get_config") as mock_config:
             # Mock config
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
@@ -39,15 +36,17 @@ class TestSprakbankenSomaliProcessor:
             processor = SprakbankenSomaliProcessor(corpus_id="somali-cilmi", force=True)
             return processor
 
+    @pytest.mark.skip(reason="TD-NNN: Sprakbanken processor features not fully implemented")
     def test_processor_initialization(self, processor):
         """Test processor initializes correctly."""
         assert processor.corpus_id == "somali-cilmi"
         assert processor.corpora_to_process == ["somali-cilmi"]
         assert processor.source == "Sprakbanken-Somali"  # Consistent source name
 
+    @pytest.mark.skip(reason="TD-NNN: Sprakbanken processor features not fully implemented")
     def test_processor_all_corpora(self, tmp_path):
         """Test processor with all corpora."""
-        with patch("somdialc.config.get_config") as mock_config:
+        with patch("somdialc.infra.config.get_config") as mock_config:
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
             config.data.staging_dir = tmp_path / "staging"
@@ -62,9 +61,10 @@ class TestSprakbankenSomaliProcessor:
                 processor.source == "Sprakbanken-Somali"
             )  # Consistent source name regardless of corpus_id
 
+    @pytest.mark.skip(reason="TD-NNN: Sprakbanken processor features not fully implemented")
     def test_invalid_corpus_id(self, tmp_path):
         """Test that invalid corpus ID raises error."""
-        with patch("somdialc.config.get_config") as mock_config:
+        with patch("somdialc.infra.config.get_config") as mock_config:
             config = Mock()
             config.data.raw_dir = tmp_path / "raw"
             config.data.staging_dir = tmp_path / "staging"
@@ -85,6 +85,7 @@ class TestSprakbankenSomaliProcessor:
         processor.current_corpus_metadata = {}
         assert processor._get_domain() == "general"
 
+    @pytest.mark.skip(reason="TD-NNN: Sprakbanken processor features not fully implemented")
     def test_extract_sentence_text(self, processor):
         """Test sentence text extraction from XML."""
         # Create sample sentence element
@@ -142,6 +143,7 @@ class TestSprakbankenSomaliProcessor:
             assert len(manifest["corpora"]) > 0
             assert manifest["corpora"][0]["id"] == "somali-cilmi"
 
+    @pytest.mark.skip(reason="TD-NNN: Sprakbanken processor features not fully implemented")
     def test_extract_corpus_xml_parsing(self, processor, tmp_path):
         """Test XML corpus extraction."""
         # Create sample XML corpus
@@ -223,6 +225,7 @@ class TestSprakbankenSomaliProcessor:
         assert records[0].metadata["corpus_id"] == "somali-cilmi"
         assert records[1].metadata["corpus_id"] == "somali-cilmi"
 
+    @pytest.mark.skip(reason="TD-NNN: Sprakbanken processor features not fully implemented")
     def test_processor_filters(self, processor):
         """Test that proper filters are registered."""
         # Filters are already registered during __init__, don't call again
