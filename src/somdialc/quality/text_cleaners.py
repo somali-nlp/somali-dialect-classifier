@@ -38,11 +38,22 @@ class WikiMarkupCleaner:
         self.italic_pattern = re.compile(r"''(.*?)''", re.DOTALL)
         # Pipe-delimited image attributes like "thumb|200px|" that precede captions
         self.thumb_pipe_pattern = re.compile(r"\bthumb\|[^|]*\|")
-        # Wiktionary / inter-wiki fragments: "wtr" is a residue of [[wikt:...]]
-        # after partial link stripping; appears either standalone ("wtr ") or
-        # fused with the next word ("wtrGeorge"). Match at a non-word boundary
-        # start (beginning of line or after whitespace/punctuation).
-        self.wtr_fragment_pattern = re.compile(r"(?<!\w)wtr(?=\W|[A-Z]|\Z)")
+        # Inter-wiki prefix fragments left after partial link stripping.
+        # Known residues observed in Somali silver (not exhaustive):
+        #   wtr  — [[wikt:...]]  (Wiktionary); fused as e.g. "wtrGeorge"
+        #   wes  — [[es:...]]    (Spanish Wikipedia); fused as e.g. "wesindian"
+        #   wit  — [[wit:...]]   (Wiktionary variant); fused as e.g. "witOceano"
+        # Require position context (start-of-string/line/whitespace/pipe) and
+        # specific lookahead so common English words (with, west, witness) are
+        # not accidentally stripped.
+        self.interwiki_fragment_pattern = re.compile(
+            r"(?:(?<=\n)|(?<=\s)|(?<=\|)|\A)"
+            r"(?:wtr(?=[A-Z])|wit(?=[A-Z])|wes(?=[A-Z]|indian\b))"
+        )
+
+        # Orphan (unpaired) triple-quote: any remaining ''' not consumed by
+        # the bold_pattern above (e.g. truncated markup, ''' followed by digits).
+        self.orphan_bold_pattern = re.compile(r"'{3}")
 
         self.link_with_text_pattern = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
         self.simple_link_pattern = re.compile(r"\[\[([^\]]+)\]\]")
@@ -74,12 +85,14 @@ class WikiMarkupCleaner:
         text = self.image_file_pattern.sub("", text)
         # Strip pipe-delimited thumb attributes (residue when image tags are partially matched)
         text = self.thumb_pipe_pattern.sub("", text)
-        # Bold markup: '''text''' → text
+        # Bold markup: '''text''' → text (paired)
         text = self.bold_pattern.sub(r"\1", text)
+        # Strip any orphan ''' that weren't consumed by the paired pattern
+        text = self.orphan_bold_pattern.sub("", text)
         # Italic markup: ''text'' → text
         text = self.italic_pattern.sub(r"\1", text)
-        # Remove Wiktionary/inter-wiki "wtr" fragments
-        text = self.wtr_fragment_pattern.sub("", text)
+        # Remove inter-wiki prefix fragments (wtr, wes, wit, …)
+        text = self.interwiki_fragment_pattern.sub("", text)
 
         # Links: [[link|text]] -> text
         text = self.link_with_text_pattern.sub(r"\2", text)
