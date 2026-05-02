@@ -88,11 +88,12 @@ class WikipediaSomaliProcessor(BasePipeline):
 
         # Dependency injection: store metrics factory for lazy initialization
 
-        self._metrics_factory = metrics_factory or (
+        _default_metrics_factory = (
             lambda run_id, source: MetricsCollector(
                 run_id, source, pipeline_type=PipelineType.FILE_PROCESSING
             )
         )
+        self._metrics_factory = metrics_factory or _default_metrics_factory
 
         # Dependency injection: store HTTP session for lazy initialization
         self._http_session = http_session
@@ -237,7 +238,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         set_context(run_id=self.run_id, source="wikipedia-somali", phase="download")
 
         # Initialize metrics with run_id from base_pipeline (using factory for DI support)
-        self.metrics = self._metrics_factory(self.run_id, "Wikipedia-Somali")
+        self.metrics = self._metrics_factory(self.run_id, self.source)
 
         # LEVEL 1: DUMP-LEVEL DEDUPLICATION (HTTP Conditional Requests)
         # Check if dump URL exists in ledger with HTTP metadata (ETag/Last-Modified)
@@ -322,7 +323,7 @@ class WikipediaSomaliProcessor(BasePipeline):
             # Track URL discovery and file discovery
             self.ledger.discover_url(
                 self.dump_url,
-                "wikipedia",
+                self.source,
                 metadata={"wiki_code": self.current_code, "file_size": total_size},
             )
             self.metrics.increment("files_discovered")
@@ -402,7 +403,7 @@ class WikipediaSomaliProcessor(BasePipeline):
 
         # Resume or create metrics with run_id from base_pipeline (using factory for DI support)
         if self.metrics is None:
-            self.metrics = self._metrics_factory(self.run_id, "Wikipedia-Somali")
+            self.metrics = self._metrics_factory(self.run_id, self.source)
 
         if self.staging_file.exists() and not self.force:
             self.logger.info(f"Staging file already exists: {self.staging_file}")
@@ -492,7 +493,7 @@ class WikipediaSomaliProcessor(BasePipeline):
                     # Track URL discovery
                     self.ledger.discover_url(
                         page_url,
-                        "wikipedia",
+                        self.source,
                         metadata={"title": title, "timestamp": article.get("timestamp")},
                     )
 
@@ -575,7 +576,7 @@ class WikipediaSomaliProcessor(BasePipeline):
             # Mark dump URL as successfully processed
             self.ledger.mark_processed(
                 self.dump_url,
-                source="wikipedia",
+                source=self.source,
                 text_hash="",  # Not applicable for dump URLs
                 silver_id="",  # Not applicable for dump URLs
             )
@@ -773,7 +774,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         try:
             # Query ledger for all processed Wikipedia URLs
             processed_records = self.ledger.get_processed_urls(
-                source="wikipedia",
+                source=self.source,
                 limit=None,  # Get all records
             )
             processed_urls = {r["url"] for r in processed_records if "url" in r}

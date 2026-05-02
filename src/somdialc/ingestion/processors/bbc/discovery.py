@@ -20,7 +20,7 @@ def download(processor) -> Path:
     processor.raw_dir.mkdir(parents=True, exist_ok=True)
     set_context(run_id=processor.run_id, source="bbc-somali", phase="discovery")
     processor.metrics = MetricsCollector(
-        processor.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
+        processor.run_id, processor.source, pipeline_type=PipelineType.WEB_SCRAPING
     )
 
     if processor.article_links_file.exists() and not processor.force:
@@ -51,7 +51,7 @@ def download(processor) -> Path:
 
     for url in article_links:
         processor.ledger.discover_url(
-            url, "bbc", metadata={"discovered_at": processor.date_accessed}
+            url, processor.source, metadata={"discovered_at": processor.date_accessed}
         )
         processor.metrics.increment("urls_discovered")
 

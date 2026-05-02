@@ -150,7 +150,7 @@ class TestWikipediaIntegration:
         assert titles == {"Soomaaliya", "Muqdisho", "Afrika"}
 
         # Verify all records have Wikipedia source
-        assert all(df["source"] == "Wikipedia-Somali")
+        assert all(df["source"] == "wikipedia-somali")
         assert all(df["source_type"] == "wiki")
         assert all(df["language"] == "so")
         assert all(df["license"] == "CC-BY-SA-3.0")

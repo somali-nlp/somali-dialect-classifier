@@ -227,7 +227,7 @@ class TikTokSomaliProcessor(BasePipeline):
         # Initialize metrics collector
         # Using STREAM_PROCESSING as TikTok Apify acts like an API stream
         self.metrics = MetricsCollector(
-            self.run_id, "tiktok", pipeline_type=PipelineType.STREAM_PROCESSING
+            self.run_id, self.source, pipeline_type=PipelineType.STREAM_PROCESSING
         )
 
         # Initialize Apify client

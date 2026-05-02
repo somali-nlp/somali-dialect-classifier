@@ -203,7 +203,7 @@ class BBCSomaliProcessor(BasePipeline):
 
         if self.metrics is None:
             self.metrics = MetricsCollector(
-                self.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
+                self.run_id, self.source, pipeline_type=PipelineType.WEB_SCRAPING
             )
 
         bbc_config = self.config.scraping.bbc

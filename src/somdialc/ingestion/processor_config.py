@@ -94,10 +94,10 @@ def get_processor_source_name(processor_name: str, **kwargs: Any) -> str:
         Human-readable source name
     """
     source_names = {
-        "wikipedia": "Wikipedia-Somali",
-        "bbc": "BBC-Somali",
-        "sprakbanken": "Sprakbanken-Somali",
-        "tiktok": "TikTok-Somali",
+        "wikipedia": "wikipedia-somali",
+        "bbc": "bbc-somali",
+        "sprakbanken": "sprakbanken-somali",
+        "tiktok": "tiktok-somali",
     }
 
     # HuggingFace source name depends on dataset

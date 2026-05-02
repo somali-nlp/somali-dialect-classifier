@@ -97,12 +97,12 @@ class TestFilterAlreadyProcessed:
 
         # Mark all articles as processed in ledger
         for article in articles:
-            temp_ledger.discover_url(article["url"], "wikipedia")
+            temp_ledger.discover_url(article["url"], "wikipedia-somali")
             temp_ledger.mark_processed(
                 url=article["url"],
                 text_hash=f"hash_{article['title']}",
                 silver_id=f"silver_{article['title']}",
-                source="wikipedia",
+                source="wikipedia-somali",
             )
 
         filtered = mock_processor._filter_already_processed(articles)
@@ -120,9 +120,9 @@ class TestFilterAlreadyProcessed:
         ]
 
         # Mark only first article as processed
-        temp_ledger.discover_url(articles[0]["url"], "wikipedia")
+        temp_ledger.discover_url(articles[0]["url"], "wikipedia-somali")
         temp_ledger.mark_processed(
-            url=articles[0]["url"], text_hash="hash_A1", silver_id="silver_A1", source="wikipedia"
+            url=articles[0]["url"], text_hash="hash_A1", silver_id="silver_A1", source="wikipedia-somali"
         )
 
         filtered = mock_processor._filter_already_processed(articles)
@@ -198,12 +198,12 @@ class TestFilterAlreadyProcessed:
 
         # Mark half as processed
         for i in range(0, 1000, 2):
-            temp_ledger.discover_url(articles[i]["url"], "wikipedia")
+            temp_ledger.discover_url(articles[i]["url"], "wikipedia-somali")
             temp_ledger.mark_processed(
                 url=articles[i]["url"],
                 text_hash=f"hash_{i}",
                 silver_id=f"silver_{i}",
-                source="wikipedia",
+                source="wikipedia-somali",
             )
 
         filtered = mock_processor._filter_already_processed(articles)
@@ -376,12 +376,12 @@ class TestWikipediaIntegrationScenarios:
 
         # Mark all as processed
         for article in articles:
-            temp_ledger.discover_url(article["url"], "wikipedia")
+            temp_ledger.discover_url(article["url"], "wikipedia-somali")
             temp_ledger.mark_processed(
                 url=article["url"],
                 text_hash=f"hash_{article['title']}",
                 silver_id=f"silver_{article['title']}",
-                source="wikipedia",
+                source="wikipedia-somali",
             )
 
         # Reset metrics mock
@@ -406,12 +406,12 @@ class TestWikipediaIntegrationScenarios:
 
         # Mark as processed
         for article in initial_articles:
-            temp_ledger.discover_url(article["url"], "wikipedia")
+            temp_ledger.discover_url(article["url"], "wikipedia-somali")
             temp_ledger.mark_processed(
                 url=article["url"],
                 text_hash=f"hash_{article['title']}",
                 silver_id=f"silver_{article['title']}",
-                source="wikipedia",
+                source="wikipedia-somali",
             )
 
         # New batch with overlap
@@ -441,14 +441,14 @@ class TestDumpLevelDeduplication:
         dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
 
         # Mark dump URL as already processed in ledger
-        temp_ledger.discover_url(dump_url, "wikipedia")
+        temp_ledger.discover_url(dump_url, "wikipedia-somali")
         temp_ledger.mark_fetched(
             url=dump_url,
             http_status=200,
             etag="old-etag-12345",
             last_modified="Sat, 01 Nov 2025 22:07:38 GMT",
             content_length=1000000,
-            source="wikipedia",
+            source="wikipedia-somali",
         )
 
         # Create mock session
@@ -478,13 +478,13 @@ class TestDumpLevelDeduplication:
         dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
 
         # Mark dump URL as already fetched with old ETag
-        temp_ledger.discover_url(dump_url, "wikipedia")
+        temp_ledger.discover_url(dump_url, "wikipedia-somali")
         temp_ledger.mark_fetched(
             url=dump_url,
             http_status=200,
             etag="old-etag",
             last_modified="Sat, 01 Nov 2025 22:07:38 GMT",
-            source="wikipedia",
+            source="wikipedia-somali",
         )
 
         # Create mock session
@@ -553,13 +553,13 @@ class TestDumpLevelDeduplication:
         dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
 
         # Mark dump with both ETag and Last-Modified
-        temp_ledger.discover_url(dump_url, "wikipedia")
+        temp_ledger.discover_url(dump_url, "wikipedia-somali")
         temp_ledger.mark_fetched(
             url=dump_url,
             http_status=200,
             etag='"etag-value-123"',
             last_modified="Wed, 05 Nov 2025 14:30:00 GMT",
-            source="wikipedia",
+            source="wikipedia-somali",
         )
 
         # Create mock session
@@ -586,8 +586,8 @@ class TestDumpLevelDeduplication:
         """Test that HEAD request failure gracefully falls back to download."""
         dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
 
-        temp_ledger.discover_url(dump_url, "wikipedia")
-        temp_ledger.mark_fetched(url=dump_url, http_status=200, etag="old-etag", source="wikipedia")
+        temp_ledger.discover_url(dump_url, "wikipedia-somali")
+        temp_ledger.mark_fetched(url=dump_url, http_status=200, etag="old-etag", source="wikipedia-somali")
 
         # Create mock session
         mock_session = Mock()
@@ -612,9 +612,9 @@ class TestDumpLevelDeduplication:
         """Test that metrics file is exported when dump is skipped (304)."""
         dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
 
-        temp_ledger.discover_url(dump_url, "wikipedia")
+        temp_ledger.discover_url(dump_url, "wikipedia-somali")
         temp_ledger.mark_fetched(
-            url=dump_url, http_status=200, etag="current-etag", source="wikipedia"
+            url=dump_url, http_status=200, etag="current-etag", source="wikipedia-somali"
         )
 
         # Create mock session
@@ -666,9 +666,9 @@ class TestRunMethodIntegration:
         """Test that run() returns None when dump is unchanged (304)."""
         dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
 
-        temp_ledger.discover_url(dump_url, "wikipedia")
+        temp_ledger.discover_url(dump_url, "wikipedia-somali")
         temp_ledger.mark_fetched(
-            url=dump_url, http_status=200, etag="current-etag", source="wikipedia"
+            url=dump_url, http_status=200, etag="current-etag", source="wikipedia-somali"
         )
 
         # Create mock session
