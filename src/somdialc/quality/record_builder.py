@@ -9,11 +9,15 @@ Responsibilities:
 """
 
 import logging
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
-from ..ingestion.raw_record import RawRecord
 from ..version import __pipeline_version__
 from .record_utils import build_silver_record
+
+if TYPE_CHECKING:
+    # String-only annotation breaks the circular path:
+    # record_builder → ingestion.raw_record → ingestion (init) → base_pipeline → record_builder.
+    from ..ingestion.raw_record import RawRecord
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +63,7 @@ class RecordBuilder:
 
     def build_silver_record(
         self,
-        raw_record: RawRecord,
+        raw_record: "RawRecord",
         cleaned_text: str,
         filter_metadata: dict[str, Any],
         source_type: str,

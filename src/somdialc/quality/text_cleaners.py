@@ -56,6 +56,16 @@ class WikiMarkupCleaner:
         self.orphan_bold_pattern = re.compile(r"'{3}")
 
         self.link_with_text_pattern = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
+        # Interwiki / sister-project links — strip whole, not just brackets.
+        # Examples: [[w:tr:Foo]] (Turkish Wikipedia), [[w:es:Foo]],
+        # [[wikt:Foo]] / [[wiktionary:Foo]], [[wikipedia:Foo]]. If we let
+        # simple_link_pattern unwrap them to "w:tr:Foo", the colons get
+        # consumed downstream by list_marker_pattern and we end up with
+        # residue like "wtrFoo" / "wesFoo" / "witFoo" leaking into silver.
+        self.interwiki_link_pattern = re.compile(
+            r"\[\[(?:w|wikt|wiktionary|wikipedia|w:[a-z]{2,3}):[^\]]*\]\]",
+            re.IGNORECASE,
+        )
         self.simple_link_pattern = re.compile(r"\[\[([^\]]+)\]\]")
         self.external_link_pattern = re.compile(r"\[([^\]]+)\]")
         # Match templates/infoboxes - greedy to consume entire template blocks
@@ -91,9 +101,15 @@ class WikiMarkupCleaner:
         text = self.orphan_bold_pattern.sub("", text)
         # Italic markup: ''text'' → text
         text = self.italic_pattern.sub(r"\1", text)
-        # Remove inter-wiki prefix fragments (wtr, wes, wit, …)
+        # Remove inter-wiki prefix fragments (wtr, wes, wit, …) — defensive
+        # fallback for residue from sources we haven't matched in the link
+        # pass below.
         text = self.interwiki_fragment_pattern.sub("", text)
 
+        # Strip interwiki / sister-project links entirely BEFORE generic
+        # link unwrapping; otherwise the colons inside them get consumed
+        # later by list_marker_pattern and leave residue (wtrFoo, wesFoo).
+        text = self.interwiki_link_pattern.sub("", text)
         # Links: [[link|text]] -> text
         text = self.link_with_text_pattern.sub(r"\2", text)
         # Links: [[link]] -> link
