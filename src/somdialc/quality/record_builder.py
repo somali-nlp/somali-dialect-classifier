@@ -120,10 +120,17 @@ class RecordBuilder:
         source_id = str(source_id_raw) if source_id_raw is not None else None
 
         # Resolve topic: prefer explicit metadata field, then hoist primary_topic
-        # from filter-enriched source_metadata (TD-023)
+        # from filter-enriched source_metadata (TD-023).
+        # Treat 'unknown' and empty string as no-signal; leave topic as None
+        # so downstream analytics aren't polluted with a synthetic placeholder.
+        _NO_SIGNAL = {"unknown", ""}
         topic = raw_record.metadata.get("topic")
+        if topic in _NO_SIGNAL:
+            topic = None
         if topic is None:
-            topic = merged_metadata.get("primary_topic")
+            candidate = merged_metadata.get("primary_topic")
+            if candidate and candidate not in _NO_SIGNAL:
+                topic = candidate
 
         # Build silver record using shared utility
         record = build_silver_record(

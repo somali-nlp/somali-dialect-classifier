@@ -112,7 +112,8 @@ class TestTD020WikiMarkupCleaner:
     def test_pipeline_factory_includes_new_patterns(self):
         """create_wikipedia_cleaner() pipeline handles all TD-020 cases end-to-end."""
         pipeline = create_wikipedia_cleaner()
-        raw = "[[File:test.jpg|thumb]] '''Bold''' ''italic'' wtr rest of text"
+        # wtr is always fused with an uppercase article name (e.g. wtrGeorge)
+        raw = "[[File:test.jpg|thumb]] '''Bold''' ''italic'' wtrGeorge more text"
         result = pipeline.clean(raw)
         assert result is not None
         assert "File:" not in result
@@ -121,7 +122,45 @@ class TestTD020WikiMarkupCleaner:
         assert "wtr" not in result
         assert "Bold" in result
         assert "italic" in result
-        assert "rest of text" in result
+        assert "more text" in result
+
+    # --- TD-020 followup: orphan ''' and wes/wit interwiki fragments ---
+
+    def test_orphan_bold_before_digit(self):
+        """Orphan ''' not followed by closing ''' must be stripped (row 23 sample)."""
+        raw = "waxaa dagan dad gaadhaya ilaa '''9.98 milyan oo qof"
+        result = self.cleaner.clean(raw)
+        assert "'''" not in result
+        assert "9.98 milyan" in result
+
+    def test_orphan_bold_after_html_entity(self):
+        """Orphan ''' after HTML entity must be stripped (row 65 sample)."""
+        raw = "&lt;/small&gt;'''\n|-\n| 1 || KwaZulu-Natal Province ||"
+        result = self.cleaner.clean(raw)
+        assert "'''" not in result
+
+    def test_wes_interwiki_fragment_removed(self):
+        """'wes' inter-wiki prefix (row 60 sample) must be removed."""
+        raw = "ta Arktika\n|}\nwesindian ocean\nwtrHint\nwitOceano In"
+        result = self.cleaner.clean(raw)
+        assert "wes" not in result
+        assert "wtr" not in result
+        assert "wit" not in result
+
+    def test_wit_interwiki_fragment_removed(self):
+        """Standalone 'wit' inter-wiki prefix must be removed."""
+        raw = "witOceano Indico bayuu ahaa"
+        result = self.cleaner.clean(raw)
+        assert "wit" not in result
+        assert "Oceano" in result
+
+    def test_row60_full_sample(self):
+        """Exact context from silver row 60: wes, wtr, wit all absent after clean."""
+        raw = "ta Arktika\n|}\nwesindian ocean\nwtrHint altkıtası\nwitOceano In"
+        result = self.cleaner.clean(raw)
+        assert "wtr" not in result
+        assert "wes" not in result
+        assert "wit" not in result
 
 
 # ---------------------------------------------------------------------------
@@ -231,6 +270,86 @@ class TestTD023TopicHoisting:
             register="formal",
         )
         assert record["topic"] is None
+
+    # --- TD-023 followup: 'unknown' must NOT be hoisted as a real topic ---
+
+    def test_unknown_primary_topic_treated_as_no_signal(self):
+        """primary_topic='unknown' (all-zero markers) must not populate topic column."""
+        builder = self._make_builder()
+        raw = RawRecord(
+            title="Title", text="Text", url="https://bbc.com/somali/articles/c00",
+            metadata={"date_published": "2026-01-01"}
+        )
+        record = builder.build_silver_record(
+            raw_record=raw,
+            cleaned_text="Enough text to pass length filter.",
+            filter_metadata={
+                "primary_topic": "unknown",
+                "topic_markers": {"economy": 0, "politics": 0, "sports": 0},
+            },
+            source_type="news",
+            license_str="BBC Terms of Use",
+            domain="news",
+            register="formal",
+        )
+        assert record["topic"] is None, (
+            "topic must be None when primary_topic='unknown', got: " + repr(record["topic"])
+        )
+
+    def test_empty_string_primary_topic_treated_as_no_signal(self):
+        """primary_topic='' must not populate topic column."""
+        builder = self._make_builder()
+        raw = RawRecord(title="T", text="T", url="https://example.com", metadata={})
+        record = builder.build_silver_record(
+            raw_record=raw,
+            cleaned_text="Enough text to pass length filter.",
+            filter_metadata={"primary_topic": ""},
+            source_type="news",
+            license_str="CC-BY",
+            domain="news",
+            register="formal",
+        )
+        assert record["topic"] is None
+
+    def test_unknown_in_raw_record_metadata_treated_as_no_signal(self):
+        """metadata.topic='unknown' on the raw record must also be suppressed."""
+        builder = self._make_builder()
+        raw = RawRecord(
+            title="T", text="T", url="https://example.com",
+            metadata={"topic": "unknown"}
+        )
+        record = builder.build_silver_record(
+            raw_record=raw,
+            cleaned_text="Enough text to pass length filter.",
+            filter_metadata={"primary_topic": "sports"},
+            source_type="news",
+            license_str="CC-BY",
+            domain="news",
+            register="formal",
+        )
+        # 'unknown' on raw_record is suppressed; sports from filter_metadata is used
+        assert record["topic"] == "sports"
+
+    def test_dominant_marker_topic_preserved(self):
+        """When topic_markers are present with a dominant marker, topic is set correctly."""
+        builder = self._make_builder()
+        raw = RawRecord(
+            title="Title", text="Text", url="https://bbc.com/somali/articles/c02",
+            metadata={}
+        )
+        record = builder.build_silver_record(
+            raw_record=raw,
+            cleaned_text="Kubadda cagta Soomaaliya ayaa la ciyaaray toddobaadkan.",
+            filter_metadata={
+                "primary_topic": "sports",
+                "topic_markers": {"economy": 0, "politics": 1, "sports": 4},
+            },
+            source_type="news",
+            license_str="BBC Terms of Use",
+            domain="news",
+            register="formal",
+        )
+        assert record["topic"] == "sports"
 
 
 # ---------------------------------------------------------------------------
