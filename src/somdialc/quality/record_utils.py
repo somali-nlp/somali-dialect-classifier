@@ -125,7 +125,7 @@ def build_silver_record(
         '...' # 64-character hex string
     """
     text_hash = generate_text_hash(text)
-    record_id = generate_record_id(title, url)
+    record_id = generate_record_id(title, url, text_hash)
     tokens = count_tokens(text)
 
     # JSON-serialize source_metadata to match schema and prevent schema drift

@@ -27,6 +27,23 @@ class WikiMarkupCleaner:
 
     def __init__(self):
         # Compile patterns once for performance
+
+        # Image/file links: [[File:foo.jpg|thumb|200px|caption]] — strip whole match
+        self.image_file_pattern = re.compile(
+            r"\[\[(File|Image|file|image):[^\]]*\]\]", re.IGNORECASE
+        )
+        # Bold: '''text''' → text
+        self.bold_pattern = re.compile(r"'''(.*?)'''", re.DOTALL)
+        # Italic: ''text'' → text
+        self.italic_pattern = re.compile(r"''(.*?)''", re.DOTALL)
+        # Pipe-delimited image attributes like "thumb|200px|" that precede captions
+        self.thumb_pipe_pattern = re.compile(r"\bthumb\|[^|]*\|")
+        # Wiktionary / inter-wiki fragments: "wtr" is a residue of [[wikt:...]]
+        # after partial link stripping; appears either standalone ("wtr ") or
+        # fused with the next word ("wtrGeorge"). Match at a non-word boundary
+        # start (beginning of line or after whitespace/punctuation).
+        self.wtr_fragment_pattern = re.compile(r"(?<!\w)wtr(?=\W|[A-Z]|\Z)")
+
         self.link_with_text_pattern = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
         self.simple_link_pattern = re.compile(r"\[\[([^\]]+)\]\]")
         self.external_link_pattern = re.compile(r"\[([^\]]+)\]")
@@ -53,6 +70,17 @@ class WikiMarkupCleaner:
             >>> cleaner.clean("[[Link|display text]]")
             'display text'
         """
+        # Strip image/file links entirely (before generic link processing)
+        text = self.image_file_pattern.sub("", text)
+        # Strip pipe-delimited thumb attributes (residue when image tags are partially matched)
+        text = self.thumb_pipe_pattern.sub("", text)
+        # Bold markup: '''text''' → text
+        text = self.bold_pattern.sub(r"\1", text)
+        # Italic markup: ''text'' → text
+        text = self.italic_pattern.sub(r"\1", text)
+        # Remove Wiktionary/inter-wiki "wtr" fragments
+        text = self.wtr_fragment_pattern.sub("", text)
+
         # Links: [[link|text]] -> text
         text = self.link_with_text_pattern.sub(r"\2", text)
         # Links: [[link]] -> link

@@ -408,16 +408,26 @@ class BBCSomaliProcessor(BasePipeline):
         BasePipeline.process() handles the rest (cleaning, writing, logging).
         """
         # Stream articles from JSONL staging file
+        import re as _re
+
+        _bbc_slug_pattern = _re.compile(r"/articles/([a-z0-9]+)(?:[/?#]|$)", _re.IGNORECASE)
+
         with open(self.staging_file, encoding="utf-8") as f:
             for line in f:
                 if not line.strip():
                     continue
 
                 article = json.loads(line)
+                url = article["url"]
+
+                # Extract BBC article slug (e.g. "c8d5dd4l0ryo") from URL as source_id
+                slug_match = _bbc_slug_pattern.search(url)
+                article_id = slug_match.group(1) if slug_match else ""
+
                 yield RawRecord(
                     title=article["title"],
                     text=article["text"],
-                    url=article["url"],
+                    url=url,
                     metadata={
                         "date_published": article.get("date"),
                         "category": article.get("category", "news"),
@@ -425,6 +435,7 @@ class BBCSomaliProcessor(BasePipeline):
                         "minhash_signature": article.get(
                             "minhash_signature"
                         ),  # Pass through for ledger
+                        "source_id": article_id,  # BBC article slug (TD-022)
                     },
                 )
 

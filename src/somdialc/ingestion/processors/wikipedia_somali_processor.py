@@ -143,6 +143,8 @@ class WikipediaSomaliProcessor(BasePipeline):
         self.title_pattern = re.compile(r"<title>(.*?)</title>")
         self.text_pattern = re.compile(r"<text[^>]*>(.*?)</text>", re.DOTALL)
         self.timestamp_pattern = re.compile(r"<timestamp>(.*?)</timestamp>")
+        # First <id> inside a <page> block is the page id (before any <revision> sub-element)
+        self.page_id_pattern = re.compile(r"<id>(\d+)</id>")
         self.skip_prefixes = (
             "Special:",
             "Template:",
@@ -489,6 +491,8 @@ class WikipediaSomaliProcessor(BasePipeline):
                     title = article["title"]
                     text = article["text"]
                     page_url = article["url"]
+                    timestamp = article.get("timestamp") or ""
+                    page_id = article.get("page_id") or ""
 
                     # Track URL discovery
                     self.ledger.discover_url(
@@ -503,7 +507,10 @@ class WikipediaSomaliProcessor(BasePipeline):
                     # Check if exact duplicate
                     if not self.dedup.is_duplicate_hash(text_hash):
                         # Not a duplicate - write and record
-                        fout.write(f"{self.page_marker_prefix} {title}\n{text}\n\n")
+                        # Marker format: \x1e PAGE: <title>\t<page_id>\t<timestamp>
+                        fout.write(
+                            f"{self.page_marker_prefix} {title}\t{page_id}\t{timestamp}\n{text}\n\n"
+                        )
                         page_count += 1
                         self.metrics.record_text_length(len(text))
                         # Store hash→URL mapping for future duplicate detection
@@ -599,7 +606,27 @@ class WikipediaSomaliProcessor(BasePipeline):
         to prevent memory exhaustion from malformed staging files.
         """
         current_title = None
+        current_page_id = None
+        current_timestamp = None
         current_lines = []
+
+        def _make_record(title, page_id, timestamp, lines, truncated):
+            """Build a RawRecord from accumulated page data."""
+            date_published = None
+            if timestamp:
+                # Normalise Wikipedia timestamp (2025-03-10T06:50:15Z) to ISO date
+                date_published = timestamp[:10] if len(timestamp) >= 10 else timestamp
+            return RawRecord(
+                title=title,
+                text="".join(lines),
+                url=self._title_to_url(title),
+                metadata={
+                    "truncated": truncated,
+                    "page_id": page_id or "",
+                    "date_published": date_published,
+                    "source_id": page_id or "",
+                },
+            )
 
         with open(self.staging_file, encoding="utf-8") as fin:
             for line in fin:
@@ -615,23 +642,25 @@ class WikipediaSomaliProcessor(BasePipeline):
                             )
                             if hasattr(self, "metrics") and self.metrics is not None:
                                 self.metrics.increment("articles_truncated_size")
-                            # Truncate to max size
                             current_lines = current_lines[:MAX_ARTICLE_LINES]
                             truncated = True
 
-                        yield RawRecord(
-                            title=current_title,
-                            text="".join(current_lines),
-                            url=self._title_to_url(current_title),
-                            metadata={"truncated": truncated},
+                        yield _make_record(
+                            current_title, current_page_id, current_timestamp, current_lines, truncated
                         )
 
-                    # Start new page
+                    # Parse marker line: "\x1e PAGE: <title>\t<page_id>\t<timestamp>"
                     raw_line = line.rstrip("\n")
-                    title_part = raw_line[len(self.page_marker_prefix) + 1 :]
-                    current_title = title_part.strip()
+                    marker_payload = raw_line[len(self.page_marker_prefix) + 1 :]
+                    parts = marker_payload.split("\t", 2)
+                    current_title = parts[0].strip()
+                    current_page_id = parts[1].strip() if len(parts) > 1 else ""
+                    current_timestamp = parts[2].strip() if len(parts) > 2 else ""
+                    # Backward compat: old staging files without tabs have no metadata
                     if not current_title:
                         current_title = None
+                        current_page_id = None
+                        current_timestamp = None
                         current_lines = []
                         continue
                     current_lines = []
@@ -651,15 +680,11 @@ class WikipediaSomaliProcessor(BasePipeline):
                     )
                     if hasattr(self, "metrics") and self.metrics is not None:
                         self.metrics.increment("articles_truncated_size")
-                    # Truncate to max size
                     current_lines = current_lines[:MAX_ARTICLE_LINES]
                     truncated = True
 
-                yield RawRecord(
-                    title=current_title,
-                    text="".join(current_lines),
-                    url=self._title_to_url(current_title),
-                    metadata={"truncated": truncated},
+                yield _make_record(
+                    current_title, current_page_id, current_timestamp, current_lines, truncated
                 )
 
     def _get_http_session(self) -> requests.Session:
@@ -736,6 +761,7 @@ class WikipediaSomaliProcessor(BasePipeline):
         title_match = self.title_pattern.search(page_xml)
         text_match = self.text_pattern.search(page_xml)
         timestamp_match = self.timestamp_pattern.search(page_xml)
+        page_id_match = self.page_id_pattern.search(page_xml)
 
         if not (title_match and text_match):
             return None
@@ -748,12 +774,14 @@ class WikipediaSomaliProcessor(BasePipeline):
 
         text = text_match.group(1)
         timestamp = timestamp_match.group(1) if timestamp_match else None
+        page_id = page_id_match.group(1) if page_id_match else None
 
         return {
             "title": title,
             "text": text,
             "url": self._title_to_url(title),
             "timestamp": timestamp,
+            "page_id": page_id,
         }
 
     def _filter_already_processed(self, articles: list[dict[str, Any]]) -> list[dict[str, Any]]:

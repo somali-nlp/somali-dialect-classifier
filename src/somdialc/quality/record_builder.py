@@ -108,7 +108,19 @@ class RecordBuilder:
 
         # Extract source_id from metadata if available
         # This allows sources to populate source_id field (e.g., corpus_id for Språkbanken)
-        source_id = raw_record.metadata.get("corpus_id") or raw_record.metadata.get("source_id")
+        source_id = (
+            raw_record.metadata.get("source_id")
+            or raw_record.metadata.get("corpus_id")
+            or raw_record.metadata.get("article_id")
+            or raw_record.metadata.get("page_id")
+            or raw_record.metadata.get("comment_id")
+        )
+
+        # Resolve topic: prefer explicit metadata field, then hoist primary_topic
+        # from filter-enriched source_metadata (TD-023)
+        topic = raw_record.metadata.get("topic")
+        if topic is None:
+            topic = merged_metadata.get("primary_topic")
 
         # Build silver record using shared utility
         record = build_silver_record(
@@ -123,7 +135,7 @@ class RecordBuilder:
             pipeline_version=pipeline_version,
             source_metadata=merged_metadata,
             date_published=raw_record.metadata.get("date_published"),
-            topic=raw_record.metadata.get("topic"),
+            topic=topic,
             domain=domain,
             embedding=None,  # Placeholder for future embeddings
             register=register,

@@ -1088,6 +1088,30 @@ class SprakbankenSomaliProcessor(BasePipeline):
             if value and value != "None":
                 metadata[attr] = value
 
+        # Derive date_published from most specific date field available (TD-024)
+        # Priority: datefrom (full date) > year (year-only) > period start year
+        date_published = None
+        if metadata.get("datefrom"):
+            raw = metadata["datefrom"]
+            # Normalise formats like "19830101" → "1983-01-01", or already ISO
+            if len(raw) == 8 and raw.isdigit():
+                date_published = f"{raw[:4]}-{raw[4:6]}-{raw[6:]}"
+            else:
+                date_published = raw
+        elif metadata.get("year"):
+            year = metadata["year"]
+            if year.isdigit():
+                date_published = year
+        elif metadata.get("period"):
+            # period like "1993-1994" or "1993" — take first four digits
+            period = metadata["period"]
+            year_part = period[:4]
+            if year_part.isdigit():
+                date_published = year_part
+
+        if date_published:
+            metadata["date_published"] = date_published
+
         return metadata
 
     def _extract_sentence_text(self, sentence_elem: Element) -> str:
