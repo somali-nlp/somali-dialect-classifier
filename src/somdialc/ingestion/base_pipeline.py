@@ -82,6 +82,10 @@ class BasePipeline(DataProcessor, ABC):
             self.source, self.date_accessed
         )
 
+        # Sweep .DS_Store files macOS regenerates inside data dirs (TD-026) so
+        # downstream dataset-discovery walks see only real artefacts.
+        PipelineSetup.cleanup_macos_artifacts()
+
         self.text_cleaner = self._create_cleaner()
         self.silver_writer = SilverDatasetWriter()
         self.mlflow = MLFlowTracker()

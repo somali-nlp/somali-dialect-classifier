@@ -260,3 +260,29 @@ class PipelineSetup:
         )
 
         return raw_dir, staging_dir, processed_dir
+
+    @staticmethod
+    def cleanup_macos_artifacts(root: Optional[Path] = None) -> int:
+        """
+        Remove `.DS_Store` files that macOS regenerates inside data dirs (TD-026).
+
+        Called from BasePipeline.__init__ so every pipeline run starts with a clean
+        listing — without this, dataset-discovery code that walks `data/` picks up
+        the binary `.DS_Store` files alongside parquet/JSON outputs.
+
+        Returns:
+            Number of files removed.
+        """
+        config = get_config()
+        if root is None:
+            root = Path("data")
+        if not root.exists():
+            return 0
+        removed = 0
+        for ds in root.rglob(".DS_Store"):
+            try:
+                ds.unlink()
+                removed += 1
+            except OSError:
+                pass
+        return removed
