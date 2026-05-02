@@ -431,6 +431,22 @@ class BasePipeline(DataProcessor, ABC):
                 records_filtered += 1
                 continue
 
+            # Text-hash exact-duplicate guard (TD-021).
+            # Catches redirect/stub duplicates whose cleaned text is identical
+            # (same hash) even when URLs and titles differ.  The check must
+            # happen here — after cleaning — so that hash values match
+            # regardless of how whitespace or markup varies in the raw source.
+            if hasattr(self, "dedup") and self.dedup is not None:
+                text_hash = record.get("text_hash", "")
+                if text_hash and self.dedup.is_duplicate_hash(text_hash):
+                    records_filtered += 1
+                    self._record_filter_metric("exact_text_duplicate")
+                    if metrics is not None:
+                        metrics.increment("urls_deduplicated")
+                    continue
+                if text_hash:
+                    self.dedup.add_known_hash(text_hash, raw_record.url)
+
             records.append(record)
             records_processed += 1
             self._mark_url_processed(raw_record, record)

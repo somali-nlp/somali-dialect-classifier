@@ -441,4 +441,206 @@ class TestMinHashLSHURLCollision:
         assert len(dedup.document_hashes) == 1
 
 
+class TestRedirectStubDedup:
+    """TD-021: identical text under different URLs/titles must be deduplicated.
+
+    Simulates Wikipedia redirect/stub pages where the cleaned text is byte-for-byte
+    identical but the page title and URL differ (e.g., 'SOFEN' vs
+    'Somali Formal Education Network (SOFEN)').
+    """
+
+    def test_second_record_with_same_text_is_duplicate(self):
+        """process_document: second call with identical text → is_duplicate=True."""
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine
+
+        config = DedupConfig(enable_minhash=False, hash_fields=["text"])
+        engine = DedupEngine(config=config)
+
+        text = "SOFEN waa hay'ad waxbarashada rasmiga ah ee Soomaaliya."
+
+        is_dup1, _, _, hash1, _ = engine.process_document(text, "https://so.wikipedia.org/wiki/SOFEN")
+        is_dup2, _, canonical, hash2, _ = engine.process_document(
+            text, "https://so.wikipedia.org/wiki/Somali_Formal_Education_Network"
+        )
+
+        assert not is_dup1, "First occurrence must not be flagged as duplicate"
+        assert is_dup2, "Second occurrence with identical text must be flagged as duplicate"
+        assert hash1 == hash2
+        assert canonical == "https://so.wikipedia.org/wiki/SOFEN"
+
+    def test_unique_texts_are_not_flagged(self):
+        """process_document: different texts are never duplicates."""
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine
+
+        config = DedupConfig(enable_minhash=False, hash_fields=["text"])
+        engine = DedupEngine(config=config)
+
+        text_a = "Soomaaliya waa dal weyn oo ku yaalla Geeska Afrika."
+        text_b = "Muqdisho waa caasimadda Jamhuuriyadda Federaalka Soomaaliya."
+
+        is_dup_a, *_ = engine.process_document(text_a, "https://so.wikipedia.org/wiki/Somalia")
+        is_dup_b, *_ = engine.process_document(text_b, "https://so.wikipedia.org/wiki/Mogadishu")
+
+        assert not is_dup_a
+        assert not is_dup_b
+
+    def test_four_redirect_variants_deduplicated(self):
+        """All four redirect titles for same stub text → only first is kept."""
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine
+
+        config = DedupConfig(enable_minhash=False, hash_fields=["text"])
+        engine = DedupEngine(config=config)
+
+        stub_text = "SOFEN waa ururka waxbarashada."
+        variants = [
+            ("SOFEN", "https://so.wikipedia.org/wiki/SOFEN"),
+            ("Sofen", "https://so.wikipedia.org/wiki/Sofen"),
+            ("Somali Formal Education Network", "https://so.wikipedia.org/wiki/Somali_Formal_Education_Network"),
+            ("SOMALI FORMAL EDUCATION NETWORK (SOFEN)", "https://so.wikipedia.org/wiki/SOMALI_FORMAL_EDUCATION_NETWORK"),
+        ]
+
+        results = []
+        for title, url in variants:
+            is_dup, *_ = engine.process_document(stub_text, url)
+            results.append(is_dup)
+
+        assert results[0] is False, "First variant must be unique"
+        assert all(results[1:]), "Remaining variants must be flagged as duplicates"
+
+
+class TestBasePipelineDedupGuard:
+    """TD-021: BasePipeline._process_record_stream must reject exact-text duplicates.
+
+    The dedup guard fires AFTER text cleaning so that normalised text hashes
+    correctly identify pages that have identical content despite different
+    raw markup, titles, or URLs.
+    """
+
+    def _build_processor(self, tmp_path):
+        """Return a minimal concrete subclass of BasePipeline with a real DedupEngine."""
+        import json
+
+        from somdialc.ingestion.base_pipeline import BasePipeline, RawRecord
+        from somdialc.ingestion.dedup import DedupConfig, DedupEngine
+        from somdialc.quality.text_cleaners import TextCleaningPipeline, WhitespaceCleaner
+
+        staging = tmp_path / "staging.jsonl"
+
+        class MinimalProcessor(BasePipeline):
+            def __init__(self, records, dedup_engine, **kw):
+                self._records = records
+                self.dedup = dedup_engine
+                self.ledger = None
+                super().__init__(source="wikipedia-somali", **kw)
+                self.staging_file = staging
+
+            def _extract_records(self):
+                for r in self._records:
+                    yield r
+
+            def _create_cleaner(self):
+                return TextCleaningPipeline([WhitespaceCleaner()])
+
+            def _get_source_type(self):
+                return "wiki"
+
+            def _get_license(self):
+                return "CC-BY-SA-3.0"
+
+            def _get_source_metadata(self):
+                return {}
+
+            def _get_domain(self):
+                return "encyclopedia"
+
+            def _get_register(self):
+                return "encyclopedic"
+
+            def download(self):
+                return None
+
+            def extract(self):
+                return self.staging_file
+
+        dedup = DedupEngine(DedupConfig(enable_minhash=False, hash_fields=["text"]))
+        return MinimalProcessor, dedup, staging
+
+    def test_identical_text_records_deduplicated_in_process(self, tmp_path):
+        """_process_record_stream drops second record whose cleaned text is identical."""
+        from unittest.mock import MagicMock, patch
+
+        from somdialc.ingestion.base_pipeline import RawRecord
+
+        MinimalProcessor, dedup, staging = self._build_processor(tmp_path)
+
+        text = "Cunto samaysiga waa farshaxan aad loo jeclahay."
+        records = [
+            RawRecord(title="Cunto samaysiga", text=text, url="https://so.wikipedia.org/wiki/Cunto_samaysiga"),
+            RawRecord(title="Karinta", text=text, url="https://so.wikipedia.org/wiki/Karinta"),
+        ]
+        staging.touch()
+
+        with patch("somdialc.infra.tracking.MLFlowTracker"):
+            proc = MinimalProcessor(records=records, dedup_engine=dedup)
+            proc.metrics = MagicMock()
+
+        processed_file = tmp_path / "processed.txt"
+        checkpoint = tmp_path / "ckpt.json"
+
+        with open(processed_file, "w") as fout:
+            n_processed, n_filtered, written = proc._process_record_stream(
+                last_processed_index=0,
+                checkpoint_path=checkpoint,
+                fout=fout,
+            )
+
+        assert n_processed == 1, f"Expected 1 unique record, got {n_processed}"
+        assert n_filtered == 1, f"Expected 1 filtered record (duplicate), got {n_filtered}"
+
+    def test_different_text_records_both_kept(self, tmp_path):
+        """_process_record_stream keeps all records when texts differ."""
+        from unittest.mock import MagicMock, patch
+
+        from somdialc.ingestion.base_pipeline import RawRecord
+
+        MinimalProcessor, dedup, staging = self._build_processor(tmp_path)
+
+        staging.touch()
+
+        records = [
+            RawRecord(
+                title="Soomaaliya",
+                text="Soomaaliya waa dal weyn oo ku yaalla Geeska Afrika.",
+                url="https://so.wikipedia.org/wiki/Soomaaliya",
+            ),
+            RawRecord(
+                title="Muqdisho",
+                text="Muqdisho waa caasimadda Jamhuuriyadda Federaalka Soomaaliya.",
+                url="https://so.wikipedia.org/wiki/Muqdisho",
+            ),
+            RawRecord(
+                title="Afrika",
+                text="Afrika waa qaaradda ugu weyn adduunka marka loo eego tirada dadka.",
+                url="https://so.wikipedia.org/wiki/Afrika",
+            ),
+        ]
+
+        with patch("somdialc.infra.tracking.MLFlowTracker"):
+            proc = MinimalProcessor(records=records, dedup_engine=dedup)
+            proc.metrics = MagicMock()
+
+        processed_file = tmp_path / "processed2.txt"
+        checkpoint = tmp_path / "ckpt2.json"
+
+        with open(processed_file, "w") as fout:
+            n_processed, n_filtered, written = proc._process_record_stream(
+                last_processed_index=0,
+                checkpoint_path=checkpoint,
+                fout=fout,
+            )
+
+        assert n_processed == 3, f"Expected 3 unique records, got {n_processed}"
+        assert n_filtered == 0, f"Expected 0 filtered records, got {n_filtered}"
+
+
 # Run with: pytest tests/unit/test_dedup.py -v -s
