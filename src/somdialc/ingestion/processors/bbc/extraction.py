@@ -135,34 +135,29 @@ def parse_article_from_html(processor, html: str, url: str) -> Optional[dict]:
         return None
 
 
-def extract_async(processor) -> Path:
-    """Scrape articles using async HTTP."""
-    if not processor.article_links_file.exists():
-        raise FileNotFoundError(f"Article links not found: {processor.article_links_file}")
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
 
-    processor.staging_dir.mkdir(parents=True, exist_ok=True)
-    if processor.staging_file.exists() and not processor.force:
-        processor.logger.info(f"Staging file already exists: {processor.staging_file}")
-        processor.logger.info("Use force=True to re-scrape")
-        return processor.staging_file
-    if processor.staging_file.exists() and processor.force:
-        processor.logger.info(f"Force re-scraping: removing existing file {processor.staging_file}")
-        processor.staging_file.unlink()
 
+def _load_links_with_quota(processor) -> tuple[list[str], Optional[int]]:
+    """Load links, init metrics, apply quota. Returns (links, quota_limit); links=[] on exhaustion."""
     with open(processor.article_links_file, encoding="utf-8") as handle:
         data = json.load(handle)
         links = data["links"]
 
     quota_limit = processor.config.orchestration.get_quota("bbc")
     has_quota, remaining = processor.ledger.check_quota_available("bbc", quota_limit)
+
+    if processor.metrics is None:
+        processor.metrics = MetricsCollector(
+            processor.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
+        )
+
     if not has_quota:
         processor.logger.warning(f"Daily quota already reached for BBC: {quota_limit} articles")
-        if processor.metrics is None:
-            processor.metrics = MetricsCollector(
-                processor.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
-            )
         processor.metrics.increment("quota_hit")
-        return processor.staging_file
+        return [], quota_limit
 
     if quota_limit is not None and remaining < len(links):
         processor.logger.info(
@@ -175,11 +170,137 @@ def extract_async(processor) -> Path:
             f"Processing {len(links)} links (quota: {quota_limit or 'unlimited'})"
         )
 
-    set_context(run_id=processor.run_id, source="bbc-somali", phase="fetch")
-    if processor.metrics is None:
-        processor.metrics = MetricsCollector(
-            processor.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
+    return links, quota_limit
+
+
+def _handle_staging_guard(processor) -> Optional[Path]:
+    """Return existing staging Path to skip extraction, or None to proceed."""
+    processor.staging_dir.mkdir(parents=True, exist_ok=True)
+    if processor.staging_file.exists() and not processor.force:
+        processor.logger.info(f"Staging file already exists: {processor.staging_file}")
+        processor.logger.info("Use force=True to re-scrape")
+        return processor.staging_file
+    if processor.staging_file.exists() and processor.force:
+        processor.logger.info(f"Force re-scraping: removing existing file {processor.staging_file}")
+        processor.staging_file.unlink()
+    return None
+
+
+def _write_article_record(
+    processor,
+    staging_out,
+    article: dict,
+    url: str,
+    index: int,
+    http_status: int,
+    etag: Optional[str],
+    last_modified: Optional[str],
+    quota_limit: Optional[int],
+) -> bool:
+    """Dedup-check, write to staging + raw dir, update ledger/metrics. Returns True if written."""
+    is_dup, dup_type, similar_url, text_hash, minhash_sig = processor.dedup.process_document(
+        article["text"], url
+    )
+    if is_dup:
+        processor.logger.info(
+            f"{dup_type.capitalize()} duplicate detected: {url} (similar to {similar_url})"
         )
+        processor.ledger.mark_duplicate(url, similar_url)
+        if dup_type == "exact":
+            processor.metrics.increment("urls_deduplicated")
+        elif dup_type == "near":
+            processor.metrics.increment("near_duplicates")
+        return False
+
+    article["text_hash"] = text_hash
+    article["minhash_signature"] = minhash_sig
+    processor.ledger.mark_fetched(
+        url=url,
+        http_status=http_status,
+        etag=etag,
+        last_modified=last_modified,
+        content_length=len(article["text"]),
+        source=processor.source,
+    )
+    processor.metrics.increment("urls_fetched")
+    processor.metrics.record_http_status(http_status)
+    processor.metrics.record_text_length(len(article["text"]))
+    staging_out.write(json.dumps(article, ensure_ascii=False) + "\n")
+
+    if quota_limit is not None:
+        processor.ledger.increment_daily_quota(source="bbc", count=1, quota_limit=quota_limit)
+
+    individual_file = (
+        processor.raw_dir / f"bbc-somali_{processor.run_id}_raw_article-{index:04d}.json"
+    )
+    with open(individual_file, "w", encoding="utf-8") as handle:
+        json.dump(article, handle, ensure_ascii=False, indent=2)
+
+    return True
+
+
+def _maybe_mark_quota_hit(processor, links: list, quota_limit: Optional[int]) -> None:
+    """Record quota-hit event when fewer links were processed than available."""
+    if quota_limit is None:
+        return
+    with open(processor.article_links_file, encoding="utf-8") as handle:
+        data = json.load(handle)
+        total_links = len(data["links"])
+    if len(links) < total_links:
+        items_remaining = total_links - len(links)
+        processor.ledger.mark_quota_hit(
+            source="bbc", items_remaining=items_remaining, quota_limit=quota_limit
+        )
+        processor.logger.info(
+            f"Quota hit: {quota_limit} articles processed, {items_remaining} links remaining for next run"
+        )
+        processor.metrics.increment("quota_hit")
+
+
+def _log_extraction_summary(
+    processor,
+    articles_count: int,
+    total_attempted: int,
+    failed_count: int,
+    extra_lines: Optional[list[str]] = None,
+) -> None:
+    """Emit the standard extraction-complete summary log block."""
+    success_rate = (articles_count / total_attempted * 100) if total_attempted > 0 else 0
+    processor.logger.info("=" * 60)
+    processor.logger.info(
+        f"Extraction complete: {articles_count}/{total_attempted} articles extracted"
+    )
+    processor.logger.info(
+        f"Failed: {failed_count} articles ({failed_count / total_attempted * 100:.1f}%)"
+        if total_attempted > 0
+        else f"Failed: {failed_count} articles"
+    )
+    processor.logger.info(f"Success rate: {success_rate:.1f}%")
+    if extra_lines:
+        for line in extra_lines:
+            processor.logger.info(line)
+    processor.logger.info("=" * 60)
+
+
+# ---------------------------------------------------------------------------
+# Entry points
+# ---------------------------------------------------------------------------
+
+
+def extract_async(processor) -> Path:
+    """Scrape articles using async HTTP."""
+    if not processor.article_links_file.exists():
+        raise FileNotFoundError(f"Article links not found: {processor.article_links_file}")
+
+    early = _handle_staging_guard(processor)
+    if early is not None:
+        return early
+
+    links, quota_limit = _load_links_with_quota(processor)
+    if not links:
+        return processor.staging_file
+
+    set_context(run_id=processor.run_id, source="bbc-somali", phase="fetch")
 
     processor.logger.info("=" * 60)
     processor.logger.info("PHASE 2: Article Extraction (Async)")
@@ -224,73 +345,22 @@ def extract_async(processor) -> Path:
                 failed_count += 1
                 continue
 
-            is_dup, dup_type, similar_url, text_hash, minhash_sig = (
-                processor.dedup.process_document(article["text"], url)
-            )
-            if is_dup:
-                processor.logger.info(
-                    f"{dup_type.capitalize()} duplicate detected: {url} (similar to {similar_url})"
-                )
-                processor.ledger.mark_duplicate(url, similar_url)
-                if dup_type == "exact":
-                    processor.metrics.increment("urls_deduplicated")
-                elif dup_type == "near":
-                    processor.metrics.increment("near_duplicates")
-                continue
-
-            article["text_hash"] = text_hash
-            article["minhash_signature"] = minhash_sig
-            processor.ledger.mark_fetched(
+            written = _write_article_record(
+                processor,
+                staging_out,
+                article,
                 url=url,
+                index=index,
                 http_status=result["status"],
                 etag=result.get("etag"),
                 last_modified=result.get("last_modified"),
-                content_length=len(article["text"]),
-                source=processor.source,
+                quota_limit=quota_limit,
             )
-            processor.metrics.increment("urls_fetched")
-            processor.metrics.record_http_status(result["status"])
-            processor.metrics.record_text_length(len(article["text"]))
-            staging_out.write(json.dumps(article, ensure_ascii=False) + "\n")
-            articles_count += 1
+            if written:
+                articles_count += 1
 
-            if quota_limit is not None:
-                processor.ledger.increment_daily_quota(
-                    source="bbc", count=1, quota_limit=quota_limit
-                )
-
-            individual_file = (
-                processor.raw_dir / f"bbc-somali_{processor.run_id}_raw_article-{index:04d}.json"
-            )
-            with open(individual_file, "w", encoding="utf-8") as handle:
-                json.dump(article, handle, ensure_ascii=False, indent=2)
-
-    if quota_limit is not None:
-        with open(processor.article_links_file, encoding="utf-8") as handle:
-            data = json.load(handle)
-            total_links = len(data["links"])
-
-        if len(links) < total_links:
-            items_remaining = total_links - len(links)
-            processor.ledger.mark_quota_hit(
-                source="bbc", items_remaining=items_remaining, quota_limit=quota_limit
-            )
-            processor.logger.info(
-                f"Quota hit: {quota_limit} articles processed, {items_remaining} links remaining for next run"
-            )
-            processor.metrics.increment("quota_hit")
-
-    total_attempted = len(urls_to_fetch)
-    success_rate = (articles_count / total_attempted * 100) if total_attempted > 0 else 0
-    processor.logger.info("=" * 60)
-    processor.logger.info(
-        f"Extraction complete: {articles_count}/{total_attempted} articles extracted"
-    )
-    processor.logger.info(
-        f"Failed: {failed_count} articles ({failed_count / total_attempted * 100:.1f}%)"
-    )
-    processor.logger.info(f"Success rate: {success_rate:.1f}%")
-    processor.logger.info("=" * 60)
+    _maybe_mark_quota_hit(processor, links, quota_limit)
+    _log_extraction_summary(processor, articles_count, len(urls_to_fetch), failed_count)
 
     metrics_path = Path("data/metrics") / f"{processor.run_id}_extraction.json"
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
@@ -308,46 +378,15 @@ def extract_sync(processor) -> Path:
     if not processor.article_links_file.exists():
         raise FileNotFoundError(f"Article links not found: {processor.article_links_file}")
 
-    processor.staging_dir.mkdir(parents=True, exist_ok=True)
-    if processor.staging_file.exists() and not processor.force:
-        processor.logger.info(f"Staging file already exists: {processor.staging_file}")
-        processor.logger.info("Use force=True to re-scrape")
+    early = _handle_staging_guard(processor)
+    if early is not None:
+        return early
+
+    links, quota_limit = _load_links_with_quota(processor)
+    if not links:
         return processor.staging_file
-    if processor.staging_file.exists() and processor.force:
-        processor.logger.info(f"Force re-scraping: removing existing file {processor.staging_file}")
-        processor.staging_file.unlink()
-
-    with open(processor.article_links_file, encoding="utf-8") as handle:
-        data = json.load(handle)
-        links = data["links"]
-
-    quota_limit = processor.config.orchestration.get_quota("bbc")
-    has_quota, remaining = processor.ledger.check_quota_available("bbc", quota_limit)
-    if not has_quota:
-        processor.logger.warning(f"Daily quota already reached for BBC: {quota_limit} articles")
-        if processor.metrics is None:
-            processor.metrics = MetricsCollector(
-                processor.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
-            )
-        processor.metrics.increment("quota_hit")
-        return processor.staging_file
-
-    if quota_limit is not None and remaining < len(links):
-        processor.logger.info(
-            f"Quota enforcement: processing {remaining} of {len(links)} links "
-            f"(quota: {quota_limit} articles/day)"
-        )
-        links = links[:remaining]
-    else:
-        processor.logger.info(
-            f"Processing {len(links)} links (quota: {quota_limit or 'unlimited'})"
-        )
 
     set_context(run_id=processor.run_id, source="bbc-somali", phase="fetch")
-    if processor.metrics is None:
-        processor.metrics = MetricsCollector(
-            processor.run_id, "BBC-Somali", pipeline_type=PipelineType.WEB_SCRAPING
-        )
 
     processor.logger.info("=" * 60)
     processor.logger.info("PHASE 2: Article Extraction (Sync)")
@@ -370,45 +409,19 @@ def extract_sync(processor) -> Path:
 
                         article = processor._scrape_article(session, link)
                         if article and article.get("text"):
-                            is_dup, dup_type, similar_url, text_hash, minhash_sig = (
-                                processor.dedup.process_document(article["text"], link)
+                            written = _write_article_record(
+                                processor,
+                                staging_out,
+                                article,
+                                url=link,
+                                index=index,
+                                http_status=200,
+                                etag=None,
+                                last_modified=None,
+                                quota_limit=quota_limit,
                             )
-                            if is_dup:
-                                processor.logger.info(
-                                    f"{dup_type.capitalize()} duplicate detected: {link} (similar to {similar_url})"
-                                )
-                                processor.ledger.mark_duplicate(link, similar_url)
-                                if dup_type == "exact":
-                                    processor.metrics.increment("urls_deduplicated")
-                                elif dup_type == "near":
-                                    processor.metrics.increment("near_duplicates")
-                            else:
-                                article["text_hash"] = text_hash
-                                article["minhash_signature"] = minhash_sig
-                                processor.ledger.mark_fetched(
-                                    url=link,
-                                    http_status=200,
-                                    content_length=len(article["text"]),
-                                    source=processor.source,
-                                )
-                                processor.metrics.increment("urls_fetched")
-                                processor.metrics.record_http_status(200)
-                                processor.metrics.record_text_length(len(article["text"]))
-                                staging_out.write(json.dumps(article, ensure_ascii=False) + "\n")
+                            if written:
                                 articles_count += 1
-
-                                if quota_limit is not None:
-                                    processor.ledger.increment_daily_quota(
-                                        source="bbc", count=1, quota_limit=quota_limit
-                                    )
-
-                                individual_file = (
-                                    processor.raw_dir
-                                    / f"bbc-somali_{processor.run_id}_raw_article-{index:04d}.json"
-                                )
-                                with open(individual_file, "w", encoding="utf-8") as handle:
-                                    json.dump(article, handle, ensure_ascii=False, indent=2)
-
                                 if index == 1 or index % 10 == 0:
                                     word_count = len(article["text"].split())
                                     processor.logger.info(
@@ -474,30 +487,9 @@ def extract_sync(processor) -> Path:
                         }
                     )
 
-    success_rate = (articles_count / len(links) * 100) if links else 0
-    if quota_limit is not None:
-        with open(processor.article_links_file, encoding="utf-8") as handle:
-            data = json.load(handle)
-            total_links = len(data["links"])
-        if len(links) < total_links:
-            items_remaining = total_links - len(links)
-            processor.ledger.mark_quota_hit(
-                source="bbc", items_remaining=items_remaining, quota_limit=quota_limit
-            )
-            processor.logger.info(
-                f"Quota hit: {quota_limit} articles processed, {items_remaining} links remaining for next run"
-            )
-            processor.metrics.increment("quota_hit")
-
-    processor.logger.info("=" * 60)
-    processor.logger.info(f"Extraction complete: {articles_count}/{len(links)} articles extracted")
-    processor.logger.info(
-        f"Failed: {failed_count} articles ({failed_count / len(links) * 100:.1f}%)"
-    )
-    processor.logger.info(f"Success rate: {success_rate:.1f}%")
-    if connection_errors > 0:
-        processor.logger.info(f"Connection errors encountered: {connection_errors}")
-    processor.logger.info("=" * 60)
+    extra = [f"Connection errors encountered: {connection_errors}"] if connection_errors > 0 else None
+    _maybe_mark_quota_hit(processor, links, quota_limit)
+    _log_extraction_summary(processor, articles_count, len(links), failed_count, extra_lines=extra)
     processor._export_stage_metrics("extraction")
     processor._generate_quality_report("extraction")
     return processor.staging_file
