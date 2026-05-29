@@ -662,3 +662,147 @@ class TestTikTokCostCaps:
         p.video_urls = ["u3"]
         # Snapshot still has all three so process() marks them all processed.
         assert p._original_video_urls == ["u1", "u2", "u3"]
+
+
+class TestTikTokTitleSynthesis:
+    """Unit tests for Fix 2: _extract_records title synthesis.
+
+    The title must be synthesised from author + date, never from comment text.
+    Tests exercise the same logic as the patched code in _extract_records()
+    via a staging JSONL file read through a real (mocked-config) processor.
+    """
+
+    def _make_processor(self, tmp_path):
+        with patch("somdialc.infra.config.get_config") as mock_config:
+            config = Mock()
+            config.data.raw_dir = tmp_path / "raw"
+            config.data.staging_dir = tmp_path / "staging"
+            config.data.processed_dir = tmp_path / "processed"
+            config.data.silver_dir = tmp_path / "silver"
+            mock_config.return_value = config
+
+            from somdialc.ingestion.processors.tiktok_somali_processor import (
+                TikTokSomaliProcessor,
+            )
+
+            p = TikTokSomaliProcessor(
+                apify_api_token="dummy",
+                video_urls=["https://tiktok.com/@u/video/1"],
+                force=True,
+            )
+            p.metrics = Mock()
+            p.logger = Mock()
+            return p
+
+    def _write_staging(self, tmp_path, record: dict) -> "Path":
+        import json
+
+        staging_dir = tmp_path / "staging"
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        staging_file = staging_dir / "comments.jsonl"
+        staging_file.write_text(json.dumps(record) + "\n", encoding="utf-8")
+        return staging_file
+
+    def test_title_normal_author_and_date(self, tmp_path):
+        """Standard case: author + ISO date → '@author (YYYY-MM-DD)'."""
+        p = self._make_processor(tmp_path)
+        record = {
+            "text": "Waxaan jeclahay muusikaas",
+            "url": "https://tiktok.com/@u/video/1#comment-1",
+            "author": "fadumo_ali",
+            "created_at": "2025-03-15T10:22:00Z",
+        }
+        staging_file = self._write_staging(tmp_path, record)
+        p.staging_file = staging_file
+
+        records = list(p._extract_records())
+        assert len(records) == 1
+        raw = records[0]
+        assert raw.title == "@fadumo_ali (2025-03-15)"
+        # title must NOT equal text
+        assert raw.title != raw.text
+
+    def test_title_empty_author_falls_back_to_unknown(self, tmp_path):
+        """When author is empty/missing, title uses 'unknown'."""
+        p = self._make_processor(tmp_path)
+        record = {
+            "text": "Nabad gelyo walaalayaal",
+            "url": "https://tiktok.com/@u/video/1#comment-2",
+            "author": "",
+            "created_at": "2025-06-01T08:00:00Z",
+        }
+        staging_file = self._write_staging(tmp_path, record)
+        p.staging_file = staging_file
+
+        records = list(p._extract_records())
+        assert records[0].title == "@unknown (2025-06-01)"
+
+    def test_title_missing_author_key_falls_back_to_unknown(self, tmp_path):
+        """When author key is absent from staging record, 'unknown' is used."""
+        p = self._make_processor(tmp_path)
+        record = {
+            "text": "Mahadsanid",
+            "url": "https://tiktok.com/@u/video/1#comment-3",
+            "created_at": "2025-09-20T00:00:00Z",
+            # no 'author' key
+        }
+        staging_file = self._write_staging(tmp_path, record)
+        p.staging_file = staging_file
+
+        records = list(p._extract_records())
+        assert records[0].title == "@unknown (2025-09-20)"
+
+    def test_title_empty_created_at_falls_back_to_undated(self, tmp_path):
+        """When created_at is empty, date_part falls back to 'undated'."""
+        p = self._make_processor(tmp_path)
+        record = {
+            "text": "Fiican",
+            "url": "https://tiktok.com/@u/video/1#comment-4",
+            "author": "cabdi",
+            "created_at": "",
+        }
+        staging_file = self._write_staging(tmp_path, record)
+        p.staging_file = staging_file
+
+        records = list(p._extract_records())
+        assert records[0].title == "@cabdi (undated)"
+
+    def test_title_short_created_at_not_sliced_beyond_length(self, tmp_path):
+        """Malformed created_at shorter than 10 chars uses the raw value, not a crash."""
+        p = self._make_processor(tmp_path)
+        record = {
+            "text": "Waa run",
+            "url": "https://tiktok.com/@u/video/1#comment-5",
+            "author": "mahad",
+            "created_at": "2025",  # only 4 chars — shorter than 10
+        }
+        staging_file = self._write_staging(tmp_path, record)
+        p.staging_file = staging_file
+
+        records = list(p._extract_records())
+        title = records[0].title
+        # Must not raise; value should be the short string, not sliced to ""
+        assert title == "@mahad (2025)"
+        assert records[0].title != records[0].text
+
+    def test_title_never_equals_text(self, tmp_path):
+        """Invariant: title must never be equal to comment text."""
+        import json
+
+        p = self._make_processor(tmp_path)
+        comments = [
+            {"text": "Comment one", "url": "u1", "author": "a", "created_at": "2025-01-01T00:00Z"},
+            {"text": "Comment two", "url": "u2", "author": "b", "created_at": "2025-02-01T00:00Z"},
+        ]
+        staging_dir = tmp_path / "staging"
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        staging_file = staging_dir / "comments.jsonl"
+        staging_file.write_text(
+            "\n".join(json.dumps(c) for c in comments) + "\n", encoding="utf-8"
+        )
+        p.staging_file = staging_file
+
+        for record in p._extract_records():
+            assert record.title != record.text, (
+                f"title must not equal text; got '{record.title}'"
+            )

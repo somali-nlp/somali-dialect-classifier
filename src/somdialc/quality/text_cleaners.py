@@ -4,6 +4,7 @@ Text cleaning utilities for Somali NLP preprocessing.
 Pure functions with no side effects - easily testable and reusable.
 """
 
+import html
 import re
 import unicodedata
 from typing import Optional, Protocol
@@ -76,6 +77,36 @@ class WikiMarkupCleaner:
         self.heading_pattern = re.compile(r"={2,}.*?={2,}")
         self.list_marker_pattern = re.compile(r"[#*:;]+")
 
+        # Wikitext table blocks: {| ... |} — strip entire block including content.
+        # Uses non-greedy DOTALL so nested/adjacent tables are each removed
+        # rather than consuming everything between the first {| and last |}.
+        self.table_block_pattern = re.compile(r"\{\|.*?\|\}", re.DOTALL)
+
+        # Pipe-prefixed table-cell / infobox lines: lines starting with | (after
+        # optional whitespace). These are the 32.3% contamination identified in
+        # the audit. Applied BEFORE list_marker_pattern so the leading pipe is
+        # consumed here rather than partially by the list-marker pass.
+        self.pipe_cell_pattern = re.compile(r"^\s*\|.*$", re.MULTILINE)
+
+        # Category links: [[Category:Foo Bar]] → strip entire wikilink before
+        # simple_link_pattern can unwrap it.  Doing this at the source eliminates
+        # the multi-word and lowercase-start residue that the post-pass alone
+        # cannot catch (e.g. [[Category:Taariikhda Afrika]] would leave ' Afrika'
+        # and [[Category:hore]] would leave 'Categoryhore').
+        self.category_link_pattern = re.compile(
+            r"\[\[Category:[^\]]+\]\]", re.IGNORECASE
+        )
+
+        # Category link residue: defensive fallback for any "CategoryFoo" or
+        # "CategoryTaariikhda Afrika"-style fragments that survive the primary
+        # strip above (e.g. from malformed markup where the bracket pair is
+        # incomplete).  Broadened from the prior [A-Z] to [A-Za-z] so that
+        # lowercase-start names (e.g. "Categoryhore") are also consumed.
+        # The [^\n]*? lazy match with end-of-line anchor covers multi-word tails.
+        self.category_residue_pattern = re.compile(
+            r"\bCategory[A-Za-z][^\n]*?(?=\n|$)", re.UNICODE
+        )
+
     def clean(self, text: str) -> str:
         """
         Remove Wikipedia markup from text.
@@ -91,6 +122,10 @@ class WikiMarkupCleaner:
             >>> cleaner.clean("[[Link|display text]]")
             'display text'
         """
+        # Strip wikitext table blocks ({| ... |}) first — these contain pipe
+        # characters that would interfere with later link and cell passes.
+        text = self.table_block_pattern.sub("", text)
+
         # Strip image/file links entirely (before generic link processing)
         text = self.image_file_pattern.sub("", text)
         # Strip pipe-delimited thumb attributes (residue when image tags are partially matched)
@@ -106,6 +141,13 @@ class WikiMarkupCleaner:
         # pass below.
         text = self.interwiki_fragment_pattern.sub("", text)
 
+        # Strip [[Category:...]] links entirely BEFORE generic link unwrapping.
+        # simple_link_pattern would otherwise unwrap them to "Category:Foo Bar",
+        # and the subsequent list_marker_pattern strips the colon, leaving
+        # "CategoryFoo Bar" — the second word leaks into silver text.
+        # Doing this at the source removes the residue cleanly.
+        text = self.category_link_pattern.sub("", text)
+
         # Strip interwiki / sister-project links entirely BEFORE generic
         # link unwrapping; otherwise the colons inside them get consumed
         # later by list_marker_pattern and leave residue (wtrFoo, wesFoo).
@@ -120,12 +162,27 @@ class WikiMarkupCleaner:
         text = self.template_pattern.sub("", text)
         # Remove references: <ref>...</ref>
         text = self.ref_pattern.sub("", text)
-        # Remove HTML tags
+
+        # Decode residual HTML entities BEFORE stripping raw <tag> markup.
+        # Sequences like &lt;ref&gt; become <ref> here, then are consumed by
+        # html_pattern below. Applies html.unescape for complete entity coverage.
+        text = html.unescape(text)
+
+        # Remove HTML tags (including any just decoded from entities above)
         text = self.html_pattern.sub("", text)
         # Remove section headings: == Heading ==
         text = self.heading_pattern.sub("", text)
+
+        # Strip pipe-prefixed table-cell / infobox lines BEFORE list_marker_pattern
+        # so the leading pipe is consumed here rather than partially by the list pass.
+        # This is the 32.3% contamination path (3,757 rows in the silver audit).
+        text = self.pipe_cell_pattern.sub("", text)
+
         # Remove list markers: *, #, :, ;
         text = self.list_marker_pattern.sub("", text)
+
+        # Strip Category link residue (e.g. "Category:Foo" left by simple_link unwrapping).
+        text = self.category_residue_pattern.sub("", text)
 
         return text
 

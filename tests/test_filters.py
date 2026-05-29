@@ -122,6 +122,142 @@ class TestLangidFilter:
         assert meta["detected_lang"] == "unknown"
         assert meta["lang_confidence"] == 0.0
 
+    # --- Fix 3: MIME / email-header pre-screen ---
+
+    def test_rejects_mime_content_type_header(self):
+        """Row whose first 500 chars contain 'Content-Type:' is rejected."""
+        mime_blob = (
+            "Content-Type: text/html; charset=utf-8\n"
+            "MIME-Version: 1.0\n"
+            "Content-Transfer-Encoding: quoted-printable\n\n"
+            "<!DOCTYPE html><html><body>普通话内容</body></html>\n"
+        )
+        passes, meta = langid_filter(mime_blob, allowed_langs={"so"})
+        assert passes is False
+        assert meta["detected_lang"] == "mime"
+        assert meta["lang_confidence"] == 0.0
+
+    def test_rejects_mime_version_header(self):
+        """Row whose first 500 chars contain 'MIME-Version:' is rejected."""
+        mime_blob = (
+            "MIME-Version: 1.0\n"
+            "From: webmaster@dgjzxx.com\n"
+            "Subject: =?UTF-8?B?5Lit5Zu9?=\n\n"
+            "普通话内容 " * 20
+        )
+        passes, meta = langid_filter(mime_blob, allowed_langs={"so"})
+        assert passes is False
+        assert meta["detected_lang"] == "mime"
+
+    def test_rejects_chinese_mime_blob_fixture(self):
+        """Fixture resembling the dgjzxx.com HF-45 row that previously passed at 0.6."""
+        # This row has Chinese characters whose codepoints >19968 fall outside
+        # the old non_latin_chars range (127-590), so they hit the 'assume Somali'
+        # fallback branch and got confidence=0.6. The MIME pre-screen must catch
+        # this before the heuristic scorer runs.
+        dgjzxx_row = (
+            "Content-Type: text/html; charset=UTF-8\n"
+            "Content-Transfer-Encoding: base64\n"
+            "From: noreply@dgjzxx.com\n"
+            "Subject: =?UTF-8?B?5Lit5Zu95Rih?=\n\n"
+            "6K+l5a6a5L2T5LiK5Lit5Zu95Rih77yM5YWo5Lia5pyA5aSn5a625aSn5rOV6K+V\n"
+            "5LiA5Y+R55Sf5pSv5oyB5ZCO5L2g6K+V5b6X5b6X5LiK5Lit5Zu95Rih5Y2a\n"
+        )
+        passes, meta = langid_filter(dgjzxx_row, allowed_langs={"so"})
+        assert passes is False
+        assert meta["lang_confidence"] == 0.0
+
+    def test_rejects_three_rfc5322_header_lines(self):
+        """Three or more RFC-5322-style 'Field: value' lines trigger rejection."""
+        email_blob = (
+            "From: sender@example.com\n"
+            "To: recipient@example.com\n"
+            "Date: Mon, 27 May 2026 10:00:00 +0000\n"
+            "Subject: Test email\n\n"
+            "Body text that looks mostly Latin with no Somali markers\n"
+        )
+        passes, meta = langid_filter(email_blob, allowed_langs={"so"})
+        assert passes is False
+
+    def test_legitimate_somali_with_low_signal_still_passes(self):
+        """A short Somali sentence without many lexicon words still passes (not mis-flagged)."""
+        # This represents the case the synthesis warned against: a legitimate Somali
+        # row that would fall into the confidence=0.6 fallback branch.  It must NOT
+        # be blocked by the MIME screen.
+        somali_text = "Maxaa dhacay berri? Waxaan maqlay."
+        passes, meta = langid_filter(somali_text, allowed_langs={"so"}, confidence_threshold=0.5)
+        # Should not be rejected by MIME screen (no MIME headers present)
+        assert meta.get("detected_lang") != "mime"
+
+    def test_content_type_mid_prose_must_pass_mime_screen(self):
+        """Somali tech article mentioning 'Content-Type:' mid-sentence is NOT rejected by MIME screen.
+
+        Prior bug: re.search fired anywhere in the first 500 chars, so any Somali
+        NLP/web article discussing HTTP headers was dropped wholesale.
+        Fix: specific headers are now anchored to \\A so only a document that *starts*
+        with 'Content-Type:' triggers rejection.
+        """
+        somali_prose = (
+            "Maqaalkan waxaa ku jira macluumaad muhiim ah oo ku saabsan Content-Type: text-ka "
+            "iyo sida loo isticmaalo. Qoraalku waxaa loo xilsaaray xubinnimada internetka."
+        )
+        passes, meta = langid_filter(somali_prose, allowed_langs={"so"})
+        # MIME screen must NOT fire — text starts with Somali, not a header
+        assert meta.get("detected_lang") != "mime"
+
+    def test_somali_biographical_colon_prose_passes_mime_screen(self):
+        """Somali biographical colon-delimited prose (Magaceedu:, Xilkeedu:) is not rejected.
+
+        Prior bug: the 3-header catch-all matched any 3+ consecutive 'Word: value\\n'
+        lines, which is common in Somali structured prose and Wikipedia infobox content.
+        Fix: catch-all is now anchored to \\A AND requires at least one RFC 5322 field name.
+        Somali words like 'Magaceedu', 'Xilkeedu', 'Degaanku' are not RFC 5322 fields.
+        """
+        somali_bio = (
+            "Magaceedu: Cabdi Xasan\n"
+            "Xilkeedu: Madaxweyne\n"
+            "Degaanku: Muqdisho\n"
+            "Wuxuu ahaa hogaamiye caan ah oo ka soo jeeda Soomaaliya."
+        )
+        passes, meta = langid_filter(somali_bio, allowed_langs={"so"})
+        assert meta.get("detected_lang") != "mime", (
+            "Somali biographical colon prose must not be rejected by the MIME screen"
+        )
+
+    def test_somali_wikipedia_infobox_style_passes_mime_screen(self):
+        """Somali Wikipedia infobox-style colon fields are not rejected as MIME headers.
+
+        The reviewer confirmed: 'Magac: Maxamed Faarax Cali\\nDa: 45 sano\\n
+        Magaalo: Muqdisho\\nShaqo: Dhakhtar\\n' was rejected by the prior pattern.
+        """
+        somali_infobox = (
+            "Magac: Maxamed Faarax Cali\n"
+            "Da: 45 sano\n"
+            "Magaalo: Muqdisho\n"
+            "Shaqo: Dhakhtar\n"
+            "Taariikhdiisa waxay bilaabatay 1980-kii."
+        )
+        passes, meta = langid_filter(somali_infobox, allowed_langs={"so"})
+        assert meta.get("detected_lang") != "mime", (
+            "Somali infobox-style colon prose must not be rejected by the MIME screen"
+        )
+
+    def test_real_email_headers_at_doc_start_still_rejected(self):
+        """A document that genuinely begins with RFC 5322 email headers is still rejected.
+
+        This confirms the anchored catch-all (Branch B) still works for actual email blobs.
+        """
+        email_blob = (
+            "From: sender@example.com\n"
+            "To: recipient@example.com\n"
+            "Date: Mon, 27 May 2026 10:00:00 +0000\n"
+            "Subject: Test email message\n\n"
+            "Body text that looks mostly Latin with no Somali markers\n"
+        )
+        passes, meta = langid_filter(email_blob, allowed_langs={"so"})
+        assert passes is False
+        assert meta.get("detected_lang") == "mime"
+
 
 class TestTopicLexiconEnrichmentFilter:
     """Tests for topic lexicon enrichment filter."""

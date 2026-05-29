@@ -42,6 +42,163 @@ class TestWikiMarkupCleaner:
         result = cleaner.clean("== Heading ==\nContent")
         assert result == "\nContent"
 
+    # --- Fix 1: table blocks, pipe cells, HTML entities, category residue ---
+
+    def test_strip_table_block_simple(self):
+        """A complete {| ... |} block is removed entirely."""
+        cleaner = WikiMarkupCleaner()
+        text = "Before\n{|\n! Header\n|-\n| Cell\n|}\nAfter"
+        result = cleaner.clean(text)
+        assert "{|" not in result
+        assert "|}" not in result
+        assert "Before" in result
+        assert "After" in result
+
+    def test_strip_table_block_with_infobox_content(self):
+        """Infobox-style table block is stripped, surrounding prose preserved."""
+        cleaner = WikiMarkupCleaner()
+        text = (
+            "Maqaal muhiim ah.\n"
+            "{|\n"
+            "| magac = Soomaaliya\n"
+            "| dadka = 17,000,000\n"
+            "|}\n"
+            "Qoraalka ku xiga waa muhiim."
+        )
+        result = cleaner.clean(text)
+        assert "magac" not in result
+        assert "dadka" not in result
+        assert "Maqaal muhiim ah" in result
+        assert "Qoraalka ku xiga waa muhiim" in result
+
+    def test_strip_adjacent_table_blocks(self):
+        """Two adjacent {| ... |} blocks are both removed (non-greedy)."""
+        cleaner = WikiMarkupCleaner()
+        text = "{| table one |} prose {| table two |}"
+        result = cleaner.clean(text)
+        assert "table one" not in result
+        assert "table two" not in result
+        assert "prose" in result
+
+    def test_strip_pipe_cell_lines(self):
+        """Lines starting with | (pipe-prefixed table cells) are removed."""
+        cleaner = WikiMarkupCleaner()
+        text = "Intro sentence.\n| field = value\n| another = data\nReal content."
+        result = cleaner.clean(text)
+        assert "field = value" not in result
+        assert "another = data" not in result
+        assert "Intro sentence" in result
+        assert "Real content" in result
+
+    def test_strip_pipe_cell_with_leading_whitespace(self):
+        """Pipe cell lines with leading whitespace are also stripped."""
+        cleaner = WikiMarkupCleaner()
+        text = "Prose.\n   | indented cell\nMore prose."
+        result = cleaner.clean(text)
+        assert "indented cell" not in result
+        assert "Prose" in result
+        assert "More prose" in result
+
+    def test_html_entity_decoding_amp(self):
+        """&amp; is decoded to & before tag stripping."""
+        cleaner = WikiMarkupCleaner()
+        result = cleaner.clean("Somali &amp; Arabic")
+        assert "&" in result
+        assert "&amp;" not in result
+
+    def test_html_entity_decoding_lt_gt(self):
+        """&lt; and &gt; entities are decoded; the resulting tags are stripped but content remains."""
+        cleaner = WikiMarkupCleaner()
+        # &lt;ref&gt;citation&lt;/ref&gt;
+        #   step 1: ref_pattern does NOT match (still entity-encoded)
+        #   step 2: html.unescape → <ref>citation</ref>
+        #   step 3: html_pattern strips tags but leaves inner content
+        # So "citation" is preserved (it is not inside a real <ref>...</ref> pair
+        # that ref_pattern could have consumed in the raw pass).
+        result = cleaner.clean("Text &lt;ref&gt;citation&lt;/ref&gt; continues.")
+        assert "&lt;" not in result
+        assert "&gt;" not in result
+        # Tags are stripped, inner text preserved
+        assert "<ref>" not in result
+        assert "</ref>" not in result
+        assert "Text" in result
+        assert "continues" in result
+
+    def test_html_entity_nbsp_decoded(self):
+        """&nbsp; is decoded (html.unescape converts it to non-breaking space)."""
+        cleaner = WikiMarkupCleaner()
+        result = cleaner.clean("word&nbsp;word")
+        assert "&nbsp;" not in result
+        # html.unescape converts &nbsp; to \xa0; both are acceptable post-clean
+        assert "word" in result
+
+    def test_category_residue_stripped(self):
+        """'Category:Foo' strings left by link unwrapping are removed."""
+        cleaner = WikiMarkupCleaner()
+        # simple_link_pattern unwraps [[Category:Foo]] → Category:Foo; we then strip it
+        text = "[[Category:Soomaaliya]]\n[[Category:Taariikh]]\nReal text here."
+        result = cleaner.clean(text)
+        assert "Category:Soomaaliya" not in result
+        assert "Category:Taariikh" not in result
+        assert "Real text here" in result
+
+    def test_category_multiword_name_no_residue(self):
+        """Multi-word category names must not leave trailing word residue in silver text.
+
+        Prior bug: [[Category:Taariikhda Afrika]] would produce ' Afrika' because
+        category_residue_pattern stopped at the space after stripping 'CategoryTaariikhda'.
+        The new category_link_pattern strips the entire [[Category:...]] form first.
+        """
+        cleaner = WikiMarkupCleaner()
+        text = "[[Category:Taariikhda Afrika]]\nQoraalka asalka ah ee maqaalka."
+        result = cleaner.clean(text)
+        assert "Category" not in result
+        assert "Taariikhda" not in result
+        assert "Afrika" not in result
+        assert "Qoraalka asalka ah ee maqaalka" in result
+
+    def test_category_lowercase_start_no_residue(self):
+        """Lowercase-start category names must not leak 'Categoryhore' into silver text.
+
+        Prior bug: [[Category:hore]] → after list_marker strips ':' → 'Categoryhore';
+        pattern required [A-Z] after 'Category' so lowercase 'h' was not matched.
+        The new category_link_pattern strips [[Category:hore]] at the source.
+        """
+        cleaner = WikiMarkupCleaner()
+        text = "[[Category:hore]]\nTaariikhda Soomaaliya."
+        result = cleaner.clean(text)
+        assert "Category" not in result
+        assert "Categoryhore" not in result
+        assert "Taariikhda Soomaaliya" in result
+
+    def test_category_multiple_multiword_stripped(self):
+        """Real Somali Wikipedia category names with multiple words are all removed."""
+        cleaner = WikiMarkupCleaner()
+        text = (
+            "[[Category:Taariikh Afrika]]\n"
+            "[[Category:Magaalooyinka Soomaaliya]]\n"
+            "Maqaalka wuxuu ka hadlayaa taariikhda."
+        )
+        result = cleaner.clean(text)
+        assert "Category" not in result
+        assert "Afrika" not in result
+        assert "Magaalooyinka" not in result
+        assert "Maqaalka wuxuu ka hadlayaa taariikhda" in result
+
+    def test_existing_template_removal_still_works(self):
+        """Existing {{template}} stripping continues to function after refactor."""
+        cleaner = WikiMarkupCleaner()
+        result = cleaner.clean("Text {{infobox country}} more text")
+        assert "{{" not in result
+        assert "}}" not in result
+
+    def test_existing_link_unwrapping_still_works(self):
+        """Existing [[Link|display]] unwrapping continues to function."""
+        cleaner = WikiMarkupCleaner()
+        result = cleaner.clean("See [[Muqdisho|Mogadishu]] for details.")
+        assert "Mogadishu" in result
+        assert "[[" not in result
+
 
 class TestWhitespaceCleaner:
     """Test whitespace normalization."""

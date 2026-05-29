@@ -609,10 +609,14 @@ class TikTokSomaliProcessor(BasePipeline):
 
                 comment = json.loads(line)
 
-                # Use comment text as title (truncated)
-                title = (
-                    comment["text"][:100] + "..." if len(comment["text"]) > 100 else comment["text"]
-                )
+                # Synthesize a meaningful title from author and date.
+                # Never assign comment text to title — that collapses two
+                # independent columns to identical content (audit finding TD-TT-01).
+                author = str(comment.get("author", "")).strip() or "unknown"
+                created_at = str(comment.get("created_at", ""))
+                # Guard against malformed or empty timestamps shorter than 10 chars.
+                date_part = created_at[:10] if len(created_at) >= 10 else (created_at or "undated")
+                title = f"@{author} ({date_part})"
 
                 # Convert all metadata values to strings for schema compatibility
                 yield RawRecord(

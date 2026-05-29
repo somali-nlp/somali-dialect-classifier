@@ -17,7 +17,52 @@ Filters can be chained in BasePipeline to enforce data quality standards
 across all sources (Wikipedia, BBC, HuggingFace, etc.).
 """
 
+import re
 from typing import Any, Callable, Optional
+
+# MIME / RFC 5322 email-header pre-screen.
+# Compiled once at module level for performance.
+#
+# Rationale: Chinese government portal blobs (e.g. dgjzxx.com, audit row HF-45)
+# pass the heuristic Somali detector at confidence=0.6 because their Chinese
+# characters (codepoints >19968) fall outside the non_latin_chars range check
+# (127–590), so they land in the "mostly Latin, assume Somali" fallback branch.
+# A MIME pre-screen rejects them before the language scorer ever runs, without
+# touching the threshold that governs legitimate low-signal Somali rows.
+#
+# Two branches:
+#
+# Branch A — specific MIME headers anchored to \A (document start).
+#   Rejects only when the document *begins* with one of the well-known MIME
+#   field names.  Using \A (not re.search) prevents false positives on Somali
+#   NLP/web articles that mention "Content-Type:" in prose mid-sentence.
+#
+# Branch B — 3-header catch-all, also anchored to \A, with an additional
+#   lookahead requiring at least one recognized RFC 5322 / MIME field name
+#   within the opening block.  Both conditions are required:
+#     • \A anchor  → block must open the document (excludes Somali structured prose
+#       such as biographical summaries where "Magaceedu: Cabdi\nXilkeedu: ..." is
+#       indistinguishable by line-shape alone from email headers)
+#     • RFC field lookahead → at least one canonical field name must appear
+#       (excludes Somali colon-delimited lines like "Da:", "Magaalo:", "Shaqo:")
+#
+_RFC_FIELD_NAMES = (
+    r"From|To|Cc|Bcc|Subject|Date|Received|Return-Path|Message-ID|Reply-To|"
+    r"Sender|MIME-Version|Content-Type|Content-Transfer-Encoding|Content-Disposition"
+)
+
+_MIME_HEADER_PATTERN = re.compile(
+    r"(?:"
+    # Branch A: document starts with a specific well-known MIME/HTTP header field.
+    r"\A(?:Content-Type|MIME-Version|Content-Transfer-Encoding)\s*:"
+    r"|"
+    # Branch B: document opens with 3+ consecutive "Field: value\n" lines AND
+    # at least one line uses a recognized RFC 5322 / MIME field name.
+    r"\A(?=[^\n]*(?:" + _RFC_FIELD_NAMES + r")\s*:)"
+    r"(?:[A-Z][a-zA-Z-]+:\s.{0,80}\n){3,}"
+    r")",
+    re.MULTILINE,
+)
 
 
 def min_length_filter(cleaned_text: str, threshold: int = 50) -> tuple[bool, dict[str, Any]]:
@@ -72,6 +117,16 @@ def langid_filter(
         >>> meta["detected_lang"]
         'en'
     """
+    # MIME / email-header pre-screen.
+    # Inspect the first 500 characters for structural MIME markers.  A row
+    # whose opening content looks like an email or HTTP message is not Somali
+    # text, regardless of what script the body uses.  Rejecting here prevents
+    # the heuristic Somali scorer from mis-classifying Chinese government portal
+    # MIME blobs (concrete evidence: HuggingFace partition _666e174a row 45,
+    # dgjzxx.com, lang_confidence=0.6 under the old code).
+    if _MIME_HEADER_PATTERN.search(cleaned_text[:500]):
+        return False, {"detected_lang": "mime", "lang_confidence": 0.0}
+
     # Simple heuristic for Somali detection
     # Somali uses Latin script with specific diacritic patterns
     if allowed_langs is None:
