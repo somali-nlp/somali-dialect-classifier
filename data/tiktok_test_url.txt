@@ -1,0 +1,4 @@
+# Single-URL TikTok test fixture (free-plan, ~270 raw comments)
+# Used for clean-slate smoke tests; full URL set is in data/tiktok_urls.txt
+
+https://www.tiktok.com/@loosey8.1/video/7564865308406648086
