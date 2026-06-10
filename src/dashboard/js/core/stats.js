@@ -3,7 +3,7 @@
  * Updates hero statistics and story cards from metrics data
  */
 
-import { getMetrics, getDashboardMetadata } from './data-service.js';
+import { getMetrics } from './data-service.js';
 import { computePipelineAggregates } from './aggregates.js';
 import { Logger } from '../utils/logger.js';
 
@@ -18,22 +18,29 @@ export function updateStats() {
         // Empty state - set all to 0
         Logger.info('No metrics data - displaying empty state');
 
-        // Update hero stats
-        document.getElementById('total-records').setAttribute('data-count', '0');
-        document.getElementById('total-sources').setAttribute('data-count', '0');
-        document.getElementById('pipeline-types').setAttribute('data-count', '0');
+        // Update hero stats (null-safe)
+        const elTotalRecords = document.getElementById('total-records');
+        const elTotalSources = document.getElementById('total-sources');
+        const elPipelineTypes = document.getElementById('pipeline-types') || document.getElementById('ingestion-types');
+        const elCorpusRecords = document.getElementById('corpus-records');
+        if (elTotalRecords) elTotalRecords.setAttribute('data-count', '0');
+        if (elTotalSources) elTotalSources.setAttribute('data-count', '0');
+        if (elPipelineTypes) elPipelineTypes.setAttribute('data-count', '0');
+        if (elCorpusRecords) elCorpusRecords.setAttribute('data-count', '0');
 
-        // Update story cards
-        document.getElementById('story-records').textContent = '0';
-        document.getElementById('story-quality').textContent = '0';
-        document.getElementById('story-sources').textContent = '0';
+        // Update story cards (null-safe)
+        const elStoryRecords = document.getElementById('story-records');
+        const elStoryQuality = document.getElementById('story-quality');
+        const elStorySources = document.getElementById('story-sources');
+        if (elStoryRecords) elStoryRecords.textContent = '0';
+        if (elStoryQuality) elStoryQuality.textContent = '0';
+        if (elStorySources) elStorySources.textContent = '0';
 
         return;
     }
 
     // Calculate real metrics
     const metrics = metricsData.metrics;
-    const dashboardMetadata = getDashboardMetadata ? getDashboardMetadata() : {};
     const aggregates = computePipelineAggregates(metrics);
     const totalRecords = aggregates.totalRecords;
     const totalSources = new Set(metrics.map(m => (m.source || '').split('-')[0])).size;
@@ -41,38 +48,36 @@ export function updateStats() {
 
     // Count unique pipeline types
     const pipelineTypes = new Set(metrics.map(m => m.pipeline_type || 'unknown')).size;
-    let activeVisualizations = 0;
-    if (dashboardMetadata && dashboardMetadata.visualizations) {
-        activeVisualizations = Object.entries(dashboardMetadata.visualizations)
-            .reduce((sum, [key, value]) => {
-                if (key.endsWith('_available') && value) {
-                    return sum + 1;
-                }
-                return sum;
-            }, 0);
-    }
+
+    // Sum records_written across all runs for corpus-records KPI
+    const corpusRecords = metrics.reduce((sum, m) => sum + (m.records_written || 0), 0);
 
     Logger.debug('Calculated stats', {
         totalRecords,
         totalSources,
         pipelineTypes,
+        corpusRecords,
         avgQualityRate,
         activeSources: aggregates.activeSources,
         avgSuccessRate: aggregates.avgSuccessRate
     });
 
-    // Update hero stats
-    document.getElementById('total-records').setAttribute('data-count', totalRecords);
-    document.getElementById('total-sources').setAttribute('data-count', totalSources);
-    document.getElementById('pipeline-types').setAttribute('data-count', pipelineTypes);
-    document.getElementById('active-visualizations').setAttribute('data-count', activeVisualizations);
+    // Update hero stats (null-safe — elements may be absent during HTML restructure)
+    const elTotalRecords = document.getElementById('total-records');
+    const elTotalSources = document.getElementById('total-sources');
+    // Support both #pipeline-types (old) and #ingestion-types (new)
+    const elPipelineTypes = document.getElementById('pipeline-types') || document.getElementById('ingestion-types');
+    const elCorpusRecords = document.getElementById('corpus-records');
+    if (elTotalRecords) elTotalRecords.setAttribute('data-count', totalRecords);
+    if (elTotalSources) elTotalSources.setAttribute('data-count', totalSources);
+    if (elPipelineTypes) elPipelineTypes.setAttribute('data-count', pipelineTypes);
+    if (elCorpusRecords) elCorpusRecords.setAttribute('data-count', corpusRecords);
 
-    // Update story cards
-    document.getElementById('story-records').textContent = totalRecords.toLocaleString();
-    document.getElementById('story-quality').textContent = avgQualityRate.toFixed(1);
-    document.getElementById('story-sources').textContent = totalSources;
-    const storyInsights = document.getElementById('active-visualizations-story');
-    if (storyInsights) {
-        storyInsights.textContent = activeVisualizations;
-    }
+    // Update story cards (null-safe)
+    const elStoryRecords = document.getElementById('story-records');
+    const elStoryQuality = document.getElementById('story-quality');
+    const elStorySources = document.getElementById('story-sources');
+    if (elStoryRecords) elStoryRecords.textContent = totalRecords.toLocaleString();
+    if (elStoryQuality) elStoryQuality.textContent = avgQualityRate.toFixed(1);
+    if (elStorySources) elStorySources.textContent = totalSources;
 }

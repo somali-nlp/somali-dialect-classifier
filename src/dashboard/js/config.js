@@ -98,11 +98,11 @@ export const Config = {
      */
     ANIMATION_DURATION: 2000,
     CHART_COLORS: {
-        wikipedia: '#3b82f6',
-        bbc: '#ef4444',
-        huggingface: '#10b981',
-        sprakbanken: '#f59e0b',
-        tiktok: '#ec4899'  // Pink for TikTok social media
+        wikipedia: '#3B82F6',
+        bbc: '#DC2626',
+        huggingface: '#059669',
+        sprakbanken: '#B45309',
+        tiktok: '#BE185D'
     },
 
     /**
@@ -130,12 +130,12 @@ export const Config = {
  * Dual-palette system: Brand colors for UI, Data colors for visualizations
  */
 export const BRAND_COLORS = {
-    primary: '#0176D3',      // Tableau Blue - primary brand
-    primaryDark: '#032D60',  // Deep Navy - headers, emphasis
-    success: '#10b981',      // Green
-    warning: '#f59e0b',      // Amber
-    danger: '#ef4444',       // Red
-    info: '#3b82f6'          // Blue
+    primary: '#1B3A6B',
+    accent: '#C2522D',
+    success: '#1A7F4E',
+    warning: '#92400E',
+    danger: '#B91C1C',
+    info: '#1D4ED8'
 };
 
 export const DATA_COLORS = [

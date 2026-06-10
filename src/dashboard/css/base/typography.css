@@ -1,10 +1,10 @@
 /* ========================================
-   TYPOGRAPHY - TABLEAU STYLE
+   TYPOGRAPHY
    ======================================== */
 h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     font-weight: 600;
-    color: var(--tableau-navy);
+    color: var(--brand-primary);
     line-height: 1.2;
     margin-bottom: 0.9rem;
 }
@@ -36,25 +36,25 @@ h4, h5, h6 {
 
 p, li {
     font-family: var(--font-sans);
-    color: var(--tableau-text-secondary);
+    color: var(--brand-text-secondary);
     line-height: 1.7;
     margin-bottom: 1rem;
 }
 
 a {
-    color: var(--tableau-navy-link);
+    color: var(--brand-primary);
     font-weight: 500;
     transition: color var(--transition-fast);
 }
 
 a:hover,
 a:focus-visible {
-    color: var(--tableau-navy);
+    color: var(--brand-primary);
 }
 
 strong {
     font-weight: 600;
-    color: var(--tableau-text-primary);
+    color: var(--brand-text);
 }
 
 /* ========================================

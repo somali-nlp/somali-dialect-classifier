@@ -2519,6 +2519,23 @@ function renderPipelineObservations(data) {
 }
 
 /**
+ * Map a data-source attribute value (lowercase slug) to the normalised source name
+ * used as keys in analytics.items (title-case, as returned by normalizeSourceName).
+ * @param {string} slug - e.g. "wikipedia", "bbc"
+ * @returns {string} Normalised name, e.g. "Wikipedia"
+ */
+function slugToNormalizedName(slug) {
+    const map = {
+        wikipedia:   'Wikipedia',
+        bbc:         'BBC',
+        huggingface: 'HuggingFace',
+        sprakbanken: 'Språkbanken',
+        tiktok:      'TikTok',
+    };
+    return map[slug] || slug;
+}
+
+/**
  * Populate overview source cards
  */
 export function populateOverviewCards() {
@@ -2534,7 +2551,7 @@ export function populateOverviewCards() {
             if (badgeText) badgeText.textContent = 'Pending';
             if (badgeIcon) badgeIcon.textContent = '⏳';
             const footer = card.querySelector('.source-card-footer span:first-child');
-            if (footer) footer.textContent = 'No data yet';
+            if (footer) footer.textContent = 'No runs yet';
             const statusDot = card.querySelector('.source-card-footer span:last-child');
             if (statusDot) statusDot.style.color = 'var(--gray-400)';
         });
@@ -2542,11 +2559,19 @@ export function populateOverviewCards() {
     }
 
     const totalRecords = analytics.totalRecords || 0;
-    const itemsMap = new Map(analytics.items.map(item => [item.name, item]));
+    // Build a map keyed by both the normalised name AND the lowercase slug
+    // so that cards using either convention are matched.
+    const itemsMap = new Map();
+    analytics.items.forEach(item => {
+        itemsMap.set(item.name, item);
+        // Also index by lowercase slug for new-style HTML
+        itemsMap.set(item.name.toLowerCase(), item);
+    });
 
     cards.forEach(card => {
-        const sourceKey = card.getAttribute('data-source');
-        const item = itemsMap.get(sourceKey);
+        const rawKey = card.getAttribute('data-source');
+        // Try exact match first; then try slug → normalized name lookup
+        const item = itemsMap.get(rawKey) || itemsMap.get(slugToNormalizedName(rawKey));
         updateOverviewCard(card, item, totalRecords);
     });
 }
@@ -2566,7 +2591,7 @@ function updateOverviewCard(card, item, totalRecords) {
 
     if (!item) {
         metrics.forEach(m => m.textContent = '0');
-        if (footer) footer.textContent = 'No data yet';
+        if (footer) footer.textContent = 'No runs yet';
         if (statusDot) statusDot.style.color = 'var(--gray-400)';
         if (badge) {
             badge.classList.remove('complete', 'upcoming', 'planned');
@@ -2598,7 +2623,7 @@ function updateOverviewCard(card, item, totalRecords) {
                 footer.textContent = `Last run: ${item.lastUpdated}`;
             }
         } else {
-            footer.textContent = 'No data yet';
+            footer.textContent = 'No runs yet';
         }
     }
 
@@ -2781,6 +2806,120 @@ function dismissBanner(banner) {
             }
         }
     }, 300);
+}
+
+/**
+ * Populate source cards with statistics from all_metrics.json.
+ *
+ * Selects every element carrying a [data-source] attribute (anywhere in the
+ * document) and fills the following named child slots:
+ *   [data-stat="records-collected"]  — urls_processed (records collected), comma-formatted
+ *   [data-stat="in-corpus"]          — records_written, comma-formatted
+ *   [data-stat="quality-rate"]       — quality_pass_rate as "XX.X%"
+ *   [data-stat="last-run"]           — timestamp as human-readable date
+ *
+ * If no metrics record exists for a source, each slot is set to "No runs yet".
+ * All DOM updates are null-safe; missing elements are silently skipped.
+ *
+ * @param {Array|null} customMetrics - Override metrics array (defaults to loaded data)
+ */
+export function populateSourceCards(customMetrics = null) {
+    const metricsArray = Array.isArray(customMetrics)
+        ? customMetrics
+        : (getMetrics()?.metrics || []);
+
+    // Build a per-source aggregation keyed by lowercase slug.
+    // Each entry accumulates totals across multiple runs for the same source.
+    const SOURCE_SLUG_MAP = {
+        'wikipedia-somali':   'wikipedia',
+        'bbc-somali':         'bbc',
+        'huggingface-somali': 'huggingface',
+        'sprakbanken-somali': 'sprakbanken',
+        'tiktok-somali':      'tiktok',
+    };
+
+    // normalizeSourceName returns title-case; derive slug via getMetadataKey logic
+    function metricToSlug(metric) {
+        const src = (metric.source || '').toLowerCase();
+        if (src.includes('wikipedia'))   return 'wikipedia';
+        if (src.includes('bbc'))         return 'bbc';
+        if (src.includes('huggingface') || src.includes('mc4')) return 'huggingface';
+        if (src.includes('sprak'))       return 'sprakbanken';
+        if (src.includes('tiktok'))      return 'tiktok';
+        // Fallback: try the explicit map
+        for (const [key, slug] of Object.entries(SOURCE_SLUG_MAP)) {
+            if (src.includes(key)) return slug;
+        }
+        return src;
+    }
+
+    // Aggregate metrics per slug
+    const bySlug = new Map();
+    metricsArray.forEach(m => {
+        const slug = metricToSlug(m);
+        if (!bySlug.has(slug)) {
+            bySlug.set(slug, {
+                recordsCollected: 0,
+                inCorpus: 0,
+                qualityNumerator: 0,
+                qualityDenominator: 0,
+                latestTimestamp: null,
+            });
+        }
+        const agg = bySlug.get(slug);
+        agg.recordsCollected += (m.urls_processed || 0);
+        agg.inCorpus         += (m.records_written || 0);
+        // Weighted quality average (weight by records_written)
+        const w = m.records_written || 0;
+        agg.qualityNumerator   += (m.quality_pass_rate || 0) * w;
+        agg.qualityDenominator += w;
+        // Track most recent run
+        if (m.timestamp) {
+            const ts = Date.parse(m.timestamp);
+            if (!agg.latestTimestamp || ts > Date.parse(agg.latestTimestamp)) {
+                agg.latestTimestamp = m.timestamp;
+            }
+        }
+    });
+
+    // Select all source cards in the document
+    const cards = document.querySelectorAll('[data-source]');
+    cards.forEach(card => {
+        const slug = (card.getAttribute('data-source') || '').toLowerCase();
+        const agg = bySlug.get(slug);
+
+        // Helper: set text of a [data-stat] child, null-safe
+        function setStat(statName, value) {
+            const el = card.querySelector(`[data-stat="${statName}"]`);
+            if (el) el.textContent = value;
+        }
+
+        if (!agg) {
+            setStat('records-collected', 'No runs yet');
+            setStat('in-corpus',         'No runs yet');
+            setStat('quality-rate',      'No runs yet');
+            setStat('last-run',          'No runs yet');
+            return;
+        }
+
+        setStat('records-collected', agg.recordsCollected.toLocaleString());
+        setStat('in-corpus',         agg.inCorpus.toLocaleString());
+
+        const qualityRate = agg.qualityDenominator > 0
+            ? (agg.qualityNumerator / agg.qualityDenominator) * 100
+            : 0;
+        setStat('quality-rate', qualityRate.toFixed(1) + '%');
+
+        if (agg.latestTimestamp) {
+            const dateObj = new Date(agg.latestTimestamp);
+            const formatted = Number.isNaN(dateObj.getTime())
+                ? agg.latestTimestamp
+                : dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            setStat('last-run', formatted);
+        } else {
+            setStat('last-run', 'No runs yet');
+        }
+    });
 }
 
 /**

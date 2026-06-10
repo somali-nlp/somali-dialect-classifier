@@ -2,7 +2,7 @@
    SECTION COMPONENTS
    ======================================== */
 
-/* Data Story Section - Tableau Style */
+/* Data Story Section */
 .overview-narrative {
     color: var(--gray-600);
     font-size: var(--text-base);
@@ -12,7 +12,7 @@
 }
 
 .data-story {
-    background: var(--tableau-bg-light-blue);
+    background: var(--brand-accent-light);
     padding: var(--space-20) 0;
     margin: var(--space-16) 0;
 }
@@ -32,21 +32,21 @@
     font-family: var(--font-display);
     font-size: var(--text-4xl);
     font-weight: 400;
-    color: var(--tableau-navy);
+    color: var(--brand-primary);
     margin-bottom: var(--space-4);
 }
 
 .data-story-header p {
     font-size: var(--text-lg);
-    color: var(--tableau-text-secondary);
+    color: var(--brand-text-secondary);
     max-width: 800px;
     margin: 0 auto;
     line-height: 1.8;
 }
 
-/* Contribute Section - Tableau Style */
+/* Contribute Section */
 .contribute {
-    background: linear-gradient(135deg, var(--tableau-blue) 0%, var(--tableau-navy) 100%);
+    background: linear-gradient(135deg, var(--brand-accent) 0%, var(--brand-primary) 100%);
     color: white;
     padding: var(--space-20) 0;
 }
@@ -106,7 +106,7 @@ footer .container {
 .footer-section h3 {
     font-weight: 600;
     font-size: var(--text-base);
-    color: var(--tableau-navy);
+    color: var(--brand-primary);
     font-family: var(--font-display);
     margin-bottom: var(--space-4);
 }

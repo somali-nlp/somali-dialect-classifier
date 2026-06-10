@@ -58,7 +58,7 @@
 }
 
 .comparison-table th.sortable.active::after {
-    border-top-color: var(--tableau-blue);
+    border-top-color: var(--brand-accent);
     opacity: 1;
 }
 

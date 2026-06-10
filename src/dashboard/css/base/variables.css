@@ -1,51 +1,43 @@
 /* ========================================
    CSS CUSTOM PROPERTIES (DESIGN TOKENS)
-   TABLEAU-INSPIRED DESIGN SYSTEM
+   RESEARCH-PROJECT DESIGN SYSTEM
    ======================================== */
 :root {
-    /* ===== TABLEAU COLOR PALETTE ===== */
-
-    /* Primary Blues */
-    --tableau-blue: #0176D3;
-    --tableau-navy: #032D60;
-    --tableau-navy-link: #0B5CAB;
-    --tableau-dark-navy: #001639;
-
-    /* Backgrounds */
-    --tableau-bg-light-blue: #EAF5FE;
-    --tableau-bg-off-white: #F4F4F4;
-    --tableau-bg-white: #FFFFFF;
-
-    /* Accents */
-    --tableau-green: #00A651;
-    --tableau-teal: #3860BE;
-
-    /* Text Colors */
-    --tableau-text-primary: #080707;
-    --tableau-text-secondary: #333333;
-    --tableau-text-light: #555555;
-
-    /* Grays */
-    --tableau-gray-border: #EBEBEB;
-    --tableau-gray-divider: #D1D1D1;
-
-    /* Brand Colors (mapped to Tableau) */
-    --brand-primary: #0176D3;
-    --brand-secondary: #032D60;
-    --brand-accent: #00A651;
+    /* ===== BRAND TOKENS (UI Chrome) ===== */
+    --brand-primary: #1B3A6B;
+    --brand-accent: #C2522D;
+    --brand-accent-hover: #A84427;
+    --brand-accent-light: #F5E8E3;
+    --brand-surface: #FAFAF8;
+    --brand-surface-raised: #FFFFFF;
+    --brand-surface-subtle: #F3F2EF;
+    --brand-text: #1A1A1A;
+    --brand-text-secondary: #4A4A4A;
+    --brand-text-tertiary: #767676;
+    --brand-text-on-accent: #FFFFFF;
+    --brand-border: #E5E3DF;
+    --brand-border-strong: #C8C5BF;
+    --brand-success: #1A7F4E;
+    --brand-success-bg: #ECFDF5;
+    --brand-warning: #92400E;
+    --brand-warning-bg: #FFFBEB;
+    --brand-error: #B91C1C;
+    --brand-error-bg: #FEF2F2;
+    --brand-info: #1D4ED8;
+    --brand-info-bg: #EFF6FF;
 
     /* Source Colors */
-    --wikipedia: #3b82f6;
-    --bbc: #ef4444;
-    --huggingface: #00A651;
-    --sprakbanken: #f59e0b;
-    --tiktok: #ec4899;
+    --source-wikipedia: #3B82F6;
+    --source-bbc: #DC2626;
+    --source-huggingface: #059669;
+    --source-sprakbanken: #B45309;
+    --source-tiktok: #BE185D;
 
     /* Semantic Colors */
-    --success: #00A651;
-    --warning: #f59e0b;
-    --error: #ef4444;
-    --info: #0176D3;
+    --success: #1A7F4E;
+    --warning: #92400E;
+    --error: #B91C1C;
+    --info: #1D4ED8;
 
     /* Gray Scale */
     --gray-50: #f9fafb;
@@ -57,14 +49,14 @@
     --gray-600: #4b5563;
     --gray-700: #374151;
     --gray-800: #1f2937;
-    --gray-900: #032D60;
+    --gray-900: #1B3A6B;
 
-    /* Typography - Tableau Style */
+    /* Typography */
     --font-sans: 'Inter', 'Inter var', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-display: 'Space Grotesk', 'Inter', sans-serif;
     --font-mono: 'Fira Code', Monaco, monospace;
 
-    /* Type Scale - Tableau Sizes */
+    /* Type Scale */
     --text-xs: 0.75rem;
     --text-sm: 0.875rem;
     --text-base: 1rem;
@@ -75,7 +67,7 @@
     --text-4xl: 2.75rem;
     --text-5xl: 3.25rem;
 
-    /* Spacing - More Generous */
+    /* Spacing */
     --space-2: 0.5rem;
     --space-3: 0.75rem;      /* 12px - Added for pipeline spacing */
     --space-4: 1rem;
@@ -86,13 +78,13 @@
     --space-16: 4rem;
     --space-20: 5rem;
 
-    /* Shadows - Tableau Dual-Layer */
+    /* Shadows */
     --shadow-sm: rgba(23, 23, 23, 0.04) 0px 1px 4px -1px, rgba(23, 23, 23, 0.08) 0px 4px 8px -1px;
     --shadow-md: rgba(23, 23, 23, 0.08) 0px 2px 8px -2px, rgba(23, 23, 23, 0.16) 0px 8px 12px -2px;
     --shadow-lg: rgba(23, 23, 23, 0.12) 0px 4px 12px -2px, rgba(23, 23, 23, 0.24) 0px 12px 20px -2px;
     --shadow-xl: rgba(23, 23, 23, 0.16) 0px 6px 16px -2px, rgba(23, 23, 23, 0.32) 0px 16px 32px -2px;
 
-    /* Border Radius - Tableau Style */
+    /* Border Radius */
     --radius-sm: 0.25rem;
     --radius-md: 0.5rem;
     --radius-lg: 1rem;
@@ -104,14 +96,6 @@
     --transition-fast: 150ms ease;
     --transition-base: 250ms ease;
     --transition-slow: 350ms ease;
-
-    /* ===== ACQUISITION METHOD COLORS (Tableau-Aligned) ===== */
-    /* Updated 2025-11-04: Darker variants for WCAG AA compliance with white text (4.5:1+ contrast) */
-    --acquisition-api-file: #0891b2;      /* Cyan-600 - API + File Snapshots (4.52:1) */
-    --acquisition-partner: #ea580c;        /* Orange-600 - Partner File Drop (4.51:1) */
-    --acquisition-dataset: #16a34a;        /* Green-600 - Dataset API (4.54:1) */
-    --acquisition-actor: #7c3aed;          /* Violet-600 - Apify Actor (5.71:1) */
-    --acquisition-crawler: #db2777;        /* Fuchsia-600 - Web Crawler (5.12:1) */
 
     /* ===== FILTER TYPE COLORS (5-Category Semantic System) ===== */
     /* Validation Filters (Blue Family) */
