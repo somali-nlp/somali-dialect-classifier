@@ -982,11 +982,19 @@ def build(clean: bool, verbose: bool):
     default="127.0.0.1",
     help="Host for development server (default: 127.0.0.1)",
 )
-def serve(port: int, host: str):
+@click.option(
+    "--no-watch",
+    is_flag=True,
+    default=False,
+    help="Disable auto-reload (use plain http.server even if livereload is installed)",
+)
+def serve(port: int, host: str, no_watch: bool):
     """
     Start local development server.
 
-    Runs a simple HTTP server for local dashboard development and testing.
+    Serves src/dashboard/ directly — no build step required. Edit CSS or JS,
+    refresh the browser, and see changes immediately. If livereload is installed
+    the browser refreshes automatically on file changes.
 
     \b
     Examples:
@@ -998,11 +1006,93 @@ def serve(port: int, host: str):
 
       # Allow external access
       somali-tools dashboard serve --host 0.0.0.0
+
+      # Disable auto-reload
+      somali-tools dashboard serve --no-watch
     """
-    click.echo(
-        "Not yet implemented in Wave 1. Logic will be added in Wave 3.\n"
-        f"Would start server at: http://{host}:{port}"
-    )
+    import functools
+    import http.server
+    import shutil
+
+    # __file__ → .../src/somdialc/tools/cli.py
+    # parents: [0]=tools, [1]=somdialc, [2]=src, [3]=project_root
+    project_root = Path(__file__).resolve().parents[3]
+    src_dir = project_root / "src" / "dashboard"
+    site_dir = project_root / "_site"
+
+    for d in (src_dir, site_dir):
+        if not d.exists():
+            click.echo(f"Error: directory not found: {d}", err=True)
+            sys.exit(1)
+
+    def _sync(changed_path: str) -> None:
+        """Copy one changed source file into _site/, mirroring the build layout."""
+        p = Path(changed_path)
+        # templates/index.html → _site/index.html
+        if p.is_relative_to(src_dir / "templates"):
+            rel = p.relative_to(src_dir / "templates")
+            dest = site_dir / rel
+        # css/**, js/**, data/**, advanced-features.css → mirror directly
+        elif p.is_relative_to(src_dir):
+            rel = p.relative_to(src_dir)
+            dest = site_dir / rel
+        else:
+            return
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(p), str(dest))
+
+    use_livereload = False
+    if not no_watch:
+        try:
+            import livereload  # noqa: F401
+            use_livereload = True
+        except ImportError:
+            pass
+
+    click.echo(f"\n  Dashboard dev server → http://{host}:{port}")
+    click.echo(f"  Serving: {site_dir}")
+    click.echo(f"  Watching: {src_dir}")
+
+    if use_livereload:
+        from livereload import Server
+
+        server = Server()
+        # Watch source files; on change sync to _site/ then signal livereload
+        server.watch(str(src_dir / "templates"), func=lambda: _sync(
+            str(src_dir / "templates" / "index.html")))
+        server.watch(str(src_dir / "css"))
+        server.watch(str(src_dir / "js"))
+        server.watch(str(src_dir / "data"))
+        # Ensure _site/ is up-to-date before starting
+        _sync(str(src_dir / "templates" / "index.html"))
+        for sub in ("css", "js", "data"):
+            sub_src = src_dir / sub
+            sub_dest = site_dir / sub
+            if sub_src.exists():
+                if sub_dest.exists():
+                    shutil.rmtree(sub_dest)
+                shutil.copytree(sub_src, sub_dest)
+        click.echo(f"  Browser auto-refreshes on file changes")
+        click.echo(f"  Press Ctrl+C to stop\n")
+        try:
+            import webbrowser
+            webbrowser.open(f"http://{host}:{port}")
+        except Exception:
+            pass
+        server.serve(root=str(site_dir), host=host, port=port)
+    else:
+        handler = functools.partial(
+            http.server.SimpleHTTPRequestHandler, directory=str(site_dir)
+        )
+        with http.server.HTTPServer((host, port), handler) as httpd:
+            click.echo(f"  Manual refresh needed (install livereload for auto-refresh)")
+            click.echo(f"  Press Ctrl+C to stop\n")
+            try:
+                import webbrowser
+                webbrowser.open(f"http://{host}:{port}")
+            except Exception:
+                pass
+            httpd.serve_forever()
 
 
 @dashboard.command()

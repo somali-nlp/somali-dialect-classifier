@@ -54,6 +54,7 @@ dev = [
   # Development Tools
   "ipython>=8.12",
   "ipdb>=0.13",
+  "livereload>=2.6.3",
 ]
 
 config = [
