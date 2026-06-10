@@ -115,3 +115,7 @@ CLAUDE.md
 .codex/
 AGENTS.md
 AGENTS.override.md
+
+# MetaEnsemble: per-project working directory (Ledger, manifests, backups,
+# inspection output). Re-derivable per machine — do not commit.
+.metaensemble/
