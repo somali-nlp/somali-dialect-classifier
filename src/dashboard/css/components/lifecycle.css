@@ -111,10 +111,10 @@
 
 /* Current/Active Stage - Tableau Style */
 .lifecycle-stage.current {
-    background: var(--tableau-blue);
-    border-color: var(--tableau-blue);
+    background: var(--brand-accent);
+    border-color: var(--brand-accent);
     color: white;
-    box-shadow: 0 6px 12px rgba(1, 118, 211, 0.3);
+    box-shadow: 0 6px 12px rgba(194, 82, 45, 0.3);
     transform: scale(1.05);
 }
 
@@ -125,10 +125,10 @@
 
 @keyframes subtlePulse {
     0%, 100% {
-        box-shadow: 0 6px 12px rgba(1, 118, 211, 0.3);
+        box-shadow: 0 6px 12px rgba(194, 82, 45, 0.3);
     }
     50% {
-        box-shadow: 0 6px 16px rgba(1, 118, 211, 0.4);
+        box-shadow: 0 6px 16px rgba(194, 82, 45, 0.4);
     }
 }
 
@@ -298,3 +298,16 @@
         max-width: 130px;
     }
 }
+
+/* ========================================
+   PHASE CARDS
+   ======================================== */
+.phase-card { background: var(--brand-surface-raised); border: 1px solid var(--brand-border); border-radius: 1rem; border-top: 4px solid var(--brand-border); padding: 2rem; transition: all 250ms ease; }
+.phase-card--complete { border-top-color: var(--brand-success); }
+.phase-card--active { border-top-color: var(--brand-accent); }
+.phase-card--planned { border-top-color: var(--brand-border); opacity: 0.72; }
+.phase-card--blocked { border-top-color: var(--brand-error); }
+.phase-card__status { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 9999px; margin-bottom: 1rem; }
+.phase-card--complete .phase-card__status { background: var(--brand-success-bg); color: var(--brand-success); }
+.phase-card--active .phase-card__status { background: var(--brand-accent-light); color: var(--brand-accent-hover); }
+.phase-card--planned .phase-card__status { background: var(--brand-surface-subtle); color: var(--brand-text-tertiary); }

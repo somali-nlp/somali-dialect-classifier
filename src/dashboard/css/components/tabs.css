@@ -178,13 +178,13 @@
     font-family: var(--font-display);
     font-size: var(--text-3xl);
     font-weight: 600;
-    color: var(--tableau-navy);
+    color: var(--brand-primary);
     margin-bottom: var(--space-4);
 }
 
 .exec-panel-header p {
     font-size: var(--text-base);
-    color: var(--tableau-text-secondary);
+    color: var(--brand-text-secondary);
     line-height: 1.8;
     margin: 0 auto;
 }

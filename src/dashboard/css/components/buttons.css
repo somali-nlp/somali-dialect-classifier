@@ -4,7 +4,7 @@
 
 /* Chart Actions */
 .chart-action {
-    background: var(--tableau-bg-off-white);
+    background: var(--brand-surface);
     border: 1px solid var(--gray-300);
     padding: 0.5rem var(--space-4);
     border-radius: var(--radius-md);
@@ -12,7 +12,7 @@
     font-weight: 500;
     cursor: pointer;
     transition: all var(--transition-base);
-    color: var(--tableau-text-secondary);
+    color: var(--brand-text-secondary);
 }
 
 .chart-action:hover {
@@ -58,11 +58,11 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    background: var(--tableau-blue);
+    background: var(--brand-accent);
     color: white;
     padding: 14px 32px;
     border-radius: var(--radius-sm);
-    border: 2px solid var(--tableau-blue);
+    border: 2px solid var(--brand-accent);
     font-weight: 600;
     text-decoration: none;
     transition: all var(--transition-base);
@@ -70,8 +70,8 @@
 }
 
 .contribute-cta:hover {
-    background: #0158A5;
-    border-color: #0158A5;
+    background: var(--brand-accent-hover);
+    border-color: var(--brand-accent-hover);
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
     color: #ffffff;
@@ -88,8 +88,8 @@
 }
 
 .contribute-cta:active {
-    background: #014b94;
-    border-color: #014b94;
+    background: var(--brand-accent-hover);
+    border-color: var(--brand-accent-hover);
     color: #ffffff;
     transform: translateY(-1px);
 }

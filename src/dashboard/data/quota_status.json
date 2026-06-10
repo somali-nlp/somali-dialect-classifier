@@ -1,36 +1,42 @@
 {
-  "export_timestamp": "2025-12-02T09:45:32.202157Z",
+  "export_timestamp": "2026-05-14T07:09:55.848312Z",
   "summary": {
-    "total_quota_hits": 1,
+    "total_quota_hits": 0,
     "sources_with_quotas": [
       "bbc",
+      "huggingface",
       "sprakbanken"
     ],
     "reporting_period_days": 30
   },
   "daily_usage": [
     {
-      "date": "2025-11-27",
+      "date": "2026-05-02",
       "source": "bbc",
-      "records_ingested": 5,
+      "records_ingested": 20,
       "quota_limit": 350,
       "items_remaining": 0,
       "quota_hit": false,
-      "usage_percent": 1.4
+      "usage_percent": 5.7
     },
     {
-      "date": "2025-11-27",
+      "date": "2026-05-02",
+      "source": "huggingface",
+      "records_ingested": 100,
+      "quota_limit": 20000,
+      "items_remaining": 0,
+      "quota_hit": false,
+      "usage_percent": 0.5
+    },
+    {
+      "date": "2026-05-02",
       "source": "sprakbanken",
-      "records_ingested": 10,
+      "records_ingested": 1,
       "quota_limit": 10,
-      "items_remaining": 56,
-      "quota_hit": true,
-      "usage_percent": 100.0
+      "items_remaining": 0,
+      "quota_hit": false,
+      "usage_percent": 10.0
     }
   ],
-  "quota_hits_by_source": {
-    "sprakbanken": [
-      "2025-11-27"
-    ]
-  }
+  "quota_hits_by_source": {}
 }

@@ -58,11 +58,11 @@ import {
     populatePerformanceMetrics,
     populatePipelinePerformance,
     populateOverviewCards,
+    populateSourceCards,
 } from './core/ui-renderer.js';
 import { initializeFilterLabels, computeQualityAnalytics } from './core/aggregates.js';
 
 // Import feature modules
-import { initAudienceMode } from './features/audience-mode.js';
 import { updateCoverageScorecard, initCoverageCharts, initCoverageMetrics, refreshDataSourceCharts } from './features/coverage-metrics.js';
 import { ThemeManager } from './features/theme-manager.js';
 import { FilterManager } from './features/filter-manager.js';
@@ -160,6 +160,7 @@ async function init() {
 
         try {
             populateOverviewCards();
+            populateSourceCards();
         } catch (error) {
             Logger.error('Failed to populate overview cards', error);
             // Non-critical: overview cards can fail without breaking dashboard
@@ -171,7 +172,6 @@ async function init() {
             initKeyboardNav();
             initScrollSpy();
             initMobileMenu();
-            initExecutiveTabs();
         } catch (error) {
             Logger.warn('Non-critical: Accessibility features failed to initialize', error);
         }
@@ -179,7 +179,6 @@ async function init() {
         // Initialize enhanced features
         // NOTE: These must run AFTER loadMetrics() completes to ensure metadata is available
         try {
-            initAudienceMode();
             // Wait for metadata to be available before calling functions that depend on it
             updateCoverageScorecard();
             initCoverageCharts();  // Calls getSourceTargetShare() which needs metadata
@@ -267,43 +266,6 @@ function displayErrorState(error) {
 }
 
 /**
- * Initialize executive dashboard tabs
- */
-function initExecutiveTabs() {
-    const buttons = document.querySelectorAll('.exec-tab-button');
-    const panels = document.querySelectorAll('.exec-tab-panel');
-
-    if (!buttons.length || !panels.length) {
-        return;
-    }
-
-    panels.forEach(panel => {
-        const isActive = panel.classList.contains('active');
-        panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
-    });
-
-    buttons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetPanelId = button.getAttribute('aria-controls');
-
-            buttons.forEach(btn => {
-                btn.classList.remove('active');
-                btn.setAttribute('aria-selected', 'false');
-            });
-
-            button.classList.add('active');
-            button.setAttribute('aria-selected', 'true');
-
-            panels.forEach(panel => {
-                const isMatch = panel.id === targetPanelId;
-                panel.classList.toggle('active', isMatch);
-                panel.setAttribute('aria-hidden', isMatch ? 'false' : 'true');
-            });
-        });
-    });
-}
-
-/**
  * Initialize advanced features
  * Theme manager, filters, export, advanced charts, and comparison mode
  */
@@ -347,6 +309,19 @@ function initAdvancedFeatures() {
         Logger.info('Advanced features initialized');
     }
 }
+
+// Delegated handler for chart export buttons (data-export-chart attribute)
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-export-chart]');
+    if (!btn) return;
+    const chartId = btn.dataset.exportChart;
+    const canvas = document.getElementById(chartId);
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = `${chartId}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+});
 
 // Run on DOM ready
 if (document.readyState === 'loading') {

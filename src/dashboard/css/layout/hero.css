@@ -1,9 +1,9 @@
 /* ========================================
-   HERO SECTION - TABLEAU STYLE
+   HERO SECTION
    ======================================== */
 .hero {
-    background: linear-gradient(180deg, #4f9bf5 0%, #7bc0f8 45%, #c9e7ff 100%);
-    color: var(--tableau-navy);
+    background: linear-gradient(180deg, #2A4F8A 0%, #1B3A6B 45%, #122850 100%);
+    color: var(--brand-surface-raised);
     padding: 7rem 0 calc(7rem + 80px);
     position: relative;
     overflow: hidden;
@@ -50,26 +50,26 @@
     margin-bottom: var(--space-4);
     line-height: 1.1;
     letter-spacing: -0.02em;
-    color: #062b63;
+    color: var(--brand-surface-raised);
 }
 
 .hero-tagline {
     font-size: var(--text-xl);
     font-weight: 500;
-    color: #0b3f91;
+    color: var(--brand-surface-raised);
     margin-bottom: var(--space-6);
     max-width: 800px;
 }
 
 .hero-description {
     font-size: var(--text-base);
-    color: #123b73;
+    color: rgba(255, 255, 255, 0.82);
     max-width: 700px;
     margin-bottom: var(--space-8);
     line-height: 1.7;
 }
 
-/* Hero Stats - Tableau Style (Solid White Cards) */
+/* Hero Stats - Solid White Cards */
 .hero-stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -101,7 +101,7 @@
     width: 48px;
     height: 48px;
     margin: 0 auto 1rem;
-    background: rgba(79, 155, 245, 0.12);
+    background: rgba(27, 58, 107, 0.12);
     border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
@@ -110,14 +110,14 @@
 }
 
 .hero-stat:hover .hero-stat-icon {
-    background: var(--tableau-blue);
+    background: var(--brand-accent);
     transform: scale(1.05);
 }
 
 .hero-stat-icon svg {
     width: 24px;
     height: 24px;
-    stroke: var(--tableau-blue);
+    stroke: var(--brand-accent);
     stroke-width: 2;
     fill: none;
     transition: stroke var(--transition-base);
@@ -134,12 +134,12 @@
     display: block;
     margin-bottom: 0.5rem;
     position: relative;
-    color: var(--tableau-navy);
+    color: var(--brand-primary);
 }
 
 .hero-stat-label {
     font-size: var(--text-sm);
-    color: var(--tableau-text-secondary);
+    color: var(--brand-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: 600;
@@ -167,7 +167,7 @@
 .hero-stat:nth-child(3) { animation-delay: 0.3s; }
 .hero-stat:nth-child(4) { animation-delay: 0.4s; }
 
-/* Hero CTAs - Tableau Style */
+/* Hero CTAs */
 .hero-ctas {
     display: flex;
     gap: var(--space-4);
@@ -203,15 +203,15 @@
 
 /* Primary Button - Solid Fill */
 .hero-cta-primary {
-    background: var(--brand-primary);
+    background: var(--brand-accent);
     color: white;
-    border: 2px solid var(--brand-primary);
+    border: 2px solid var(--brand-accent);
     box-shadow: 0 10px 18px rgba(1, 35, 83, 0.18);
 }
 
 .hero-cta-primary:hover {
-    background: #0b5cab;
-    border-color: #0b5cab;
+    background: var(--brand-accent-hover);
+    border-color: var(--brand-accent-hover);
     transform: translateY(-2px);
     box-shadow: 0 14px 26px rgba(1, 35, 83, 0.22);
 }

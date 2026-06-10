@@ -15,7 +15,7 @@
     font-family: var(--font-display);
     font-size: var(--text-3xl);
     font-weight: 400;
-    color: var(--tableau-navy);
+    color: var(--brand-primary);
     margin-bottom: var(--space-6);
 }
 
@@ -31,7 +31,7 @@
 .chart-title {
     font-weight: 500;
     font-size: var(--text-lg);
-    color: var(--tableau-navy);
+    color: var(--brand-primary);
     font-family: var(--font-display);
 }
 
@@ -101,7 +101,7 @@
 .chart-callout-value {
     font-size: var(--text-xl);
     font-weight: 600;
-    color: var(--tableau-navy);
+    color: var(--brand-primary);
 }
 
 .chart-callout-value.positive {
@@ -199,13 +199,13 @@
 
 .pipeline-stage-label {
     font-weight: 600;
-    color: var(--tableau-navy);
+    color: var(--brand-primary);
 }
 
 .pipeline-stage-value {
     font-family: var(--font-mono);
     font-size: var(--text-sm);
-    color: var(--tableau-text-secondary);
+    color: var(--brand-text-secondary);
     justify-self: end;
 }
 

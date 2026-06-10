@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Somali Dialect Classifier - Building Africa's largest open Somali language corpus through systematic data collection from Wikipedia, BBC, HuggingFace, and Språkbanken">
+    <meta name="description" content="Open Somali language corpus for AI research. 25,959 records collected from Wikipedia, BBC Somali, HuggingFace, Språkbanken, and TikTok. Building the first open Somali dialect classifier.">
     <meta name="keywords" content="Somali NLP, dialect classification, machine learning, low-resource languages, open source, data pipeline">
     <meta name="author" content="Somali NLP Initiative">
     <meta name="theme-color" content="#2563eb">
-    <title>Somali Dialect Classifier | Data Ingestion Dashboard</title>
+    <title>Somali NLP Initiative | Open Somali Language Corpus</title>
 
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇸🇴</text></svg>">
@@ -37,25 +37,6 @@
     <!-- Skip to Main Content -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Audience Mode Toggle -->
-    <div class="audience-mode-toggle" role="region" aria-label="Audience Mode Selector">
-        <div class="mode-toggle-buttons">
-            <button class="mode-toggle-btn active" data-mode="executive" aria-label="Executive Mode - High-level summary view">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-                </svg>
-                Executive
-            </button>
-            <button class="mode-toggle-btn" data-mode="analyst" aria-label="Analyst Mode - Detailed view with advanced controls">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                </svg>
-                Analyst
-            </button>
-        </div>
-    </div>
-
     <!-- Global Navigation -->
     <nav class="global-nav" role="navigation" aria-label="Main navigation">
         <div class="container">
@@ -67,9 +48,9 @@
                 </div>
             </a>
             <ul id="primary-navigation" class="nav-links">
-                <li><a href="#hero" class="nav-link">Highlights</a></li>
+                <li><a href="#hero" class="nav-link" aria-label="Highlights section">Highlights</a></li>
                 <li><a href="#dashboard" class="nav-link" data-dashboard-link>Dashboard</a></li>
-                <li><a href="#get-involved" class="nav-cta">Get Involved</a></li>
+                <li><a href="#get-involved" class="nav-cta">Contribute</a></li>
             </ul>
             <button class="mobile-menu-toggle" aria-label="Open mobile menu" aria-expanded="false" aria-controls="primary-navigation">☰</button>
         </div>
@@ -79,373 +60,92 @@
     <header id="hero" class="hero">
         <div class="container">
             <div class="hero-badge">
-                <span>Fully Open Source</span>
+                <span>Open Source · Open Data</span>
             </div>
-            <h1>Somali Dialect Classifier</h1>
-            <p class="hero-tagline">An Open, End-to-End Somali Dialect ML Platform</p>
+            <h1>Somali NLP Initiative</h1>
+            <p class="hero-tagline">Building the dataset that Somali language AI has been missing.</p>
             <p class="hero-description">
-                The Somali NLP Initiative coordinates data acquisition, quality pipelines, annotation planning, modeling, and deployment pathways so researchers and partners can build dialect-aware language tools from a single open source foundation.
+                Somali is spoken by 25 million people across the Horn of Africa and the diaspora —
+                but almost no AI language tools support it. We're assembling an open, high-quality
+                text corpus and the modeling pipeline to train the first open Somali dialect classifier.
             </p>
 
-            <!-- Hero Stats (4 KPIs) - Modernized -->
             <div class="hero-stats">
                 <div class="hero-stat">
-                    <div class="hero-stat-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 3v18h18"/>
-                            <path d="M18 17V9"/>
-                            <path d="M13 17V5"/>
-                            <path d="M8 17v-3"/>
-                        </svg>
-                    </div>
-                    <span class="hero-stat-value" id="total-records" data-count="0">0</span>
-                    <span class="hero-stat-label">Total Records</span>
+                    <span class="hero-stat-value" id="total-records">—</span>
+                    <span class="hero-stat-label">Records Collected</span>
+                    <span class="hero-stat-note">Across all sources</span>
                 </div>
                 <div class="hero-stat">
-                    <div class="hero-stat-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <ellipse cx="12" cy="5" rx="9" ry="3"/>
-                            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-                            <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>
-                        </svg>
-                    </div>
-                    <span class="hero-stat-value" id="total-sources" data-count="0">0</span>
-                    <span class="hero-stat-label">Data Sources</span>
+                    <span class="hero-stat-value" id="total-sources">—</span>
+                    <span class="hero-stat-label">Sources Active</span>
+                    <span class="hero-stat-note">Wikipedia, BBC, HuggingFace, Språkbanken, TikTok</span>
                 </div>
                 <div class="hero-stat">
-                    <div class="hero-stat-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                            <polyline points="7.5 4.21 12 6.81 16.5 4.21"/>
-                            <polyline points="7.5 19.79 7.5 14.6 3 12"/>
-                            <polyline points="21 12 16.5 14.6 16.5 19.79"/>
-                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                            <line x1="12" y1="22.08" x2="12" y2="12"/>
-                        </svg>
-                    </div>
-                    <span class="hero-stat-value" id="pipeline-types" data-count="0">0</span>
-                    <span class="hero-stat-label">Collection Methods</span>
+                    <span class="hero-stat-value" id="corpus-records">—</span>
+                    <span class="hero-stat-label">In Curated Corpus</span>
+                    <span class="hero-stat-note">Passed all quality filters</span>
                 </div>
                 <div class="hero-stat">
-                    <div class="hero-stat-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="3"></circle>
-                            <path d="M19.4 15A1.65 1.65 0 0 0 20 13.6l1.4-2.4a1.65 1.65 0 0 0-.6-2.2l-1.7-1a1.65 1.65 0 0 0-2.1.2l-1.1 1a6 6 0 0 0-2.7-1.1l-.3-1.5A1.65 1.65 0 0 0 10.4 4H8.6a1.65 1.65 0 0 0-1.6 1.3L6.7 6.8a6 6 0 0 0-2.7 1.1L2.9 6.9a1.65 1.65 0 0 0-2.2.6l-.7 1.2a1.65 1.65 0 0 0 .6 2.2l1.5.9a6 6 0 0 0 0 2.2l-1.5.9a1.65 1.65 0 0 0-.6 2.2l.7 1.2a1.65 1.65 0 0 0 2.2.6l1.1-.6a6 6 0 0 0 2.7 1.1l.3 1.5A1.65 1.65 0 0 0 8.6 20h1.8a1.65 1.65 0 0 0 1.6-1.3l.3-1.5a6 6 0 0 0 2.7-1.1l1.1.6a1.65 1.65 0 0 0 2.1-.2l1.7-1a1.65 1.65 0 0 0 .6-2.2Z"/>
-                        </svg>
-                    </div>
-                    <span class="hero-stat-value" id="active-visualizations" data-count="0">0</span>
-                    <span class="hero-stat-label">Insights Live</span>
+                    <span class="hero-stat-value" id="quality-pass-rate">—</span>
+                    <span class="hero-stat-label">Quality Pass Rate</span>
+                    <span class="hero-stat-note">Share retained after review</span>
                 </div>
             </div>
 
-            <!-- CTAs - Modernized -->
             <div class="hero-ctas">
                 <a href="#main-content" class="hero-cta hero-cta-primary" id="view-dashboard-btn">
-                    <span>View Dashboard</span>
-                    <span class="hero-cta-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                    </span>
+                    <span>Explore the Data</span>
+                    <span class="hero-cta-icon">↓</span>
                 </a>
-                <a href="https://github.com/somali-nlp/somali-dialect-classifier" class="hero-cta hero-cta-secondary" target="_blank" rel="noopener">
-                    <span class="hero-cta-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/>
-                            <path d="M9 18c-4.51 2-5-2-7-2"/>
-                        </svg>
-                    </span>
+                <a href="https://github.com/ilyasibrahim/somali-dialect-classifier" class="hero-cta hero-cta-secondary" target="_blank" rel="noopener noreferrer">
                     <span>GitHub</span>
                 </a>
                 <a href="#get-involved" class="hero-cta hero-cta-secondary">
-                    <span class="hero-cta-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
-                        </svg>
-                    </span>
                     <span>Contribute</span>
                 </a>
             </div>
         </div>
     </header>
 
-    <!-- ML Lifecycle Navigator -->
-    <section class="ml-lifecycle" aria-label="Machine Learning Pipeline Stages" data-show-in="analyst">
-        <div class="container">
-            <div class="lifecycle-stages">
-                <!-- Stage 1: Data Ingestion (CURRENT) -->
-                <div class="lifecycle-stage current completed" tabindex="0" role="button" aria-label="Data Ingestion - Current Stage - Complete">
-                    <span class="lifecycle-stage-number">1</span>
-                    <div class="lifecycle-stage-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
-                    </div>
-                    <div class="lifecycle-stage-name">Data Ingestion</div>
-                    <div class="lifecycle-stage-status">Current • Complete</div>
-                    <div class="lifecycle-stage-progress">
-                        <div class="lifecycle-stage-progress-bar" style="width: 100%"></div>
-                    </div>
-                </div>
-
-                <!-- Stage 2: Preprocessing -->
-                <div class="lifecycle-stage" tabindex="0" role="button" aria-label="Preprocessing - Upcoming">
-                    <span class="lifecycle-stage-number">2</span>
-                    <div class="lifecycle-stage-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                    </div>
-                    <div class="lifecycle-stage-name">Preprocessing</div>
-                    <div class="lifecycle-stage-status">Upcoming</div>
-                    <div class="lifecycle-stage-progress">
-                        <div class="lifecycle-stage-progress-bar" style="width: 0%"></div>
-                    </div>
-                </div>
-
-                <!-- Stage 3: Model Training -->
-                <div class="lifecycle-stage" tabindex="0" role="button" aria-label="Model Training - Upcoming">
-                    <span class="lifecycle-stage-number">3</span>
-                    <div class="lifecycle-stage-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
-                    </div>
-                    <div class="lifecycle-stage-name">Model Training</div>
-                    <div class="lifecycle-stage-status">Upcoming</div>
-                    <div class="lifecycle-stage-progress">
-                        <div class="lifecycle-stage-progress-bar" style="width: 0%"></div>
-                    </div>
-                </div>
-
-                <!-- Stage 4: Evaluation -->
-                <div class="lifecycle-stage" tabindex="0" role="button" aria-label="Evaluation - Upcoming">
-                    <span class="lifecycle-stage-number">4</span>
-                    <div class="lifecycle-stage-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                    </div>
-                    <div class="lifecycle-stage-name">Evaluation</div>
-                    <div class="lifecycle-stage-status">Upcoming</div>
-                    <div class="lifecycle-stage-progress">
-                        <div class="lifecycle-stage-progress-bar" style="width: 0%"></div>
-                    </div>
-                </div>
-
-                <!-- Stage 5: Deployment -->
-                <div class="lifecycle-stage" tabindex="0" role="button" aria-label="Deployment - Upcoming">
-                    <span class="lifecycle-stage-number">5</span>
-                    <div class="lifecycle-stage-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
-                    </div>
-                    <div class="lifecycle-stage-name">Deployment</div>
-                    <div class="lifecycle-stage-status">Upcoming</div>
-                    <div class="lifecycle-stage-progress">
-                        <div class="lifecycle-stage-progress-bar" style="width: 0%"></div>
-                    </div>
-                </div>
-
-                <!-- Stage 6: Monitoring -->
-                <div class="lifecycle-stage" tabindex="0" role="button" aria-label="Monitoring - Upcoming">
-                    <span class="lifecycle-stage-number">6</span>
-                    <div class="lifecycle-stage-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M4.93 19.07a10 10 0 0 1 0-14.14"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-                    </div>
-                    <div class="lifecycle-stage-name">Monitoring</div>
-                    <div class="lifecycle-stage-status">Upcoming</div>
-                    <div class="lifecycle-stage-progress">
-                        <div class="lifecycle-stage-progress-bar" style="width: 0%"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Overall Progress Indicator -->
-            <div class="lifecycle-overall-progress" role="progressbar" aria-valuenow="17" aria-valuemin="0" aria-valuemax="100" aria-label="Overall pipeline progress: 17% complete">
-                <div class="lifecycle-overall-progress-label">Overall Progress: 17% Complete</div>
-                <div class="lifecycle-overall-progress-bar">
-                    <div class="lifecycle-overall-progress-fill" style="width: 17%"></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-
     <!-- Main Content -->
     <main id="main-content">
         <section id="dashboard">
-            <div class="executive-dashboard" data-show-in="executive">
-                <div class="container">
-                    <div class="executive-tabs" role="tablist" aria-label="Executive dashboard stages">
-                        <button type="button" class="exec-tab-button active" id="exec-tab-data-ingestion" data-exec-tab="data-ingestion" role="tab" aria-controls="exec-data-ingestion-panel" aria-selected="true">
-                            <span class="exec-tab-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
-                            </span>
-                            <span>Data Ingestion</span>
-                        </button>
-                        <button type="button" class="exec-tab-button" id="exec-tab-preprocessing" data-exec-tab="preprocessing" role="tab" aria-controls="exec-preprocessing-panel" aria-selected="false">
-                            <span class="exec-tab-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                            </span>
-                            <span>Preprocessing</span>
-                        </button>
-                        <button type="button" class="exec-tab-button" id="exec-tab-model-training" data-exec-tab="model-training" role="tab" aria-controls="exec-model-training-panel" aria-selected="false">
-                            <span class="exec-tab-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
-                            </span>
-                            <span>Model Training</span>
-                        </button>
-                        <button type="button" class="exec-tab-button" id="exec-tab-evaluation" data-exec-tab="evaluation" role="tab" aria-controls="exec-evaluation-panel" aria-selected="false">
-                            <span class="exec-tab-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                            </span>
-                            <span>Evaluation</span>
-                        </button>
-                        <button type="button" class="exec-tab-button" id="exec-tab-deployment" data-exec-tab="deployment" role="tab" aria-controls="exec-deployment-panel" aria-selected="false">
-                            <span class="exec-tab-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
-                            </span>
-                            <span>Deployment</span>
-                        </button>
-                    </div>
-                    <div class="exec-tab-panels">
-                        <section class="exec-tab-panel active" id="exec-data-ingestion-panel" role="tabpanel" aria-labelledby="exec-tab-data-ingestion">
-                            <div class="exec-panel-header">
-                                <h2>The Journey From Raw Data to AI-Ready Corpus</h2>
-                                <p>
-                                    Low-resource languages like Somali face a critical barrier in NLP: lack of quality training data.
-                                    We built an automated, production-grade data pipeline to systematically collect, clean, and unify
-                                    Somali text from the web's most reliable sources. This is the foundation for advancing Somali
-                                    language AI and making dialect classification accessible to researchers worldwide.
-                                </p>
-                            </div>
-                            <div class="story-cards">
-                                <div class="story-card">
-                                    <div class="story-card-icon">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-                                    </div>
-                                    <h3 class="story-card-title"><span id="story-records">0</span> Records Collected</h3>
-                                    <p class="story-card-text">
-                                        Through systematic crawling and API integration, we're assembling an open
-                                        Somali language corpus, providing researchers with access to diverse linguistic data.
-                                    </p>
-                                </div>
-                                <div class="story-card">
-                                    <div class="story-card-icon">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                                    </div>
-                                    <h3 class="story-card-title"><span id="story-quality">0</span>% Avg Quality Rate</h3>
-                                    <p class="story-card-text">
-                                        Our robust pipeline architecture ensures high-quality data through intelligent filtering,
-                                        validation, and source-specific quality checks across all pipeline types.
-                                    </p>
-                                </div>
-                                <div class="story-card">
-                                    <div class="story-card-icon">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                                    </div>
-                                    <h3 class="story-card-title"><span id="story-sources">0</span> Data Sources</h3>
-                                    <p class="story-card-text">
-                                        By combining encyclopedic knowledge, journalism, ML datasets, and academic corpora,
-                                        we ensure comprehensive coverage of Somali dialects, registers, and domains.
-                                    </p>
-                                </div>
-                                <div class="story-card">
-                                    <div class="story-card-icon">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-                                    </div>
-                                    <h3 class="story-card-title">Open Source Impact</h3>
-                                    <p class="story-card-text">
-                                        Released under an open license, this corpus democratizes access to Somali NLP research,
-                                        enabling global collaboration and accelerating innovation for low-resource languages.
-                                    </p>
-                                </div>
-                            </div>
-                        </section>
-                        <section class="exec-tab-panel" id="exec-preprocessing-panel" role="tabpanel" aria-labelledby="exec-tab-preprocessing" aria-hidden="true">
-                            <div class="exec-panel-placeholder">
-                                <h2>Preprocessing</h2>
-                                <p>Executive overview coming soon as preprocessing moves into production.</p>
-                            </div>
-                        </section>
-                        <section class="exec-tab-panel" id="exec-model-training-panel" role="tabpanel" aria-labelledby="exec-tab-model-training" aria-hidden="true">
-                            <div class="exec-panel-placeholder">
-                                <h2>Model Training</h2>
-                                <p>Executive overview coming soon as model development details become available.</p>
-                            </div>
-                        </section>
-                        <section class="exec-tab-panel" id="exec-evaluation-panel" role="tabpanel" aria-labelledby="exec-tab-evaluation" aria-hidden="true">
-                            <div class="exec-panel-placeholder">
-                                <h2>Evaluation</h2>
-                                <p>Executive overview coming soon once evaluation pipelines are live.</p>
-                            </div>
-                        </section>
-                        <section class="exec-tab-panel" id="exec-deployment-panel" role="tabpanel" aria-labelledby="exec-tab-deployment" aria-hidden="true">
-                            <div class="exec-panel-placeholder">
-                                <h2>Deployment</h2>
-                                <p>Executive overview coming soon as deployment workflows are launched.</p>
-                            </div>
-                        </section>
-                    </div>
-                </div>
-            </div>
-        <div class="analyst-dashboard" data-show-in="analyst">
             <nav class="dashboard-tabs" role="navigation" aria-label="Dashboard sections">
-                <div class="container">
-                    <ul class="tab-list" role="tablist">
-                        <li role="presentation">
-                            <button class="tab-button active" role="tab" aria-selected="true" aria-controls="overview-panel" data-tab="overview">
-                                <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg></span>
-                                <span>Overview</span>
-                            </button>
-                        </li>
-                        <li role="presentation">
-                            <button class="tab-button" role="tab" aria-selected="false" aria-controls="sources-panel" data-tab="sources">
-                                <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.9a2 2 0 0 1-1.69-.9l-.81-1.2a2 2 0 0 0-1.67-.9H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z"/><path d="M2 8v11a2 2 0 0 0 2 2h14"/></svg></span>
-                                <span>Data Sources</span>
-                            </button>
-                        </li>
-                        <li role="presentation">
-                            <button class="tab-button" role="tab" aria-selected="false" aria-controls="quality-panel" data-tab="quality">
-                                <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span>
-                                <span>Quality Insights</span>
-                            </button>
-                        </li>
-                        <li role="presentation">
-                            <button class="tab-button" role="tab" aria-selected="false" aria-controls="pipeline-panel" data-tab="pipeline">
-                                <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></span>
-                                <span>Pipeline Performance</span>
-                            </button>
-                        </li>
-                        <li role="presentation">
-                            <button class="tab-button" role="tab" aria-selected="false" aria-controls="reports-panel" data-tab="reports">
-                                <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
-                                <span>Technical Reports</span>
-                            </button>
-                        </li>
-                    </ul>
-                </div>
+                <button id="overview-tab" class="tab-button active" data-tab="overview" role="tab" aria-controls="overview-panel" aria-selected="true">Dataset Overview</button>
+                <button id="sources-tab" class="tab-button" data-tab="sources" role="tab" aria-controls="sources-panel" aria-selected="false">Data Sources</button>
+                <button id="quality-tab" class="tab-button" data-tab="quality" role="tab" aria-controls="quality-panel" aria-selected="false">Data Quality</button>
+                <button id="whats-next-tab" class="tab-button" data-tab="whats-next" role="tab" aria-controls="whats-next-panel" aria-selected="false">What's Next</button>
             </nav>
 
-        <!-- Tab 1: Overview -->
+        <!-- Tab 1: Dataset Overview -->
         <div class="tab-content active" id="overview-panel" role="tabpanel" aria-labelledby="overview-tab">
             <div class="tab-panel tab-panel-wide">
-                <h2 class="section-title">Data Ingestion Overview</h2>
+                <h2 class="section-title">Dataset Overview</h2>
+                <p class="section-subtitle">How much text we've collected, which sources it comes from, and what passed quality review.</p>
                 <p class="overview-narrative" id="overview-narrative" aria-live="polite">
                     Compiling latest ingestion snapshot…
                 </p>
 
                 <!-- Coverage Scorecard - Radial Progress -->
-                <section class="coverage-scorecard" aria-label="Coverage Metrics" data-show-in="analyst">
+                <section class="coverage-scorecard" aria-label="Coverage Metrics">
                     <div class="coverage-metric">
                         <div class="coverage-value" id="coverage-total-records">0</div>
-                        <div class="coverage-label">Total Records</div>
+                        <div class="coverage-label">Records Collected</div>
                         <div class="coverage-progress">
                             <div class="coverage-progress-bar" style="width: 0%" id="coverage-records-bar"></div>
                         </div>
                     </div>
                     <div class="coverage-metric">
                         <div class="coverage-value" id="coverage-quality-rate">0%</div>
-                        <div class="coverage-label">Avg Quality Rate</div>
+                        <div class="coverage-label">Quality Pass Rate</div>
                         <div class="coverage-progress">
                             <div class="coverage-progress-bar" style="width: 0%" id="coverage-quality-bar"></div>
                         </div>
                     </div>
                     <div class="coverage-metric">
                         <div class="coverage-value" id="coverage-success-rate">0%</div>
-                        <div class="coverage-label">Success Rate</div>
+                        <div class="coverage-label">Ingestion Success Rate</div>
                         <div class="coverage-progress">
                             <div class="coverage-progress-bar" style="width: 0%" id="coverage-success-bar"></div>
                         </div>
@@ -460,7 +160,7 @@
                 </section>
 
                 <!-- Processing Summary Charts -->
-                <div class="charts-section" data-show-in="analyst">
+                <div class="charts-section">
                     <h3 class="section-title">Processing Summary</h3>
                     <div class="charts-grid charts-grid-analytics">
                         <div class="chart-card chart-card-wide">
@@ -504,10 +204,10 @@
                             <div class="chart-header">
                                 <div>
                                     <h4 class="chart-title">Pipeline Efficiency</h4>
-                                    <p class="chart-subtitle">Retention through discovery → silver dataset</p>
+                                    <p class="chart-subtitle">Retention through collected → curated</p>
                                 </div>
                                 <div class="chart-callout compact" id="efficiency-callout" aria-live="polite">
-                                    <span class="chart-callout-label">Silver yield</span>
+                                    <span class="chart-callout-label">Corpus yield</span>
                                     <span class="chart-callout-value" id="efficiency-yield-label">–</span>
                                 </div>
                             </div>
@@ -521,9 +221,9 @@
                 </div>
 
                 <!-- Source Status Cards -->
-                <div class="source-grid" data-show-in="analyst">
+                <div class="source-grid">
                     <!-- Wikipedia -->
-                    <article class="source-card wikipedia" data-source="Wikipedia">
+                    <article class="source-card wikipedia" data-source="wikipedia">
                         <div class="source-card-header">
                             <h3 class="source-card-title">Wikipedia</h3>
                             <span class="source-card-badge complete">
@@ -552,7 +252,7 @@
                     </article>
 
                     <!-- BBC -->
-                    <article class="source-card bbc" data-source="BBC">
+                    <article class="source-card bbc" data-source="bbc">
                         <div class="source-card-header">
                             <h3 class="source-card-title">BBC</h3>
                             <span class="source-card-badge complete">
@@ -581,7 +281,7 @@
                     </article>
 
                     <!-- HuggingFace -->
-                    <article class="source-card huggingface" data-source="HuggingFace">
+                    <article class="source-card huggingface" data-source="huggingface">
                         <div class="source-card-header">
                             <h3 class="source-card-title">HuggingFace</h3>
                             <span class="source-card-badge complete">
@@ -610,7 +310,7 @@
                     </article>
 
                     <!-- Språkbanken -->
-                    <article class="source-card sprakbanken" data-source="Språkbanken">
+                    <article class="source-card sprakbanken" data-source="sprakbanken">
                         <div class="source-card-header">
                             <h3 class="source-card-title">Språkbanken</h3>
                             <span class="source-card-badge complete">
@@ -639,7 +339,7 @@
                     </article>
 
                     <!-- TikTok -->
-                    <article class="source-card tiktok" data-source="TikTok">
+                    <article class="source-card tiktok" data-source="tiktok">
                         <div class="source-card-header">
                             <h3 class="source-card-title">TikTok</h3>
                             <span class="source-card-badge upcoming">
@@ -672,15 +372,16 @@
         </div>
 
         <!-- Tab 2: Data Sources -->
-        <div class="tab-content" id="sources-panel" role="tabpanel" aria-labelledby="sources-tab" data-show-in="analyst">
+        <div class="tab-content" id="sources-panel" role="tabpanel" aria-labelledby="sources-tab">
             <div class="tab-panel tab-panel-wide">
-                <h2 class="section-title">Source Portfolio &amp; ETL Readiness</h2>
+                <h2 class="section-title">Data Sources</h2>
+                <p class="section-subtitle">Five sources, each with distinct licenses, acquisition methods, and quality profiles.</p>
                 <div class="source-intro">
                     <p class="source-intro-lede" id="source-mix-narrative" aria-live="polite">
                         Mapping current corpus composition…
                     </p>
                     <p class="source-intro-detail" id="source-etl-narrative" aria-live="polite">
-                        Building ETL readiness overview…
+                        Building source readiness overview…
                     </p>
                 </div>
 
@@ -712,10 +413,10 @@
                         <div class="chart-header">
                             <div>
                                 <h3 class="chart-title">Pipeline Stage Allocation</h3>
-                                <p class="chart-subtitle">Share of records at Discovery → Extraction → Silver per source</p>
+                                <p class="chart-subtitle">Share of records at each collection stage per source</p>
                             </div>
                             <div class="chart-actions">
-                                <button class="chart-action" onclick="downloadChart('sourceStageChart')">Export PNG</button>
+                                <button class="chart-action" data-export-chart="sourceStageChart">Export PNG</button>
                             </div>
                         </div>
                         <div class="chart-canvas">
@@ -735,10 +436,10 @@
                     </div>
                 </section>
 
-                <section class="ingestion-timeline" aria-label="Ingestion cadence timeline">
+                <section class="ingestion-timeline" aria-label="Collection timeline">
                     <div class="timeline-header">
                         <div>
-                            <h3 class="section-title">Ingestion Cadence</h3>
+                            <h3 class="section-title">Collection Timeline</h3>
                             <p class="timeline-caption" id="timeline-caption">Tracking latest orchestrations…</p>
                         </div>
                     </div>
@@ -761,10 +462,10 @@
                 </section>
 
                 <!-- Manifest Analytics Section -->
-                <section class="manifest-analytics-section" aria-label="Ingestion run analytics">
+                <section class="manifest-analytics-section" aria-label="Collection run analytics">
                     <div class="timeline-header">
                         <div>
-                            <h3 class="section-title">Recent Ingestion Runs</h3>
+                            <h3 class="section-title">Collection Runs</h3>
                             <p class="timeline-caption">Orchestration run history and statistics</p>
                         </div>
                     </div>
@@ -773,7 +474,7 @@
                     </div>
                     <div class="comparison-table">
                         <table>
-                            <caption class="sr-only">Recent Ingestion Runs</caption>
+                            <caption class="sr-only">Collection Runs</caption>
                             <thead>
                                 <tr>
                                     <th>Run ID</th>
@@ -836,10 +537,11 @@
             </div>
         </div>
 
-        <!-- Tab 3: Quality Insights -->
-        <div class="tab-content" id="quality-panel" role="tabpanel" aria-labelledby="quality-tab" data-show-in="analyst">
+        <!-- Tab 3: Data Quality -->
+        <div class="tab-content" id="quality-panel" role="tabpanel" aria-labelledby="quality-tab">
             <div class="tab-panel tab-panel-wide">
-                <h2 class="section-title">Quality Guardrails &amp; Retention</h2>
+                <h2 class="section-title">Data Quality</h2>
+                <p class="section-subtitle">We apply 5 filters to every collected record. Only text that passes all criteria enters the corpus.</p>
                 <div class="quality-intro">
                     <p class="quality-intro-narrative" id="quality-overview-narrative" aria-live="polite">
                         Compiling retention story…
@@ -851,12 +553,12 @@
 
                 <section class="quality-outcomes-grid" aria-label="Quality outcomes dashboard">
                     <article class="quality-outcome-tile" data-metric="yield">
-                        <header>Silver Yield</header>
+                        <header>Corpus Yield</header>
                         <div class="quality-outcome-main">
                             <span id="quality-yield-value">—</span>
                             <span class="quality-outcome-delta" id="quality-yield-delta">—</span>
                         </div>
-                        <p id="quality-yield-caption">Awaiting data.</p>
+                        <p id="quality-yield-caption">No runs yet</p>
                     </article>
                     <article class="quality-outcome-tile" data-metric="rejections">
                         <header>Records Rejected</header>
@@ -864,7 +566,7 @@
                             <span id="quality-rejected-value">—</span>
                             <span class="quality-outcome-delta" id="quality-rejected-delta">—</span>
                         </div>
-                        <p id="quality-rejected-caption">Awaiting data.</p>
+                        <p id="quality-rejected-caption">No runs yet</p>
                     </article>
                     <article class="quality-outcome-tile" data-metric="language">
                         <header>Non-Somali Blocks</header>
@@ -872,7 +574,7 @@
                             <span id="quality-language-value">—</span>
                             <span class="quality-outcome-delta" id="quality-language-delta">—</span>
                         </div>
-                        <p id="quality-language-caption">Awaiting data.</p>
+                        <p id="quality-language-caption">No runs yet</p>
                     </article>
                     <article class="quality-outcome-tile" data-metric="dedupe">
                         <header>Dedup Yield</header>
@@ -880,13 +582,13 @@
                             <span id="quality-dedupe-value">—</span>
                             <span class="quality-outcome-delta" id="quality-dedupe-delta">—</span>
                         </div>
-                        <p id="quality-dedupe-caption">Awaiting data.</p>
+                        <p id="quality-dedupe-caption">No runs yet</p>
                     </article>
                 </section>
 
-                <section class="guardrail-matrix" aria-label="Guardrail matrix">
+                <section class="guardrail-matrix" aria-label="Quality criteria matrix">
                     <div class="section-header">
-                        <h3 class="section-title">Guardrail Coverage</h3>
+                        <h3 class="section-title">Quality Criteria</h3>
                         <p class="section-subtitle">Filter families by source with share of rejections</p>
                     </div>
                     <div class="guardrail-matrix-table" id="guardrailMatrix">
@@ -897,7 +599,7 @@
                 <section class="quality-funnel" aria-label="Retention funnel">
                     <div class="section-header">
                         <h3 class="section-title">Retention Funnel</h3>
-                        <p class="section-subtitle">Discovery to Silver with guardrail annotations</p>
+                        <p class="section-subtitle">Records collected to curated corpus, with quality filter annotations</p>
                     </div>
                     <div class="quality-funnel-bar" id="qualityFunnel">
                         <!-- Populated by JavaScript -->
@@ -918,7 +620,7 @@
                                     <p class="chart-subtitle">Rejections by filter reason</p>
                                 </div>
                                 <div class="chart-actions">
-                                    <button class="chart-action" onclick="downloadChart('filterParetoChart')">Export PNG</button>
+                                    <button class="chart-action" data-export-chart="filterParetoChart">Export PNG</button>
                                 </div>
                             </div>
                             <div class="chart-canvas">
@@ -945,7 +647,7 @@
                                     <p class="chart-subtitle">Record-weighted pass rate over recent runs</p>
                                 </div>
                                 <div class="chart-actions">
-                                    <button class="chart-action" onclick="downloadChart('qualityTrendChart')">Export PNG</button>
+                                    <button class="chart-action" data-export-chart="qualityTrendChart">Export PNG</button>
                                 </div>
                             </div>
                             <div class="chart-canvas">
@@ -966,9 +668,9 @@
                     </div>
                 </section>
 
-                <section class="quality-exceptions" aria-label="Quality exception feed">
+                <section class="quality-exceptions" aria-label="Quality issues feed">
                     <div class="section-header">
-                        <h3 class="section-title">Exception Feed</h3>
+                        <h3 class="section-title">Quality Issues</h3>
                         <p class="section-subtitle">Active alerts and recommended actions</p>
                     </div>
                     <div class="exception-table-wrapper">
@@ -990,9 +692,9 @@
                     </div>
                 </section>
 
-                <section class="quality-waivers" aria-label="Policy and waiver log">
+                <section class="quality-waivers" aria-label="Quality decisions log">
                     <div class="section-header">
-                        <h3 class="section-title">Policy &amp; Waiver Log</h3>
+                        <h3 class="section-title">Quality Decisions</h3>
                         <p class="section-subtitle">Active waivers and manual review queues</p>
                     </div>
                     <div class="quality-waiver-accordion" id="qualityPolicyAccordion">
@@ -1002,274 +704,62 @@
             </div>
         </div>
 
-        <!-- Tab 4: Pipeline Performance -->
-        <div class="tab-content" id="pipeline-panel" role="tabpanel" aria-labelledby="pipeline-tab" data-show-in="analyst">
-            <div class="tab-panel tab-panel-wide pipeline-panel">
-                <h2 class="section-title">Pipeline Performance Metrics</h2>
-                <div class="pipeline-intro" aria-live="polite">
-                    <p class="pipeline-intro-lede"></p>
-                    <p class="pipeline-intro-detail"></p>
-                    <p class="pipeline-intro-roadmap"></p>
+        <!-- Tab 4: What's Next -->
+        <div class="tab-content" id="whats-next-panel" role="tabpanel" aria-labelledby="whats-next-tab">
+            <div class="tab-panel tab-panel-wide">
+                <h2 class="section-title">What's Next</h2>
+                <p class="section-subtitle">Data collection is complete. Here's the plan for building and releasing the dialect classifier.</p>
+
+                <div class="phase-timeline">
+
+                    <div class="phase-card phase-card--complete">
+                        <span class="phase-card__status">Complete</span>
+                        <h3 class="phase-card__title">Data Collection</h3>
+                        <p class="phase-card__detail">25,959 records collected from 5 sources. Quality filters applied. Curated corpus ready for preprocessing.</p>
+                        <p class="phase-card__meta">Completed May 2026 · <a href="#sources">View sources →</a></p>
+                    </div>
+
+                    <div class="phase-card phase-card--active">
+                        <span class="phase-card__status">Up Next</span>
+                        <h3 class="phase-card__title">Preprocessing</h3>
+                        <p class="phase-card__detail">Tokenization, train/validation/test splitting (80/10/10), and dialect label assignment for annotated samples.</p>
+                        <p class="phase-card__meta">Target: after corpus reaches 50,000 records</p>
+                    </div>
+
+                    <div class="phase-card phase-card--planned">
+                        <span class="phase-card__status">Planned</span>
+                        <h3 class="phase-card__title">Model Training</h3>
+                        <p class="phase-card__detail">Fine-tune XLM-R and multilingual BERT as dialect classification baselines. Target: weighted F1 ≥ 0.80 per dialect class (Northern, Southern, Central).</p>
+                        <p class="phase-card__meta">Planned Q3 2026</p>
+                    </div>
+
+                    <div class="phase-card phase-card--planned">
+                        <span class="phase-card__status">Planned</span>
+                        <h3 class="phase-card__title">Evaluation &amp; Error Analysis</h3>
+                        <p class="phase-card__detail">Per-dialect confusion matrices, error analysis on misclassified samples, and bias audit across data sources.</p>
+                        <p class="phase-card__meta">Planned Q4 2026</p>
+                    </div>
+
+                    <div class="phase-card phase-card--planned">
+                        <span class="phase-card__status">Planned</span>
+                        <h3 class="phase-card__title">Public Release</h3>
+                        <p class="phase-card__detail">Model card, HuggingFace Hub release, citation guide, and full reproducibility documentation. All training code, data, and model weights open-sourced.</p>
+                        <p class="phase-card__meta">Planned Q1 2027</p>
+                    </div>
+
                 </div>
-                <div class="pipeline-sla-strip" id="pipeline-sla-strip" aria-label="Run SLA targets">
-                    <!-- Populated by JavaScript -->
-                </div>
 
-                <!-- Hero Metrics -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 2rem 0;">
-                    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">Throughput</div>
-                        <div id="pipeline-metric-throughput" style="font-size: 1.875rem; font-weight: 600; color: #111827;">—</div>
-                    </div>
-                    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">Duration</div>
-                        <div id="pipeline-metric-duration" style="font-size: 1.875rem; font-weight: 600; color: #111827;">—</div>
-                    </div>
-                    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">Quality Pass Rate</div>
-                        <div id="pipeline-metric-quality" style="font-size: 1.875rem; font-weight: 600; color: #111827;">—</div>
-                    </div>
-                    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">Retries</div>
-                        <div id="pipeline-metric-retries" style="font-size: 1.875rem; font-weight: 600; color: #111827;">—</div>
-                    </div>
-                </div>
-
-                <section class="pipeline-throughput" aria-label="Throughput dashboard">
-                    <div style="display: grid; grid-template-columns: 1fr; gap: 2rem; margin: 2rem 0;">
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <div>
-                                    <h3 class="chart-title">Throughput Trend</h3>
-                                    <p class="chart-subtitle">Records processed per minute over the last 10 runs with 7-day moving average</p>
-                                </div>
-                            </div>
-                            <div class="chart-canvas">
-                                <canvas id="pipeline-throughput-trend-chart"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <div>
-                                    <h3 class="chart-title">Quality Pass Rate by Source</h3>
-                                    <p class="chart-subtitle">Percentage of records passing validation checks per data source</p>
-                                </div>
-                            </div>
-                            <div class="chart-canvas">
-                                <canvas id="pipeline-quality-chart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="pipeline-stage-flow" aria-label="Stage latency waterfall">
-                    <div class="section-header">
-                        <h3 class="section-title">Stage Latency Waterfall</h3>
-                        <p class="section-subtitle">Time spent across discovery, fetch, extract, quality, and write stages</p>
-                    </div>
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <div>
-                                <h3 class="chart-title">Pipeline Stage Durations</h3>
-                                <p class="chart-subtitle">Breakdown of time spent in each pipeline stage for the latest run</p>
-                            </div>
-                        </div>
-                        <div class="chart-canvas">
-                            <canvas id="pipeline-waterfall-canvas"></canvas>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="pipeline-sla-monitor" aria-label="Source SLA monitor">
-                    <div class="section-header">
-                        <h3 class="section-title">Source SLA Monitor</h3>
-                        <p class="section-subtitle">Live throughput vs SLA for each ingestion source</p>
-                    </div>
-                    <div id="pipeline-sla-grid" class="source-grid">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </section>
-
-                <section class="pipeline-timeline" aria-label="Run timeline and backlog">
-                    <div class="section-header">
-                        <h3 class="section-title">Run Timeline &amp; Backlog</h3>
-                        <p class="section-subtitle">Recent orchestrations with duration, throughput, and retries</p>
-                    </div>
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <div>
-                                <h3 class="chart-title">Pipeline Run History</h3>
-                                <p class="chart-subtitle">Duration and retry status for the last 10 pipeline executions</p>
-                            </div>
-                        </div>
-                        <div class="chart-canvas">
-                            <canvas id="pipeline-timeline-chart"></canvas>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="pipeline-heatmap" aria-label="Retry and error heatmap">
-                    <div class="section-header">
-                        <h3 class="section-title">Retry &amp; Error Heatmap</h3>
-                        <p class="section-subtitle">Sources vs error types to spotlight hotspots</p>
-                    </div>
-                    <div class="pipeline-heatmap-table" id="pipeline-heatmap-table">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </section>
-
-                <section class="pipeline-resources" aria-label="Resource utilization">
-                    <div class="section-header">
-                        <h3 class="section-title">Resource Utilization</h3>
-                        <p class="section-subtitle">Worker concurrency, queue depth, and bandwidth</p>
-                    </div>
-                    <div id="pipeline-resource-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 1.5rem 0;">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </section>
-
-                <section class="pipeline-alerts" aria-label="Runbook alerts">
-                    <div class="section-header">
-                        <h3 class="section-title">Runbook Alerts</h3>
-                        <p class="section-subtitle">Operator actions required for upcoming runs</p>
-                    </div>
-                    <div class="exception-table-wrapper">
-                        <table class="exception-table" id="pipeline-alert-table">
-                            <thead>
-                                <tr>
-                                    <th>Severity</th>
-                                    <th>Scope</th>
-                                    <th>Alert</th>
-                                    <th>Recommendation</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="4" class="empty-state">Loading alerts…</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <section class="pipeline-observations" aria-label="Observation log">
-                    <div class="section-header">
-                        <h3 class="section-title">Observation Log</h3>
-                        <p class="section-subtitle">Known throttles and operational notes</p>
-                    </div>
-                    <div class="pipeline-observation-accordion" id="pipeline-observation-accordion">
-                        <!-- Populated by JavaScript -->
-                    </div>
+                <section class="contribute-inline" aria-label="How to contribute">
+                    <h3>Help Us Get There Faster</h3>
+                    <p>The corpus needs more text and the models need annotation. Here's where you can help:</p>
+                    <ul>
+                        <li><strong>Linguists &amp; native speakers:</strong> Help annotate dialect samples — contact us to get involved in the labeling effort.</li>
+                        <li><strong>Researchers:</strong> Cite this dataset in your work and share findings with the community.</li>
+                        <li><strong>Developers:</strong> Contribute to the pipeline, add new data sources, or improve quality filters.</li>
+                    </ul>
+                    <a href="#get-involved" class="btn btn--primary" style="display:inline-block;margin-top:1rem;">Get in Touch</a>
                 </section>
             </div>
-        </div>
-
-        <!-- Tab 5: Technical Reports -->
-        <div class="tab-content" id="reports-panel" role="tabpanel" aria-labelledby="reports-tab" data-show-in="analyst">
-            <div class="tab-panel">
-                <h2 class="section-title">Technical Documentation</h2>
-                <p class="mb-8" style="color: var(--gray-600); font-size: var(--text-base);">
-                    Access technical reports, data schemas, API documentation, and export options.
-                </p>
-
-                <!-- Report Cards -->
-                <div class="report-cards">
-                    <div class="report-card">
-                        <div class="report-card-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="18" y1="20" x2="18" y2="10"/>
-                                <line x1="12" y1="20" x2="12" y2="4"/>
-                                <line x1="6" y1="20" x2="6" y2="14"/>
-                            </svg>
-                        </div>
-                        <h3 class="report-card-title">Metrics Report (JSON)</h3>
-                        <p class="report-card-description">
-                            Complete metrics data including success rates, processing times, and quality statistics for all sources.
-                        </p>
-                        <a href="data/all_metrics.json" download class="report-card-action">
-                            <span>Download JSON</span>
-                            <span>→</span>
-                        </a>
-                    </div>
-
-                    <div class="report-card">
-                        <div class="report-card-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                            </svg>
-                        </div>
-                        <h3 class="report-card-title">Data Schema</h3>
-                        <p class="report-card-description">
-                            Comprehensive schema documentation for the Somali dialect corpus including field definitions and data types.
-                        </p>
-                        <a href="#" class="report-card-action" onclick="alert('Schema documentation coming soon!'); return false;">
-                            <span>View Schema</span>
-                            <span>→</span>
-                        </a>
-                    </div>
-
-                    <div class="report-card">
-                        <div class="report-card-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                            </svg>
-                        </div>
-                        <h3 class="report-card-title">API Documentation</h3>
-                        <p class="report-card-description">
-                            REST API endpoints for programmatic access to the corpus, including authentication and rate limits.
-                        </p>
-                        <a href="https://github.com/somali-nlp/somali-dialect-classifier/blob/main/docs/reference/api.md" target="_blank" rel="noopener" class="report-card-action">
-                            <span>View API Docs</span>
-                            <span>→</span>
-                        </a>
-                    </div>
-
-                    <div class="report-card">
-                        <div class="report-card-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                        </div>
-                        <h3 class="report-card-title">Export Formats</h3>
-                        <p class="report-card-description">
-                            Download the corpus in multiple formats: CSV, JSON, Parquet, or HuggingFace Datasets format.
-                        </p>
-                        <a href="#" class="report-card-action" onclick="alert('Export options coming soon!'); return false;">
-                            <span>Export Options</span>
-                            <span>→</span>
-                        </a>
-                    </div>
-
-                    <div class="report-card">
-                        <div class="report-card-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M8 11h8"/><path d="M8 7h6"/></svg>
-                        </div>
-                        <h3 class="report-card-title">Usage Guide</h3>
-                        <p class="report-card-description">
-                            Step-by-step guide for loading and using the corpus in popular ML frameworks like PyTorch and TensorFlow.
-                        </p>
-                        <a href="https://github.com/somali-nlp/somali-dialect-classifier/tree/main/docs" target="_blank" rel="noopener" class="report-card-action">
-                            <span>Read Guide</span>
-                            <span>→</span>
-                        </a>
-                    </div>
-
-                    <div class="report-card">
-                        <div class="report-card-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m20 8-6 6"/><path d="m4 8 6 6"/><path d="M9 18h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2Z"/><path d="M8 22v-5"/><path d="M16 22v-5"/></svg>
-                        </div>
-                        <h3 class="report-card-title">Citation</h3>
-                        <p class="report-card-description">
-                            Academic citation information for referencing this corpus in research papers and publications.
-                        </p>
-                        <a href="#" class="report-card-action" onclick="alert('Citation format:\n\nSomali NLP Initiative. (2025). Somali Dialect Classifier Corpus. Available at: https://github.com/somali-nlp/somali-dialect-classifier'); return false;">
-                            <span>Copy Citation</span>
-                            <span>→</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
         </div>
         </section>
     </main>
