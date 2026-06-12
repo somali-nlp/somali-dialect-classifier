@@ -1,5 +1,5 @@
 {
-  "export_timestamp": "2026-05-14T07:09:55.848312Z",
+  "export_timestamp": "2026-06-11T20:15:48.805651Z",
   "summary": {
     "total_quota_hits": 0,
     "sources_with_quotas": [
@@ -11,25 +11,25 @@
   },
   "daily_usage": [
     {
-      "date": "2026-05-02",
+      "date": "2026-05-29",
       "source": "bbc",
-      "records_ingested": 20,
+      "records_ingested": 99,
       "quota_limit": 350,
       "items_remaining": 0,
       "quota_hit": false,
-      "usage_percent": 5.7
+      "usage_percent": 28.3
     },
     {
-      "date": "2026-05-02",
+      "date": "2026-05-29",
       "source": "huggingface",
-      "records_ingested": 100,
+      "records_ingested": 1000,
       "quota_limit": 20000,
       "items_remaining": 0,
       "quota_hit": false,
-      "usage_percent": 0.5
+      "usage_percent": 5.0
     },
     {
-      "date": "2026-05-02",
+      "date": "2026-05-29",
       "source": "sprakbanken",
       "records_ingested": 1,
       "quota_limit": 10,
