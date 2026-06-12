@@ -15,11 +15,26 @@ target_metadata = None
 
 
 def get_url():
-    """Get database URL from environment or config."""
-    return os.getenv(
-        "DATABASE_URL",
-        "postgresql://somali:somali_dev_password@localhost:5432/somali_nlp"
-    )
+    """Get database URL from environment.
+
+    Reads DATABASE_URL first; falls back to constructing a URL from
+    individual SDC_* / POSTGRES_* variables.  Raises RuntimeError if
+    no password is available so misconfigured environments fail loudly
+    rather than silently connecting with a placeholder.
+    """
+    if url := os.getenv("DATABASE_URL"):
+        return url
+
+    db_password = os.getenv("DB_PASSWORD") or os.getenv("SDC_DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD")
+    if not db_password:
+        raise RuntimeError(
+            "Database password not set. Export DATABASE_URL or DB_PASSWORD before running Alembic."
+        )
+    host = os.getenv("POSTGRES_HOST", "localhost")
+    port = os.getenv("POSTGRES_PORT", "5432")
+    db = os.getenv("POSTGRES_DB", "somali_nlp")
+    user = os.getenv("POSTGRES_USER", "somali")
+    return f"postgresql://{user}:{db_password}@{host}:{port}/{db}"
 
 
 def run_migrations_offline() -> None:
@@ -54,6 +69,9 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
     """
     configuration = config.get_section(config.config_ini_section)
+    # Provide DB_PASSWORD so alembic.ini %(DB_PASSWORD)s interpolation resolves,
+    # then override sqlalchemy.url outright so the resolved URL is used directly.
+    configuration["DB_PASSWORD"] = os.getenv("DB_PASSWORD", "")
     configuration["sqlalchemy.url"] = get_url()
 
     connectable = engine_from_config(

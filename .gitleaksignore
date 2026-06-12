@@ -1,0 +1,2 @@
+# False positive: env.py reads DB_PASSWORD from the environment (os.getenv), no literal secret
+migrations/database/alembic/env.py:postgres-password-in-config:28

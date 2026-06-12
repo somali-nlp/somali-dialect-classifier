@@ -108,7 +108,7 @@ jobs:
         id: anomaly_check
         run: |
           echo "Running metrics anomaly detection..."
-          python scripts/check_metrics_anomalies.py --warning-threshold 3 || echo "anomaly_exit_code=$?" >> $GITHUB_OUTPUT
+          python scripts/ops/check_metrics_anomalies.py --warning-threshold 3
 
           # Check if anomalies.json exists and parse it
           if [ -f test-results/anomalies.json ]; then
