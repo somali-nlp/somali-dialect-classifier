@@ -358,28 +358,23 @@ python -m somali_dialect_classifier.pipeline.run \
 **Type:** Orchestration phasing
 **Purpose:** Track collection phases (initial vs. refresh)
 
-**Overview:**
+#### How Campaigns Work
 
-Campaigns provide structured phase management for the data collection lifecycle. The primary campaign is `campaign_init_001`, which tracks the initial 6-day collection period.
+Run registration in `BasePipeline` is **lazy**: the campaign hook fires at the top of `run()` or
+`process()`, not at construction. Only `production`-purpose runs create or advance campaigns.
+`validation` and `test` runs never touch the campaign table.
 
-**Campaign Lifecycle:**
+Set `SDC_RUN__PURPOSE=validation` (or `test`) to run the pipeline without creating campaign
+rows — useful in CI and ad hoc verification.
 
-1. **Creation (First Run)**
-   - Automatically created on first pipeline execution
-   - Status: `ACTIVE`
-   - Duration: 6 days (configurable)
+**Auto-init:** The first production-purpose run automatically starts `campaign_init_001` (default
+duration: 6 days). Each subsequent production-purpose run checks whether the campaign has expired;
+if so, it auto-completes it and switches to cadence-based scheduling.
 
-2. **Active Phase**
-   - All sources run daily regardless of cadence
-   - Builds baseline dataset quickly
-   - Monitored via ledger queries
+**Provenance:** `run_purpose` and `campaign_id` are stamped into `pipeline_runs`, every silver
+record's `source_metadata`, and `data/manifests/<run_id>.json`.
 
-3. **Completion**
-   - Automatically marked `COMPLETED` after duration
-   - Or manually completed via ledger
-   - Triggers switch to cadence-based scheduling
-
-**Check Campaign Status:**
+#### Check Campaign Status
 
 ```bash
 # Via SQLite
@@ -391,7 +386,7 @@ EOF
 
 # Via Python
 python3 <<'EOF'
-from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+from somdialc.ingestion.crawl_ledger import CrawlLedger
 from pathlib import Path
 
 ledger = CrawlLedger(db_path=Path('data/ledger/crawl_ledger.db'))
@@ -400,12 +395,11 @@ print(f"Campaign status: {status}")
 EOF
 ```
 
-**Manual Campaign Completion:**
+#### Manual Campaign Completion
 
 ```bash
-# Complete initial campaign early
 python3 <<'EOF'
-from somali_dialect_classifier.ingestion.crawl_ledger import CrawlLedger
+from somdialc.ingestion.crawl_ledger import CrawlLedger
 from pathlib import Path
 
 ledger = CrawlLedger(db_path=Path('data/ledger/crawl_ledger.db'))
@@ -414,33 +408,39 @@ print("Campaign completed manually")
 EOF
 ```
 
-**Common Issues:**
+#### Troubleshooting
 
-1. **Campaign Stuck in ACTIVE**
-   - **Symptom**: Sources still running daily after 6 days
-   - **Cause**: Campaign not auto-completed
-   - **Solution**: Manually complete campaign (see above)
+**Campaign never created**
+- **Cause:** All runs are using `SDC_RUN__PURPOSE=validation` or `test`.
+- **Fix:** Run a production-purpose pipeline: `SDC_RUN__PURPOSE=production wikisom-download`.
 
-2. **No Campaign Found**
-   - **Symptom**: `get_campaign_status` returns `None`
-   - **Cause**: First run hasn't occurred yet
-   - **Solution**: Run any pipeline to initialize campaign
+**Campaign stuck in ACTIVE after 6+ days**
+- **Cause:** The expiry check only fires at the top of a new production run. If no run has been
+  made since expiry, the campaign stays ACTIVE until the next run.
+- **Fix:** Run any production pipeline — the auto-complete check will fire — or manually complete
+  (see above).
 
-3. **Restart Initial Collection**
-   - **Use Case**: Want to restart 6-day daily collection phase
-   - **Solution**:
-     ```bash
-     sqlite3 data/ledger/crawl_ledger.db <<'EOF'
-     UPDATE campaigns 
-     SET status = 'ACTIVE', end_date = NULL
-     WHERE campaign_id = 'campaign_init_001';
-     EOF
-     ```
+**Campaign rows present after a test run**
+- **Cause:** `SDC_RUN__PURPOSE` was not set and defaulted to `production` during a test.
+- **Fix:** Set `SDC_RUN__PURPOSE=test` in CI and manual test environments. The
+  `isolated_pipeline_env` fixture in `tests/conftest.py` sets this automatically for pytest runs.
 
-**Expected Output:**
-- Campaign tracking in `campaigns` table
-- Orchestrator logs show "initial_collection" or "refresh" phase
-- Behavior switches at campaign completion
+**Restart initial collection**
+```bash
+sqlite3 data/ledger/crawl_ledger.db <<'EOF'
+UPDATE campaigns
+SET status = 'ACTIVE', end_date = NULL
+WHERE campaign_id = 'campaign_init_001';
+EOF
+```
+
+#### Expected Behaviour
+
+- First production run: `campaign_init_001` row created with `status=ACTIVE`.
+- Runs 2–N within the 6-day window: campaign row updated; all sources run daily.
+- First run after expiry: campaign auto-completed (`status=COMPLETED`, `end_date` set); scheduling
+  switches to per-source cadence.
+- Non-production runs: no rows created or modified in `campaigns`.
 
 
 

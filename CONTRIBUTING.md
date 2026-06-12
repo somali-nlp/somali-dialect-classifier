@@ -2,6 +2,10 @@
 
 Thank you for your interest in contributing! This document provides guidelines and instructions for contributors.
 
+> **Repository map:** For the authoritative directory tree, package layout, silver schema, and CLI
+> reference, see [`docs/overview/codebase-tour.md`](docs/overview/codebase-tour.md).
+> Path examples in this file use the post-June-2026 structure.
+
 ## Table of Contents
 
 - [Getting Started](#getting-started)
@@ -248,9 +252,9 @@ class YourSourceSomaliProcessor(BasePipeline):
 
     def _register_filters(self):
         """Register quality filters."""
-        from somdialc.preprocessing.filters import (
+        from somdialc.quality.filter_functions import (
             min_length_filter,
-            langid_filter
+            langid_filter,
         )
 
         self.record_filters.append((min_length_filter, {
@@ -508,8 +512,8 @@ import ipdb; ipdb.set_trace()
 # Test with small dataset
 wikisom-download  # Uses test fixtures automatically in tests
 
-# Check silver dataset
-python -c "import pyarrow.parquet as pq; print(pq.read_table('data/processed/silver/source=Wikipedia-Somali/date_accessed=2025-01-01').to_pandas())"
+# Check silver dataset (use lowercase-kebab source names)
+python -c "import pyarrow.parquet as pq; print(pq.read_table('data/processed/silver/source=wikipedia-somali/date_accessed=2026-06-01').to_pandas())"
 ```
 
 ### Performance Profiling

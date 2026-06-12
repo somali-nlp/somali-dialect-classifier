@@ -164,12 +164,9 @@ print(stats)
 
 #### 2. Campaigns
 
-Persistent phase tracking for collection lifecycle management:
+Campaigns track named collection phases in the `campaigns` table of the SQLite ledger.
 
-- **Purpose**: Track named data collection phases (initial vs. refresh)
-- **Table**: `campaigns` in SQLite ledger
-- **Primary Use**: `campaign_init_001` for initial 6-day collection phase
-- **States**: `ACTIVE` (ongoing) or `COMPLETED` (finished)
+**States:** `ACTIVE` (ongoing) or `COMPLETED` (finished).
 
 **Campaign Schema:**
 
@@ -187,35 +184,29 @@ CREATE TABLE campaigns (
 );
 ```
 
-**Campaign Lifecycle:**
+**Lifecycle and Wiring (implemented):**
 
-1. **Initial Collection (`campaign_init_001`)**:
-   - Created on first pipeline run
-   - Lasts 6 days (configurable)
-   - All sources run daily during this phase
-   - Automatically marked `COMPLETED` after duration
+Run registration is **lazy**: `BasePipeline._ensure_pipeline_run_registered()` fires at the
+top of `run()` and `process()`, not at object construction. This is the single hook for all
+campaign and provenance logic.
 
-2. **Refresh Phase**:
-   - After campaign completion
-   - Sources run per individual cadence schedules
-   - BBC: 1 day, Wikipedia: 7 days, etc.
+The behavior depends on `run_purpose` (set by environment variable `SDC_RUN__PURPOSE`):
 
-**Campaign Integration:**
+| `SDC_RUN__PURPOSE` | Campaign created? | Campaign behaviour |
+|--------------------|-------------------|--------------------|
+| `production` (default) | Yes | Auto-starts `campaign_init_001` on first entry (6-day window); auto-completes on expiry check |
+| `validation` | No | Campaign table is not touched |
+| `test` | No | Campaign table is not touched |
 
-```python
-from somali_dialect_classifier.orchestration.flows import is_initial_collection_phase
+**Provenance stamping:** `run_purpose` and `campaign_id` are written to:
+- The `pipeline_runs` ledger row for the current run
+- Every silver record's `source_metadata` field (JSON)
+- `data/manifests/<run_id>.json`
 
-# Orchestrator checks campaign status
-if is_initial_collection_phase():
-    # Run all sources (initial collection)
-    run_all_sources()
-else:
-    # Run sources per cadence (refresh phase)
-    run_due_sources()
-```
+**Refresh phase:** After `campaign_init_001` completes, subsequent production runs switch to
+cadence-based scheduling (sources run per individual cadence rather than daily).
 
 **See Also:**
-- [Orchestration Guide](../howto/orchestration.md#campaigns) - Campaign workflows and usage
 - [Runbook](../operations/runbook.md#campaigns) - Campaign operations and troubleshooting
 
 #### 3. Deduplication Engine

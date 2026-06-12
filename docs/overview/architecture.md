@@ -2,9 +2,11 @@
 
 **Comprehensive overview of the Somali Dialect Classifier's architecture, design patterns, and technical decisions.**
 
-**Last Updated:** 2025-11-21
+**Last Updated:** 2026-06-12
 
-This document provides a comprehensive overview of the Somali Dialect Classifier's architecture, design patterns, and technical decisions.
+This document describes the architectural layers, design patterns, and key technical decisions. For the
+authoritative repository map (paths, package tree, file names), see
+[docs/overview/codebase-tour.md](codebase-tour.md).
 
 ## Table of Contents
 
@@ -122,16 +124,41 @@ All runtime behavior configurable via:
 
 ## Component Architecture
 
-The system is organized into **four logical packages** following clean architecture principles:
+The system is organized into a layered set of packages under `src/somdialc/` (canonical name per
+ADR-004). The active load-bearing layers are:
+
+| Layer | Package | Purpose |
+|-------|---------|---------|
+| Collection | `ingestion/` | Source processors, ledger, dedup, campaign lifecycle |
+| Quality | `quality/` | Filters, cleaners, record building, silver writing |
+| Infrastructure | `infra/` | Config, metrics, manifests, logging, HTTP |
+| Schema / Contracts | `schema/`, `contracts/` | Schema registry, stage-boundary TypedDicts |
+| Database | `database/` | Ledger backends (SQLite production; PostgreSQL incomplete) |
+| Orchestration | `orchestration/` | Multi-source flow coordination |
+| Preprocessing | `preprocessing/` | Silver dataset validation for Stage 2 entry |
+| CLI + Tools | `cli/`, `tools/` | Entry points and `somali-tools` Click group |
+| Dashboard | `src/dashboard/` | Static JS dashboard (source under `src/dashboard/src/`) |
+
+Supporting roadmap stub: `ml/` (scaffolded for Stage 2, `__all__ = []`).
+
+For the complete file tree see [docs/overview/codebase-tour.md](codebase-tour.md).
 
 ### Package Structure Overview
 
 ```
-src/somali_dialect_classifier/
+src/somdialc/
 ├── ingestion/          # Data collection from external sources
 ├── quality/            # Data quality enforcement and validation
 ├── infra/              # Cross-cutting infrastructure services
-└── ml/                 # Machine learning (Stage 3)
+├── schema/             # Schema registry and version mapping
+├── contracts/          # Stage-boundary TypedDict contracts
+├── database/           # Ledger backends
+├── orchestration/      # Multi-source flow coordination
+├── preprocessing/      # Silver validation
+├── cli/                # Source download entry points
+├── tools/              # somali-tools Click group
+├── deployment/         # Dashboard deployer
+└── ml/                 # Stage 2 landing zone (scaffolded)
 ```
 
 ### ProcessorRegistry Pattern
@@ -165,7 +192,7 @@ processors = {
 **Usage**:
 
 ```python
-from somali_dialect_classifier.ingestion.registry import ProcessorRegistry
+from somdialc.ingestion.registry import ProcessorRegistry
 
 # Create processor via registry
 processor = ProcessorRegistry.create("wikipedia", force=True)
@@ -179,7 +206,7 @@ print(processors)  # ['wikipedia', 'bbc', 'huggingface', 'sprakbanken', 'tiktok'
 **Adding Custom Processors**:
 
 ```python
-from somali_dialect_classifier.ingestion import BasePipeline, ProcessorRegistry
+from somdialc.ingestion import BasePipeline, ProcessorRegistry
 
 class CustomProcessor(BasePipeline):
     def __init__(self, **kwargs):
@@ -376,19 +403,41 @@ def filter_func(cleaned_text: str, **kwargs) -> Tuple[bool, Dict[str, Any]]:
 - **Atomic writes**: Tmp files + rename for crash safety
 - **Metadata serialization**: JSON fields for complex data
 
-**Schema**:
+**Schema** (authoritative source: `src/somdialc/quality/silver_writer.py`):
+
 ```python
 SILVER_SCHEMA = pa.schema([
-    ('id', pa.string()),                    # sha256 hash
-    ('text', pa.string()),                  # cleaned text
-    ('source', pa.string()),                # e.g., "Wikipedia-Somali"
-    ('source_type', pa.string()),           # e.g., "encyclopedia"
-    ('date_accessed', pa.date32()),         # collection date
-    ('language', pa.string()),              # ISO 639-1 code
-    ('license', pa.string()),               # e.g., "CC-BY-SA-3.0"
-    ('token_count', pa.int32()),            # word count
-    ('metadata', pa.string()),              # JSON serialized
+    ('id', pa.string()),              # SHA-256 hash
+    ('text', pa.string()),            # cleaned text
+    ('title', pa.string()),
+    ('source', pa.string()),          # lowercase-kebab, e.g. "wikipedia-somali"
+    ('source_type', pa.string()),
+    ('url', pa.string()),
+    ('source_id', pa.string()),
+    ('date_published', pa.string()),
+    ('date_accessed', pa.string()),   # partition key
+    ('language', pa.string()),        # ISO 639-1 code
+    ('license', pa.string()),
+    ('topic', pa.string()),
+    ('tokens', pa.int64()),           # whitespace token count (int64, not int32)
+    ('text_hash', pa.string()),
+    ('pipeline_version', pa.string()),
+    ('source_metadata', pa.string()), # JSON serialized
+    ('domain', pa.string()),
+    ('embedding', pa.string()),
+    ('register', pa.string()),
+    ('run_id', pa.string()),          # provenance: links to pipeline_runs + manifests
+    ('schema_version', pa.string()),
 ])
+```
+
+Partitioned by: `source=<lowercase-kebab>/date_accessed=YYYY-MM-DD/`
+
+```
+data/processed/silver/
+├── source=wikipedia-somali/date_accessed=2026-06-01/
+├── source=bbc-somali/date_accessed=2026-06-01/
+└── source=tiktok-somali/date_accessed=2026-06-01/
 ```
 
 ### 6. Record Utilities (`record_utils.py`)
@@ -482,23 +531,26 @@ class Config:
 
 ### Directory Partitioning Strategy
 
+Source names are lowercase-kebab, canonicalized via `CANONICAL_SOURCES` in
+`src/somdialc/ingestion/source_names.py`.
+
 ```
 data/
 ├── raw/                                      # Bronze layer
-│   └── source=Wikipedia-Somali/
-│       └── date_accessed=2025-01-15/
+│   └── source=wikipedia-somali/
+│       └── date_accessed=2026-06-01/
 │           └── sowiki-latest-pages-articles.xml.bz2
 │
 ├── staging/                                  # Intermediate extracts
-│   └── source=Wikipedia-Somali/
-│       └── date_accessed=2025-01-15/
+│   └── source=wikipedia-somali/
+│       └── date_accessed=2026-06-01/
 │           └── wikisom_raw.txt
 │
 └── processed/
     └── silver/                               # Silver layer
-        └── source=Wikipedia-Somali/
-            └── date_accessed=2025-01-15/
-                └── part-0000.parquet         # Schema-enforced
+        └── source=wikipedia-somali/
+            └── date_accessed=2026-06-01/
+                └── *_silver_part-0000.parquet
 ```
 
 **Benefits**:
@@ -613,119 +665,8 @@ def _extract_records(self) -> Iterator[RawRecord]:
 
 ## Directory Structure
 
-```
-somali-dialect-classifier/
-├── src/somali_dialect_classifier/
-│   ├── __init__.py
-│   │
-│   ├── contracts/                         # Ingestion output contracts
-│   │   ├── __init__.py
-│   │   └── ingestion_output.py           # Contract validation and TypedDict schemas
-│   │
-│   ├── preprocessing/                     # Preprocessing and validation
-│   │   ├── __init__.py
-│   │   └── validator.py                  # Silver dataset validation
-│   │
-│   ├── ingestion/                         # Data collection layer
-│   │   ├── __init__.py
-│   │   ├── base_pipeline.py              # Template method orchestration
-│   │   ├── crawl_ledger.py               # State tracking and quotas
-│   │   ├── dedup.py                      # Deduplication engine
-│   │   ├── data_processor.py             # Abstract processor interface
-│   │   ├── pipeline_setup.py             # Pipeline utilities
-│   │   ├── raw_record.py                 # Raw data model
-│   │   ├── apify_tiktok_client.py        # TikTok API client
-│   │   └── processors/                   # Source-specific implementations
-│   │       ├── bbc_somali_processor.py
-│   │       ├── wikipedia_somali_processor.py
-│   │       ├── huggingface_somali_processor.py
-│   │       ├── sprakbanken_somali_processor.py
-│   │       └── tiktok_somali_processor.py
-│   │
-│   ├── quality/                           # Data quality layer
-│   │   ├── __init__.py
-│   │   ├── filters.py                    # Quality validation filters
-│   │   ├── filter_engine.py              # Filter orchestration
-│   │   ├── record_builder.py             # Schema enforcement
-│   │   ├── record_utils.py               # Record utilities
-│   │   ├── silver_writer.py              # Schema enforcement & I/O
-│   │   ├── text_cleaners.py              # Text transformation pipeline
-│   │   ├── schema_mappers.py             # Schema version mapping
-│   │   └── filters/
-│   │       └── catalog.py                # Dynamic filter registry
-│   │
-│   ├── infra/                             # Infrastructure layer
-│   │   ├── __init__.py
-│   │   ├── config.py                     # Configuration management
-│   │   ├── data_manager.py               # Data path management
-│   │   ├── http.py                       # HTTP utilities
-│   │   ├── logging_utils.py              # Logging utilities
-│   │   ├── metrics.py                    # Core metrics collection
-│   │   ├── metrics_schema.py             # Metrics schema
-│   │   ├── metrics_aggregation.py        # Metrics aggregation
-│   │   ├── metrics_comparison.py         # Metrics comparison
-│   │   ├── metrics_filters.py            # Metrics filtering
-│   │   ├── rate_limiter.py               # Rate limiting
-│   │   ├── security.py                   # Security utilities
-│   │   ├── manifest_writer.py            # Manifest generation
-│   │   ├── aggregation.py                # General aggregation
-│   │   ├── filter_analysis.py            # Filter analytics
-│   │   └── visualization_aggregator.py   # Viz aggregation
-│   │
-│   ├── ml/                                # Machine learning layer (scaffolded)
-│   │   ├── __init__.py
-│   │   └── README.md                     # Stage 3 implementation plan
-│   │
-│   ├── cli/                               # CLI entry points
-│   │   ├── download_wikisom.py
-│   │   ├── download_bbcsom.py
-│   │   ├── download_hfsom.py
-│   │   ├── download_spraksom.py
-│   │   └── download_tiktoksom.py
-│   │
-│   ├── tools/                             # Unified CLI (somali-tools)
-│   │   ├── __init__.py
-│   │   └── cli.py                        # Click-based CLI framework
-│   │
-│   ├── orchestration/                     # Orchestration flows
-│   │   └── flows.py
-│   │
-│   ├── database/                          # Database backends
-│   │   ├── ledger_backend.py
-│   │   └── postgres_backend.py
-│   │
-│   ├── deployment/                        # Deployment utilities
-│   │   └── deploy.py
-│   │
-│   ├── schema/                            # Schema management
-│   │   └── validation_service.py
-│   │
-│   └── DEPRECATED (backward-compat only):
-│       ├── preprocessing/                 # Re-exports to ingestion + quality
-│       ├── pipeline/                      # Re-exports to quality
-│       └── utils/                         # Re-exports to infra
-│
-├── tests/                                 # Test suite
-│   ├── fixtures/                         # Test data
-│   ├── ingestion/                        # Ingestion tests
-│   ├── quality/                          # Quality tests
-│   ├── infra/                            # Infrastructure tests
-│   ├── tools/                            # CLI tests
-│   ├── test_filters.py                   # Filter unit tests
-│   ├── test_bbc_integration.py           # BBC end-to-end
-│   ├── test_wikipedia_integration.py     # Wikipedia end-to-end
-│   └── ...                               # 530+ tests passing
-│
-├── data/                                  # Data lakehouse (gitignored)
-│   ├── raw/                              # Bronze layer
-│   ├── staging/                          # Intermediate extracts
-│   └── processed/silver/                 # Silver layer (Parquet)
-│
-├── logs/                                  # Runtime logs (gitignored)
-├── scripts/                               # Utility scripts (deprecated)
-├── docs/                                  # Technical documentation
-└── .archive/                              # Dev artifacts (gitignored)
-```
+For the authoritative repository map — including the post-June-2026 cleanup state — see
+**[docs/overview/codebase-tour.md](codebase-tour.md)**.
 
 ## Extension Points
 
@@ -754,9 +695,9 @@ somali-dialect-classifier/
 3. **Register filters**:
    ```python
    def _register_filters(self):
-       from somali_dialect_classifier.preprocessing.filters import (
+       from somdialc.quality.filter_functions import (
            min_length_filter,
-           langid_filter
+           langid_filter,
        )
        self.record_filters.append((min_length_filter, {"threshold": 100}))
        self.record_filters.append((langid_filter, {"confidence_threshold": 0.3}))
