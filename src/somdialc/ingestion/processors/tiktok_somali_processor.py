@@ -557,10 +557,10 @@ class TikTokSomaliProcessor(BasePipeline):
             comment_id = item.get("cid", item.get("id", ""))
             comment_url = f"{video_url}#comment-{comment_id}" if comment_id else video_url
 
-            # Ensure all IDs are strings for schema compatibility
-            # FIXED: Apify returns 'uid' at top level, not in 'user' object
-            author_id = item.get("uid", "")
-            author_id_str = str(author_id) if author_id else ""
+            # Ensure comment_id is a string for schema compatibility.
+            # author / author_id (uid / uniqueId) are intentionally not retained:
+            # they are direct user identifiers excluded by PROJECT_CHARTER §9
+            # no-PII policy (see ML-3).
             comment_id_str = str(comment_id) if comment_id else ""
 
             # Convert Unix timestamp to ISO 8601 format for silver schema compatibility
@@ -581,9 +581,12 @@ class TikTokSomaliProcessor(BasePipeline):
                 "url": comment_url,
                 "video_url": video_url,
                 "text": text,
-                # FIXED: Apify returns 'uniqueId' at top level, not in 'user' object
-                "author": item.get("uniqueId", "unknown"),
-                "author_id": author_id_str,
+                # author and author_id are not emitted to staging — they are
+                # direct user identifiers (username, numeric UID) and must not
+                # propagate into source_metadata in the silver record.  The
+                # project's no-PII policy (PROJECT_CHARTER §9) prohibits storing
+                # usernames, emails, or identifiable author data.  Engagement
+                # signals (likes, replies) are retained as they carry no identity.
                 "created_at": created_at_iso,  # Now in ISO 8601 format
                 "likes": item.get("diggCount", 0),
                 "replies": item.get("replyCommentTotal", 0),
@@ -609,24 +612,28 @@ class TikTokSomaliProcessor(BasePipeline):
 
                 comment = json.loads(line)
 
-                # Synthesize a meaningful title from author and date.
-                # Never assign comment text to title — that collapses two
-                # independent columns to identical content (audit finding TD-TT-01).
-                author = str(comment.get("author", "")).strip() or "unknown"
+                # Synthesize a non-identifying title from the comment ID and date.
+                # Never assign comment text to title (audit finding TD-TT-01).
+                # author is not used in the title because it is a direct user
+                # identifier and must not be persisted (PROJECT_CHARTER §9).
+                comment_id = str(comment.get("comment_id", "")).strip()
                 created_at = str(comment.get("created_at", ""))
                 # Guard against malformed or empty timestamps shorter than 10 chars.
                 date_part = created_at[:10] if len(created_at) >= 10 else (created_at or "undated")
-                title = f"@{author} ({date_part})"
+                title_id = comment_id if comment_id else "unknown"
+                title = f"comment-{title_id} ({date_part})"
 
-                # Convert all metadata values to strings for schema compatibility
+                # author and author_id are intentionally excluded from metadata.
+                # They are direct user identifiers (username string, numeric UID)
+                # that would propagate into source_metadata in the silver record,
+                # violating the project's no-PII policy (PROJECT_CHARTER §9).
+                # Engagement signals (likes, replies) are retained as non-identifying.
                 yield RawRecord(
                     title=title,
                     text=comment["text"],
                     url=comment["url"],
                     metadata={
                         "video_url": str(comment.get("video_url", "")),
-                        "author": str(comment.get("author", "")),
-                        "author_id": str(comment.get("author_id", "")),
                         "date_published": str(comment.get("created_at", "")),
                         "likes": str(comment.get("likes", 0)),
                         "replies": str(comment.get("replies", 0)),

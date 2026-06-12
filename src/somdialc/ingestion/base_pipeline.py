@@ -102,6 +102,11 @@ class BasePipeline(DataProcessor, ABC):
         # run()) so the table is always populated regardless of which subset of
         # download/extract/process the CLI calls.  It is idempotent — if the
         # orchestrator already registered the run_id, the helper short-circuits.
+        # WARNING (CAMP-1): this is a real ledger write at construction time.
+        # Code that instantiates a processor outside a live pipeline run
+        # (scripts, notebooks, ad-hoc REPL use) must point SDC_LEDGER_SQLITE_PATH
+        # at a throwaway path first, or it will insert RUNNING rows into the
+        # production ledger. pytest is isolated via tests/conftest.py.
         self._ensure_pipeline_run_registered()
 
     def _log_configuration(self) -> None:

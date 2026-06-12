@@ -70,10 +70,45 @@ class MockPipeline(BasePipeline):
 
 @pytest.fixture
 def temp_work_dir(tmp_path, monkeypatch):
-    """Set up temporary working directory."""
+    """Set up a per-test isolated working directory.
+
+    Also sets SDC_DATA__ env vars to absolute tmp_path subdirectories so that
+    the session-level isolated_pipeline_env fixture's paths are superseded for
+    this test.  This ensures MockPipeline resolves data dirs inside tmp_path
+    even when the config singleton has been primed with session-level paths.
+    """
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data").mkdir()
+    raw_dir = tmp_path / "data" / "raw"
+    staging_dir = tmp_path / "data" / "staging"
+    processed_dir = tmp_path / "data" / "processed"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("SDC_DATA__RAW_DIR", str(raw_dir))
+    monkeypatch.setenv("SDC_DATA__STAGING_DIR", str(staging_dir))
+    monkeypatch.setenv("SDC_DATA__PROCESSED_DIR", str(processed_dir))
+    monkeypatch.setenv(
+        "SDC_LEDGER_SQLITE_PATH",
+        str(tmp_path / "data" / "ledger" / "crawl_ledger.db"),
+    )
+    # Reset the config singleton so the new env vars are picked up by
+    # the next processor construction in this test.
+    try:
+        from somdialc.infra.config import reset_config
+
+        reset_config()
+    except Exception:
+        pass
     yield tmp_path
+    # Teardown: invalidate the test-scoped singleton so subsequent tests in
+    # the session revert to the session-level isolation paths.
+    try:
+        from somdialc.infra.config import reset_config
+
+        reset_config()
+    except Exception:
+        pass
 
 
 @pytest.fixture

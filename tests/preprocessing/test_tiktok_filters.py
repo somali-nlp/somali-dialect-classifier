@@ -13,6 +13,7 @@ All tests use mocking to avoid requiring actual Apify API calls and are
 cross-platform compatible using pytest's tmp_path fixture.
 """
 
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -201,10 +202,10 @@ class TestTikTokFilterInstrumentation:
         assert result is not None, "Valid comment with sufficient text should NOT be filtered"
         assert isinstance(result, dict), "Valid comment should return transformed dict"
         assert result["text"] == apify_item["text"], "Text should be preserved"
-        assert result["author"] == apify_item["uniqueId"], "Author should be mapped correctly"
-        assert result["author_id"] == str(apify_item["uid"]), (
-            "Author ID should be converted to string"
-        )
+        # author and author_id are intentionally absent from the staging output
+        # (PROJECT_CHARTER §9 no-PII policy — see ML-3).
+        assert "author" not in result, "author must not appear in staging output (PII)"
+        assert "author_id" not in result, "author_id must not appear in staging output (PII)"
 
     def test_valid_comment_three_char_minimum(self, processor):
         """Verify that comments with exactly 3 alphanumeric characters pass filters.
@@ -316,8 +317,9 @@ class TestTikTokFilterInstrumentation:
         # Assert: Metadata is correctly mapped
         assert result is not None, "Valid comment should be transformed"
         assert result["text"] == apify_item["text"]
-        assert result["author"] == "comment_author"
-        assert result["author_id"] == "7489303120642049040"
+        # author and author_id must not appear in the staging output (ML-3 / PII fix).
+        assert "author" not in result, "author must not appear in staging output (PII)"
+        assert "author_id" not in result, "author_id must not appear in staging output (PII)"
         assert result["comment_id"] == "7564909554666193679"
         assert result["likes"] == 25
         assert result["replies"] == 5
@@ -459,7 +461,8 @@ class TestTikTokFilterInstrumentation:
         # Assert: Should still transform successfully
         assert result is not None, "Item with minimal fields should transform"
         assert result["text"] == "Comment with minimal fields"
-        assert result["author_id"] == "", "Missing uid should default to empty string"
+        # author_id is not emitted (ML-3 PII fix); likes and replies must default.
+        assert "author_id" not in result, "author_id must not appear in staging output (PII)"
         assert result["likes"] == 0, "Missing diggCount should default to 0"
         assert result["replies"] == 0, "Missing replyCommentTotal should default to 0"
 
@@ -495,8 +498,9 @@ class TestTikTokFilterInstrumentation:
         assert result is not None
         assert isinstance(result["text"], str)
         assert isinstance(result["url"], str)
-        assert isinstance(result["author"], str)
-        assert isinstance(result["author_id"], str)
+        # author and author_id are not emitted (ML-3 PII fix).
+        assert "author" not in result, "author must not appear in staging output (PII)"
+        assert "author_id" not in result, "author_id must not appear in staging output (PII)"
         assert isinstance(result["likes"], int)
         assert isinstance(result["replies"], int)
         assert isinstance(result["comment_id"], str)
@@ -665,11 +669,13 @@ class TestTikTokCostCaps:
 
 
 class TestTikTokTitleSynthesis:
-    """Unit tests for Fix 2: _extract_records title synthesis.
+    """Unit tests for _extract_records title synthesis after the PII fix (ML-3).
 
-    The title must be synthesised from author + date, never from comment text.
-    Tests exercise the same logic as the patched code in _extract_records()
-    via a staging JSONL file read through a real (mocked-config) processor.
+    The title must be synthesised from comment_id + date, never from comment
+    text (audit finding TD-TT-01) and never from author (PROJECT_CHARTER §9
+    no-PII policy).  Tests exercise the same logic as the patched code in
+    _extract_records() via a staging JSONL file read through a real
+    (mocked-config) processor.
     """
 
     def _make_processor(self, tmp_path):
@@ -703,13 +709,13 @@ class TestTikTokTitleSynthesis:
         staging_file.write_text(json.dumps(record) + "\n", encoding="utf-8")
         return staging_file
 
-    def test_title_normal_author_and_date(self, tmp_path):
-        """Standard case: author + ISO date → '@author (YYYY-MM-DD)'."""
+    def test_title_uses_comment_id_and_date(self, tmp_path):
+        """Standard case: comment_id + ISO date → 'comment-{id} (YYYY-MM-DD)'."""
         p = self._make_processor(tmp_path)
         record = {
             "text": "Waxaan jeclahay muusikaas",
             "url": "https://tiktok.com/@u/video/1#comment-1",
-            "author": "fadumo_ali",
+            "comment_id": "abc123",
             "created_at": "2025-03-15T10:22:00Z",
         }
         staging_file = self._write_staging(tmp_path, record)
@@ -718,39 +724,39 @@ class TestTikTokTitleSynthesis:
         records = list(p._extract_records())
         assert len(records) == 1
         raw = records[0]
-        assert raw.title == "@fadumo_ali (2025-03-15)"
+        assert raw.title == "comment-abc123 (2025-03-15)"
         # title must NOT equal text
         assert raw.title != raw.text
 
-    def test_title_empty_author_falls_back_to_unknown(self, tmp_path):
-        """When author is empty/missing, title uses 'unknown'."""
+    def test_title_missing_comment_id_falls_back_to_unknown(self, tmp_path):
+        """When comment_id is absent, title falls back to 'comment-unknown (...)'."""
         p = self._make_processor(tmp_path)
         record = {
             "text": "Nabad gelyo walaalayaal",
             "url": "https://tiktok.com/@u/video/1#comment-2",
-            "author": "",
             "created_at": "2025-06-01T08:00:00Z",
+            # no comment_id key
         }
         staging_file = self._write_staging(tmp_path, record)
         p.staging_file = staging_file
 
         records = list(p._extract_records())
-        assert records[0].title == "@unknown (2025-06-01)"
+        assert records[0].title == "comment-unknown (2025-06-01)"
 
-    def test_title_missing_author_key_falls_back_to_unknown(self, tmp_path):
-        """When author key is absent from staging record, 'unknown' is used."""
+    def test_title_empty_comment_id_falls_back_to_unknown(self, tmp_path):
+        """When comment_id is empty string, title uses 'unknown'."""
         p = self._make_processor(tmp_path)
         record = {
             "text": "Mahadsanid",
             "url": "https://tiktok.com/@u/video/1#comment-3",
+            "comment_id": "",
             "created_at": "2025-09-20T00:00:00Z",
-            # no 'author' key
         }
         staging_file = self._write_staging(tmp_path, record)
         p.staging_file = staging_file
 
         records = list(p._extract_records())
-        assert records[0].title == "@unknown (2025-09-20)"
+        assert records[0].title == "comment-unknown (2025-09-20)"
 
     def test_title_empty_created_at_falls_back_to_undated(self, tmp_path):
         """When created_at is empty, date_part falls back to 'undated'."""
@@ -758,14 +764,14 @@ class TestTikTokTitleSynthesis:
         record = {
             "text": "Fiican",
             "url": "https://tiktok.com/@u/video/1#comment-4",
-            "author": "cabdi",
+            "comment_id": "cid001",
             "created_at": "",
         }
         staging_file = self._write_staging(tmp_path, record)
         p.staging_file = staging_file
 
         records = list(p._extract_records())
-        assert records[0].title == "@cabdi (undated)"
+        assert records[0].title == "comment-cid001 (undated)"
 
     def test_title_short_created_at_not_sliced_beyond_length(self, tmp_path):
         """Malformed created_at shorter than 10 chars uses the raw value, not a crash."""
@@ -773,7 +779,7 @@ class TestTikTokTitleSynthesis:
         record = {
             "text": "Waa run",
             "url": "https://tiktok.com/@u/video/1#comment-5",
-            "author": "mahad",
+            "comment_id": "cid002",
             "created_at": "2025",  # only 4 chars — shorter than 10
         }
         staging_file = self._write_staging(tmp_path, record)
@@ -782,7 +788,7 @@ class TestTikTokTitleSynthesis:
         records = list(p._extract_records())
         title = records[0].title
         # Must not raise; value should be the short string, not sliced to ""
-        assert title == "@mahad (2025)"
+        assert title == "comment-cid002 (2025)"
         assert records[0].title != records[0].text
 
     def test_title_never_equals_text(self, tmp_path):
@@ -791,18 +797,57 @@ class TestTikTokTitleSynthesis:
 
         p = self._make_processor(tmp_path)
         comments = [
-            {"text": "Comment one", "url": "u1", "author": "a", "created_at": "2025-01-01T00:00Z"},
-            {"text": "Comment two", "url": "u2", "author": "b", "created_at": "2025-02-01T00:00Z"},
+            {
+                "text": "Comment one",
+                "url": "u1",
+                "comment_id": "c1",
+                "created_at": "2025-01-01T00:00Z",
+            },
+            {
+                "text": "Comment two",
+                "url": "u2",
+                "comment_id": "c2",
+                "created_at": "2025-02-01T00:00Z",
+            },
         ]
         staging_dir = tmp_path / "staging"
         staging_dir.mkdir(parents=True, exist_ok=True)
         staging_file = staging_dir / "comments.jsonl"
-        staging_file.write_text(
-            "\n".join(json.dumps(c) for c in comments) + "\n", encoding="utf-8"
-        )
+        staging_file.write_text("\n".join(json.dumps(c) for c in comments) + "\n", encoding="utf-8")
         p.staging_file = staging_file
 
         for record in p._extract_records():
-            assert record.title != record.text, (
-                f"title must not equal text; got '{record.title}'"
-            )
+            assert record.title != record.text, f"title must not equal text; got '{record.title}'"
+
+    def test_no_author_in_raw_record_metadata(self, tmp_path):
+        """
+        Regression test for ML-3: author and author_id must not appear in the
+        RawRecord.metadata dict produced by _extract_records.  These fields are
+        direct user identifiers and must not propagate into silver source_metadata.
+        """
+        p = self._make_processor(tmp_path)
+        record = {
+            "text": "Waxaan filaanaya filimkan",
+            "url": "https://tiktok.com/@u/video/1#comment-9",
+            "comment_id": "cid999",
+            "created_at": "2025-10-01T12:00:00Z",
+            "likes": "5",
+            "replies": "2",
+            # author and author_id are intentionally absent from staging
+            # (they were removed by the _transform_apify_item PII fix).
+        }
+        staging_file = self._write_staging(tmp_path, record)
+        p.staging_file = staging_file
+
+        records = list(p._extract_records())
+        assert len(records) == 1
+        meta = records[0].metadata
+        assert "author" not in meta, (
+            f"author must not appear in RawRecord.metadata (PII); got keys: {list(meta)}"
+        )
+        assert "author_id" not in meta, (
+            f"author_id must not appear in RawRecord.metadata (PII); got keys: {list(meta)}"
+        )
+        # Non-identifying engagement fields must be preserved.
+        assert "likes" in meta
+        assert "comment_id" in meta
