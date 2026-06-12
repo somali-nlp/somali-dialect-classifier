@@ -5,7 +5,7 @@
 # ============================================================================
 # Stage 1: Builder - Install dependencies from pyproject.toml
 # ============================================================================
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim@sha256:a01e48f10f90ac3ee65ef6937b9d7c831a3570c81b98d39a547ff09fb359de7f AS builder # python:3.11-slim
 
 WORKDIR /build
 
@@ -35,7 +35,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools && \
 # ============================================================================
 # Stage 2: Runtime - Minimal production image
 # ============================================================================
-FROM python:3.11-slim
+FROM python:3.11-slim@sha256:a01e48f10f90ac3ee65ef6937b9d7c831a3570c81b98d39a547ff09fb359de7f # python:3.11-slim
 
 WORKDIR /app
 

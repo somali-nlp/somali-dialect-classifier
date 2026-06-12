@@ -234,7 +234,7 @@ def main() -> int:
     """Main entry point."""
     # Paths
     repo_root = Path(__file__).parent.parent
-    schema_path = repo_root / "schemas" / "metrics_schema.json"
+    schema_path = repo_root / "docs" / "reference" / "metrics_schema.json"
     metrics_path = repo_root / "_site" / "data" / "all_metrics.json"
 
     # Create validator

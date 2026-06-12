@@ -3,7 +3,7 @@ name: Deployment Health Check
 on:
   deployment_status:
   schedule:
-    - cron: '0 */6 * * *'  # Run every 6 hours
+    - cron: '0 6 * * *'  # Run once daily at 06:00 UTC
   workflow_dispatch:
     inputs:
       dashboard_url:
@@ -16,6 +16,10 @@ permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: deployment-health-check
+  cancel-in-progress: true
+
 jobs:
   health-check:
     name: Dashboard Health Check
@@ -23,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set dashboard URL
         id: set_url
@@ -192,7 +196,7 @@ jobs:
 
       - name: Create issue on failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const title = '🚨 Dashboard Health Check Failed';
@@ -253,7 +257,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 10
 

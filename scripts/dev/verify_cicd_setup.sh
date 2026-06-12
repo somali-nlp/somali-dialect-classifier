@@ -70,7 +70,7 @@ echo ""
 
 echo "2. Checking Validation System"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-check_file "schemas/metrics_schema.json"
+check_file "docs/reference/metrics_schema.json"
 check_file "scripts/validate_metrics.py"
 check_executable "scripts/validate_metrics.py"
 echo ""
@@ -182,8 +182,8 @@ else
 fi
 
 # Test schema validation
-if [ -f "schemas/metrics_schema.json" ]; then
-    if jq empty schemas/metrics_schema.json 2>/dev/null; then
+if [ -f "docs/reference/metrics_schema.json" ]; then
+    if jq empty docs/reference/metrics_schema.json 2>/dev/null; then
         echo -e "${GREEN}✓${NC} metrics_schema.json is valid JSON"
         ((SUCCESS_COUNT++))
     else
