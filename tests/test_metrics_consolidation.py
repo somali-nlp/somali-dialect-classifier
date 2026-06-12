@@ -10,8 +10,6 @@ Tests cover:
 """
 
 import pytest
-
-import pytest
 from pydantic import ValidationError
 
 try:
@@ -111,8 +109,6 @@ class TestPhase3SchemaValidation:
     """Test Phase 3 schema validation."""
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_valid_processing_json(self):
         """Test that valid Phase 3 JSON passes validation."""
         validated = validate_processing_json(SAMPLE_PROCESSING_JSON)
@@ -121,8 +117,6 @@ class TestPhase3SchemaValidation:
         assert validated.layered_metrics.volume.records_written == 28
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_missing_required_field(self):
         """Test that missing required field raises error."""
         invalid_data = SAMPLE_PROCESSING_JSON.copy()
@@ -132,8 +126,6 @@ class TestPhase3SchemaValidation:
             validate_processing_json(invalid_data)
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_invalid_schema_version(self):
         """Test that invalid schema version raises error."""
         invalid_data = SAMPLE_PROCESSING_JSON.copy()
@@ -143,8 +135,6 @@ class TestPhase3SchemaValidation:
             validate_processing_json(invalid_data)
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_layered_metrics_validation(self):
         """Test layered metrics structure validation."""
         validated = validate_processing_json(SAMPLE_PROCESSING_JSON)
@@ -166,8 +156,6 @@ class TestPhase3SchemaValidation:
         assert validated.layered_metrics.volume.total_chars == 136510
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_statistics_validation(self):
         """Test statistics section validation."""
         validated = validate_processing_json(SAMPLE_PROCESSING_JSON)
@@ -185,8 +173,6 @@ class TestConsolidatedMetricExtraction:
     """Test consolidated metric extraction from Phase 3 JSON."""
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_extract_consolidated_metric(self):
         """Test extracting consolidated metric from Phase 3 JSON."""
         from scripts.generate_consolidated_metrics import extract_consolidated_metric
@@ -201,8 +187,6 @@ class TestConsolidatedMetricExtraction:
         assert metric["quality_pass_rate"] == 0.93
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_null_source_guard(self):
         """Test that null sources are properly guarded."""
         from scripts.generate_consolidated_metrics import extract_consolidated_metric
@@ -215,8 +199,6 @@ class TestConsolidatedMetricExtraction:
         assert metric is None
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_filter_breakdown_extraction(self):
         """Test that filter breakdown is properly extracted."""
         from scripts.generate_consolidated_metrics import extract_consolidated_metric
@@ -228,8 +210,6 @@ class TestConsolidatedMetricExtraction:
         assert metric["filter_breakdown"]["langid_filter"] == 1
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_throughput_metrics_extraction(self):
         """Test that throughput metrics are extracted."""
         from scripts.generate_consolidated_metrics import extract_consolidated_metric
@@ -246,8 +226,6 @@ class TestConsolidatedMetricValidation:
     """Test consolidated metric schema validation."""
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_valid_consolidated_metric(self):
         """Test that valid consolidated metric passes validation."""
         from scripts.generate_consolidated_metrics import extract_consolidated_metric
@@ -259,8 +237,6 @@ class TestConsolidatedMetricValidation:
         assert validated.source == "BBC-Somali"
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_consolidated_metrics_output_validation(self):
         """Test consolidated metrics output validation."""
         from scripts.generate_consolidated_metrics import extract_consolidated_metric
@@ -275,8 +251,6 @@ class TestConsolidatedMetricValidation:
         assert validated.records == 28
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_negative_values_rejected(self):
         """Test that negative values are rejected."""
         invalid_metric = {
@@ -303,8 +277,6 @@ class TestConsolidatedMetricValidation:
             ConsolidatedMetric.model_validate(invalid_metric)
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_rate_bounds_validation(self):
         """Test that rates are bounded [0, 1]."""
         invalid_metric = {
@@ -335,8 +307,6 @@ class TestDashboardSummaryGeneration:
     """Test dashboard summary generation."""
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_summary_from_empty_metrics(self):
         """Test summary generation with no metrics."""
         from scripts.generate_consolidated_metrics import generate_summary
@@ -348,8 +318,6 @@ class TestDashboardSummaryGeneration:
         assert summary["sources"] == []
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_summary_from_single_metric(self):
         """Test summary generation with single metric."""
         from scripts.generate_consolidated_metrics import (
@@ -366,8 +334,6 @@ class TestDashboardSummaryGeneration:
         assert "BBC-Somali" in summary["sources"]
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_summary_source_breakdown(self):
         """Test that source breakdown is calculated correctly."""
         from scripts.generate_consolidated_metrics import (
@@ -388,8 +354,6 @@ class TestDashboardSummaryGeneration:
         assert "avg_quality_pass_rate" in bbc_stats
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_summary_validation(self):
         """Test that generated summary passes validation."""
         from scripts.generate_consolidated_metrics import (
@@ -409,8 +373,6 @@ class TestEdgeCases:
     """Test edge cases and error handling."""
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_missing_layered_metrics(self):
         """Test handling of missing layered_metrics."""
         from scripts.generate_consolidated_metrics import extract_consolidated_metric
@@ -423,8 +385,6 @@ class TestEdgeCases:
         # Implementation may return None or extract from legacy
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_empty_filter_breakdown(self):
         """Test handling of empty filter breakdown."""
         from scripts.generate_consolidated_metrics import extract_consolidated_metric
@@ -437,8 +397,6 @@ class TestEdgeCases:
         # filter_breakdown may be omitted or empty dict
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_missing_optional_stats(self):
         """Test handling of missing optional stats."""
         from scripts.generate_consolidated_metrics import extract_consolidated_metric
@@ -452,8 +410,6 @@ class TestEdgeCases:
         # Optional stats should not be present
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_zero_division_in_summary(self):
         """Test that zero division is handled in summary."""
         from scripts.generate_consolidated_metrics import (
@@ -475,8 +431,6 @@ class TestSchemaContract:
     """Test that schema contract is enforced."""
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_required_fields_in_consolidated_metric(self):
         """Test that all required fields are present in consolidated metric."""
         from scripts.generate_consolidated_metrics import extract_consolidated_metric
@@ -507,8 +461,6 @@ class TestSchemaContract:
             assert field in metric, f"Missing required field: {field}"
 
     @pytest.mark.skip(reason="TD-NNN: Metrics consolidation schema drift")
-
-
     def test_deprecated_metrics_excluded(self):
         """Test that deprecated metrics are not surfaced."""
         from scripts.generate_consolidated_metrics import extract_consolidated_metric

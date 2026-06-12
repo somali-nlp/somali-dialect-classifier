@@ -26,29 +26,26 @@ class FilterEngine:
 
     Example:
         ```python
+        from somdialc.quality.filter_engine import FilterEngine
         from somdialc.quality.filter_functions import (
             min_length_filter,
-            topic_lexicon_enrichment_filter
+            topic_lexicon_enrichment_filter,
         )
-        from somdialc.pipeline.filter_engine import FilterEngine
 
         engine = FilterEngine()
 
         # Register filters
-        engine.register_filter(min_length_filter, {'min_length': 10})
+        engine.register_filter(min_length_filter, {"min_length": 10})
         engine.register_filter(topic_lexicon_enrichment_filter)
 
         # Apply to records
-        filtered_records = engine.apply_filters(records)
+        passed, reason, metadata = engine.apply_filters("Waa maxay tani?")
 
         # Check statistics
-        stats = engine.get_statistics()
-        print(f"Filtered: {stats['total_filtered']}")
-        print(f"Reasons: {stats['filter_reasons']}")
+        stats = engine.get_filter_stats()
+        print(f"Filtered: {sum(stats.values())}")
+        print(f"Reasons: {list(stats.keys())}")
         ```
-
-    **Note:** Filter import paths will change in a future release when
-    preprocessing module is reorganized. Check documentation for updates.
 
     Attributes:
         filters (list): List of registered filter functions
@@ -67,7 +64,9 @@ class FilterEngine:
         self.filter_stats: Counter = Counter()
         self.strict_mode = strict_mode
 
-    def register_filter(self, filter_func: Callable, kwargs: Optional[dict[str, Any]] = None) -> None:
+    def register_filter(
+        self, filter_func: Callable, kwargs: Optional[dict[str, Any]] = None
+    ) -> None:
         """
         Register a filter function to be applied.
 

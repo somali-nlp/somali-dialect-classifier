@@ -122,7 +122,10 @@ class TestFilterAlreadyProcessed:
         # Mark only first article as processed
         temp_ledger.discover_url(articles[0]["url"], "wikipedia-somali")
         temp_ledger.mark_processed(
-            url=articles[0]["url"], text_hash="hash_A1", silver_id="silver_A1", source="wikipedia-somali"
+            url=articles[0]["url"],
+            text_hash="hash_A1",
+            silver_id="silver_A1",
+            source="wikipedia-somali",
         )
 
         filtered = mock_processor._filter_already_processed(articles)
@@ -587,7 +590,9 @@ class TestDumpLevelDeduplication:
         dump_url = "https://dumps.wikimedia.org/sowiki/latest/sowiki-latest-pages-articles.xml.bz2"
 
         temp_ledger.discover_url(dump_url, "wikipedia-somali")
-        temp_ledger.mark_fetched(url=dump_url, http_status=200, etag="old-etag", source="wikipedia-somali")
+        temp_ledger.mark_fetched(
+            url=dump_url, http_status=200, etag="old-etag", source="wikipedia-somali"
+        )
 
         # Create mock session
         mock_session = Mock()

@@ -487,7 +487,9 @@ def extract_sync(processor) -> Path:
                         }
                     )
 
-    extra = [f"Connection errors encountered: {connection_errors}"] if connection_errors > 0 else None
+    extra = (
+        [f"Connection errors encountered: {connection_errors}"] if connection_errors > 0 else None
+    )
     _maybe_mark_quota_hit(processor, links, quota_limit)
     _log_extraction_summary(processor, articles_count, len(links), failed_count, extra_lines=extra)
     processor._export_stage_metrics("extraction")

@@ -222,7 +222,8 @@ class TestHuggingFaceSomaliProcessor:
             text_field="text",
         )
 
-        assert len(processor.filter_engine.filters) == 2  # min_length + langid
+        # min_length + langid + min_token_floor (DATA-7)
+        assert len(processor.filter_engine.filters) == 3
 
         # Verify filter names
         filter_funcs = [f[0].__name__ for f in processor.filter_engine.filters]

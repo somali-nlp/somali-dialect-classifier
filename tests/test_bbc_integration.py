@@ -94,7 +94,7 @@ class TestBBCIntegration:
         processor.process()
 
         # Verify silver dataset was created
-        silver_base = Path("data/processed/silver")
+        silver_base = processor.silver_writer.base_dir
         assert silver_base.exists()
 
         # Find the parquet file
@@ -162,7 +162,7 @@ class TestBBCIntegration:
         processor.process()
 
         # Read silver dataset
-        silver_base = Path("data/processed/silver")
+        silver_base = processor.silver_writer.base_dir
         parquet_files = list(silver_base.rglob("*.parquet"))
         table = pq.ParquetFile(parquet_files[0]).read()
         df = table.to_pandas()
@@ -197,7 +197,7 @@ class TestBBCIntegration:
         processor.process()
 
         # Read silver dataset
-        silver_base = Path("data/processed/silver")
+        silver_base = processor.silver_writer.base_dir
         parquet_files = list(silver_base.rglob("*.parquet"))
         table = pq.ParquetFile(parquet_files[0]).read()
         df = table.to_pandas()
@@ -221,7 +221,7 @@ class TestBBCIntegration:
         processor.process()
 
         # Read silver dataset
-        silver_base = Path("data/processed/silver")
+        silver_base = processor.silver_writer.base_dir
         parquet_files = list(silver_base.rglob("*.parquet"))
         table = pq.ParquetFile(parquet_files[0]).read()
         df = table.to_pandas()
@@ -245,7 +245,7 @@ class TestBBCIntegration:
         processor.process()
 
         # Read silver dataset
-        silver_base = Path("data/processed/silver")
+        silver_base = processor.silver_writer.base_dir
         parquet_files = list(silver_base.rglob("*.parquet"))
         table = pq.ParquetFile(parquet_files[0]).read()
         df = table.to_pandas()
@@ -264,7 +264,7 @@ class TestBBCIntegration:
         processor.process()
 
         # Read silver dataset
-        silver_base = Path("data/processed/silver")
+        silver_base = processor.silver_writer.base_dir
         parquet_files = list(silver_base.rglob("*.parquet"))
         table = pq.ParquetFile(parquet_files[0]).read()
         df = table.to_pandas()
@@ -283,7 +283,7 @@ class TestBBCIntegration:
         processor.process()
 
         # Read silver dataset
-        silver_base = Path("data/processed/silver")
+        silver_base = processor.silver_writer.base_dir
         parquet_files = list(silver_base.rglob("*.parquet"))
         table = pq.ParquetFile(parquet_files[0]).read()
 

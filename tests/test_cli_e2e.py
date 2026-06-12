@@ -8,7 +8,6 @@ Tests the command-line interface with temporary directories to ensure:
 - Help text is accurate
 """
 
-import os
 import shutil
 import sys
 from pathlib import Path
@@ -74,10 +73,7 @@ def cli_env(tmp_path, monkeypatch):
     new_raw_files = post_raw_files - pre_raw_files
 
     # Filter out only newly created wikipedia-somali files to match TD-017 symptom
-    new_wiki_files = [
-        f for f in (new_silver_files | new_raw_files)
-        if "wikipedia-somali" in str(f)
-    ]
+    new_wiki_files = [f for f in (new_silver_files | new_raw_files) if "wikipedia-somali" in str(f)]
 
     assert len(new_wiki_files) == 0, (
         f"Test leaked {len(new_wiki_files)} Wikipedia files to real project directory: "

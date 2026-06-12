@@ -11,14 +11,14 @@ Verifies that:
 """
 
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Any, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from somdialc.ingestion.crawl_ledger import CrawlLedger, SQLiteLedger
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -43,9 +43,9 @@ def _make_minimal_pipeline(ledger, source="bbc-somali", run_seed="test_20260501_
     All heavy I/O methods are replaced with no-ops so the test controls the
     execution path without network access or filesystem writes.
 
-    The ledger is injected BEFORE super().__init__() so that the
-    _ensure_pipeline_run_registered() call at the end of __init__ can write
-    to the test-controlled in-memory SQLite ledger.
+    The ledger is injected BEFORE super().__init__().  Registration is now
+    lazy (fires at first stage entry), so the row does NOT exist immediately
+    after construction — it is created when run() or process() is called.
     """
     from somdialc.ingestion.base_pipeline import BasePipeline
     from somdialc.ingestion.raw_record import RawRecord
@@ -108,17 +108,22 @@ def _make_minimal_pipeline(ledger, source="bbc-somali", run_seed="test_20260501_
 class TestBasePipelineRunRegistration:
     def test_run_registers_pipeline_run_when_not_pre_registered(self, tmp_ledger):
         """
-        When the orchestrator has NOT pre-registered the run_id,
-        BasePipeline.__init__ creates the row and run() sets status=COMPLETED.
-        Since registration now happens at __init__ time, the row exists
-        immediately after construction (before run() is called).
+        When the orchestrator has NOT pre-registered the run_id, run() creates
+        the pipeline_runs row lazily (at first stage entry) and sets
+        status=COMPLETED on success.
+
+        The row must NOT exist before run() is called (lazy-registration
+        design: construction is side-effect-free).
         """
         pipeline = _make_minimal_pipeline(tmp_ledger)
         run_id = pipeline.run_id
 
-        # Row is created during __init__ (TD-025 fix).
+        # Lazy registration: row must NOT exist yet (TD-025 + CAMP-1 redesign).
         row_before = tmp_ledger.get_pipeline_run(run_id)
-        assert row_before is not None, "pipeline_runs row must be created during __init__"
+        assert row_before is None, (
+            "pipeline_runs row must NOT be created at construction time "
+            "(lazy-registration design: construction is side-effect-free)"
+        )
 
         pipeline.run()
 
@@ -187,58 +192,84 @@ class TestBasePipelineRunRegistration:
 
 
 # ---------------------------------------------------------------------------
-# 1b. __init__-time registration (TD-025 fix — CLI paths that skip run())
+# 1b. Lazy registration: row appears at first stage entry, not at __init__
 # ---------------------------------------------------------------------------
 
 
 class TestInitTimeRegistration:
     """
-    Verify that constructing a processor (without calling run()) immediately
-    creates a pipeline_runs row.  This covers CLI paths (Wikipedia, BBC, HF,
-    TikTok) that call download/extract/process individually.
+    Verify lazy-registration semantics (TD-025 + CAMP-1 redesign):
+    - Construction is side-effect-free (no ledger writes in __init__).
+    - A pipeline_runs row is created the first time a pipeline stage is entered
+      (run() or process()), not at construction time.
+    - TD-025 is preserved: any CLI subset that reaches at least one stage
+      still registers exactly one row.
+
+    This class intentionally retains its original name so existing CI
+    references continue to work.
     """
 
-    def test_construction_registers_pipeline_run(self, tmp_ledger):
-        """A pipeline_runs row exists after __init__ completes."""
+    def test_construction_does_not_register_pipeline_run(self, tmp_ledger):
+        """Construction must NOT create a pipeline_runs row (lazy design)."""
         pipeline = _make_minimal_pipeline(tmp_ledger, source="wikipedia")
         row = tmp_ledger.get_pipeline_run(pipeline.run_id)
-        assert row is not None, "pipeline_runs row must be created at construction time"
+        assert row is None, (
+            "pipeline_runs row must NOT exist after construction — "
+            "registration is now lazy (fires at first stage entry)"
+        )
+
+    # Keep one aliased test name for backward compatibility with CI scripts
+    # that reference test_construction_registers_pipeline_run by ID.
+    def test_construction_registers_pipeline_run(self, tmp_ledger):
+        """Alias: construction is side-effect-free; row appears after run()."""
+        pipeline = _make_minimal_pipeline(tmp_ledger, source="wikipedia")
+        # No row yet
+        assert tmp_ledger.get_pipeline_run(pipeline.run_id) is None
+        # Row created by run()
+        pipeline.run()
+        row = tmp_ledger.get_pipeline_run(pipeline.run_id)
+        assert row is not None
         assert row["source"] == pipeline.source
 
     def test_construction_sets_correct_pipeline_type_wiki(self, tmp_ledger):
-        """Wikipedia source → pipeline_type=file_processing."""
+        """Wikipedia source → pipeline_type=file_processing (verified after run)."""
         pipeline = _make_minimal_pipeline(tmp_ledger, source="wikipedia")
+        pipeline.run()
         row = tmp_ledger.get_pipeline_run(pipeline.run_id)
         assert row["pipeline_type"] == "file_processing"
 
     def test_construction_sets_correct_pipeline_type_bbc(self, tmp_ledger):
-        """BBC source → pipeline_type=web_scraping."""
+        """BBC source → pipeline_type=web_scraping (verified after run)."""
         pipeline = _make_minimal_pipeline(tmp_ledger, source="bbc-somali")
+        pipeline.run()
         row = tmp_ledger.get_pipeline_run(pipeline.run_id)
         assert row["pipeline_type"] == "web_scraping"
 
     def test_construction_sets_correct_pipeline_type_hf(self, tmp_ledger):
         """HuggingFace source prefix → pipeline_type=stream_processing."""
         pipeline = _make_minimal_pipeline(tmp_ledger, source="huggingface-somali_c4-so")
+        pipeline.run()
         row = tmp_ledger.get_pipeline_run(pipeline.run_id)
         assert row["pipeline_type"] == "stream_processing"
 
     def test_construction_sets_correct_pipeline_type_sprakbanken(self, tmp_ledger):
         """Sprakbanken source → pipeline_type=file_processing."""
         pipeline = _make_minimal_pipeline(tmp_ledger, source="sprakbanken")
+        pipeline.run()
         row = tmp_ledger.get_pipeline_run(pipeline.run_id)
         assert row["pipeline_type"] == "file_processing"
 
     def test_construction_sets_correct_pipeline_type_tiktok(self, tmp_ledger):
         """TikTok source → pipeline_type=stream_processing."""
         pipeline = _make_minimal_pipeline(tmp_ledger, source="tiktok")
+        pipeline.run()
         row = tmp_ledger.get_pipeline_run(pipeline.run_id)
         assert row["pipeline_type"] == "stream_processing"
 
     def test_finalise_sets_records_processed_from_silver_writer(self, tmp_ledger, tmp_path):
         """
-        After _finalise_pipeline_run the records_processed column reflects
-        the silver row count (non-zero when a silver file exists).
+        After run() + _finalise_pipeline_run the records_processed column
+        reflects the silver row count (non-zero when a silver file exists).
         """
         import pyarrow as pa
         import pyarrow.parquet as pq
@@ -251,6 +282,8 @@ class TestInitTimeRegistration:
         pq.write_table(table, silver_file)
         pipeline.silver_path = silver_file
 
+        # Ensure row exists before _finalise (registration is lazy)
+        pipeline._ensure_pipeline_run_registered()
         pipeline._finalise_pipeline_run(status="COMPLETED")
 
         row = tmp_ledger.get_pipeline_run(pipeline.run_id)
@@ -258,12 +291,13 @@ class TestInitTimeRegistration:
 
     def test_tiktok_short_circuit_registers_zero_records(self, tmp_ledger):
         """
-        When TikTok download() short-circuits (all URLs already processed),
-        the pipeline_runs row must have records_processed=0 and status=COMPLETED.
+        When TikTok download() short-circuits, run() registers the row and
+        marks it COMPLETED with records_processed=0.
         """
         pipeline = _make_minimal_pipeline(tmp_ledger, source="tiktok")
-        # Simulate the CLI short-circuit path
-        pipeline._finalise_pipeline_run(status="COMPLETED", records_processed=0)
+        pipeline.download = lambda: None  # type: ignore[method-assign]
+
+        pipeline.run()
 
         row = tmp_ledger.get_pipeline_run(pipeline.run_id)
         assert row is not None
@@ -327,8 +361,7 @@ class TestBBCDailyQuotaRecording:
             ]
             # Pad to 50+ so discovery uses RSS path exclusively.
             padded_links = article_links + [
-                f"https://www.bbc.com/somali/articles/pad_{i}"
-                for i in range(max(0, 50 - n_links))
+                f"https://www.bbc.com/somali/articles/pad_{i}" for i in range(max(0, 50 - n_links))
             ]
             processor._check_robots_txt.return_value = None
             processor._scrape_rss_feeds.return_value = padded_links

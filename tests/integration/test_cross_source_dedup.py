@@ -408,16 +408,12 @@ class TestDedupStatePersistence:
 
             # Process B (index 1)
             text_b = "Casriga waxaa jira technology aad u weyn oo beddel ku yimid."
-            is_dup_b, _, _, hash_b, _ = engine.process_document(
-                text_b, "https://example.com/B"
-            )
+            is_dup_b, _, _, hash_b, _ = engine.process_document(text_b, "https://example.com/B")
             assert not is_dup_b, "B should NOT be duplicate (completely different text)"
 
             # Process C (index 2, cache full)
             text_c = "Kaluumayska Soomaaliya waa mid ka mid ah in yar ee aduunka."
-            is_dup_c, _, _, hash_c, _ = engine.process_document(
-                text_c, "https://example.com/C"
-            )
+            is_dup_c, _, _, hash_c, _ = engine.process_document(text_c, "https://example.com/C")
             assert not is_dup_c, "C should NOT be duplicate (completely different text)"
 
             # Process A again (should be detected as duplicate AND move to end)

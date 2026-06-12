@@ -949,4 +949,3 @@ class PostgresLedger(LedgerBackend):
             result["test_connection_success"] = False
 
         return result
-

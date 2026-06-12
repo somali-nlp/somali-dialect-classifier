@@ -6,15 +6,20 @@ Confirms fix correctness for:
   Fix 3 — HF MIME pre-screen (mime-rejected records caught, none in silver)
 """
 
+import glob
 import json
+import os as _os
 import re
 import sys
-import glob
 import time
 from pathlib import Path
 
-import pyarrow.parquet as pq
 import pyarrow as pa
+import pyarrow.parquet as pq
+
+# Provenance: mark any pipeline runs triggered by this script as 'validation'
+# so they are excluded from campaign auto-init and never stamp a campaign_id.
+_os.environ.setdefault("SDC_RUN__PURPOSE", "validation")
 
 PROJECT_ROOT = Path("/Users/ilyas/Desktop/Computer Programming/somali-nlp-projects/somali-dialect-classifier")
 SILVER_ROOT = PROJECT_ROOT / "data/processed/silver"
@@ -310,7 +315,7 @@ section("VERIFICATION COMPLETE")
 rpt(f"Run timestamp: 2026-05-29")
 rpt(f"Sources verified: {list(source_tables.keys())}")
 
-report_path = PROJECT_ROOT / "reports/audit/silver_e2e_verification_20260529.md"
+report_path = PROJECT_ROOT / "data/reports/silver_e2e_verification_20260529.md"
 report_path.parent.mkdir(parents=True, exist_ok=True)
 with open(report_path, "w") as f:
     f.write("# Silver E2E Verification — 2026-05-29\n\n")

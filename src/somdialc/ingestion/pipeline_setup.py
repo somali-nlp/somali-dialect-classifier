@@ -273,7 +273,6 @@ class PipelineSetup:
         Returns:
             Number of files removed.
         """
-        config = get_config()
         if root is None:
             root = Path("data")
         if not root.exists():

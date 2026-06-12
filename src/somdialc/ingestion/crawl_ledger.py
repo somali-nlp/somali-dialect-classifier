@@ -118,6 +118,11 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
                 conn.execute("INSERT OR IGNORE INTO schema_version (version) VALUES (1)")
                 logger.info("Applied schema version 1")
 
+            if current_version < 2:
+                self._apply_schema_v2(conn)
+                conn.execute("INSERT OR IGNORE INTO schema_version (version) VALUES (2)")
+                logger.info("Applied schema version 2: run_purpose + campaign_id on pipeline_runs")
+
     def _apply_schema_v1(self, conn: sqlite3.Connection) -> None:
         """
         Apply version 1 schema (SQLite only - for development).
@@ -246,6 +251,33 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
             "CREATE INDEX IF NOT EXISTS idx_pipeline_runs_source_status ON pipeline_runs(source, status)"
         )
 
+    def _apply_schema_v2(self, conn: sqlite3.Connection) -> None:
+        """
+        Apply version 2 schema: add run_purpose and campaign_id to pipeline_runs.
+
+        Uses ALTER TABLE to preserve existing rows (including the 5 COMPLETED
+        production rows).  DEFAULT values:
+          run_purpose TEXT NOT NULL DEFAULT 'production'
+          campaign_id TEXT NULL
+
+        SQLite ALTER TABLE ADD COLUMN always succeeds when the column does not
+        exist; the guard approach (catching OperationalError) is used instead of
+        an IF NOT EXISTS clause, which SQLite does not support for ALTER TABLE.
+        """
+        for statement in [
+            "ALTER TABLE pipeline_runs ADD COLUMN run_purpose TEXT NOT NULL DEFAULT 'production'",
+            "ALTER TABLE pipeline_runs ADD COLUMN campaign_id TEXT",
+        ]:
+            try:
+                conn.execute(statement)
+            except Exception as exc:
+                # Column may already exist if schema_version was somehow
+                # recorded before the ALTER completed (e.g. partial migration).
+                if "duplicate column" in str(exc).lower():
+                    logger.debug("Column already present, skipping: %s", exc)
+                else:
+                    raise
+
     def upsert_url(
         self,
         url: str,
@@ -308,8 +340,8 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
                         retry_count,
                         metadata_json,
                         state.value,
-                        now,
-                        now,
+                        now.isoformat(),
+                        now.isoformat(),
                         url,
                     ),
                 )
@@ -328,7 +360,7 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
                         url,
                         source,
                         state.value,
-                        now,
+                        now.isoformat(),
                         text_hash,
                         minhash_signature,
                         silver_id,
@@ -338,8 +370,8 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
                         content_length,
                         error_message,
                         metadata_json,
-                        now,
-                        now,
+                        now.isoformat(),
+                        now.isoformat(),
                     ),
                 )
 
@@ -394,7 +426,7 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
                         updated_at = ?
                     WHERE url = ?
                 """,
-                    (state.value, error_message, now, url),
+                    (state.value, error_message, now.isoformat(), url),
                 )
             else:
                 conn.execute(
@@ -404,7 +436,7 @@ class SQLiteLedger(SQLiteCampaignMixin, SQLiteQuotaMixin, SQLitePipelineRunsMixi
                         updated_at = ?
                     WHERE url = ?
                 """,
-                    (state.value, now, url),
+                    (state.value, now.isoformat(), url),
                 )
 
     def check_duplicate_by_hash(self, text_hash: str) -> Optional[str]:
@@ -855,14 +887,7 @@ class CrawlLedger:
             ...     # Only process records newer than last_time
             ...     pass
         """
-        query = """
-            SELECT MAX(updated_at) as last_processing_time
-            FROM crawl_ledger
-            WHERE source = ? AND state = ?
-        """
-
-        result = self.backend.get_last_processing_time(source)
-        return result
+        return self.backend.get_last_processing_time(source)
 
     def get_processed_urls(self, source: str, limit: Optional[int] = None) -> list[dict[str, Any]]:
         """
@@ -1065,6 +1090,7 @@ class CrawlLedger:
         pipeline_type: str,
         config: Optional[dict] = None,
         git_commit: Optional[str] = None,
+        run_purpose: str = "production",
     ) -> None:
         """
         Register a new pipeline run at start.
@@ -1072,17 +1098,19 @@ class CrawlLedger:
         Args:
             run_id: Unique run identifier
             source: Source name
-            pipeline_type: Type ('web', 'file', 'stream')
+            pipeline_type: Type ('web_scraping', 'file_processing', 'stream_processing')
             config: Config snapshot (will be JSON-serialized)
             git_commit: Git commit hash at run time
+            run_purpose: One of 'production', 'validation', 'test' (default 'production')
 
         Example:
             >>> ledger = CrawlLedger()
             >>> ledger.register_pipeline_run(
             ...     run_id="wikipedia_abc123",
             ...     source="wikipedia",
-            ...     pipeline_type="web",
-            ...     config={"quota": 1000}
+            ...     pipeline_type="file_processing",
+            ...     config={"quota": 1000},
+            ...     run_purpose="production",
             ... )
         """
         return self.backend.register_pipeline_run(
@@ -1091,7 +1119,18 @@ class CrawlLedger:
             pipeline_type=pipeline_type,
             config=config,
             git_commit=git_commit,
+            run_purpose=run_purpose,
         )
+
+    def stamp_run_campaign(self, run_id: str, campaign_id: str) -> None:
+        """
+        Stamp the active campaign_id onto a pipeline_runs row.
+
+        Args:
+            run_id: Run to update
+            campaign_id: Campaign identifier to associate with this run
+        """
+        return self.backend.stamp_run_campaign(run_id, campaign_id)
 
     def update_pipeline_run(
         self,
@@ -1304,5 +1343,3 @@ def get_ledger(
         CrawlLedger instance
     """
     return CrawlLedger(backend=backend, db_path=db_path)
-
-

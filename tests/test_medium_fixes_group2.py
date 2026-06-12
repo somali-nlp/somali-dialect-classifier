@@ -36,9 +36,7 @@ class TestM3MemoryLimits:
                 f.write(f"Line {i}\n")
 
         # Create processor with mocked dependencies
-        with patch(
-            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
-        ):
+        with patch("somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
             processor.metrics = MagicMock()
@@ -77,9 +75,7 @@ class TestM3MemoryLimits:
                 f.write(f"Line {i}\n")
 
         # Create processor with mocked dependencies
-        with patch(
-            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
-        ):
+        with patch("somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
             processor.metrics = MagicMock()
@@ -107,9 +103,7 @@ class TestM3MemoryLimits:
                 f.write(f"Line {i}\n")
 
         # Create processor with mocked dependencies
-        with patch(
-            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
-        ):
+        with patch("somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
             processor.metrics = MagicMock()
@@ -149,9 +143,7 @@ class TestM3MemoryLimits:
                 f.write(f"Medium line {i}\n")
 
         # Create processor with mocked dependencies
-        with patch(
-            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
-        ):
+        with patch("somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
             processor.metrics = MagicMock()
@@ -204,9 +196,7 @@ class TestM4OptionalPathReturn:
 
     def test_wikipedia_processor_can_return_none(self):
         """Test that WikipediaSomaliProcessor.run() can return None."""
-        with patch(
-            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
-        ):
+        with patch("somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
 
         # Mock download to return None (304 Not Modified)
@@ -263,9 +253,7 @@ class TestM10TypeHints:
         """Test that _get_http_session() returns a requests.Session instance."""
         import requests
 
-        with patch(
-            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
-        ):
+        with patch("somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
 
         # Get session
@@ -307,9 +295,7 @@ class TestM11LoggingLevels:
         staging_file = tmp_path / "staging.txt"
         staging_file.write_text("\x1e PAGE: Test\nTest content\n")
 
-        with patch(
-            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
-        ):
+        with patch("somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
             processor.metrics = MagicMock()
@@ -418,9 +404,7 @@ def test_all_fixes_integrated():
                 f.write(f"Line {i}\n")
 
         # Create processor (tests M4, M10 type hints work)
-        with patch(
-            "somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"
-        ):
+        with patch("somdialc.ingestion.processors.wikipedia_somali_processor.get_ledger"):
             processor = WikipediaSomaliProcessor(force=True, run_seed="test_run")
             processor.staging_file = staging_file
             processor.metrics = MagicMock()

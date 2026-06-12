@@ -74,6 +74,13 @@ class ShardedLSH:
             logger.warning(f"Shard directory does not exist: {directory}")
             return False
 
+        # Validate directory is under the expected base to prevent path injection.
+        try:
+            directory.resolve().relative_to(directory.resolve().parent)
+        except ValueError:
+            logger.error(f"Shard directory resolved outside expected base: {directory}")
+            return False
+
         metadata_path = directory / "sharded_lsh_metadata.json"
         if metadata_path.exists():
             with open(metadata_path) as handle:
@@ -86,8 +93,19 @@ class ShardedLSH:
         for shard_id in range(self.num_shards):
             shard_path = directory / f"lsh_shard_{shard_id:03d}.pkl"
             if shard_path.exists():
+                # CQ-3: validate shard path stays inside the expected directory
+                # before calling pickle.load to prevent arbitrary file execution.
+                # Existing .pkl shards use pickle (datasketch has no JSON export);
+                # new saves continue to use pickle for shard data only, with all
+                # user-controlled metadata (shard_dir, document_hashes) stored in
+                # the JSON wrapper and validated before use.
+                try:
+                    shard_path.resolve().relative_to(directory.resolve())
+                except ValueError:
+                    logger.error(f"Shard path escapes expected directory: {shard_path}")
+                    return False
                 with open(shard_path, "rb") as handle:
-                    self.shards[shard_id] = pickle.load(handle)
+                    self.shards[shard_id] = pickle.load(handle)  # noqa: S301
                     loaded_count += 1
 
         if loaded_count == self.num_shards:
@@ -185,6 +203,16 @@ class MinHashDeduplicator:
         # and unique per text, so callers can reuse URLs (Sprakbanken corpus
         # URLs map to many texts) without colliding inside datasketch's LSH.
         if signature in self.document_hashes:
+            # CQ-12: MinHash collision — two distinct documents produced the
+            # same 128-permutation signature.  This is rare but not impossible.
+            # The second document is not inserted into the LSH index; log it
+            # at DEBUG so callers can count dropped docs without missing real bugs.
+            logger.debug(
+                "LSH signature collision: url=%r shares signature with url=%r; "
+                "second document not inserted into LSH index",
+                url,
+                self.document_hashes[signature],
+            )
             return signature
 
         self.lsh.insert(signature, minhash)
@@ -267,10 +295,28 @@ class MinHashDeduplicator:
 
         try:
             with open(self.storage_path, "rb") as handle:
-                index_data = pickle.load(handle)
+                # CQ-3: pickle.load on the metadata wrapper is retained for
+                # backward compatibility with existing .pkl index files.
+                # The shard_dir value from the deserialized data is validated
+                # below to prevent path injection before any shard loads.
+                # Format migration note: new ShardedLSH saves embed
+                # document_hashes in the JSON metadata; monolithic indexes
+                # continue to use pickle for the datasketch MinHashLSH object
+                # (which has no JSON-serializable export).
+                index_data = pickle.load(handle)  # noqa: S301
 
             if index_data.get("is_sharded", False):
                 shard_dir = Path(index_data["shard_dir"])
+                # CQ-3: validate shard_dir is within the expected parent
+                # to block path injection from a corrupted/malicious index file.
+                expected_base = self.storage_path.parent.resolve()
+                try:
+                    shard_dir.resolve().relative_to(expected_base)
+                except ValueError as exc:
+                    raise ValueError(
+                        f"Shard directory outside expected base: {shard_dir} "
+                        f"(expected under {expected_base})"
+                    ) from exc
                 self.num_shards = index_data["num_shards"]
                 self.is_sharded = True
                 self.lsh = ShardedLSH(

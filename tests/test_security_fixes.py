@@ -43,9 +43,7 @@ class TestPasswordValidation:
         from somdialc.database.postgres_ledger import PostgresLedger
 
         # Mock psycopg2 to avoid actual database connection
-        with patch(
-            "somdialc.database.postgres_ledger.ThreadedConnectionPool"
-        ) as mock_pool:
+        with patch("somdialc.database.postgres_ledger.ThreadedConnectionPool") as mock_pool:
             mock_pool.return_value = MagicMock()
 
             # Should not raise ValueError
@@ -55,9 +53,7 @@ class TestPasswordValidation:
     @patch.dict(os.environ, {"SDC_DB_PASSWORD": "test_password_from_env"})
     def test_crawl_ledger_uses_sdc_db_password(self):
         """CrawlLedger should use SDC_DB_PASSWORD environment variable."""
-        with patch(
-            "somdialc.database.postgres_ledger.ThreadedConnectionPool"
-        ) as mock_pool:
+        with patch("somdialc.database.postgres_ledger.ThreadedConnectionPool") as mock_pool:
             mock_pool.return_value = MagicMock()
 
             ledger = CrawlLedger(backend_type="postgres")
@@ -67,9 +63,7 @@ class TestPasswordValidation:
     @patch.dict(os.environ, {"POSTGRES_PASSWORD": "test_password_fallback"})
     def test_crawl_ledger_uses_postgres_password_fallback(self):
         """CrawlLedger should use POSTGRES_PASSWORD as fallback."""
-        with patch(
-            "somdialc.database.postgres_ledger.ThreadedConnectionPool"
-        ) as mock_pool:
+        with patch("somdialc.database.postgres_ledger.ThreadedConnectionPool") as mock_pool:
             mock_pool.return_value = MagicMock()
 
             ledger = CrawlLedger(backend_type="postgres")
@@ -177,9 +171,7 @@ class TestSQLInjectionPrevention:
         """PostgresLedger should validate limit parameter."""
         from somdialc.database.postgres_ledger import PostgresLedger
 
-        with patch(
-            "somdialc.database.postgres_ledger.ThreadedConnectionPool"
-        ) as mock_pool:
+        with patch("somdialc.database.postgres_ledger.ThreadedConnectionPool") as mock_pool:
             mock_pool.return_value = MagicMock()
             ledger = PostgresLedger(password="test_password")
 
@@ -199,9 +191,7 @@ class TestSQLInjectionPrevention:
         """Verify PostgresLedger uses parameterized queries for LIMIT."""
         from somdialc.database.postgres_ledger import PostgresLedger
 
-        with patch(
-            "somdialc.database.postgres_ledger.ThreadedConnectionPool"
-        ) as mock_pool:
+        with patch("somdialc.database.postgres_ledger.ThreadedConnectionPool") as mock_pool:
             mock_pool.return_value = MagicMock()
             ledger = PostgresLedger(password="test_password")
 
@@ -505,9 +495,7 @@ class TestURLValidationSSRFProtection:
         )
 
         # Mock config with malicious RSS feed
-        with patch(
-            "somdialc.ingestion.processors.bbc_somali_processor.get_config"
-        ) as mock_config:
+        with patch("somdialc.ingestion.processors.bbc_somali_processor.get_config") as mock_config:
             mock_config.return_value.scraping.bbc.rss_feeds = [
                 "http://127.0.0.1:8080/malicious-feed",  # SSRF attempt
                 "https://www.bbc.com/somali/rss.xml",  # Valid
@@ -555,9 +543,7 @@ class TestURLValidationSSRFProtection:
             BBCSomaliProcessor,
         )
 
-        with patch(
-            "somdialc.ingestion.processors.bbc_somali_processor.get_config"
-        ) as mock_config:
+        with patch("somdialc.ingestion.processors.bbc_somali_processor.get_config") as mock_config:
             mock_config.return_value.scraping.bbc.rss_feeds = ["https://www.bbc.com/somali/rss.xml"]
             mock_config.return_value.scraping.bbc.max_items_per_feed = 10
             mock_config.return_value.scraping.bbc.check_frequency_hours = 1

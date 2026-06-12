@@ -88,10 +88,8 @@ class WikipediaSomaliProcessor(BasePipeline):
 
         # Dependency injection: store metrics factory for lazy initialization
 
-        _default_metrics_factory = (
-            lambda run_id, source: MetricsCollector(
-                run_id, source, pipeline_type=PipelineType.FILE_PROCESSING
-            )
+        _default_metrics_factory = lambda run_id, source: MetricsCollector(
+            run_id, source, pipeline_type=PipelineType.FILE_PROCESSING
         )
         self._metrics_factory = metrics_factory or _default_metrics_factory
 
@@ -646,7 +644,11 @@ class WikipediaSomaliProcessor(BasePipeline):
                             truncated = True
 
                         yield _make_record(
-                            current_title, current_page_id, current_timestamp, current_lines, truncated
+                            current_title,
+                            current_page_id,
+                            current_timestamp,
+                            current_lines,
+                            truncated,
                         )
 
                     # Parse marker line: "\x1e PAGE: <title>\t<page_id>\t<timestamp>"

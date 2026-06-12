@@ -77,6 +77,14 @@ class BasePipeline(DataProcessor, ABC):
 
         if filter_engine is None:
             self._register_filters()
+            # DATA-7: register a configurable min-token floor after all
+            # source-specific filters so that every source rejects short
+            # fragments (fewer than 5 whitespace tokens by default).
+            # Processors that need a different floor should pass a custom
+            # filter_engine with the floor already registered.
+            from ..quality.filter_functions import min_token_floor_filter
+
+            self.filter_engine.register_filter(min_token_floor_filter, {"min_tokens": 5})
 
         self.raw_dir, self.staging_dir, self.processed_dir = PipelineSetup.get_directory_paths(
             self.source, self.date_accessed
@@ -97,17 +105,17 @@ class BasePipeline(DataProcessor, ABC):
         # Log configuration at startup
         self._log_configuration()
 
-        # TD-025: Register this run in pipeline_runs as soon as the processor
-        # is constructed.  This fires for every CLI invocation path (not just
-        # run()) so the table is always populated regardless of which subset of
-        # download/extract/process the CLI calls.  It is idempotent — if the
-        # orchestrator already registered the run_id, the helper short-circuits.
-        # WARNING (CAMP-1): this is a real ledger write at construction time.
-        # Code that instantiates a processor outside a live pipeline run
-        # (scripts, notebooks, ad-hoc REPL use) must point SDC_LEDGER_SQLITE_PATH
-        # at a throwaway path first, or it will insert RUNNING rows into the
-        # production ledger. pytest is isolated via tests/conftest.py.
-        self._ensure_pipeline_run_registered()
+        # TD-025 / CAMP-1: pipeline_runs registration is now LAZY — it fires at
+        # the entry of each public pipeline stage (process() in BasePipeline;
+        # run() for the full-pipeline path) rather than at construction time.
+        # This makes processor construction side-effect-free: instantiating a
+        # processor in a script, notebook, or test never writes to the ledger.
+        # The helper is idempotent — repeated calls within the same run_id are
+        # no-ops — so any CLI subset that reaches at least one stage still
+        # registers exactly one row (TD-025 preserved).
+        # NOTE for parallel-wave Executors: _ensure_pipeline_run_registered() is
+        # the single hook for campaign/provenance logic; keep it cohesive and
+        # do not inline ledger calls in individual stage methods.
 
     def _log_configuration(self) -> None:
         """
@@ -316,9 +324,18 @@ class BasePipeline(DataProcessor, ABC):
         Returns:
             Path to silver Parquet file, or None if no records to process
         """
+        # Lazy registration: register exactly once per run_id at first stage
+        # entry.  Idempotent — safe to call from run() and directly from CLI.
+        self._ensure_pipeline_run_registered()
         if not self.staging_file or not self.staging_file.exists():
             raise FileNotFoundError(f"Staging file not found: {self.staging_file}")
         self.processed_dir.mkdir(parents=True, exist_ok=True)
+        # CQ-1: processed_file is processor-specific; guard against subclasses
+        # that forgot to assign it before calling process().
+        if self.processed_file is None:
+            raise NotImplementedError(
+                f"{type(self).__name__} must assign self.processed_file before calling process()"
+            )
         if self.processed_file.exists():
             if not self.force:
                 self.logger.info(
@@ -424,11 +441,25 @@ class BasePipeline(DataProcessor, ABC):
             fout.write(f"=== {raw_record.title} ===\n{cleaned}\n\n")
             script_info = detect_scripts(cleaned)
             base_meta = self._get_source_metadata()
+            # Provenance: stamp run_purpose and campaign_id into every silver
+            # record's source_metadata.  campaign_id is None for non-production
+            # runs; callers reading silver can filter on run_purpose.
+            _provenance_campaign_id: Optional[str] = None
+            try:
+                _ledger = getattr(self, "ledger", None)
+                if _ledger is not None:
+                    _row = _ledger.get_pipeline_run(self.run_id)
+                    if _row is not None:
+                        _provenance_campaign_id = _row.get("campaign_id")
+            except Exception:
+                pass
             augmented_meta = {
                 **base_meta,
                 "scripts": script_info["scripts"],
                 "dominant_script": script_info["dominant_script"],
                 "cs_ratio": compute_cs_ratio(cleaned),
+                "run_purpose": self._get_run_purpose(),
+                "campaign_id": _provenance_campaign_id,
             }
             record = self.record_builder.build_silver_record(
                 raw_record=raw_record,
@@ -707,12 +738,51 @@ class BasePipeline(DataProcessor, ABC):
                 return ptype
         return "web_scraping"
 
+    def _get_run_purpose(self) -> str:
+        """
+        Resolve run purpose from configuration.
+
+        Reads SDC_RUN__PURPOSE via get_config() with a defensive getattr
+        fallback to 'production'.  The parallel config Executor (manifest
+        hm-019ebd66-100d) is wiring the `run` sub-config with a `purpose`
+        field this round; the fallback ensures this code works regardless of
+        merge timing.
+
+        Valid values: 'production', 'validation', 'test'.
+        """
+        try:
+            config = get_config()
+            run_cfg = getattr(config, "run", None)
+            purpose = (
+                getattr(run_cfg, "purpose", "production") if run_cfg is not None else "production"
+            )
+            if purpose not in ("production", "validation", "test"):
+                self.logger.warning(
+                    "Unknown run_purpose %r from config; defaulting to 'production'", purpose
+                )
+                return "production"
+            return purpose
+        except Exception:
+            return "production"
+
     def _ensure_pipeline_run_registered(self) -> bool:
         """
-        Register this run in pipeline_runs if not already present.
+        Register this run in pipeline_runs if not already present, then fire
+        the campaign lifecycle hook for production-purpose runs.
 
-        Called at the start of run() so CLI invocations (which bypass the
-        orchestrator's _run_locked_pipeline_task) still populate the table.
+        Called at the start of run() and process() so CLI invocations (which
+        bypass the orchestrator's _run_locked_pipeline_task) still populate
+        the table.  The helper is idempotent: repeated calls for the same
+        run_id are no-ops.
+
+        Campaign lifecycle (production runs only):
+          - If campaign_init_001 does not exist → start it (auto-init).
+          - If campaign_init_001 is ACTIVE and now >= start_date + duration_days
+            → complete it (auto-complete, CAMP-8).
+          - Stamp campaign_id onto the run row.
+
+        validation/test runs: campaign_id stays NULL, campaigns are never
+        auto-started.
 
         Returns True when this method performed the registration (CLI path);
         False when the row already existed (orchestrator pre-registered it).
@@ -721,21 +791,94 @@ class BasePipeline(DataProcessor, ABC):
         if ledger is None:
             return False
         try:
+            run_purpose = self._get_run_purpose()
             existing = ledger.get_pipeline_run(self.run_id)
-            if existing is not None:
-                # Orchestrator already registered; nothing to do.
-                return False
-            ledger.register_pipeline_run(
-                run_id=self.run_id,
-                source=self.source,
-                pipeline_type=self._get_pipeline_type(),
-                git_commit=self.git_commit,
-            )
-            ledger.update_pipeline_run(run_id=self.run_id, status="RUNNING")
-            return True
+            if existing is None:
+                ledger.register_pipeline_run(
+                    run_id=self.run_id,
+                    source=self.source,
+                    pipeline_type=self._get_pipeline_type(),
+                    git_commit=self.git_commit,
+                    run_purpose=run_purpose,
+                )
+                ledger.update_pipeline_run(run_id=self.run_id, status="RUNNING")
+                registered_now = True
+            else:
+                registered_now = False
+
+            # Campaign lifecycle — only for production runs
+            if run_purpose == "production":
+                self._handle_campaign_lifecycle(ledger)
+
+            return registered_now
         except Exception as exc:
             self.logger.warning(f"Could not register pipeline run in ledger: {exc}")
             return False
+
+    def _handle_campaign_lifecycle(self, ledger) -> None:
+        """
+        Fire campaign auto-init and auto-complete for production runs.
+
+        Reads campaign config from get_config() with defensive fallbacks so the
+        method works regardless of whether the parallel config Executor has
+        landed its `run` / `campaign` sub-config yet.
+        """
+        try:
+            from datetime import timedelta
+
+            config = get_config()
+            # Campaign settings live on config.campaign (SDC_CAMPAIGN__*);
+            # defensive fallbacks keep the hook working on older configs.
+            campaign_cfg = getattr(config, "campaign", None)
+            campaign_id = "campaign_init_001"
+            duration_days = 6
+            if campaign_cfg is not None:
+                campaign_id = getattr(campaign_cfg, "id", campaign_id)
+                duration_days = getattr(campaign_cfg, "duration_days", duration_days)
+
+            status = ledger.get_campaign_status(campaign_id)
+
+            if status is None:
+                # Auto-init: campaign does not exist yet
+                ledger.start_campaign(
+                    campaign_id,
+                    "Initial Data Ingestion",
+                    {"duration_days": duration_days},
+                )
+                self.logger.info(
+                    "Campaign auto-initialised: %s (duration %d days)",
+                    campaign_id,
+                    duration_days,
+                )
+                status = "ACTIVE"
+
+            if status == "ACTIVE":
+                # Check expiry
+
+                row = None
+                try:
+                    row = ledger.get_pipeline_run.__self__.backend.connection.execute(
+                        "SELECT start_date FROM campaigns WHERE campaign_id = ?",
+                        (campaign_id,),
+                    ).fetchone()
+                except Exception:
+                    pass
+
+                if row is not None:
+                    raw_start = row[0] if isinstance(row, (list, tuple)) else row["start_date"]
+                    start_dt = datetime.fromisoformat(str(raw_start).replace("Z", "+00:00"))
+                    now_utc = datetime.now(timezone.utc)
+                    if now_utc >= start_dt + timedelta(days=duration_days):
+                        ledger.complete_campaign(campaign_id)
+                        self.logger.info("Campaign auto-completed (expired): %s", campaign_id)
+                        status = "COMPLETED"
+
+                if status == "ACTIVE":
+                    # Stamp campaign_id onto this run row
+                    ledger.stamp_run_campaign(self.run_id, campaign_id)
+
+        except Exception as exc:
+            self.logger.warning("Campaign lifecycle hook failed (non-fatal): %s", exc)
 
     def _finalise_pipeline_run(
         self,
@@ -745,13 +888,16 @@ class BasePipeline(DataProcessor, ABC):
         records_processed: Optional[int] = None,
     ) -> None:
         """
-        Update pipeline_runs status at the end of run().
+        Update pipeline_runs status at the end of run() and write a manifest.
 
         Only updates rows that were registered by _ensure_pipeline_run_registered
         (i.e. the CLI path).  The orchestrator path owns its own status updates.
 
         If records_processed is not supplied explicitly, the method derives the
         count from silver_writer row counts so the value is always accurate.
+
+        CAMP-11: writes data/manifests/<run_id>.json for every completed per-source
+        run so manifests are no longer limited to the orchestrator path.
         """
         ledger = getattr(self, "ledger", None)
         if ledger is None:
@@ -773,6 +919,56 @@ class BasePipeline(DataProcessor, ABC):
             )
         except Exception as exc:
             self.logger.warning(f"Could not update pipeline run status in ledger: {exc}")
+
+        # Write per-source manifest (CAMP-11) — non-fatal on failure
+        if status == "COMPLETED":
+            try:
+                self._write_run_manifest(records_processed or 0)
+            except Exception as exc:
+                self.logger.warning(f"Manifest write failed (non-fatal): {exc}")
+
+    def _write_run_manifest(self, records_processed: int) -> None:
+        """
+        Write a JSON manifest for this completed per-source run.
+
+        Includes run_purpose and campaign_id for provenance (CAMP-5/CAMP-11).
+        The manifest_dir is resolved from config so it respects test isolation.
+        """
+        from ..infra.manifest_writer import ManifestWriter
+
+        config = get_config()
+        manifest_dir = getattr(config.data, "manifests_dir", None)
+        if manifest_dir is None:
+            # Fall back: sibling of silver_dir
+            manifest_dir = config.data.silver_dir.parent.parent / "manifests"
+
+        # Resolve campaign_id from the ledger row
+        run_purpose = self._get_run_purpose()
+        campaign_id: Optional[str] = None
+        try:
+            _ledger = getattr(self, "ledger", None)
+            if _ledger is not None:
+                _row = _ledger.get_pipeline_run(self.run_id)
+                if _row is not None:
+                    campaign_id = _row.get("campaign_id")
+        except Exception:
+            pass
+
+        writer = ManifestWriter(manifest_dir=Path(manifest_dir))
+        source_entry = {
+            "status": "completed",
+            "records_ingested": records_processed,
+            "partitions": [self.date_accessed],
+            "quota_hit": False,
+            "processing_time_seconds": 0.0,
+            "run_purpose": run_purpose,
+            "campaign_id": campaign_id,
+        }
+        manifest = writer.create_manifest(
+            run_id=self.run_id,
+            sources={self.source: source_entry},
+        )
+        writer.write_manifest(manifest)
 
     def _count_silver_records(self) -> int:
         """Return the row count of the current silver output, or 0 if unavailable."""
@@ -797,13 +993,14 @@ class BasePipeline(DataProcessor, ABC):
         the article set. We must short-circuit on None at each step or we
         leak paid API calls and divide-by-zero in the empty case.
 
-        pipeline_runs registration is now performed in __init__ so this method
-        always calls _finalise_pipeline_run regardless of which path registered
-        the row.  The orchestrator path owns its own subsequent status updates
-        after run() returns, so finalising here is safe (idempotent status SET).
+        pipeline_runs registration is lazy: _ensure_pipeline_run_registered()
+        is called here (before download) so that any full-pipeline run registers
+        even if the CLI never reaches process().  The orchestrator path owns its
+        own subsequent status updates after run() returns; finalising here is
+        safe because ledger.update_pipeline_run is an idempotent SET.
         """
-        # _ensure_pipeline_run_registered was already called from __init__; this
-        # second call is a no-op when the row already exists (returns False).
+        # Lazy registration: register at first stage entry (idempotent; no-op
+        # if the orchestrator already registered this run_id).
         self._ensure_pipeline_run_registered()
         try:
             if self.download() is None:
@@ -894,4 +1091,3 @@ class BasePipeline(DataProcessor, ABC):
         QualityReporter(self.metrics).generate_markdown_report(report_path)
 
         self.logger.info(f"Generated quality report: {report_path}")
-

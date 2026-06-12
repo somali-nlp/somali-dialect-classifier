@@ -235,25 +235,20 @@ def should_run_source(source: str) -> tuple[bool, str]:
 
 def is_initial_collection_phase() -> bool:
     """
-    Check if we're in the initial collection campaign.
+    Check if campaign_init_001 is currently ACTIVE.
 
-    Uses the 'campaign_init_001' status in the ledger.
+    The lifecycle (auto-init, auto-complete) is handled by
+    BasePipeline._handle_campaign_lifecycle(), which fires on every production
+    run via _ensure_pipeline_run_registered().  This function is now a pure
+    read-only status check; it no longer calls start_campaign() to avoid two
+    competing campaign initializers (ADR-009).
+
+    Returns True if the campaign exists and is ACTIVE; False otherwise
+    (campaign absent, COMPLETED, or in any other state).  The orchestrator's
+    should_run_source() calls this to decide whether cadence logic applies.
     """
     ledger = _get_ledger()
     status = ledger.get_campaign_status("campaign_init_001")
-
-    # If campaign doesn't exist, start it
-    if status is None:
-        from ..infra.config import get_config
-
-        config = get_config()
-        ledger.start_campaign(
-            "campaign_init_001",
-            "Initial Data Ingestion",
-            {"duration_days": config.orchestration.initial_collection_days},
-        )
-        return True
-
     return isinstance(status, str) and status == "ACTIVE"
 
 
@@ -1097,9 +1092,7 @@ def main():
         # Get API token (CLI arg > env var)
         _raw_token = args.tiktok_api_token or config.scraping.tiktok.apify_api_token
         api_token = (
-            _raw_token.get_secret_value()
-            if hasattr(_raw_token, "get_secret_value")
-            else _raw_token
+            _raw_token.get_secret_value() if hasattr(_raw_token, "get_secret_value") else _raw_token
         )
 
         if not api_token:

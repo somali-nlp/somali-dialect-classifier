@@ -275,6 +275,7 @@ def test_all_filter_keys_in_catalog(metrics_dir):
         - Re-export catalog: python scripts/export_filter_catalog.py (if Enhancement #1 implemented)
     """
     from somdialc.quality.filters.catalog import FILTER_CATALOG
+
     all_metrics = load_processing_metrics(metrics_dir)
 
     if not all_metrics:

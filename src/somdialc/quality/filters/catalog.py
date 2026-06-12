@@ -32,6 +32,13 @@ FILTER_CATALOG: dict[str, tuple[str, str, str]] = {
         "Text must be at least 50 characters after cleaning",
         "length",
     ),
+    "min_token_floor_filter": (
+        "Minimum token count (5 tokens)",
+        "Text must contain at least 5 whitespace-delimited tokens (DATA-7). "
+        "Rejects URL-only records, single-word fragments, and punctuation runs "
+        "that pass the character-length filter. Default floor: 5 tokens.",
+        "length",
+    ),
     "text_too_short_after_cleanup": (
         "Very short text (<3 chars)",
         "Text has fewer than 3 characters after removing symbols/emojis",

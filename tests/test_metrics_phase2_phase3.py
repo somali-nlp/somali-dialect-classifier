@@ -126,7 +126,6 @@ class TestLayeredMetricsArchitecture:
 
     @pytest.mark.skip(reason="TD-NNN: Metrics calculation mismatch - needs investigation")
     @pytest.mark.skip(reason="TD-NNN: Metrics calculation mismatch - needs investigation")
-
     def test_quality_layer(self):
         """Test Layer 3: Quality metrics."""
         collector = MetricsCollector(
@@ -449,7 +448,6 @@ class TestSchemaVersioning:
 
     @pytest.mark.skip(reason="TD-NNN: Metrics calculation mismatch - needs investigation")
     @pytest.mark.skip(reason="TD-NNN: Metrics calculation mismatch - needs investigation")
-
     def test_json_export_includes_legacy_metrics(self, tmp_path):
         """Test JSON export includes legacy metrics for backward compatibility."""
         collector = MetricsCollector(
@@ -471,7 +469,6 @@ class TestSchemaVersioning:
 
     @pytest.mark.skip(reason="TD-NNN: Metrics calculation mismatch - needs investigation")
     @pytest.mark.skip(reason="TD-NNN: Metrics calculation mismatch - needs investigation")
-
     def test_json_export_can_exclude_layered_metrics(self, tmp_path):
         """Test JSON export can exclude layered metrics if requested."""
         collector = MetricsCollector(
@@ -683,7 +680,6 @@ class TestBackwardCompatibility:
 
     @pytest.mark.skip(reason="TD-NNN: Metrics calculation mismatch - needs investigation")
     @pytest.mark.skip(reason="TD-NNN: Metrics calculation mismatch - needs investigation")
-
     def test_legacy_metrics_still_available(self, tmp_path):
         """Test that legacy flat metrics are still available."""
         collector = MetricsCollector(
@@ -707,7 +703,6 @@ class TestBackwardCompatibility:
 
     @pytest.mark.skip(reason="TD-NNN: Metrics calculation mismatch - needs investigation")
     @pytest.mark.skip(reason="TD-NNN: Metrics calculation mismatch - needs investigation")
-
     def test_phase1_tests_still_pass(self):
         """Test that Phase 1 functionality still works."""
         # This is a meta-test - if Phase 1 tests pass, this passes

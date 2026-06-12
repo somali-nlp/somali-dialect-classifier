@@ -1045,6 +1045,7 @@ def serve(port: int, host: str, no_watch: bool):
     if not no_watch:
         try:
             import livereload  # noqa: F401
+
             use_livereload = True
         except ImportError:
             pass
@@ -1058,8 +1059,10 @@ def serve(port: int, host: str, no_watch: bool):
 
         server = Server()
         # Watch source files; on change sync to _site/ then signal livereload
-        server.watch(str(src_dir / "templates"), func=lambda: _sync(
-            str(src_dir / "templates" / "index.html")))
+        server.watch(
+            str(src_dir / "templates"),
+            func=lambda: _sync(str(src_dir / "templates" / "index.html")),
+        )
         server.watch(str(src_dir / "css"))
         server.watch(str(src_dir / "js"))
         server.watch(str(src_dir / "data"))
@@ -1072,23 +1075,23 @@ def serve(port: int, host: str, no_watch: bool):
                 if sub_dest.exists():
                     shutil.rmtree(sub_dest)
                 shutil.copytree(sub_src, sub_dest)
-        click.echo(f"  Browser auto-refreshes on file changes")
-        click.echo(f"  Press Ctrl+C to stop\n")
+        click.echo("  Browser auto-refreshes on file changes")
+        click.echo("  Press Ctrl+C to stop\n")
         try:
             import webbrowser
+
             webbrowser.open(f"http://{host}:{port}")
         except Exception:
             pass
         server.serve(root=str(site_dir), host=host, port=port)
     else:
-        handler = functools.partial(
-            http.server.SimpleHTTPRequestHandler, directory=str(site_dir)
-        )
+        handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(site_dir))
         with http.server.HTTPServer((host, port), handler) as httpd:
-            click.echo(f"  Manual refresh needed (install livereload for auto-refresh)")
-            click.echo(f"  Press Ctrl+C to stop\n")
+            click.echo("  Manual refresh needed (install livereload for auto-refresh)")
+            click.echo("  Press Ctrl+C to stop\n")
             try:
                 import webbrowser
+
                 webbrowser.open(f"http://{host}:{port}")
             except Exception:
                 pass

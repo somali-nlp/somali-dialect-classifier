@@ -15,7 +15,6 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-
 from somdialc.ingestion.processors.wikipedia_somali_processor import (
     WikipediaSomaliProcessor,
 )
@@ -88,8 +87,6 @@ class TestWikipediaIntegration:
         assert page_count == 3, f"Expected 3 pages, got {page_count}"
 
     @pytest.mark.skip(reason="TD-NNN: Parquet schema incompatibility - dictionary vs string type")
-
-
     def test_process_creates_silver_dataset(
         self, compressed_wiki_fixture, temp_data_dir, monkeypatch
     ):
@@ -156,7 +153,6 @@ class TestWikipediaIntegration:
 
     @pytest.mark.skip(reason="TD-NNN: Parquet schema incompatibility - dictionary vs string type")
     @pytest.mark.skip(reason="TD-NNN: Parquet schema incompatibility - dictionary vs string type")
-
     def test_text_cleaning_applied(self, compressed_wiki_fixture, temp_data_dir, monkeypatch):
         """Test that wiki markup is properly cleaned."""
         monkeypatch.chdir(temp_data_dir.parent)
@@ -191,7 +187,6 @@ class TestWikipediaIntegration:
 
     @pytest.mark.skip(reason="TD-NNN: Parquet schema incompatibility - dictionary vs string type")
     @pytest.mark.skip(reason="TD-NNN: Parquet schema incompatibility - dictionary vs string type")
-
     def test_record_ids_are_unique(self, compressed_wiki_fixture, temp_data_dir, monkeypatch):
         """Test that all record IDs are unique."""
         monkeypatch.chdir(temp_data_dir.parent)
@@ -235,13 +230,12 @@ class TestWikipediaIntegration:
         assert processor.processed_file.exists()
 
         # Verify silver dataset
-        silver_base = Path("data/processed/silver")
+        silver_base = processor.silver_writer.base_dir
         parquet_files = list(silver_base.rglob("*.parquet"))
         assert len(parquet_files) > 0
 
     @pytest.mark.skip(reason="TD-NNN: Parquet schema incompatibility - dictionary vs string type")
     @pytest.mark.skip(reason="TD-NNN: Parquet schema incompatibility - dictionary vs string type")
-
     def test_idempotency(self, compressed_wiki_fixture, temp_data_dir, monkeypatch):
         """Test that running process twice produces same results."""
         monkeypatch.chdir(temp_data_dir.parent)

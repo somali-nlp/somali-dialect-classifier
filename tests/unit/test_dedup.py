@@ -458,7 +458,9 @@ class TestRedirectStubDedup:
 
         text = "SOFEN waa hay'ad waxbarashada rasmiga ah ee Soomaaliya."
 
-        is_dup1, _, _, hash1, _ = engine.process_document(text, "https://so.wikipedia.org/wiki/SOFEN")
+        is_dup1, _, _, hash1, _ = engine.process_document(
+            text, "https://so.wikipedia.org/wiki/SOFEN"
+        )
         is_dup2, _, canonical, hash2, _ = engine.process_document(
             text, "https://so.wikipedia.org/wiki/Somali_Formal_Education_Network"
         )
@@ -495,8 +497,14 @@ class TestRedirectStubDedup:
         variants = [
             ("SOFEN", "https://so.wikipedia.org/wiki/SOFEN"),
             ("Sofen", "https://so.wikipedia.org/wiki/Sofen"),
-            ("Somali Formal Education Network", "https://so.wikipedia.org/wiki/Somali_Formal_Education_Network"),
-            ("SOMALI FORMAL EDUCATION NETWORK (SOFEN)", "https://so.wikipedia.org/wiki/SOMALI_FORMAL_EDUCATION_NETWORK"),
+            (
+                "Somali Formal Education Network",
+                "https://so.wikipedia.org/wiki/Somali_Formal_Education_Network",
+            ),
+            (
+                "SOMALI FORMAL EDUCATION NETWORK (SOFEN)",
+                "https://so.wikipedia.org/wiki/SOMALI_FORMAL_EDUCATION_NETWORK",
+            ),
         ]
 
         results = []
@@ -518,9 +526,8 @@ class TestBasePipelineDedupGuard:
 
     def _build_processor(self, tmp_path):
         """Return a minimal concrete subclass of BasePipeline with a real DedupEngine."""
-        import json
 
-        from somdialc.ingestion.base_pipeline import BasePipeline, RawRecord
+        from somdialc.ingestion.base_pipeline import BasePipeline
         from somdialc.ingestion.dedup import DedupConfig, DedupEngine
         from somdialc.quality.text_cleaners import TextCleaningPipeline, WhitespaceCleaner
 
@@ -575,7 +582,11 @@ class TestBasePipelineDedupGuard:
 
         text = "Cunto samaysiga waa farshaxan aad loo jeclahay."
         records = [
-            RawRecord(title="Cunto samaysiga", text=text, url="https://so.wikipedia.org/wiki/Cunto_samaysiga"),
+            RawRecord(
+                title="Cunto samaysiga",
+                text=text,
+                url="https://so.wikipedia.org/wiki/Cunto_samaysiga",
+            ),
             RawRecord(title="Karinta", text=text, url="https://so.wikipedia.org/wiki/Karinta"),
         ]
         staging.touch()

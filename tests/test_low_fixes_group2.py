@@ -303,22 +303,26 @@ class TestL6FilterRegistrationRefactoring:
 
     def test_filter_registration_uses_filter_engine_api(self):
         """Test filter registration uses FilterEngine.register_filter() API."""
-        pipeline = MinimalTestPipeline(source="wikipedia")
+        from somdialc.quality.filter_functions import min_length_filter, min_token_floor_filter
 
-        from somdialc.quality.filter_functions import min_length_filter
+        pipeline = MinimalTestPipeline(source="wikipedia")
 
         # Should use register_filter API
         pipeline.filter_engine.register_filter(min_length_filter, {"threshold": 50})
 
-        # Verify filter was added
-        assert len(pipeline.filter_engine.filters) == 1
-        assert pipeline.filter_engine.filters[0][0] == min_length_filter
+        # BasePipeline.__init__ appends min_token_floor_filter (DATA-7) after
+        # _register_filters(), so MinimalTestPipeline (which has no _register_filters)
+        # has exactly 1 filter (the floor). After the explicit registration above: 2.
+        filter_funcs = [f for f, _ in pipeline.filter_engine.filters]
+        assert min_length_filter in filter_funcs
+        assert min_token_floor_filter in filter_funcs
 
     def test_multiple_processors_can_register_different_filters(self):
         """Test different processors can register different filter combinations."""
         from somdialc.quality.filter_functions import (
             langid_filter,
             min_length_filter,
+            min_token_floor_filter,
         )
 
         class Pipeline1(MinimalTestPipeline):
@@ -332,11 +336,13 @@ class TestL6FilterRegistrationRefactoring:
         p1 = Pipeline1(source="wikipedia")
         p2 = Pipeline2(source="bbc")
 
-        # Each should have their own filter set
-        assert len(p1.filter_engine.filters) == 1
-        assert len(p2.filter_engine.filters) == 1
-        assert p1.filter_engine.filters[0][0] == min_length_filter
-        assert p2.filter_engine.filters[0][0] == langid_filter
+        # Each has their source-specific filter PLUS the DATA-7 min_token_floor_filter.
+        p1_funcs = [f for f, _ in p1.filter_engine.filters]
+        p2_funcs = [f for f, _ in p2.filter_engine.filters]
+        assert min_length_filter in p1_funcs
+        assert langid_filter in p2_funcs
+        assert min_token_floor_filter in p1_funcs
+        assert min_token_floor_filter in p2_funcs
 
 
 # ==============================================================================
@@ -349,7 +355,7 @@ class TestIntegrationLowPriorityFixes:
 
     def test_pipeline_with_valid_seed_and_filters(self):
         """Test pipeline initialization with valid seed and filter registration."""
-        from somdialc.quality.filter_functions import min_length_filter
+        from somdialc.quality.filter_functions import min_length_filter, min_token_floor_filter
 
         class TestPipeline(MinimalTestPipeline):
             def _register_filters(self):
@@ -360,12 +366,14 @@ class TestIntegrationLowPriorityFixes:
         # Should have correct run_id
         assert "20251230_120000_wikipedia_test123" in pipeline.run_id
 
-        # Should have filter registered
-        assert len(pipeline.filter_engine.filters) == 1
+        # Source filter + DATA-7 floor filter should both be registered
+        filter_funcs = [f for f, _ in pipeline.filter_engine.filters]
+        assert min_length_filter in filter_funcs
+        assert min_token_floor_filter in filter_funcs
 
     def test_pipeline_with_invalid_seed_still_registers_filters(self):
         """Test pipeline with invalid seed still registers filters correctly."""
-        from somdialc.quality.filter_functions import langid_filter
+        from somdialc.quality.filter_functions import langid_filter, min_token_floor_filter
 
         class TestPipeline(MinimalTestPipeline):
             def _register_filters(self):
@@ -376,8 +384,10 @@ class TestIntegrationLowPriorityFixes:
         # Should fall back to default run_id
         assert "wikipedia" in pipeline.run_id
 
-        # Should still register filters
-        assert len(pipeline.filter_engine.filters) == 1
+        # Both source filter and DATA-7 floor filter should be registered
+        filter_funcs = [f for f, _ in pipeline.filter_engine.filters]
+        assert langid_filter in filter_funcs
+        assert min_token_floor_filter in filter_funcs
 
     def test_crawl_state_enum_used_in_ledger_operations(self):
         """Test CrawlState enum is used in ledger state checks."""
@@ -394,7 +404,7 @@ class TestIntegrationLowPriorityFixes:
 
     def test_exception_handling_doesnt_break_filter_registration(self):
         """Test exception in run_id parsing doesn't affect filter registration."""
-        from somdialc.quality.filter_functions import min_length_filter
+        from somdialc.quality.filter_functions import min_length_filter, min_token_floor_filter
 
         class TestPipeline(MinimalTestPipeline):
             def _register_filters(self):
@@ -403,7 +413,9 @@ class TestIntegrationLowPriorityFixes:
         # Even with malformed seed, filters should register
         pipeline = TestPipeline(source="wikipedia", run_seed="malformed_seed_123")
 
-        # Filters should still be registered
-        assert len(pipeline.filter_engine.filters) == 1
+        # Both source filter and DATA-7 floor filter should be registered
+        filter_funcs = [f for f, _ in pipeline.filter_engine.filters]
+        assert min_length_filter in filter_funcs
+        assert min_token_floor_filter in filter_funcs
         # Pipeline should still be functional
         assert pipeline.run_id is not None

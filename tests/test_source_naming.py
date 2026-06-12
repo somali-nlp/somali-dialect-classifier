@@ -6,8 +6,6 @@ Verifies that every registered processor exposes the canonical
 MetricsCollector is initialised with the same value.
 """
 
-import pytest
-
 from somdialc.ingestion.source_names import CANONICAL_SOURCES
 
 
@@ -166,8 +164,9 @@ class TestMetricsCollectorReceivesCanonicalSource:
 
     def test_bbc_discovery_metrics_source_is_canonical(self):
         """bbc/discovery.py must pass processor.source to MetricsCollector."""
-        import somdialc.ingestion.processors.bbc.discovery as disc_module
         from unittest.mock import MagicMock, patch
+
+        import somdialc.ingestion.processors.bbc.discovery as disc_module
 
         mock_processor = MagicMock()
         mock_processor.source = CANONICAL_SOURCES["bbc"]

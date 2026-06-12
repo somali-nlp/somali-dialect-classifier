@@ -14,6 +14,7 @@ This module provides streaming validation of silver Parquet files with:
 import logging
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Optional
 
 import pyarrow.parquet as pq
 from pyarrow import dataset as ds
@@ -245,7 +246,7 @@ def iter_validated_records(parquet_path: Path, fail_fast: bool = True) -> Iterat
 
 
 def validate_silver_directory(
-    silver_dir: Path, fail_fast: bool = False, source_filter: str = None
+    silver_dir: Path, fail_fast: bool = False, source_filter: Optional[str] = None
 ) -> dict[str, tuple[int, int, list[dict]]]:
     """
     Validate all Parquet files in a silver directory.

@@ -157,7 +157,9 @@ def scrape_homepage(
     processor.logger.info("Scraping homepage...")
 
     try:
-        response = session.get(processor.base_url, headers=processor.headers, timeout=_REQUEST_TIMEOUT)
+        response = session.get(
+            processor.base_url, headers=processor.headers, timeout=_REQUEST_TIMEOUT
+        )
         response.raise_for_status()
 
         homepage_soup = BeautifulSoup(response.content, "html.parser")

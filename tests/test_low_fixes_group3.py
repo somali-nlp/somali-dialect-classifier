@@ -211,9 +211,7 @@ class TestConfigurationLogging:
             WikipediaSomaliProcessor,
         )
 
-        with patch(
-            "somdialc.ingestion.base_pipeline.get_config", return_value=mock_config
-        ):
+        with patch("somdialc.ingestion.base_pipeline.get_config", return_value=mock_config):
             with caplog.at_level(logging.INFO):
                 # Initialize pipeline (should trigger config logging)
                 WikipediaSomaliProcessor(force=True)
@@ -236,9 +234,7 @@ class TestConfigurationLogging:
             WikipediaSomaliProcessor,
         )
 
-        with patch(
-            "somdialc.ingestion.base_pipeline.get_config", return_value=mock_config
-        ):
+        with patch("somdialc.ingestion.base_pipeline.get_config", return_value=mock_config):
             with caplog.at_level(logging.INFO):
                 # Initialize pipeline
                 WikipediaSomaliProcessor(force=True)
@@ -260,9 +256,7 @@ class TestConfigurationLogging:
             WikipediaSomaliProcessor,
         )
 
-        with patch(
-            "somdialc.ingestion.base_pipeline.get_config", return_value=mock_config
-        ):
+        with patch("somdialc.ingestion.base_pipeline.get_config", return_value=mock_config):
             with caplog.at_level(logging.INFO):
                 WikipediaSomaliProcessor(force=True)
 
@@ -287,9 +281,7 @@ class TestConfigurationLogging:
             WikipediaSomaliProcessor,
         )
 
-        with patch(
-            "somdialc.ingestion.base_pipeline.get_config", return_value=mock_config
-        ):
+        with patch("somdialc.ingestion.base_pipeline.get_config", return_value=mock_config):
             with caplog.at_level(logging.INFO):
                 WikipediaSomaliProcessor(force=True)
 
@@ -312,9 +304,7 @@ class TestConfigurationLogging:
             WikipediaSomaliProcessor,
         )
 
-        with patch(
-            "somdialc.ingestion.base_pipeline.get_config", return_value=mock_config
-        ):
+        with patch("somdialc.ingestion.base_pipeline.get_config", return_value=mock_config):
             with caplog.at_level(logging.INFO):
                 WikipediaSomaliProcessor(force=True)
 
@@ -354,9 +344,7 @@ class TestConfigurationLogging:
         # Make logging attribute raise an exception
         bad_config.logging = MagicMock(side_effect=Exception("Logging config error"))
 
-        with patch(
-            "somdialc.ingestion.base_pipeline.get_config", return_value=bad_config
-        ):
+        with patch("somdialc.ingestion.base_pipeline.get_config", return_value=bad_config):
             # Pipeline should still initialize successfully
             # _log_configuration catches the exception and logs a warning
             processor = WikipediaSomaliProcessor(force=True)
@@ -371,9 +359,7 @@ class TestConfigurationLogging:
             WikipediaSomaliProcessor,
         )
 
-        with patch(
-            "somdialc.ingestion.base_pipeline.get_config", return_value=mock_config
-        ):
+        with patch("somdialc.ingestion.base_pipeline.get_config", return_value=mock_config):
             with caplog.at_level(logging.INFO):
                 WikipediaSomaliProcessor(force=True)
 

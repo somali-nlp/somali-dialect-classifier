@@ -23,6 +23,8 @@ constructions within the test session resolve to temporary directories:
   SDC_DATA__RAW_DIR       → <tmp>/raw
   SDC_DATA__STAGING_DIR   → <tmp>/staging
   SDC_DATA__PROCESSED_DIR → <tmp>/processed
+  SDC_DATA__METRICS_DIR   → <tmp>/metrics          (RFU-5: prevents data/metrics pollution)
+  SDC_DATA__SILVER_DIR    → <tmp>/silver
 
 It also calls reset_config() so the already-cached singleton is invalidated
 before the first processor is constructed.
@@ -194,6 +196,8 @@ def isolated_pipeline_env(tmp_path_factory):
         SDC_DATA__RAW_DIR       — redirects raw data directory
         SDC_DATA__STAGING_DIR   — redirects staging directory
         SDC_DATA__PROCESSED_DIR — redirects processed directory
+        SDC_DATA__METRICS_DIR   — redirects metrics output (RFU-5)
+        SDC_DATA__SILVER_DIR    — redirects silver Parquet output
     """
     tmp_root = tmp_path_factory.mktemp("pipeline_isolation")
     (tmp_root / "ledger").mkdir(parents=True, exist_ok=True)
@@ -201,11 +205,21 @@ def isolated_pipeline_env(tmp_path_factory):
     (tmp_root / "staging").mkdir(parents=True, exist_ok=True)
     (tmp_root / "processed").mkdir(parents=True, exist_ok=True)
 
+    # RFU-5: also redirect metrics writes so tests do not emit discovery JSONs
+    # into data/metrics/ and contaminate production telemetry.
+    (tmp_root / "metrics").mkdir(parents=True, exist_ok=True)
+    (tmp_root / "silver").mkdir(parents=True, exist_ok=True)
+
     overrides = {
         "SDC_LEDGER_SQLITE_PATH": str(tmp_root / "ledger" / "crawl_ledger.db"),
         "SDC_DATA__RAW_DIR": str(tmp_root / "raw"),
         "SDC_DATA__STAGING_DIR": str(tmp_root / "staging"),
         "SDC_DATA__PROCESSED_DIR": str(tmp_root / "processed"),
+        "SDC_DATA__METRICS_DIR": str(tmp_root / "metrics"),
+        "SDC_DATA__SILVER_DIR": str(tmp_root / "silver"),
+        # Campaign/provenance: tests run as purpose=test so they never
+        # auto-start campaigns or write campaign_id onto the test ledger rows.
+        "SDC_RUN__PURPOSE": "test",
     }
 
     # Snapshot originals so teardown can restore precisely.

@@ -292,13 +292,20 @@ class TestHFProcessorFiles:
                 f.write(json.dumps(record) + "\n")
 
         result = processor.process()
-        table = processor.silver_writer.read(
-            source=processor.source, date_accessed=processor.date_accessed
-        )
 
         assert result is not None
         assert result.suffix == ".parquet"
-        assert len(table) == 2
+        # Read only the parquet parts written by this run to avoid accumulation
+        # from other tests sharing the same silver partition (same source+date).
+        # batch_size=1 produces 2 part files; glob by run_id to read both.
+        run_id = processor.run_id
+        silver_dir = result.parent
+        run_parts = sorted(silver_dir.glob(f"*_{run_id}_silver_part-*.parquet"))
+        tables = [pq.ParquetFile(p).read() for p in run_parts]
+        import pyarrow as pa
+
+        combined = pa.concat_tables(tables) if len(tables) > 1 else tables[0]
+        assert len(combined) == 2
 
     def test_process_with_all_filtered_records_returns_processed_path(
         self, temp_work_dir, monkeypatch

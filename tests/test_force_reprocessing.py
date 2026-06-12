@@ -12,7 +12,6 @@ import json
 
 import pytest
 
-
 from somdialc.ingestion.processors.bbc_somali_processor import BBCSomaliProcessor
 
 
@@ -63,8 +62,6 @@ class TestForceReprocessing:
         assert result == processor.processed_file
 
     @pytest.mark.skip(reason="TD-NNN: Pipeline processing error - list indices type mismatch")
-
-
     def test_process_with_force_flag_reprocesses(self, temp_work_dir):
         """Test that force=True causes reprocessing."""
         processor = BBCSomaliProcessor(max_articles=5, force=True)
@@ -205,8 +202,6 @@ class TestBBCCacheInvalidation:
         assert result == processor2.article_links_file
 
     @pytest.mark.skip(reason="TD-NNN: Pipeline processing error - list indices type mismatch")
-
-
     def test_bbc_force_flag_rediscovers_articles(self, temp_work_dir, monkeypatch):
         """Test that force=True bypasses cache even with same parameters."""
         # Create initial cache

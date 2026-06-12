@@ -5,7 +5,7 @@ Uses pydantic-settings for declarative configuration with environment variable s
 
 Usage:
     # Load from environment variables or defaults
-    from somdialc.config import get_config
+    from somdialc.infra.config import get_config
     config = get_config()
 
     # Access settings
@@ -18,6 +18,9 @@ Environment variables:
     SDC_SCRAPING__BBC__MAX_ARTICLES: Override BBC max articles
     SDC_SCRAPING__WIKIPEDIA__BATCH_SIZE: Override Wikipedia batch size
     SDC_LOGGING__LEVEL: Override logging level
+    SDC_RUN__PURPOSE: Override run purpose (production|validation|test)
+    SDC_CAMPAIGN__ID: Override campaign ID
+    SDC_CAMPAIGN__DURATION_DAYS: Override campaign duration in days
 
 Configuration file:
     Create a .env file in the project root or set SDC_CONFIG_FILE env var:
@@ -33,7 +36,7 @@ Requirements:
 """
 
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -46,9 +49,7 @@ class DataConfig(BaseSettings):
         env_prefix="SDC_DATA__", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    raw_dir: Path = Field(
-        default=Path("data/raw"), description="Directory for raw scraped data"
-    )
+    raw_dir: Path = Field(default=Path("data/raw"), description="Directory for raw scraped data")
     silver_dir: Path = Field(
         default=Path("data/processed/silver"),
         description="Directory for cleaned silver data (Parquet format)",
@@ -88,12 +89,8 @@ class BBCScrapingConfig(BaseSettings):
     max_articles: Optional[int] = Field(
         default=None, description="Maximum articles to scrape (None = unlimited)"
     )
-    min_delay: float = Field(
-        default=1.0, description="Minimum delay between requests (seconds)"
-    )
-    max_delay: float = Field(
-        default=3.0, description="Maximum delay between requests (seconds)"
-    )
+    min_delay: float = Field(default=1.0, description="Minimum delay between requests (seconds)")
+    max_delay: float = Field(default=3.0, description="Maximum delay between requests (seconds)")
     timeout: int = Field(default=30, description="Request timeout (seconds)")
     user_agent: str = Field(
         default="Mozilla/5.0 (compatible; SomaliNLPBot/1.0)",
@@ -194,9 +191,7 @@ class HuggingFaceScrapingConfig(BaseSettings):
 
     # Dataset revision pinning
     default_dataset: str = Field(default="mc4", description="Default dataset to load")
-    dataset_config: str = Field(
-        default="so", description="Dataset configuration (language code)"
-    )
+    dataset_config: str = Field(default="so", description="Dataset configuration (language code)")
     revision: Optional[str] = Field(
         default=None,
         description="Git revision/commit hash to pin dataset version (None = latest)",
@@ -255,6 +250,21 @@ class TikTokScrapingConfig(BaseSettings):
         default=30000, description="Target total comments to collect"
     )
 
+    # Hard per-run spend cap — enforced in ApifyTikTokClient before the POST.
+    # At $1 / 1,000 raw comments this caps the maximum charge for a single run.
+    # None = no cap (operator assumes full responsibility for costs).
+    # A value of 50 means the client refuses to start if the projected raw
+    # comment count across all videos exceeds 50,000 comments (~$50).
+    max_budget_usd: Optional[float] = Field(
+        default=20.0,
+        description=(
+            "Hard per-run Apify spend cap in USD. "
+            "At $1/1,000 raw comments, max_budget_usd=20 caps the run at ~20,000 raw comments. "
+            "Set to None to disable the cap (not recommended for production). "
+            "env: SDC_SCRAPING__TIKTOK__MAX_BUDGET_USD"
+        ),
+    )
+
     # Quality filters (minimal for TikTok - user pays for all comments)
     min_text_length: int = Field(
         default=3, description="Minimum comment length for linguistic value (characters)"
@@ -266,6 +276,82 @@ class TikTokScrapingConfig(BaseSettings):
         default=3600, description="Maximum wait time for actor completion (seconds)"
     )
     batch_size: int = Field(default=1000, description="Items per batch when fetching dataset")
+
+
+class RunConfig(BaseSettings):
+    """
+    Run-level provenance configuration.
+
+    Stamps every pipeline run with an operator-declared intent so that
+    test/validation rows can be distinguished from production rows in
+    the ledger and in silver source_metadata.
+
+    Environment Variables:
+        SDC_RUN__PURPOSE: Run intent — 'production', 'validation', or 'test'
+                          (default: 'production')
+
+    Examples:
+        >>> config = RunConfig()
+        >>> config.purpose
+        'production'
+        >>> # Override via env: SDC_RUN__PURPOSE=validation
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="SDC_RUN__",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    purpose: Literal["production", "validation", "test"] = Field(
+        default="production",
+        description=(
+            "Operator-declared run intent. "
+            "'production' — campaign data run; "
+            "'validation' — pre-campaign dry-run; "
+            "'test' — automated test suite invocation."
+        ),
+    )
+
+
+class CampaignConfig(BaseSettings):
+    """
+    Campaign identity and duration configuration.
+
+    Provides the campaign ID and planned duration that flow.py uses to
+    initialise the campaigns table row and that silver source_metadata
+    carries for downstream provenance.
+
+    Environment Variables:
+        SDC_CAMPAIGN__ID: Campaign identifier (default: 'campaign_init_001')
+        SDC_CAMPAIGN__DURATION_DAYS: Planned campaign length in days (default: 6)
+
+    Examples:
+        >>> config = CampaignConfig()
+        >>> config.id
+        'campaign_init_001'
+        >>> config.duration_days
+        6
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="SDC_CAMPAIGN__",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    id: str = Field(
+        default="campaign_init_001",
+        description="Unique campaign identifier used in the campaigns table and silver metadata.",
+    )
+    duration_days: int = Field(
+        default=6,
+        description="Planned campaign duration in days (informational; auto-completion not wired).",
+        ge=1,
+        le=365,
+    )
 
 
 class DatabaseConfig(BaseSettings):
@@ -575,9 +661,7 @@ class LoggingConfig(BaseSettings):
         env_prefix="SDC_LOGGING__", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    level: str = Field(
-        default="INFO", description="Logging level (DEBUG, INFO, WARNING, ERROR)"
-    )
+    level: str = Field(default="INFO", description="Logging level (DEBUG, INFO, WARNING, ERROR)")
     log_dir: Path = Field(default=Path("logs"), description="Directory for log files")
     format: str = Field(
         default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -600,6 +684,8 @@ class Config(BaseSettings):
     http: HTTPConfig = Field(default_factory=HTTPConfig)
     disk: DiskConfig = Field(default_factory=DiskConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    run: RunConfig = Field(default_factory=RunConfig)
+    campaign: CampaignConfig = Field(default_factory=CampaignConfig)
 
 
 # Singleton instance

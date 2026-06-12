@@ -67,7 +67,9 @@ def main() -> None:
         if dump_file is None:
             # 304 Not Modified — dump unchanged since last run, nothing to do.
             processor._finalise_pipeline_run(status="COMPLETED", records_processed=0)
-            print("\n✓ Wikipedia dump unchanged since last run (304 Not Modified). Nothing to process.")
+            print(
+                "\n✓ Wikipedia dump unchanged since last run (304 Not Modified). Nothing to process."
+            )
             return
 
         staging_file = processor.extract()

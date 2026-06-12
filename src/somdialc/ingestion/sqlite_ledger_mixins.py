@@ -23,7 +23,7 @@ class SQLiteCampaignMixin:
         return result["status"] if result else None
 
     def start_campaign(self, campaign_id: str, name: str, config: Optional[dict] = None) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).isoformat()
         config_json = json.dumps(config) if config else None
         with self.transaction() as conn:
             conn.execute(
@@ -36,7 +36,7 @@ class SQLiteCampaignMixin:
             )
 
     def complete_campaign(self, campaign_id: str) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).isoformat()
         with self.transaction() as conn:
             conn.execute(
                 """
@@ -209,6 +209,7 @@ class SQLitePipelineRunsMixin:
         pipeline_type: str,
         config: Optional[dict] = None,
         git_commit: Optional[str] = None,
+        run_purpose: str = "production",
     ) -> None:
         now = datetime.now(timezone.utc)
         config_json = json.dumps(config) if config else None
@@ -220,8 +221,8 @@ class SQLitePipelineRunsMixin:
                 """
                 INSERT OR IGNORE INTO pipeline_runs (
                     run_id, source, pipeline_type, start_time, status,
-                    config_snapshot, git_commit, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    config_snapshot, git_commit, run_purpose, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     run_id,
@@ -231,6 +232,7 @@ class SQLitePipelineRunsMixin:
                     "STARTED",
                     config_json,
                     git_commit,
+                    run_purpose,
                     now.isoformat(),
                     now.isoformat(),
                 ),
@@ -279,6 +281,15 @@ class SQLitePipelineRunsMixin:
                 query = f"UPDATE pipeline_runs SET {', '.join(updates)} WHERE run_id = ?"
                 conn.execute(query, params)
 
+    def stamp_run_campaign(self, run_id: str, campaign_id: str) -> None:
+        """Stamp the active campaign_id onto a pipeline_runs row."""
+        now = datetime.now(timezone.utc)
+        with self.transaction() as conn:
+            conn.execute(
+                "UPDATE pipeline_runs SET campaign_id = ?, updated_at = ? WHERE run_id = ?",
+                (campaign_id, now.isoformat(), run_id),
+            )
+
     def get_pipeline_run(self, run_id: str) -> Optional[dict]:
         result = self.connection.execute(
             "SELECT * FROM pipeline_runs WHERE run_id = ?", (run_id,)
@@ -325,9 +336,7 @@ class SQLitePipelineRunsMixin:
             FROM crawl_ledger
             WHERE source = ? AND state = ?
         """
-        result = self.connection.execute(
-            query, (source, "processed")
-        ).fetchone()
+        result = self.connection.execute(query, (source, "processed")).fetchone()
         if result and result["last_processing_time"]:
             return datetime.fromisoformat(result["last_processing_time"].replace("Z", "+00:00"))
         return None

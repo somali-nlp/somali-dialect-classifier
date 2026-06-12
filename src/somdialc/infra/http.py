@@ -40,9 +40,7 @@ class TimeoutHTTPSession(requests.Session):
 class HTTPSessionFactory:
     """Factory for creating configured HTTP sessions."""
 
-    DEFAULT_USER_AGENT = (
-        "somdialc-research/1.0 (+https://github.com/ilyasibrahim/somali-dialect-classifier; academic research)"
-    )
+    DEFAULT_USER_AGENT = "somdialc-research/1.0 (+https://github.com/ilyasibrahim/somali-dialect-classifier; academic research)"
 
     @staticmethod
     def create_session(

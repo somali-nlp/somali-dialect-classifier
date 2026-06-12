@@ -78,8 +78,6 @@ class TestMetricsValidator:
         assert "json" in error.lower()
 
     @pytest.mark.skip(reason="TD-NNN: Fixture metrics file fails schema validation")
-
-
     def test_validate_all_metrics(self, tmp_path):
         """Test validation of multiple metrics files."""
         # Create valid file

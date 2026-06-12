@@ -201,12 +201,8 @@ class TestDataManagerDiskSpace:
         """Test ensure_disk_space raises on insufficient space."""
         manager = DataManager("Test-Source", "run_001", base_dir=tmp_path)
 
-        with patch(
-            "somdialc.infra.data_manager.get_available_disk_space"
-        ) as mock_avail:
-            with patch(
-                "somdialc.infra.data_manager.check_disk_space"
-            ) as mock_check:
+        with patch("somdialc.infra.data_manager.get_available_disk_space") as mock_avail:
+            with patch("somdialc.infra.data_manager.check_disk_space") as mock_check:
                 # Mock insufficient space check
                 mock_avail.return_value = 100 * (1024**2)
                 mock_check.return_value = (
@@ -262,12 +258,8 @@ class TestDataManagerDiskSpace:
 
         manager = DataManager("Test-Source", "run_001", base_dir=tmp_path)
 
-        with patch(
-            "somdialc.infra.data_manager.get_available_disk_space"
-        ) as mock_avail:
-            with patch(
-                "somdialc.infra.data_manager.check_disk_space"
-            ) as mock_check:
+        with patch("somdialc.infra.data_manager.get_available_disk_space") as mock_avail:
+            with patch("somdialc.infra.data_manager.check_disk_space") as mock_check:
                 # Mock passing check but tight margin
                 # Request 3GB, have 4GB available
                 # Buffered: 3.3GB, Min free: 5GB, Total: 8.3GB needed
@@ -424,12 +416,8 @@ class TestBasePipelineIntegration:
         pipeline.processed_dir = tmp_path / "processed"
         pipeline.processed_dir.mkdir()
 
-        with patch(
-            "somdialc.infra.data_manager.get_available_disk_space"
-        ) as mock_avail:
-            with patch(
-                "somdialc.infra.data_manager.check_disk_space"
-            ) as mock_check:
+        with patch("somdialc.infra.data_manager.get_available_disk_space") as mock_avail:
+            with patch("somdialc.infra.data_manager.check_disk_space") as mock_check:
                 # Mock insufficient space
                 mock_avail.return_value = 1024  # Only 1KB available
                 mock_check.return_value = (False, "Insufficient disk space")

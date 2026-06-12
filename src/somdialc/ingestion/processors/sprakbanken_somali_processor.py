@@ -733,10 +733,12 @@ class SprakbankenSomaliProcessor(BasePipeline):
                             )
                             self.logger.info(f"  ✓ Marked empty corpus as processed: {corpus_id}")
 
-                    # Increment quota counter (per corpus)
-                    if quota_limit is not None:
+                    # DATA-8: increment quota per record extracted (not per file)
+                    # so that daily_quotas.records_ingested reflects actual record
+                    # granularity consistent with bbc/huggingface/wikipedia accounting.
+                    if quota_limit is not None and texts_count > 0:
                         self.ledger.increment_daily_quota(
-                            source="sprakbanken", count=1, quota_limit=quota_limit
+                            source="sprakbanken", count=texts_count, quota_limit=quota_limit
                         )
 
                     total_texts += texts_count

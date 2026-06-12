@@ -2,10 +2,6 @@
 Unit tests for silver schema content fixes TD-018, TD-020, TD-022, TD-023, TD-024.
 """
 
-import json
-
-import pytest
-
 from somdialc.ingestion.raw_record import RawRecord
 from somdialc.quality.record_builder import RecordBuilder
 from somdialc.quality.record_utils import generate_record_id, generate_text_hash
@@ -216,16 +212,16 @@ class TestTD022SourceIdPropagation:
 # ---------------------------------------------------------------------------
 class TestTD023TopicHoisting:
     def _make_builder(self):
-        return RecordBuilder(
-            source="bbc-somali", date_accessed="2026-01-01", run_id="run_test_002"
-        )
+        return RecordBuilder(source="bbc-somali", date_accessed="2026-01-01", run_id="run_test_002")
 
     def test_topic_hoisted_from_filter_metadata(self):
         """primary_topic in filter_metadata should populate the topic column."""
         builder = self._make_builder()
         raw = RawRecord(
-            title="Title", text="Text", url="https://bbc.com/somali/articles/c12345",
-            metadata={"date_published": "2026-01-01"}
+            title="Title",
+            text="Text",
+            url="https://bbc.com/somali/articles/c12345",
+            metadata={"date_published": "2026-01-01"},
         )
         record = builder.build_silver_record(
             raw_record=raw,
@@ -242,8 +238,10 @@ class TestTD023TopicHoisting:
         """If raw_record.metadata already has topic, that takes precedence."""
         builder = self._make_builder()
         raw = RawRecord(
-            title="Title", text="Text", url="https://bbc.com/somali/articles/c99",
-            metadata={"topic": "explicit_topic"}
+            title="Title",
+            text="Text",
+            url="https://bbc.com/somali/articles/c99",
+            metadata={"topic": "explicit_topic"},
         )
         record = builder.build_silver_record(
             raw_record=raw,
@@ -277,8 +275,10 @@ class TestTD023TopicHoisting:
         """primary_topic='unknown' (all-zero markers) must not populate topic column."""
         builder = self._make_builder()
         raw = RawRecord(
-            title="Title", text="Text", url="https://bbc.com/somali/articles/c00",
-            metadata={"date_published": "2026-01-01"}
+            title="Title",
+            text="Text",
+            url="https://bbc.com/somali/articles/c00",
+            metadata={"date_published": "2026-01-01"},
         )
         record = builder.build_silver_record(
             raw_record=raw,
@@ -315,8 +315,7 @@ class TestTD023TopicHoisting:
         """metadata.topic='unknown' on the raw record must also be suppressed."""
         builder = self._make_builder()
         raw = RawRecord(
-            title="T", text="T", url="https://example.com",
-            metadata={"topic": "unknown"}
+            title="T", text="T", url="https://example.com", metadata={"topic": "unknown"}
         )
         record = builder.build_silver_record(
             raw_record=raw,
@@ -334,8 +333,7 @@ class TestTD023TopicHoisting:
         """When topic_markers are present with a dominant marker, topic is set correctly."""
         builder = self._make_builder()
         raw = RawRecord(
-            title="Title", text="Text", url="https://bbc.com/somali/articles/c02",
-            metadata={}
+            title="Title", text="Text", url="https://bbc.com/somali/articles/c02", metadata={}
         )
         record = builder.build_silver_record(
             raw_record=raw,
@@ -361,6 +359,7 @@ class TestTD024SprakbankenDatePublished:
     def _make_fake_text_elem(self, attribs: dict):
         """Build a minimal fake XML Element with given attributes."""
         from xml.etree.ElementTree import Element
+
         elem = Element("text", attrib={k: v for k, v in attribs.items() if v})
         return elem
 

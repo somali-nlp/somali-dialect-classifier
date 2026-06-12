@@ -90,6 +90,47 @@ def min_length_filter(cleaned_text: str, threshold: int = 50) -> tuple[bool, dic
     return passes, {}
 
 
+def min_token_floor_filter(cleaned_text: str, min_tokens: int = 5) -> tuple[bool, dict[str, Any]]:
+    """
+    Reject records with fewer than ``min_tokens`` whitespace-delimited tokens.
+
+    DATA-7: Short fragments (single words, punctuation runs, URL-only records)
+    inflate token counts in silver and degrade Stage 2 classifier training.
+    This filter operates on whitespace tokens as a cheap proxy for word count;
+    it complements ``min_length_filter`` (character-based) rather than replacing
+    it. Default floor of 5 tokens rejects obvious fragments while preserving
+    very short but valid Somali utterances.
+
+    Behaviour change note: as of this filter's introduction, records with fewer
+    than 5 whitespace tokens that passed ``min_length_filter`` will now be
+    rejected.  Sources using custom ``_register_filters`` can override
+    ``min_tokens`` per-source via the filter kwargs dict.
+
+    Args:
+        cleaned_text: Cleaned text content.
+        min_tokens:   Minimum whitespace-delimited token count (default: 5).
+
+    Returns:
+        (passes, metadata_updates)
+        - passes: True if token count >= min_tokens
+        - metadata_updates: {"token_count": <int>} for upstream telemetry
+
+    Example:
+        >>> passes, meta = min_token_floor_filter("Waa maxay", min_tokens=5)
+        >>> passes
+        False
+        >>> meta["token_count"]
+        2
+        >>> passes, meta = min_token_floor_filter("Waa maxay tani ee sidee", min_tokens=5)
+        >>> passes
+        True
+    """
+    tokens = cleaned_text.split()
+    token_count = len(tokens)
+    passes = token_count >= min_tokens
+    return passes, {"token_count": token_count}
+
+
 def langid_filter(
     cleaned_text: str, allowed_langs: Optional[set[str]] = None, confidence_threshold: float = 0.5
 ) -> tuple[bool, dict[str, Any]]:
@@ -347,9 +388,17 @@ def langid_filter(
                 detected_lang = "other"
                 confidence = 0.7
             else:
-                # Assume Somali if mostly Latin with no strong English signature
-                detected_lang = "so"
-                confidence = 0.6
+                # CQ-5: Old fallback admitted ANY Latin text with no Somali signal
+                # (French, Spanish, yeast-DNA GenBank records — DATA-12 regression).
+                # Fix: require at least one Somali word match before asserting "so".
+                # Texts with zero Somali word hits are classified as "other" with
+                # confidence below the default 0.5 threshold so they are rejected.
+                if somali_score > 0:
+                    detected_lang = "so"
+                    confidence = 0.45  # Below default 0.5 — ambiguous, reject
+                else:
+                    detected_lang = "other"
+                    confidence = 0.4
 
     passes = detected_lang in allowed_langs and confidence >= confidence_threshold
 

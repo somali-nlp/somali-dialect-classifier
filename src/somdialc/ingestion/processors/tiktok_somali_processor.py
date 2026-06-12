@@ -230,9 +230,17 @@ class TikTokSomaliProcessor(BasePipeline):
             self.run_id, self.source, pipeline_type=PipelineType.STREAM_PROCESSING
         )
 
-        # Initialize Apify client
+        # Initialize Apify client with budget cap from config.
+        # config.scraping.tiktok.max_budget_usd flows into the client so the
+        # pre-flight guard fires before any POST (see BudgetExceededError).
+        from somdialc.infra.config import get_config as _get_cfg
+
+        _tiktok_cfg = _get_cfg().scraping.tiktok
         self.apify_client = ApifyTikTokClient(
-            api_token=self.apify_api_token, user_id=self.apify_user_id, logger=self.logger
+            api_token=self.apify_api_token,
+            user_id=self.apify_user_id,
+            logger=self.logger,
+            max_budget_usd=_tiktok_cfg.max_budget_usd,
         )
 
         # Check for existing video URLs file

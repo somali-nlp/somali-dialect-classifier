@@ -93,9 +93,7 @@ class WikiMarkupCleaner:
         # the multi-word and lowercase-start residue that the post-pass alone
         # cannot catch (e.g. [[Category:Taariikhda Afrika]] would leave ' Afrika'
         # and [[Category:hore]] would leave 'Categoryhore').
-        self.category_link_pattern = re.compile(
-            r"\[\[Category:[^\]]+\]\]", re.IGNORECASE
-        )
+        self.category_link_pattern = re.compile(r"\[\[Category:[^\]]+\]\]", re.IGNORECASE)
 
         # Category link residue: defensive fallback for any "CategoryFoo" or
         # "CategoryTaariikhda Afrika"-style fragments that survive the primary
@@ -103,9 +101,7 @@ class WikiMarkupCleaner:
         # incomplete).  Broadened from the prior [A-Z] to [A-Za-z] so that
         # lowercase-start names (e.g. "Categoryhore") are also consumed.
         # The [^\n]*? lazy match with end-of-line anchor covers multi-word tails.
-        self.category_residue_pattern = re.compile(
-            r"\bCategory[A-Za-z][^\n]*?(?=\n|$)", re.UNICODE
-        )
+        self.category_residue_pattern = re.compile(r"\bCategory[A-Za-z][^\n]*?(?=\n|$)", re.UNICODE)
 
     def clean(self, text: str) -> str:
         """

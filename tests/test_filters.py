@@ -258,6 +258,114 @@ class TestLangidFilter:
         assert passes is False
         assert meta.get("detected_lang") == "mime"
 
+    # --- CQ-5 / DATA-12: Somali fallback regression cases ---
+
+    def test_rejects_yeast_dna_genbank_record(self):
+        """DATA-12: yeast-DNA GenBank record must NOT pass the Somali fallback.
+
+        The old fallback assigned detected_lang='so' with confidence=0.6 to any
+        Latin-script text that was neither clearly Somali nor clearly English.
+        A GenBank-style nucleotide sequence record (all uppercase ATCG characters
+        with accession headers) has zero Somali word matches and should be
+        rejected as 'other' with confidence below the 0.5 threshold.
+        """
+        yeast_dna_record = (
+            "LOCUS       SCU49845     5028 bp    DNA PLN       21-JUN-1999\n"
+            "DEFINITION  Saccharomyces cerevisiae TCP1-beta gene, partial cds;\n"
+            "ACCESSION   U49845\n"
+            "FEATURES             Location/Qualifiers\n"
+            "     source          1..5028\n"
+            '                     /organism="Saccharomyces cerevisiae"\n'
+            "ORIGIN\n"
+            "        1 gatcctccat atacaacggt atctccacct caggtttaga tctcaacaac\n"
+            "       61 ggaataacat tcttggcttg tctgtggcat tgcaccagct gcatgcatgg\n"
+        )
+        passes, meta = langid_filter(
+            yeast_dna_record, allowed_langs={"so"}, confidence_threshold=0.5
+        )
+        assert passes is False, (
+            f"Yeast-DNA GenBank record should be rejected; got detected_lang={meta.get('detected_lang')!r}, "
+            f"confidence={meta.get('lang_confidence')}"
+        )
+        assert meta.get("detected_lang") != "so", (
+            "Yeast-DNA record must not be classified as Somali"
+        )
+
+    def test_rejects_french_text_with_no_somali_signal(self):
+        """CQ-5: French text with no Somali word matches must not pass as 'so'."""
+        french_text = (
+            "Le gouvernement français a annoncé aujourd'hui une série de mesures "
+            "économiques visant à réduire le déficit budgétaire du pays."
+        )
+        passes, meta = langid_filter(french_text, allowed_langs={"so"}, confidence_threshold=0.5)
+        assert passes is False, (
+            f"French text should not pass as Somali; got detected_lang={meta.get('detected_lang')!r}"
+        )
+
+    def test_rejects_spanish_text_with_no_somali_signal(self):
+        """CQ-5: Spanish text with no Somali word matches must not pass as 'so'."""
+        spanish_text = (
+            "El presidente del gobierno español ha convocado elecciones para el "
+            "próximo mes de noviembre con el objetivo de renovar el mandato."
+        )
+        passes, meta = langid_filter(spanish_text, allowed_langs={"so"}, confidence_threshold=0.5)
+        assert passes is False, (
+            f"Spanish text should not pass as Somali; got detected_lang={meta.get('detected_lang')!r}"
+        )
+
+    def test_somali_text_with_some_signal_still_passes(self):
+        """CQ-5: Somali text with at least one word-list match must still pass."""
+        # Contains "waa" which is in the Somali word list
+        somali_text = "Waa arrin muhiim ah oo la xiriirta mustaqbalka dalka iyo dadka degan"
+        passes, meta = langid_filter(somali_text, allowed_langs={"so"}, confidence_threshold=0.5)
+        assert passes is True, (
+            f"Somali text with signal words should pass; got detected_lang={meta.get('detected_lang')!r}, "
+            f"confidence={meta.get('lang_confidence')}"
+        )
+
+
+class TestMinTokenFloorFilter:
+    """Tests for the DATA-7 min-token floor filter (CQ-5 companion)."""
+
+    def test_passes_text_with_enough_tokens(self):
+        from somdialc.quality.filter_functions import min_token_floor_filter
+
+        passes, meta = min_token_floor_filter("Waa maxay tani ee sidee", min_tokens=5)
+        assert passes is True
+        assert meta["token_count"] == 5
+
+    def test_rejects_text_below_floor(self):
+        from somdialc.quality.filter_functions import min_token_floor_filter
+
+        passes, meta = min_token_floor_filter("Waa maxay", min_tokens=5)
+        assert passes is False
+        assert meta["token_count"] == 2
+
+    def test_default_floor_is_five(self):
+        from somdialc.quality.filter_functions import min_token_floor_filter
+
+        passes, _ = min_token_floor_filter("one two three four")  # 4 tokens, below default 5
+        assert passes is False
+        passes, _ = min_token_floor_filter("one two three four five")  # exactly 5
+        assert passes is True
+
+    def test_single_word_rejected(self):
+        from somdialc.quality.filter_functions import min_token_floor_filter
+
+        passes, meta = min_token_floor_filter("Somalia", min_tokens=5)
+        assert passes is False
+        assert meta["token_count"] == 1
+
+    def test_url_only_rejected(self):
+        """URL-only records that pass min_length_filter should be caught here."""
+        from somdialc.quality.filter_functions import min_token_floor_filter
+
+        passes, meta = min_token_floor_filter(
+            "https://www.bbc.com/somali/articles/very-long-url-path-here", min_tokens=5
+        )
+        assert passes is False
+        assert meta["token_count"] == 1
+
 
 class TestTopicLexiconEnrichmentFilter:
     """Tests for topic lexicon enrichment filter."""

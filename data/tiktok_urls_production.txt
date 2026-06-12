@@ -1,0 +1,35 @@
+# Curated TikTok video URLs for comment collection
+#
+# Curated: 2026-06-12
+#
+# Cost model: ~$1 / 1,000 raw comments (Apify clockworks actor)
+# Expected raw yield: ~270 comments/video (from 2025-10-28 test baseline)
+# Expected linguistic yield: ~27% of raw (emoji-only filtered)
+# URLs: 5 verified working (as of 2026-06-12 audit)
+# Expected raw comments (5 URLs × 270): ~1,350
+# Expected linguistic records: ~370
+# Estimated Apify cost at SDC_SCRAPING__TIKTOK__MAX_COMMENTS_PER_VIDEO=300: ~$1.50
+#
+# To scale to a meaningful corpus (10,000+ linguistic records):
+#   - Target ~135 videos  → ~36,450 raw comments → ~$37
+#   - Set SDC_SCRAPING__TIKTOK__MAX_BUDGET_USD=50 to cap spend
+#   - Add URLs below (one per line, https://www.tiktok.com/@user/video/ID format)
+#
+# Usage:
+#   tiktoksom-download --video-urls data/tiktok_urls_production.txt
+#   somali-orchestrate --pipeline tiktok --tiktok-video-urls data/tiktok_urls_production.txt
+#
+# Per-video comment cap (optional override):
+#   SDC_SCRAPING__TIKTOK__MAX_COMMENTS_PER_VIDEO=300
+#
+# ---
+# Verified Working URLs (Scraped 2025-10-28, re-verified 2026-06-12 audit):
+
+https://www.tiktok.com/@loosey8.1/video/7564865308406648086
+https://www.tiktok.com/@faatima_qurux04/video/7564285346972847371
+https://www.tiktok.com/@mosaalax.1/video/7560639879516785937
+https://www.tiktok.com/@allaayahdeek/video/7565125454806535480
+https://www.tiktok.com/@apazmohametezmail/video/7559134450144005388
+
+# ---
+# Add production-scale URLs below (target: 30-50 for meaningful corpus contribution).

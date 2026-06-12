@@ -38,9 +38,7 @@ def temp_ledger():
 @pytest.fixture
 def mock_wikipedia_processor():
     """Create mock Wikipedia processor."""
-    with patch(
-        "somdialc.ingestion.processors.wikipedia_somali_processor.get_config"
-    ):
+    with patch("somdialc.ingestion.processors.wikipedia_somali_processor.get_config"):
         processor = WikipediaSomaliProcessor(force=False)
         return processor
 
@@ -48,9 +46,7 @@ def mock_wikipedia_processor():
 @pytest.fixture
 def mock_sprakbanken_processor():
     """Create mock Språkbanken processor."""
-    with patch(
-        "somdialc.ingestion.processors.sprakbanken_somali_processor.get_config"
-    ):
+    with patch("somdialc.ingestion.processors.sprakbanken_somali_processor.get_config"):
         processor = SprakbankenSomaliProcessor(corpus_id="somali-cilmi", force=False)
         return processor
 

@@ -181,8 +181,7 @@ def extract_consolidated_metric(data: dict[str, Any], source_file: str) -> Optio
             "source": source,
             "timestamp": data.get("_timestamp") or snapshot.get("timestamp", ""),
             "duration_seconds": snapshot.get("duration_seconds", 0),
-            "pipeline_type": data.get("_pipeline_type")
-            or snapshot.get("pipeline_type", "unknown"),
+            "pipeline_type": data.get("_pipeline_type") or snapshot.get("pipeline_type", "unknown"),
             # Discovery / fetch counts (from layered_metrics, legacy fallback)
             "urls_discovered": urls_discovered or 0,
             "urls_fetched": urls_fetched or 0,
