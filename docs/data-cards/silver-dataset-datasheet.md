@@ -36,7 +36,7 @@ Each instance is a single text document in the Somali language, sourced from one
 
 ### How many instances are there in total?
 
-Phase 1 produced approximately 130,000–300,000 deduplicated records across all sources. Exact counts by source are logged in `data/metrics/` and surfaced by `somali-tools metrics consolidate`. See the audit report (`audits/2026-03-10-phase1-audit/audit-report-final.md`) for the most recent verified counts; precise per-run totals should be retrieved from the metrics pipeline (`somali-tools metrics consolidate`).
+The Phase 1 collection objective is 130,000–300,000 deduplicated records. The May 2026 validation run (pipeline end-to-end validation, not the production collection campaign) produced **16,767 records / ~4.66M tokens** (partition date_accessed=2026-05-29). The production collection campaign (campaign_init_001) has not yet run as of 2026-06-11. Exact counts by source are logged in `data/metrics/` and surfaced by `somali-tools metrics consolidate`; precise per-run totals should be retrieved from the metrics pipeline (`somali-tools metrics consolidate`).
 
 ### Source Breakdown
 

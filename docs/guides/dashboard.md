@@ -401,7 +401,7 @@ The dashboard displays comprehensive pipeline metrics:
 ### Hero Metrics (Top of Dashboard)
 
 ```
-Total Records Collected: 130,000+
+Total Records Collected: 16,767 (May 2026 validation run; production campaign pending)
 Success Rate: 95.2%
 Data Volume: 142 MB
 Active Sources: 4/4

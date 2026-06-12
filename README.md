@@ -3,7 +3,7 @@
 A production-ready data pipeline for collecting, processing, and preparing high-quality Somali language text from multiple sources. Built for dialect classification and NLP research with MLOps best practices including structured logging, automated quality metrics, deduplication, and ethical web scraping.
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-165%2B%20passing-success)](tests/)
+[![Tests](https://img.shields.io/badge/tests-1200%2B%20passing-success)](tests/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Dashboard](https://img.shields.io/badge/Dashboard-Live-blue)](https://somali-nlp.github.io/somali-dialect-classifier/)
@@ -27,7 +27,7 @@ See [Filter Analytics Guide](docs/howto/filter-analytics.md) and [CI Monitoring 
 - **Advanced filter telemetry** - Per-filter breakdown tracking, historical analytics, regression prevention, automated anomaly detection
 - **Ethical web scraping** - Rate limiting, robots.txt compliance, conditional requests, configurable scraping policies
 - **Reproducible pipelines** - Timestamped artifacts, manifest versioning, Parquet storage with metadata sidecars
-- **Comprehensive testing** - 165+ tests with CI/CD on Ubuntu and macOS (Python 3.9-3.11)
+- **Comprehensive testing** - 1,200+ tests with CI/CD on Ubuntu and macOS (Python 3.9-3.11)
 
 ## Live Dashboard
 
@@ -345,8 +345,9 @@ python scripts/deduplicate_silver.py --output-dir data/silver_deduped
 - ✅ Production data pipelines for multiple sources (Wikipedia, BBC, HuggingFace, Språkbanken, TikTok)
 - ✅ Integrated MLOps infrastructure (logging, metrics, deduplication)
 - ✅ Unified silver dataset schema across all sources
-- ✅ 130,000-300,000 deduplicated Somali text records
-- **Next:** Data labeling and annotation (Phase 2)
+- **Collection objective:** 130,000–300,000 deduplicated Somali text records (campaign pending as of 2026-06-11)
+- **Validation corpus:** 16,767 records / ~4.66M tokens produced by the end-to-end pipeline validation run (2026-05-29); production collection campaign has not yet started
+- **Next:** Launch production collection campaign, then data labeling and annotation (Phase 2)
 
 See [Project Roadmap](docs/roadmap/lifecycle.md) for detailed milestones.
 
@@ -441,7 +442,7 @@ If you use this project in your research, please cite:
 - **Language:** Python 3.9+
 - **Data Processing:** PyArrow, Pandas
 - **Web Scraping:** Requests, BeautifulSoup, FeedParser
-- **Quality:** Ruff, MyPy, Pytest (165+ tests)
+- **Quality:** Ruff, MyPy, Pytest (1,200+ tests)
 - **Storage:** Parquet (columnar storage)
 - **Configuration:** Pydantic Settings
 

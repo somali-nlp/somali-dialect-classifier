@@ -44,9 +44,9 @@ cd /path/to/somali-dialect-classifier
 
 [INFO] GitHub Pages Export:
 [SUCCESS] Exported summary to _site/data/summary.json
-   - Total records: 130,456
-   - Total runs: 42
-   - Sources: BBC-Somali, HuggingFace-Somali_c4-so, Sprakbanken-Somali, Wikipedia-Somali
+   - Total records: 16,767
+   - Total runs: 1
+   - Sources: bbc-somali, huggingface-somali_c4-so, sprakbanken-somali, tiktok-somali, wikipedia-somali
 [SUCCESS] Exported all metrics to _site/data/all_metrics.json
 [SUCCESS] Exported 42 reports to _site/data/reports.json
 

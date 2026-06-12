@@ -174,7 +174,7 @@ _site/data/all_metrics.json        # Aggregated dashboard metrics
 | HuggingFace MC4 | ~200,000 docs | ~80,000–150,000 |
 | Språkbanken | 66 corpora | ~10,000–30,000 |
 | TikTok | Variable (paid) | ~1,000–10,000 |
-| **Total (deduplicated)** | | **~130,000–300,000** |
+| **Total (deduplicated)** | | **Collection objective: 130,000–300,000; validation run (2026-05-29): 16,767** |
 
 Counts vary with network conditions, Apify quota, and BBC availability. Filter rejection rates are logged to `data/metrics/` for auditability.
 

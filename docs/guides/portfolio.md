@@ -53,7 +53,7 @@ The Somali Dialect Classifier is a production-ready data engineering and MLOps p
 #### Software Engineering
 - **Design Patterns**: Factory pattern, Template Method, Strategy pattern, Builder pattern
 - **SOLID Principles**: Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion
-- **Test-Driven Development**: 165+ tests with 85%+ coverage, pytest fixtures, mocking, integration tests
+- **Test-Driven Development**: 1,200+ tests with 85%+ coverage, pytest fixtures, mocking, integration tests
 - **Configuration Management**: Config-driven architecture with environment variables and validation
 - **Error Handling**: Comprehensive exception handling with graceful degradation
 - **Code Quality**: Type hints, docstrings, linting (black, flake8, mypy)
@@ -67,9 +67,10 @@ The Somali Dialect Classifier is a production-ready data engineering and MLOps p
 ### Scale & Impact
 
 **Quantifiable Achievements**:
-- **130,000+ records** processed from 4 diverse data sources
+- **Pipeline validated end-to-end** — designed to collect 130,000–300,000 records; validation corpus: 16,767 records (May 2026 run); production campaign pending (as of 2026-06-11)
+- **5 diverse data sources** integrated (Wikipedia, BBC Somali, HuggingFace MC4, Språkbanken, TikTok)
 - **99.5% pipeline success rate** with comprehensive error handling
-- **85% test coverage** across 165+ test cases
+- **85% test coverage** across 1,200+ test cases
 - **Zero-cost hosting** using GitHub Pages for dashboard
 - **15+ metrics** tracked for data quality and performance
 - **4 integration guides** (800+ lines each) documenting all data sources
@@ -103,8 +104,9 @@ Use the STAR format (Situation, Task, Action, Result) or CAR format (Challenge, 
 #### For Data Engineering Roles
 
 ```
-- Architected production-grade ETL pipeline processing 130K+ Somali language texts from 4 sources using
-  medallion architecture (Bronze/Silver/Gold) with Parquet serialization and Hive partitioning
+- Architected production-grade ETL pipeline engineered to collect 130K–300K Somali language texts from 5
+  sources using medallion architecture (Bronze/Silver/Gold) with Parquet serialization and Hive partitioning;
+  pipeline validated end-to-end (16,767 records, May 2026)
 
 - Designed pluggable data quality framework with 4 built-in filters (length, language, dialect, namespace)
   achieving 99.5% pipeline success rate and automated quality reporting
@@ -134,7 +136,7 @@ Use the STAR format (Situation, Task, Action, Result) or CAR format (Challenge, 
 - Containerized application with Docker multi-stage builds, reducing image size by 60% and enabling
   deployment to Kubernetes, AWS ECS, and Google Cloud Run
 
-- Established comprehensive testing strategy with 165+ tests (unit, integration, end-to-end) achieving
+- Established comprehensive testing strategy with 1,200+ tests (unit, integration, end-to-end) achieving
   85%+ coverage, with mocking for external APIs and fixture-based test data management
 ```
 
@@ -142,7 +144,7 @@ Use the STAR format (Situation, Task, Action, Result) or CAR format (Challenge, 
 
 ```
 - Developed interactive data quality dashboard with Streamlit and Plotly featuring real-time filtering,
-  time series analysis, and source comparison visualizations for 130K+ records
+  time series analysis, and source comparison visualizations for the live pipeline dataset
 
 - Created responsive dashboard supporting desktop and mobile devices with dynamic chart rendering,
   export capabilities, and markdown rendering for quality reports
@@ -169,7 +171,7 @@ Use the STAR format (Situation, Task, Action, Result) or CAR format (Challenge, 
 - Established comprehensive documentation system with 10,000+ lines covering architecture, API reference,
   integration guides, and ADRs (Architecture Decision Records) for design rationale
 
-- Applied Test-Driven Development (TDD) methodology with 165+ tests including unit tests, integration
+- Applied Test-Driven Development (TDD) methodology with 1,200+ tests including unit tests, integration
   tests, contract tests, and end-to-end tests using pytest framework
 
 - Enforced code quality standards using black (formatting), flake8 (linting), mypy (type checking),
@@ -248,7 +250,7 @@ Add the project to your Featured section:
 Excited to share my latest project: an automated data pipeline for Somali NLP research! 🚀
 
 What I Built:
-📊 Production-grade ETL pipeline processing 130K+ texts from 4 diverse sources
+📊 Production-grade ETL pipeline designed for 130K–300K texts from 5 sources — pipeline validated end-to-end (16,767 records, May 2026)
 ✅ Automated quality monitoring with real-time metrics dashboard
 🔄 CI/CD deployment using GitHub Actions
 📈 99.5% pipeline success rate with comprehensive error handling
@@ -370,10 +372,10 @@ A comprehensive data engineering project demonstrating production-grade
 pipeline design, automated quality monitoring, and MLOps best practices.
 
 Key Features:
-- 130K+ records from 4 diverse data sources
+- Pipeline validated end-to-end; designed to collect 130K–300K records across 5 sources
 - 99.5% pipeline success rate
 - Zero-cost monitoring dashboard
-- Comprehensive testing (165+ tests)
+- Comprehensive testing (1,200+ tests)
 - Production-ready logging and metrics
 ```
 
@@ -395,7 +397,7 @@ Pipeline:
 - Custom deduplication engine
 
 Quality & Testing:
-- pytest (165+ tests, 85% coverage)
+- pytest (1,200+ tests, 85% coverage)
 - Pluggable filter framework
 - Automated quality reports
 
@@ -421,8 +423,8 @@ Highlight quantifiable results:
 
 ```
 📊 Data Scale
-- 130,000+ records processed
-- 4 diverse data sources integrated
+- Pipeline validated end-to-end (16,767 records, May 2026); designed to collect 130,000–300,000 records
+- 5 diverse data sources integrated
 - 18.4M records available (HuggingFace MC4)
 
 ✅ Quality & Reliability
@@ -431,7 +433,7 @@ Highlight quantifiable results:
 - Automated quality reports per run
 
 🧪 Testing & Code Quality
-- 165+ tests (unit, integration, E2E)
+- 1,200+ tests (unit, integration, E2E)
 - 85%+ test coverage
 - Zero linting warnings
 
@@ -582,10 +584,10 @@ Add this project to your GitHub profile README (`<your-github-username>/<your-gi
 ## Featured Projects
 
 ### [Somali Dialect Classifier](https://github.com/somali-nlp/somali-dialect-classifier)
-Production-grade NLP data pipeline processing 130K+ texts from 4 sources with automated quality monitoring.
+Production-grade NLP data pipeline engineered for 130K–300K Somali texts across 5 sources; pipeline validated end-to-end with automated quality monitoring.
 
 **Tech**: Python, Streamlit, GitHub Actions, Parquet, Docker
-**Highlights**: 99.5% success rate, zero-cost dashboard, 165+ tests
+**Highlights**: 99.5% success rate, zero-cost dashboard, 1,200+ tests
 **Live Demo**: [Dashboard](https://somali-nlp.github.io/somali-dialect-classifier/)
 ```
 
@@ -691,7 +693,7 @@ Be prepared to discuss these topics in depth:
 **Question**: "Describe a technical decision you made and its impact."
 
 **Answer Framework (CAR)**:
-1. **Challenge**: "Needed to deduplicate 130K records efficiently without loading entire dataset into memory."
+1. **Challenge**: "Needed to deduplicate a large Somali text corpus efficiently without loading the entire dataset into memory."
 2. **Action**: "Evaluated 3 approaches: in-memory set, SQLite database, two-tier hashing. Chose two-tier (SHA256 + Simhash) for balance of speed and memory."
 3. **Result**: "Detected 15% duplicates, reduced memory by 60%, processing time under 2 minutes for 100K records."
 
@@ -703,7 +705,7 @@ Be prepared to discuss these topics in depth:
 
 #### 1. Technical Deep-Dive
 
-**Title**: "Building a Production-Grade NLP Pipeline: Lessons from 130K Somali Texts"
+**Title**: "Building a Production-Grade NLP Pipeline: Lessons from Somali Language Data Collection"
 
 **Outline**:
 - Introduction: Problem statement
@@ -771,7 +773,7 @@ How do you build a production-grade data pipeline for a low-resource language wh
 existing datasets, established tooling, or a big budget?
 
 In this talk, I'll share lessons from building the Somali Dialect Classifier—a comprehensive data
-engineering project that collects, processes, and monitors 130K+ texts from 4 diverse sources.
+engineering project that collects, processes, and monitors Somali language texts from 5 diverse sources.
 
 You'll learn:
 - Designing ETL pipelines with medallion architecture (Bronze/Silver/Gold)
@@ -788,7 +790,7 @@ Key Takeaways:
 5. Testing and observability should be first-class concerns, not afterthoughts
 
 The project demonstrates production software engineering practices including SOLID principles,
-design patterns (Factory, Template Method, Strategy), comprehensive testing (165+ tests), and
+design patterns (Factory, Template Method, Strategy), comprehensive testing (1,200+ tests), and
 extensive documentation (10,000+ lines).
 
 All code is open source and available on GitHub. Attendees will leave with practical strategies
@@ -817,7 +819,7 @@ Prerequisites: Basic Python, familiarity with data pipelines
 
 2. **Architecture** (5 min)
    - Medallion design (Bronze/Silver/Gold)
-   - Data sources (4 sources, 130K records)
+   - Data sources (5 sources; pipeline validated with 16,767 records, May 2026)
    - Technology stack
 
 3. **Data Quality Framework** (5 min)
@@ -857,7 +859,7 @@ Prerequisites: Basic Python, familiarity with data pipelines
 
 2. **Key Metrics Section**
    - Close-up of metric cards
-   - Show impressive numbers (130K records, 99.5% success rate)
+   - Show impressive numbers (5 sources integrated, 99.5% success rate)
 
 3. **Time Series Charts**
    - Records over time by source
@@ -983,7 +985,7 @@ Consider recording:
 This project demonstrates professional-level skills in data engineering, MLOps, and software engineering. By following this guide, you can effectively communicate its value to potential employers, collaborators, and the technical community.
 
 Remember:
-- **Quantify achievements**: Use numbers (130K records, 99.5% success rate)
+- **Quantify achievements**: Use numbers (5 sources, 1,200+ tests, 99.5% success rate)
 - **Tell stories**: Use STAR/CAR format for behavioral questions
 - **Show, don't just tell**: Screenshots, demos, code samples
 - **Engage with community**: Share, respond to comments, help others
