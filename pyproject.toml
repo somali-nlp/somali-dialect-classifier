@@ -40,6 +40,8 @@ dev = [
   "pytest-timeout>=2.1",
   "responses>=0.23",  # HTTP request mocking for integration tests
   "pydantic>=2.0",
+  "datasets>=2.16",  # HuggingFace processor contract/integration tests (test_base_pipeline_contract.py, test_hf_integration.py)
+  "toml>=0.10",  # pyproject.toml parsing in test_cli_e2e.py (project.scripts registration check)
 
   # Linting & Formatting
   "ruff>=0.1.0",

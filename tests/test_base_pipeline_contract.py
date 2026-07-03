@@ -20,13 +20,22 @@ from somdialc.ingestion.processors.wikipedia_somali_processor import (
     WikipediaSomaliProcessor,
 )
 
-# Optional: HuggingFaceSomaliProcessor requires the datasets library
+# Optional: HuggingFaceSomaliProcessor requires the datasets library.
+# NOTE: the module itself always imports successfully (it wraps `datasets`
+# in its own try/except and exposes DATASETS_AVAILABLE), so gating on
+# import success alone would always be True even when `datasets` is not
+# installed -- and HuggingFaceSomaliProcessor.__init__() raises ImportError
+# unconditionally when DATASETS_AVAILABLE is False. Import that flag
+# directly so this contract test suite correctly skips the HF processor
+# in environments without `datasets` (e.g. a bare `pip install -e .`)
+# instead of hard-failing on construction.
 try:
+    from somdialc.ingestion.processors.huggingface_somali_processor import (
+        DATASETS_AVAILABLE as HF_AVAILABLE,
+    )
     from somdialc.ingestion.processors.huggingface_somali_processor import (
         HuggingFaceSomaliProcessor,
     )
-
-    HF_AVAILABLE = True
 except ImportError:
     HuggingFaceSomaliProcessor = None
     HF_AVAILABLE = False
