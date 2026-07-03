@@ -7,6 +7,7 @@ This module provides the command-line interface for:
 - Creating silver datasets
 """
 
+import argparse
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -14,6 +15,25 @@ from pathlib import Path
 from somdialc.ingestion.processors.wikipedia_somali_processor import (
     WikipediaSomaliProcessor,
 )
+
+
+def _parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+
+    ``--help``/``-h`` is handled entirely by argparse: it prints usage and
+    exits with status 0 before any pipeline object is constructed, so it can
+    never trigger a real download or touch the ledger.
+    """
+    parser = argparse.ArgumentParser(
+        prog="wikisom-download",
+        description="Download and process the Somali Wikipedia dump",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force re-download and reprocessing even if a cached dump or output files exist",
+    )
+    return parser.parse_args()
 
 
 def _setup_logging() -> None:
@@ -55,14 +75,17 @@ def main() -> None:
     """
     Main entry point for executing the Somali Wikipedia data processing pipeline.
 
-    This function sets up logging, initializes the `SomaliWikipediaProcessor`,
-    and explicitly orchestrates download, extract, and process steps.
-    After completion, it prints the paths to the raw, staging, and processed files.
+    This function parses CLI arguments, sets up logging, initializes the
+    `WikipediaSomaliProcessor`, and explicitly orchestrates download, extract,
+    and process steps. After completion, it prints the paths to the raw,
+    staging, and processed files.
     """
+    args = _parse_args()
+
     _setup_logging()
 
     try:
-        processor = WikipediaSomaliProcessor()
+        processor = WikipediaSomaliProcessor(force=args.force)
         dump_file = processor.download()
         if dump_file is None:
             # 304 Not Modified — dump unchanged since last run, nothing to do.

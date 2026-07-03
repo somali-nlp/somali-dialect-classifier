@@ -32,6 +32,17 @@ def cli_env(tmp_path, monkeypatch):
 
     # Set environment variables for all data paths to point to temp directory
     # These override the Pydantic Field defaults
+    #
+    # NOTE: the ledger path override key here MUST be SDC_LEDGER_SQLITE_PATH —
+    # that is the only env var CrawlLedger.__init__ actually reads (see
+    # ingestion/crawl_ledger.py). The previous key, SDC_DATABASE__LEDGER_PATH,
+    # does not correspond to any real config field or env var, so it was a
+    # silent no-op: every cli_env-using test fell through to the session-wide
+    # ledger set by the isolated_pipeline_env fixture, and any test here that
+    # ran a real processor pipeline (e.g. test_wikipedia_cli_full_pipeline_with_fixture)
+    # would leak already-processed article/dump rows into that shared ledger,
+    # causing unrelated later tests using the same fixture data to see
+    # false-positive dedup hits.
     data_dirs = {
         "SDC_DATA__RAW_DIR": str(tmp_path / "data" / "raw"),
         "SDC_DATA__STAGING_DIR": str(tmp_path / "data" / "staging"),
@@ -39,7 +50,7 @@ def cli_env(tmp_path, monkeypatch):
         "SDC_DATA__SILVER_DIR": str(tmp_path / "data" / "processed" / "silver"),
         "SDC_DATA__METRICS_DIR": str(tmp_path / "data" / "metrics"),
         "SDC_DATA__REPORTS_DIR": str(tmp_path / "data" / "reports"),
-        "SDC_DATABASE__LEDGER_PATH": str(tmp_path / "data" / "ledger"),
+        "SDC_LEDGER_SQLITE_PATH": str(tmp_path / "data" / "ledger" / "crawl_ledger.db"),
     }
 
     for env_key, env_value in data_dirs.items():
@@ -111,24 +122,29 @@ class TestWikipediaCLI:
         assert hasattr(download_wikisom, "main")
         assert callable(download_wikisom.main)
 
-    def test_cli_help_output(self, capsys):
-        """Test that CLI help output is informative."""
+    def test_cli_help_output(self, capsys, monkeypatch, cli_env):
+        """--help must print usage and exit 0 with zero pipeline/network side effects."""
         from somdialc.cli import download_wikisom
 
-        # CLI uses a bare main() that runs the pipeline directly (no argparse),
-        # so --help will not short-circuit. Accept SystemExit (argparse) or any
-        # pipeline exception — we only need to verify the CLI emits identifying
-        # output.
-        try:
-            sys.argv = ["download_wikisom", "--help"]
+        def _fail_if_constructed(*args, **kwargs):
+            pytest.fail(
+                "WikipediaSomaliProcessor must not be constructed when --help is passed "
+                "(would trigger a real network download)"
+            )
+
+        monkeypatch.setattr(download_wikisom, "WikipediaSomaliProcessor", _fail_if_constructed)
+        monkeypatch.setattr(sys, "argv", ["wikisom-download", "--help"])
+
+        with pytest.raises(SystemExit) as exc_info:
             download_wikisom.main()
-        except BaseException:
-            pass
+
+        assert exc_info.value.code == 0
 
         captured = capsys.readouterr()
-
         output = captured.out + captured.err
-        assert "Wikipedia" in output or "wiki" in output.lower() or "Somali" in output
+        assert "usage:" in output.lower()
+        assert "wiki" in output.lower() or "Somali" in output
+        assert "--force" in output
 
 
 class TestBBCCLI:
@@ -149,22 +165,29 @@ class TestBBCCLI:
         assert hasattr(download_bbcsom, "main")
         assert callable(download_bbcsom.main)
 
-    def test_cli_help_output(self, capsys):
-        """Test that BBC CLI help output is informative."""
+    def test_cli_help_output(self, capsys, monkeypatch, cli_env):
+        """--help must print usage and exit 0 with zero pipeline/network side effects."""
         from somdialc.cli import download_bbcsom
 
-        # Try to get help
-        try:
-            sys.argv = ["download_bbcsom", "--help"]
+        def _fail_if_constructed(*args, **kwargs):
+            pytest.fail(
+                "BBCSomaliProcessor must not be constructed when --help is passed "
+                "(would trigger a real network scrape)"
+            )
+
+        monkeypatch.setattr(download_bbcsom, "BBCSomaliProcessor", _fail_if_constructed)
+        monkeypatch.setattr(sys, "argv", ["bbcsom-download", "--help"])
+
+        with pytest.raises(SystemExit) as exc_info:
             download_bbcsom.main()
-        except SystemExit:
-            pass
+
+        assert exc_info.value.code == 0
 
         captured = capsys.readouterr()
-
-        # Should mention BBC
         output = captured.out + captured.err
+        assert "usage:" in output.lower()
         assert "BBC" in output or "bbc" in output.lower()
+        assert "--force" in output
 
 
 class TestCLILogging:
