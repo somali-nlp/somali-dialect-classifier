@@ -63,7 +63,7 @@ The dashboard automatically regenerates on:
 **Trigger manual regeneration**:
 ```bash
 # Via GitHub CLI
-gh workflow run deploy-dashboard-v2.yml
+gh workflow run deploy-dashboard.yml
 
 # Via GitHub web interface
 # Navigate to: Actions → Deploy Dashboard → Run workflow
@@ -188,7 +188,7 @@ curl -I https://somali-nlp.github.io/somali-dialect-classifier/data/all_metrics.
 4. **GitHub Actions failed**:
    ```bash
    # Check workflow status
-   gh run list --workflow=deploy-dashboard-v2.yml --limit 5
+   gh run list --workflow=deploy-dashboard.yml --limit 5
 
    # View failed run logs
    gh run view <run-id> --log-failed
@@ -229,7 +229,7 @@ cat data/metrics/latest_processing.json | jq '.legacy_metrics.snapshot | {record
 **Diagnosis**:
 ```bash
 # View recent workflow runs
-gh run list --workflow=deploy-dashboard-v2.yml --limit 10
+gh run list --workflow=deploy-dashboard.yml --limit 10
 
 # Get details of failed run
 gh run view <run-id>
@@ -323,7 +323,7 @@ fetch('/somali-dialect-classifier/data/all_metrics.json')
 
 ### GitHub Actions Pipeline
 
-**Workflow file**: `.github/workflows/deploy-dashboard-v2.yml`
+**Workflow file**: `.github/workflows/deploy-dashboard.yml`
 
 **Trigger events**:
 - `push` to `main` branch

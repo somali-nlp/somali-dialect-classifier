@@ -107,7 +107,7 @@ Configuration dataclass for deployment settings.
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │              GitHub Actions                                 │
-│   (.github/workflows/deploy-dashboard-v2.yml)               │
+│   (.github/workflows/deploy-dashboard.yml)               │
 └────────────────┬────────────────────────────────────────────┘
                  │
                  │ Rebuild dashboard

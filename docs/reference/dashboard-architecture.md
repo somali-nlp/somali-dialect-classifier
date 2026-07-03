@@ -598,7 +598,7 @@ function renderRecordsOverTime(metricsData) {
                                ▼
 ┌───────────────────────────────────────────────────────────────────┐
 │ 4. GITHUB ACTIONS WORKFLOW                                        │
-│    (.github/workflows/deploy-dashboard-v2.yml)                   │
+│    (.github/workflows/deploy-dashboard.yml)                      │
 │                                                                   │
 │  Steps:                                                          │
 │    1. Checkout repository                                        │

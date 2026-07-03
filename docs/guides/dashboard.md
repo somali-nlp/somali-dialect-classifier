@@ -322,7 +322,7 @@ cd _site && python3 -m http.server 8000
               ▼
 ┌─────────────────────────────────────────────────┐
 │ GitHub Actions Workflow                         │
-│ (.github/workflows/deploy-dashboard-v2.yml)     │
+│ (.github/workflows/deploy-dashboard.yml)        │
 └─────────────┬───────────────────────────────────┘
               │
               ├─► Aggregates metrics
@@ -359,7 +359,7 @@ cd _site && python3 -m http.server 8000
 ├── scripts/
 │   └── export_dashboard_data.py  # Aggregates metrics for static site
 ├── .github/workflows/
-│   └── deploy-dashboard-v2.yml   # Auto-deploys to GitHub Pages
+│   └── deploy-dashboard.yml      # Auto-deploys to GitHub Pages
 └── data/
     ├── metrics/                  # JSON metrics (committed)
     └── reports/                  # Quality reports (committed)
@@ -2136,7 +2136,7 @@ st.metric("Success Rate", f"{current_run['metric'].mean():.1%}", delta=f"{delta:
 Add health checks in GitHub Actions:
 
 ```yaml
-# In .github/workflows/deploy-dashboard-v2.yml
+# In .github/workflows/deploy-dashboard.yml
 - name: Check Pipeline Health
   run: |
     python scripts/check_pipeline_health.py

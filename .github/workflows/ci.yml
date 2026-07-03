@@ -56,7 +56,7 @@ jobs:
 
       - name: Check for stale repo and module references
         run: |
-          ! rg -n "your-org|your-username|yourusername|YOUR-USERNAME|preprocessing/base_pipeline|preprocessing/filters|somdialc\\.utils|deploy-dashboard\\.yml" \
+          ! rg -n "your-org|your-username|yourusername|YOUR-USERNAME|preprocessing/base_pipeline|preprocessing/filters|somdialc\\.utils|deploy-dashboard-v2\\.yml" \
             README.md CONTRIBUTING.md src/dashboard/README.md \
             docs/guides/dashboard.md docs/guides/data-pipeline.md \
             docs/guides/portfolio.md \

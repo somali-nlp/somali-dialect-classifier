@@ -722,7 +722,7 @@ INFO: Deduplication removed 30% of records
 
 4. **Check for workflow file**:
    ```bash
-   cat .github/workflows/deploy-dashboard-v2.yml
+   cat .github/workflows/deploy-dashboard.yml
    # Ensure file exists and is valid YAML
    ```
 

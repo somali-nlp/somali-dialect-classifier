@@ -176,7 +176,7 @@ The dashboard CI/CD pipeline automates the complete lifecycle of metrics data ge
 
 ### 4. Deploy Dashboard to GitHub Pages
 
-**File**: `.github/workflows/deploy-dashboard-v2.yml`
+**File**: `.github/workflows/deploy-dashboard.yml`
 
 **Trigger**:
 - On push to `main` affecting dashboard, metrics, or workflow files
@@ -397,7 +397,7 @@ curl -s https://somali-nlp.github.io/somali-dialect-classifier/data/all_metrics.
 
 ```bash
 # Trigger deployment workflow
-gh workflow run deploy-dashboard-v2.yml
+gh workflow run deploy-dashboard.yml
 
 # Or commit/push to main
 git add _site/data/all_metrics.json
@@ -512,10 +512,10 @@ ls -la _site/data/
 gh api repos/:owner/:repo/pages
 
 # Check permissions
-cat .github/workflows/deploy-dashboard-v2.yml | grep permissions
+cat .github/workflows/deploy-dashboard.yml | grep permissions
 
 # Review deployment logs
-gh run list --workflow=deploy-dashboard-v2.yml
+gh run list --workflow=deploy-dashboard.yml
 gh run view <run-id>
 ```
 
@@ -541,7 +541,7 @@ curl -s https://somali-nlp.github.io/somali-dialect-classifier/data/all_metrics.
 gh api repos/:owner/:repo/pages
 
 # Force rebuild
-gh workflow run deploy-dashboard-v2.yml
+gh workflow run deploy-dashboard.yml
 ```
 
 ### Debugging Workflows
@@ -642,7 +642,7 @@ Regular checks:
 gh workflow run deployment-health-check.yml
 
 # Check recent deployments
-gh run list --workflow=deploy-dashboard-v2.yml --limit 10
+gh run list --workflow=deploy-dashboard.yml --limit 10
 
 # Check metrics data age
 curl -s https://somali-nlp.github.io/somali-dialect-classifier/data/all_metrics.json | \

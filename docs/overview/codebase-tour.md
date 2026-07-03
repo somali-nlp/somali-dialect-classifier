@@ -302,7 +302,7 @@ somali-tools dashboard build
 somali-tools dashboard deploy
 ```
 
-For deploy-dashboard: the canonical workflow is `deploy-dashboard.yml` (renamed from `deploy-dashboard-v2.yml` in June 2026). The old name is no longer present.
+For deploy-dashboard: the canonical workflow is `deploy-dashboard.yml`, consolidated from an older, differently-named workflow file in June 2026. That older filename is no longer present anywhere in this repository.
 
 ---
 

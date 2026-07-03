@@ -27,7 +27,7 @@ gh workflow run dashboard-metrics.yml --field force_rebuild=true
 gh workflow run dashboard-validation.yml
 
 # Deploy dashboard
-gh workflow run deploy-dashboard-v2.yml
+gh workflow run deploy-dashboard.yml
 
 # Run health check
 gh workflow run deployment-health-check.yml
@@ -243,7 +243,7 @@ npm test
 
 ```bash
 # Check what failed
-gh run list --workflow=deploy-dashboard-v2.yml --limit 1
+gh run list --workflow=deploy-dashboard.yml --limit 1
 gh run view <run-id> --log
 
 # Common fixes:
@@ -252,7 +252,7 @@ gh run view <run-id> --log
 # 3. Permissions - Check workflow permissions in .github/workflows/
 
 # Force rebuild
-gh workflow run deploy-dashboard-v2.yml
+gh workflow run deploy-dashboard.yml
 ```
 
 ### Dashboard Not Accessible
@@ -262,10 +262,10 @@ gh workflow run deploy-dashboard-v2.yml
 gh api repos/:owner/:repo/pages
 
 # 2. Check recent deployments
-gh run list --workflow=deploy-dashboard-v2.yml
+gh run list --workflow=deploy-dashboard.yml
 
 # 3. Force redeploy
-gh workflow run deploy-dashboard-v2.yml
+gh workflow run deploy-dashboard.yml
 
 # 4. Check DNS/CDN (may take a few minutes)
 curl -I https://somali-nlp.github.io/somali-dialect-classifier/
@@ -280,7 +280,7 @@ curl -I https://somali-nlp.github.io/somali-dialect-classifier/
 curl -I https://somali-nlp.github.io/somali-dialect-classifier/
 
 # 2. Check recent deploys
-gh run list --workflow=deploy-dashboard-v2.yml --limit 5
+gh run list --workflow=deploy-dashboard.yml --limit 5
 
 # 3. Check for issues
 gh issue list --label dashboard
@@ -383,8 +383,8 @@ Add these to your shell profile (`.bashrc`, `.zshrc`, etc.):
 
 ```bash
 # Dashboard aliases
-alias dash-status='gh run list --workflow=deploy-dashboard-v2.yml --limit 5'
-alias dash-deploy='gh workflow run deploy-dashboard-v2.yml'
+alias dash-status='gh run list --workflow=deploy-dashboard.yml --limit 5'
+alias dash-deploy='gh workflow run deploy-dashboard.yml'
 alias dash-test='npm test'
 alias dash-build='./src/dashboard/build-site.sh'
 alias dash-serve='python -m http.server 8000 --directory _site'
@@ -394,7 +394,7 @@ alias dash-metrics='gh workflow run dashboard-metrics.yml'
 
 # Quick checks
 alias dash-check='curl -I https://somali-nlp.github.io/somali-dialect-classifier/'
-alias dash-logs='gh run list --workflow=deploy-dashboard-v2.yml --limit 1 | tail -1 | cut -f 7 | xargs gh run view --log'
+alias dash-logs='gh run list --workflow=deploy-dashboard.yml --limit 1 | tail -1 | cut -f 7 | xargs gh run view --log'
 ```
 
 ## Cheat Sheet
@@ -402,7 +402,7 @@ alias dash-logs='gh run list --workflow=deploy-dashboard-v2.yml --limit 1 | tail
 | Task | Command |
 |------|---------|
 | Regenerate metrics | `gh workflow run dashboard-metrics.yml` |
-| Deploy dashboard | `gh workflow run deploy-dashboard-v2.yml` |
+| Deploy dashboard | `gh workflow run deploy-dashboard.yml` |
 | Run tests | `npm test` |
 | Validate metrics | `python scripts/validate_metrics.py` |
 | Build locally | `./src/dashboard/build-site.sh` |
