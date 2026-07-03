@@ -139,11 +139,11 @@ class TestM6BufferConfiguration:
             <= wikipedia_somali_processor.BUFFER_MAX_SIZE_MB
         )
 
-    def test_buffer_config_in_settings(self):
+    def test_buffer_config_in_settings(self, isolated_settings):
         """Test buffer settings are configurable via config."""
         from somdialc.infra.config import WikipediaScrapingConfig
 
-        config = WikipediaScrapingConfig()
+        config = isolated_settings(WikipediaScrapingConfig)
 
         # Check default values
         assert config.buffer_chunk_size_mb == 1
@@ -259,11 +259,11 @@ class TestM9VersionCentralization:
 class TestM12QueryTimeout:
     """Test M12: PostgreSQL query timeout configuration."""
 
-    def test_database_config_exists(self):
+    def test_database_config_exists(self, isolated_settings):
         """Test DatabaseConfig exists with query_timeout."""
         from somdialc.infra.config import DatabaseConfig
 
-        config = DatabaseConfig()
+        config = isolated_settings(DatabaseConfig)
 
         assert hasattr(config, "query_timeout")
         assert hasattr(config, "min_connections")

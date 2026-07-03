@@ -255,6 +255,53 @@ def isolated_pipeline_env(tmp_path_factory):
 
 
 # ---------------------------------------------------------------------------
+# Config-default isolation fixture.
+#
+# pydantic-settings sources are layered: explicit kwargs > real environment
+# variables > the ".env" file > the field default. Every config class in
+# somdialc.infra.config hardcodes env_file=".env", so a test that only does
+# `monkeypatch.delenv("SDC_...")` and then bare-constructs e.g. RunConfig()
+# is NOT actually exercising the code-level default whenever the operator's
+# untracked .env sets that same key (which is expected/normal — .env pins
+# real campaign settings). Such tests must also suppress .env loading via
+# the pydantic-settings `_env_file=None` init override. This fixture bundles
+# both isolation steps so default-assertion tests are hermetic against ANY
+# operator .env content.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def isolated_settings(monkeypatch):
+    """Factory fixture for constructing config classes isolated from both the
+    operator's .env file and ambient SDC_*-prefixed environment variables.
+
+    Use this in any test that asserts a pydantic-settings class's *code-level*
+    field default — never in tests that assert an env-var override (those
+    already win over .env by pydantic-settings precedence and don't need it).
+
+    Example:
+        def test_default_purpose_is_production(self, isolated_settings):
+            cfg = isolated_settings(RunConfig)
+            assert cfg.purpose == "production"
+    """
+    for key in list(os.environ):
+        if key.startswith("SDC_"):
+            monkeypatch.delenv(key, raising=False)
+
+    from somdialc.infra.config import reset_config
+
+    reset_config()
+
+    def _build(settings_cls, **kwargs):
+        kwargs.setdefault("_env_file", None)
+        return settings_cls(**kwargs)
+
+    yield _build
+
+    reset_config()
+
+
+# ---------------------------------------------------------------------------
 # CI ledger guard: fail if any test wrote to the production ledger.
 # ---------------------------------------------------------------------------
 

@@ -32,12 +32,13 @@ from somdialc.ingestion.apify_tiktok_client import ApifyTikTokClient, BudgetExce
 class TestRunConfig:
     """RunConfig defaults and environment overrides."""
 
-    def test_default_purpose_is_production(self, monkeypatch):
-        # The conftest autouse fixture sets SDC_RUN__PURPOSE=test for the test session.
-        # Remove it to verify the field-level default is "production".
-        monkeypatch.delenv("SDC_RUN__PURPOSE", raising=False)
-        reset_config()
-        cfg = RunConfig()
+    def test_default_purpose_is_production(self, isolated_settings):
+        # The conftest autouse fixture sets SDC_RUN__PURPOSE=test for the test
+        # session, and the operator's untracked .env may also pin a value
+        # (e.g. "validation" for the current campaign). isolated_settings
+        # strips both ambient SDC_* env vars and .env loading so this
+        # exercises the true field-level default.
+        cfg = isolated_settings(RunConfig)
         assert cfg.purpose == "production"
 
     def test_env_override_validation(self, monkeypatch):
@@ -76,14 +77,12 @@ class TestRunConfig:
 class TestCampaignConfig:
     """CampaignConfig defaults and environment overrides."""
 
-    def test_default_id(self):
-        reset_config()
-        cfg = CampaignConfig()
+    def test_default_id(self, isolated_settings):
+        cfg = isolated_settings(CampaignConfig)
         assert cfg.id == "campaign_init_001"
 
-    def test_default_duration_days(self):
-        reset_config()
-        cfg = CampaignConfig()
+    def test_default_duration_days(self, isolated_settings):
+        cfg = isolated_settings(CampaignConfig)
         assert cfg.duration_days == 6
 
     def test_env_override_id(self, monkeypatch):
@@ -124,9 +123,11 @@ class TestCampaignConfig:
 class TestTikTokScrapingConfigBudget:
     """max_budget_usd field on TikTokScrapingConfig."""
 
-    def test_default_max_budget_usd(self):
-        reset_config()
-        cfg = TikTokScrapingConfig()
+    def test_default_max_budget_usd(self, isolated_settings):
+        # Coincidentally equal to the operator's current .env pin (20.0), so
+        # isolated_settings is needed to actually assert the code default
+        # rather than getting lucky on today's .env content.
+        cfg = isolated_settings(TikTokScrapingConfig)
         assert cfg.max_budget_usd == 20.0
 
     def test_env_override_max_budget_usd(self, monkeypatch):
@@ -329,12 +330,11 @@ class TestSprakbankenCorpusSelection:
 class TestHuggingFaceUnboundedConfig:
     """HuggingFaceScrapingConfig.max_records defaults to None (unbounded streaming)."""
 
-    def test_default_max_records_is_none(self):
+    def test_default_max_records_is_none(self, isolated_settings):
         """max_records=None is the default — no artificial cap at construction."""
         from somdialc.infra.config import HuggingFaceScrapingConfig
 
-        reset_config()
-        cfg = HuggingFaceScrapingConfig()
+        cfg = isolated_settings(HuggingFaceScrapingConfig)
         assert cfg.max_records is None
 
     def test_env_override_max_records(self, monkeypatch):
