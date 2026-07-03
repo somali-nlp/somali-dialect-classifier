@@ -105,7 +105,10 @@ design-system-*.html
 # TikTok integration testing directory
 tiktok_apify_test/
 node_modules/
-*-snapshots/
+# NOTE: Playwright visual-regression baseline snapshots (tests/visual/*-snapshots/)
+# must be tracked in git — CI has no other way to obtain them. A blanket
+# "*-snapshots/" rule previously ignored every baseline, so toHaveScreenshot()
+# assertions could never pass in CI (no baseline ever existed on a fresh checkout).
 
 # Claude Code configuration
 .claude/
