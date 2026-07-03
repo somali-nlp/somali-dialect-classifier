@@ -7,7 +7,7 @@
     "test": "playwright test",
     "test:visual": "playwright test tests/visual/ --config=tests/visual/playwright.config.js",
     "test:a11y": "playwright test tests/accessibility/",
-    "test:integration": "playwright test tests/integration/playwright/",
+    "test:integration": "playwright test tests/integration/",
     "test:all": "playwright test tests/",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",
