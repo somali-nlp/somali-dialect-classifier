@@ -16,6 +16,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Callable, Optional, cast
 
+from pydantic import SecretStr
+
 try:
     from prefect import flow, task
     from prefect.task_runners import ConcurrentTaskRunner
@@ -77,6 +79,21 @@ def _build_pipeline_run_config(source: str, **extra: Any) -> dict[str, Any]:
     snapshot: dict[str, Any] = {"quota": config.orchestration.get_quota(source)}
     snapshot.update({key: value for key, value in extra.items() if value is not None})
     return snapshot
+
+
+def _resolve_secret_value(value: Any) -> Optional[str]:
+    """Unwrap a pydantic ``SecretStr`` to its plain value.
+
+    Config fields such as the TikTok Apify token are typed ``Optional[SecretStr]``,
+    while CLI args are plain ``Optional[str]``. isinstance-based narrowing (rather
+    than ``hasattr``) lets mypy prove the ``None`` case never reaches
+    ``get_secret_value()``. The explicit ``cast`` calls are needed because this
+    project's mypy config uses ``follow_imports = "skip"``, which erases pydantic's
+    own type information (``SecretStr.get_secret_value() -> str`` becomes ``Any``).
+    """
+    if isinstance(value, SecretStr):
+        return cast(str, value.get_secret_value())
+    return cast(Optional[str], value)
 
 
 def _get_records_processed(ledger: Any, source: str) -> Optional[int]:
@@ -1009,11 +1026,7 @@ def main():
             # Get API token (CLI arg > env var). Gracefully skip if config lacks TikTok section.
             try:
                 _raw_token = args.tiktok_api_token or config.scraping.tiktok.apify_api_token
-                tiktok_api_token = (
-                    _raw_token.get_secret_value()
-                    if hasattr(_raw_token, "get_secret_value")
-                    else _raw_token
-                )
+                tiktok_api_token = _resolve_secret_value(_raw_token)
                 tiktok_user_id = getattr(config.scraping.tiktok, "apify_user_id", None)
             except AttributeError:
                 logger.warning("TikTok config not found; skipping TikTok pipeline.")
@@ -1091,9 +1104,7 @@ def main():
 
         # Get API token (CLI arg > env var)
         _raw_token = args.tiktok_api_token or config.scraping.tiktok.apify_api_token
-        api_token = (
-            _raw_token.get_secret_value() if hasattr(_raw_token, "get_secret_value") else _raw_token
-        )
+        api_token = _resolve_secret_value(_raw_token)
 
         if not api_token:
             logger.error("Apify API token not provided!")
