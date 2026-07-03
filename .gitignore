@@ -90,8 +90,9 @@ _site/
 mlruns/
 
 # Local testing artifacts (Playwright, etc.)
+# NOTE: playwright.config.js is intentionally NOT ignored — it is the tracked,
+# canonical Playwright config (webServer/baseURL/projects) required by CI.
 .playwright-mcp/
-playwright.config.js
 test-results/
 tests/screenshots/
 tests/*-navigation.js
