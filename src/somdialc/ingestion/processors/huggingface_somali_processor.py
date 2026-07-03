@@ -184,6 +184,24 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         """
         return self.dedup.hasher.compute_hash(text=text, url=url)
 
+    def _dataset_slug(self) -> str:
+        """Return the filesystem-friendly slug for the dataset (e.g. "c4" from "allenai/c4")."""
+        return self.dataset_name.split("/")[-1]
+
+    def _current_manifest_path(self) -> Path:
+        """Return this instance's manifest path, scoped to its own run_id.
+
+        Manifest filenames embed ``self.run_id`` (set once at construction, see
+        BasePipeline.__init__) so that a single processor instance's
+        download() -> extract() -> process() lifecycle always agrees on which
+        manifest belongs to it. This is the single source of truth for manifest
+        resolution: it deliberately does not search for other instances'
+        manifests, so extract() called without a prior (same-instance)
+        download() raises FileNotFoundError instead of silently picking up an
+        unrelated run's leftover manifest for the same dataset.
+        """
+        return self.raw_dir / f"{self._dataset_slug()}_{self.run_id}_raw_manifest.json"
+
     def download(self) -> Path:
         """
         Create manifest without downloading data.
@@ -196,12 +214,8 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         """
         raw_dir = self.raw_dir
 
-        # Generate descriptive manifest filename with run_id
         # Pattern: {dataset_slug}_{run_id}_raw_manifest.json
-        dataset_slug = self.dataset_name.split("/")[
-            -1
-        ]  # Get last part (e.g., "c4" from "allenai/c4")
-        manifest_path = raw_dir / f"{dataset_slug}_{self.run_id}_raw_manifest.json"
+        manifest_path = self._current_manifest_path()
 
         # Create raw directory if it doesn't exist
         raw_dir.mkdir(parents=True, exist_ok=True)
@@ -323,16 +337,18 @@ class HuggingFaceSomaliProcessor(BasePipeline):
         staging_dir = self.staging_dir
         staging_dir.mkdir(parents=True, exist_ok=True)
 
-        # Load manifest (search for file with run_id pattern)
-        dataset_slug = self.dataset_name.split("/")[-1]
-        # Pattern: {dataset_slug}_{run_id}_raw_manifest.json or old {dataset_slug}_manifest.json
-        manifest_files = list(self.raw_dir.glob(f"{dataset_slug}_*_raw_manifest.json"))
+        dataset_slug = self._dataset_slug()
 
-        if not manifest_files:
+        # Load this instance's own manifest (scoped to self.run_id, matching
+        # download()'s manifest_path exactly). Deliberately not a glob across
+        # all manifests ever written for this dataset_slug: that would let
+        # extract() silently resume an unrelated processor instance's run
+        # (see _current_manifest_path docstring).
+        manifest_path = self._current_manifest_path()
+
+        if not manifest_path.exists():
             raise FileNotFoundError(f"Manifest not found in {self.raw_dir}. Run download() first.")
 
-        # Use the most recent manifest (sorted by modification time)
-        manifest_path = sorted(manifest_files, key=lambda p: p.stat().st_mtime, reverse=True)[0]
         self.logger.info(f"Using manifest: {manifest_path.name}")
 
         with open(manifest_path, encoding="utf-8") as f:
