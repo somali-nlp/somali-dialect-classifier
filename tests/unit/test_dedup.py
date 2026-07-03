@@ -508,7 +508,7 @@ class TestRedirectStubDedup:
         ]
 
         results = []
-        for title, url in variants:
+        for _title, url in variants:
             is_dup, *_ = engine.process_document(stub_text, url)
             results.append(is_dup)
 
@@ -542,8 +542,7 @@ class TestBasePipelineDedupGuard:
                 self.staging_file = staging
 
             def _extract_records(self):
-                for r in self._records:
-                    yield r
+                yield from self._records
 
             def _create_cleaner(self):
                 return TextCleaningPipeline([WhitespaceCleaner()])
@@ -578,7 +577,7 @@ class TestBasePipelineDedupGuard:
 
         from somdialc.ingestion.base_pipeline import RawRecord
 
-        MinimalProcessor, dedup, staging = self._build_processor(tmp_path)
+        minimal_processor_cls, dedup, staging = self._build_processor(tmp_path)
 
         text = "Cunto samaysiga waa farshaxan aad loo jeclahay."
         records = [
@@ -592,7 +591,7 @@ class TestBasePipelineDedupGuard:
         staging.touch()
 
         with patch("somdialc.infra.tracking.MLFlowTracker"):
-            proc = MinimalProcessor(records=records, dedup_engine=dedup)
+            proc = minimal_processor_cls(records=records, dedup_engine=dedup)
             proc.metrics = MagicMock()
 
         processed_file = tmp_path / "processed.txt"
@@ -614,7 +613,7 @@ class TestBasePipelineDedupGuard:
 
         from somdialc.ingestion.base_pipeline import RawRecord
 
-        MinimalProcessor, dedup, staging = self._build_processor(tmp_path)
+        minimal_processor_cls, dedup, staging = self._build_processor(tmp_path)
 
         staging.touch()
 
@@ -637,7 +636,7 @@ class TestBasePipelineDedupGuard:
         ]
 
         with patch("somdialc.infra.tracking.MLFlowTracker"):
-            proc = MinimalProcessor(records=records, dedup_engine=dedup)
+            proc = minimal_processor_cls(records=records, dedup_engine=dedup)
             proc.metrics = MagicMock()
 
         processed_file = tmp_path / "processed2.txt"

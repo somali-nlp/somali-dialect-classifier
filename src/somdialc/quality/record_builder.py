@@ -127,13 +127,13 @@ class RecordBuilder:
         # from filter-enriched source_metadata (TD-023).
         # Treat 'unknown' and empty string as no-signal; leave topic as None
         # so downstream analytics aren't polluted with a synthetic placeholder.
-        _NO_SIGNAL = {"unknown", ""}
+        _no_signal = {"unknown", ""}
         topic = raw_record.metadata.get("topic")
-        if topic in _NO_SIGNAL:
+        if topic in _no_signal:
             topic = None
         if topic is None:
             candidate = merged_metadata.get("primary_topic")
-            if candidate and candidate not in _NO_SIGNAL:
+            if candidate and candidate not in _no_signal:
                 topic = candidate
 
         # Build silver record using shared utility

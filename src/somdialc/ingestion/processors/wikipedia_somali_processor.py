@@ -88,9 +88,9 @@ class WikipediaSomaliProcessor(BasePipeline):
 
         # Dependency injection: store metrics factory for lazy initialization
 
-        _default_metrics_factory = lambda run_id, source: MetricsCollector(
-            run_id, source, pipeline_type=PipelineType.FILE_PROCESSING
-        )
+        def _default_metrics_factory(run_id, source):
+            return MetricsCollector(run_id, source, pipeline_type=PipelineType.FILE_PROCESSING)
+
         self._metrics_factory = metrics_factory or _default_metrics_factory
 
         # Dependency injection: store HTTP session for lazy initialization

@@ -40,12 +40,12 @@ class TestTD018RecordIdIncludesText:
         """build_silver_record produces distinct ids for same title+url, different text."""
         from somdialc.quality.record_utils import build_silver_record
 
-        common = dict(
-            title="Same Title",
-            source="sprakbanken-somali",
-            url="https://spraakbanken.gu.se/korp/?mode=somali#?corpus=somali-cilmi",
-            date_accessed="2026-01-01",
-        )
+        common = {
+            "title": "Same Title",
+            "source": "sprakbanken-somali",
+            "url": "https://spraakbanken.gu.se/korp/?mode=somali#?corpus=somali-cilmi",
+            "date_accessed": "2026-01-01",
+        }
         rec_a = build_silver_record(text="First page text content here.", **common)
         rec_b = build_silver_record(text="Second page text content here.", **common)
 

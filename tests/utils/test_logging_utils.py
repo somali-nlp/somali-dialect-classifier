@@ -667,16 +667,16 @@ class TestSecretRedaction:
         import json
 
         pydantic = pytest.importorskip("pydantic")
-        SecretStr = pydantic.SecretStr
+        secret_str_cls = pydantic.SecretStr
 
         data = {
             "scraping": {
                 "tiktok": {
-                    "apify_api_token": SecretStr("sk_live_abc123def456"),
+                    "apify_api_token": secret_str_cls("sk_live_abc123def456"),
                     "max_comments_per_video": 100,
                 },
             },
-            "loose_secret": SecretStr("topsecret_value"),
+            "loose_secret": secret_str_cls("topsecret_value"),
         }
 
         redacted = redact_secrets(data)
