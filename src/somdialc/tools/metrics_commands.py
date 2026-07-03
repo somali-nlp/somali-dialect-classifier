@@ -5,6 +5,8 @@ This module contains testable library code for metrics operations.
 Separated from CLI to enable unit testing without Click framework.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from datetime import datetime

@@ -19,10 +19,12 @@ Schema Management:
 - This code verifies tables exist but does NOT create them
 """
 
+from __future__ import annotations
+
 import logging
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
 from psycopg2.extras import Json, RealDictCursor
 from psycopg2.pool import ThreadedConnectionPool
@@ -160,15 +162,15 @@ class PostgresLedger(LedgerBackend):
         url: str,
         source: str,
         state: CrawlState,
-        text_hash: Optional[str] = None,
-        minhash_signature: Optional[str] = None,
-        silver_id: Optional[str] = None,
-        http_status: Optional[int] = None,
-        etag: Optional[str] = None,
-        last_modified: Optional[str] = None,
-        content_length: Optional[int] = None,
-        error_message: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        text_hash: str | None = None,
+        minhash_signature: str | None = None,
+        silver_id: str | None = None,
+        http_status: int | None = None,
+        etag: str | None = None,
+        last_modified: str | None = None,
+        content_length: int | None = None,
+        error_message: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Insert or update URL record using PostgreSQL UPSERT.
@@ -237,7 +239,7 @@ class PostgresLedger(LedgerBackend):
                     ),
                 )
 
-    def get_url_state(self, url: str) -> Optional[dict[str, Any]]:
+    def get_url_state(self, url: str) -> dict[str, Any] | None:
         """Get current state for URL."""
         query = """
             SELECT id, url, source, state, text_hash, minhash_signature, silver_id,
@@ -259,7 +261,7 @@ class PostgresLedger(LedgerBackend):
         return None
 
     def get_urls_by_state(
-        self, source: str, state: CrawlState, limit: Optional[int] = None
+        self, source: str, state: CrawlState, limit: int | None = None
     ) -> list[dict[str, Any]]:
         """Get URLs in specific state for a source."""
         # SECURITY: Validate limit parameter to prevent SQL injection
@@ -290,9 +292,7 @@ class PostgresLedger(LedgerBackend):
 
         return [dict(row) for row in results]
 
-    def mark_url_state(
-        self, url: str, state: CrawlState, error_message: Optional[str] = None
-    ) -> None:
+    def mark_url_state(self, url: str, state: CrawlState, error_message: str | None = None) -> None:
         """Update URL state."""
         now = datetime.now(timezone.utc)
 
@@ -319,7 +319,7 @@ class PostgresLedger(LedgerBackend):
             with conn.cursor() as cur:
                 cur.execute(query, params)
 
-    def check_duplicate_by_hash(self, text_hash: str) -> Optional[str]:
+    def check_duplicate_by_hash(self, text_hash: str) -> str | None:
         """Check if text hash already exists, return URL if found."""
         query = "SELECT url FROM crawl_ledger WHERE text_hash = %s LIMIT 1"
 
@@ -332,7 +332,7 @@ class PostgresLedger(LedgerBackend):
 
     def check_near_duplicate_by_minhash(
         self, minhash_signature: str, threshold: float = 0.85
-    ) -> Optional[list[tuple[str, float]]]:
+    ) -> list[tuple[str, float]] | None:
         """
         Check for near-duplicates using MinHash.
 
@@ -356,7 +356,7 @@ class PostgresLedger(LedgerBackend):
 
         return similar_urls if similar_urls else None
 
-    def get_last_rss_fetch(self, feed_url: str) -> Optional[datetime]:
+    def get_last_rss_fetch(self, feed_url: str) -> datetime | None:
         """Get last RSS feed fetch time."""
         query = "SELECT last_fetched_at FROM rss_feeds WHERE feed_url = %s"
 
@@ -394,7 +394,7 @@ class PostgresLedger(LedgerBackend):
         time_since = datetime.now(timezone.utc) - last_fetch
         return time_since > timedelta(hours=min_hours)
 
-    def get_statistics(self, source: Optional[str] = None) -> dict[str, Any]:
+    def get_statistics(self, source: str | None = None) -> dict[str, Any]:
         """Get ledger statistics."""
         stats = {}
 
@@ -518,7 +518,7 @@ class PostgresLedger(LedgerBackend):
                 cur.execute(query, ("failed", cutoff))
                 return cur.rowcount
 
-    def get_daily_quota_usage(self, source: str, date: Optional[str] = None) -> dict[str, Any]:
+    def get_daily_quota_usage(self, source: str, date: str | None = None) -> dict[str, Any]:
         """Get daily quota usage for a source."""
         if date is None:
             date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -556,8 +556,8 @@ class PostgresLedger(LedgerBackend):
         self,
         source: str,
         count: int = 1,
-        quota_limit: Optional[int] = None,
-        date: Optional[str] = None,
+        quota_limit: int | None = None,
+        date: str | None = None,
     ) -> dict[str, Any]:
         """Increment daily quota counter."""
         if date is None:
@@ -585,7 +585,7 @@ class PostgresLedger(LedgerBackend):
         source: str,
         items_remaining: int,
         quota_limit: int,
-        date: Optional[str] = None,
+        date: str | None = None,
     ) -> None:
         """Mark that daily quota has been reached."""
         if date is None:
@@ -607,7 +607,7 @@ class PostgresLedger(LedgerBackend):
                 cur.execute(query, (items_remaining, quota_limit, now, date, source))
 
     def check_quota_available(
-        self, source: str, quota_limit: Optional[int] = None, date: Optional[str] = None
+        self, source: str, quota_limit: int | None = None, date: str | None = None
     ) -> tuple[bool, int]:
         """Check if quota is still available."""
         if quota_limit is None:
@@ -622,7 +622,7 @@ class PostgresLedger(LedgerBackend):
 
         return remaining > 0, max(0, remaining)
 
-    def check_file_checksum(self, checksum: str, source: str) -> Optional[dict[str, Any]]:
+    def check_file_checksum(self, checksum: str, source: str) -> dict[str, Any] | None:
         """
         Check if file with checksum exists in ledger (PostgreSQL).
 
@@ -650,8 +650,8 @@ class PostgresLedger(LedgerBackend):
         run_id: str,
         source: str,
         pipeline_type: str,
-        config: Optional[dict] = None,
-        git_commit: Optional[str] = None,
+        config: dict | None = None,
+        git_commit: str | None = None,
     ) -> None:
         """Register a new pipeline run."""
         now = datetime.now(timezone.utc)
@@ -684,13 +684,13 @@ class PostgresLedger(LedgerBackend):
     def update_pipeline_run(
         self,
         run_id: str,
-        status: Optional[str] = None,
-        records_discovered: Optional[int] = None,
-        records_processed: Optional[int] = None,
-        records_failed: Optional[int] = None,
-        errors: Optional[str] = None,
-        metrics_path: Optional[str] = None,
-        end_time: Optional[datetime] = None,
+        status: str | None = None,
+        records_discovered: int | None = None,
+        records_processed: int | None = None,
+        records_failed: int | None = None,
+        errors: str | None = None,
+        metrics_path: str | None = None,
+        end_time: datetime | None = None,
     ) -> None:
         """Update pipeline run with new information."""
         now = datetime.now(timezone.utc)
@@ -737,7 +737,7 @@ class PostgresLedger(LedgerBackend):
                 with conn.cursor() as cur:
                     cur.execute(query, params)
 
-    def get_pipeline_run(self, run_id: str) -> Optional[dict]:
+    def get_pipeline_run(self, run_id: str) -> dict | None:
         """Retrieve pipeline run details."""
         query = "SELECT * FROM pipeline_runs WHERE run_id = %s"
 
@@ -770,7 +770,7 @@ class PostgresLedger(LedgerBackend):
 
         return [dict(row) for row in results]
 
-    def get_last_successful_run(self, source: str) -> Optional[datetime]:
+    def get_last_successful_run(self, source: str) -> datetime | None:
         """Get timestamp of last successful pipeline run."""
         query = """
             SELECT MAX(end_time) as last_run_time
@@ -787,7 +787,7 @@ class PostgresLedger(LedgerBackend):
             return result[0]
         return None
 
-    def get_first_successful_run(self, source: str) -> Optional[datetime]:
+    def get_first_successful_run(self, source: str) -> datetime | None:
         """Get timestamp of first successful pipeline run."""
         query = """
             SELECT MIN(end_time) as first_run_time
@@ -804,7 +804,7 @@ class PostgresLedger(LedgerBackend):
             return result[0]
         return None
 
-    def get_last_processing_time(self, source: str) -> Optional[datetime]:
+    def get_last_processing_time(self, source: str) -> datetime | None:
         """Get timestamp of last successful processing for a source."""
         query = """
             SELECT MAX(updated_at) as last_processing_time
@@ -819,7 +819,7 @@ class PostgresLedger(LedgerBackend):
             return result[0]
         return None
 
-    def get_campaign_status(self, campaign_id: str) -> Optional[str]:
+    def get_campaign_status(self, campaign_id: str) -> str | None:
         """Get status of a campaign."""
         query = "SELECT status FROM campaigns WHERE campaign_id = %s"
 
@@ -830,7 +830,7 @@ class PostgresLedger(LedgerBackend):
 
         return result[0] if result else None
 
-    def start_campaign(self, campaign_id: str, name: str, config: Optional[dict] = None) -> None:
+    def start_campaign(self, campaign_id: str, name: str, config: dict | None = None) -> None:
         """Start a new campaign."""
         now = datetime.now(timezone.utc)
         config_json = Json(config) if config else None

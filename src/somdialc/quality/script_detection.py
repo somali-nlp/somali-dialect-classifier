@@ -6,6 +6,8 @@ in Southern dialects and religious contexts, and Osmanya script (U+10480–U+104
 as the traditional Somali writing system.
 """
 
+from __future__ import annotations
+
 import unicodedata
 
 

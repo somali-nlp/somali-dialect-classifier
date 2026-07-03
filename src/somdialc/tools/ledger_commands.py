@@ -11,6 +11,8 @@ Functions include:
 - Ad-hoc SQL queries
 """
 
+from __future__ import annotations
+
 import logging
 import sqlite3
 from datetime import datetime, timedelta

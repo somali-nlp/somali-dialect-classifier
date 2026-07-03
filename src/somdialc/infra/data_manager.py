@@ -19,6 +19,8 @@ Performance Optimizations:
 - Memory-mapped file support for files >100MB
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import logging
@@ -293,7 +295,7 @@ class DataManager:
         return output_path
 
     def write_to_silver(
-        self, df: "pd.DataFrame", filename: str, partition_by_source: bool = True
+        self, df: pd.DataFrame, filename: str, partition_by_source: bool = True
     ) -> Path:
         """
         Write DataFrame to silver layer as Parquet.
@@ -420,7 +422,7 @@ class DataManager:
         else:
             raise ValueError(f"Unknown format: {format}")
 
-    def read_from_silver(self, filename: str, partition_by_source: bool = True) -> "pd.DataFrame":
+    def read_from_silver(self, filename: str, partition_by_source: bool = True) -> pd.DataFrame:
         """
         Read DataFrame from silver layer.
 

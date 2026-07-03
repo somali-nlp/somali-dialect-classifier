@@ -7,8 +7,9 @@ Provides defense against:
 - Secret exposure in logs
 """
 
+from __future__ import annotations
+
 import re
-from typing import Optional
 
 # Allowed source names (whitelist for path traversal protection)
 ALLOWED_SOURCES = {
@@ -81,7 +82,7 @@ def sanitize_source_name(source: str) -> str:
     )
 
 
-def mask_secret(secret: Optional[str], visible_chars: int = 4, min_length: int = 8) -> str:
+def mask_secret(secret: str | None, visible_chars: int = 4, min_length: int = 8) -> str:
     """
     Mask secret showing only last N characters.
 
@@ -206,7 +207,7 @@ def sanitize_filename(filename: str) -> str:
     return sanitized
 
 
-def validate_file_path(file_path: str, base_dir: Optional[str] = None) -> bool:
+def validate_file_path(file_path: str, base_dir: str | None = None) -> bool:
     """
     Validate file path to prevent path traversal attacks.
 
