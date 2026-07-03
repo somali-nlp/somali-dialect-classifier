@@ -3,8 +3,8 @@ name: Dashboard Testing Suite
 on:
   pull_request:
     paths:
-      - 'dashboard/**'
-      - 'scripts/generate_consolidated_metrics.py'
+      - 'src/dashboard/**'
+      - 'scripts/ops/generate_consolidated_metrics.py'
       - '_site/**'
       - 'tests/**'
       - '.github/workflows/dashboard-tests.yml'
@@ -292,7 +292,7 @@ jobs:
 
       - name: Run Playwright integration tests
         run: |
-          npx playwright test tests/integration/playwright/ \
+          npx playwright test tests/integration/ \
             --reporter=html,json
 
       - name: Upload integration test results

@@ -5,7 +5,7 @@ on:
     paths:
       - 'data/metrics/**'
       - '_site/data/**'
-      - 'dashboard/**'
+      - 'src/dashboard/**'
       - 'docs/reference/metrics_schema.json'
   push:
     branches:
@@ -83,8 +83,8 @@ jobs:
       - name: Run comprehensive metrics validation
         id: metrics_validation
         run: |
-          chmod +x scripts/validate_metrics.py
-          python scripts/validate_metrics.py || echo "validation_failed=true" >> $GITHUB_OUTPUT
+          chmod +x scripts/dev/validate_metrics.py
+          python scripts/dev/validate_metrics.py || echo "validation_failed=true" >> $GITHUB_OUTPUT
 
       - name: Check data freshness
         run: |
