@@ -14,24 +14,75 @@ import pytest
 from somdialc.ingestion.crawl_ledger import LockManager
 
 
-def _same_source_worker(
+def _holder_worker(
     source: str,
     worker_id: int,
     lock_dir: Path,
     results_list,
-    hold_seconds: float = 0.5,
-    timeout: float = 2.0,
+    acquired_event,
+    release_event,
+    acquire_timeout: float = 10.0,
+    release_wait_timeout: float = 10.0,
 ) -> None:
-    """Worker used by spawn-based multiprocessing tests."""
+    """Acquire the lock, signal `acquired_event`, then block on `release_event`.
+
+    Deterministic replacement for sleep-based "hold the lock for N seconds"
+    synchronization: this worker holds the lock for exactly as long as it
+    takes the contending worker to observe the lock is held and record its
+    own (expected-to-fail) acquisition attempt, regardless of how slow or
+    loaded the runner is.
+    """
     try:
         lock_mgr = LockManager(lock_dir)
-        lock_mgr.acquire_lock(source, timeout=timeout)
+        lock_mgr.acquire_lock(source, timeout=acquire_timeout)
         results_list.append(f"worker_{worker_id}_acquired")
-        time.sleep(hold_seconds)
+    except RuntimeError:
+        results_list.append(f"worker_{worker_id}_timeout")
+        # Unblock the contender even if we unexpectedly failed to acquire,
+        # so the test doesn't hang.
+        acquired_event.set()
+        return
+
+    acquired_event.set()
+    # Hold the lock until the contender has made and recorded its attempt.
+    release_event.wait(timeout=release_wait_timeout)
+    lock_mgr.release_lock(source)
+    results_list.append(f"worker_{worker_id}_released")
+
+
+def _contender_worker(
+    source: str,
+    worker_id: int,
+    lock_dir: Path,
+    results_list,
+    acquired_event,
+    release_event,
+    acquired_wait_timeout: float = 10.0,
+    acquire_timeout: float = 0.2,
+) -> None:
+    """Wait for the holder to genuinely hold the lock, then attempt to acquire it.
+
+    The acquisition attempt only happens after `acquired_event` is observed
+    set, so this worker's attempt is guaranteed to race against a lock that
+    is actually held -- no polling or sleeping is used to approximate that.
+    """
+    holder_acquired = acquired_event.wait(timeout=acquired_wait_timeout)
+    if not holder_acquired:
+        results_list.append(f"worker_{worker_id}_holder_never_acquired")
+        release_event.set()
+        return
+
+    try:
+        lock_mgr = LockManager(lock_dir)
+        lock_mgr.acquire_lock(source, timeout=acquire_timeout)
+        results_list.append(f"worker_{worker_id}_acquired")
         lock_mgr.release_lock(source)
         results_list.append(f"worker_{worker_id}_released")
     except RuntimeError:
         results_list.append(f"worker_{worker_id}_timeout")
+    finally:
+        # Let the holder release now that our attempt has been recorded.
+        release_event.set()
 
 
 def _different_source_worker(source: str, worker_id: int, lock_dir: Path, results_list) -> None:
@@ -62,28 +113,43 @@ def lock_manager(test_lock_dir):
 
 
 def test_lock_prevents_concurrent_runs_same_source(test_lock_dir):
-    """Test that two processes cannot run same source simultaneously."""
+    """Test that two processes cannot run same source simultaneously.
+
+    Overlap between the holder and the contender is enforced with
+    multiprocessing Events, not sleeps/polling: the contender only attempts
+    its acquisition after observing that the holder has genuinely acquired
+    the lock, and the holder only releases after observing that the
+    contender has made and recorded its (expected-to-fail) attempt. This is
+    deterministic regardless of runner speed/load -- a slow, contended CI
+    runner cannot make the two workers run sequentially instead of
+    overlapping, which is what previously made this test flaky on macOS
+    runners (both workers would legitimately acquire the lock one after the
+    other if the pre-p2.start() poll loop timed out before worker 1 had even
+    started).
+    """
     manager = Manager()
     results = manager.list()
+    acquired_event = manager.Event()
+    release_event = manager.Event()
 
-    # Run two workers for same source
+    # Worker 1 holds the lock; worker 2 is the contender expected to fail.
     p1 = Process(
-        target=_same_source_worker, args=("wikipedia", 1, test_lock_dir, results, 1.5, 2.0)
+        target=_holder_worker,
+        args=("wikipedia", 1, test_lock_dir, results, acquired_event, release_event),
     )
     p2 = Process(
-        target=_same_source_worker, args=("wikipedia", 2, test_lock_dir, results, 0.1, 0.2)
+        target=_contender_worker,
+        args=("wikipedia", 2, test_lock_dir, results, acquired_event, release_event),
     )
 
     p1.start()
-    lock_file = test_lock_dir / "wikipedia.lock"
-    for _ in range(20):
-        if lock_file.exists():
-            break
-        time.sleep(0.05)
     p2.start()
 
-    p1.join(timeout=5)
-    p2.join(timeout=5)
+    p1.join(timeout=15)
+    p2.join(timeout=15)
+
+    assert not p1.is_alive(), "Holder process did not terminate (deadlock?)"
+    assert not p2.is_alive(), "Contender process did not terminate (deadlock?)"
 
     # Convert to regular list for assertions
     results_list = list(results)
