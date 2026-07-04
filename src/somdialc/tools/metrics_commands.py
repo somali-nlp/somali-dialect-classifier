@@ -283,9 +283,40 @@ class AnomalyLevel:
     ERROR = "error"
 
 
+def _empty_anomaly_report(threshold: int, notice: str) -> dict[str, Any]:
+    """Build the 'nothing to check' result shared by the missing-dir and empty-dir cases.
+
+    Includes both the library's native key names (total_files, error_anomalies,
+    warning_anomalies) and the aliases ci.yml's shell step parses out of the
+    written JSON (error_count, warning_count, sources_affected), so callers on
+    either side of that contract keep working without needing to agree on one
+    naming scheme.
+    """
+    logger.warning(notice)
+    return {
+        "total_files": 0,
+        "total_anomalies": 0,
+        "error_anomalies": 0,
+        "warning_anomalies": 0,
+        "error_count": 0,
+        "warning_count": 0,
+        "sources_affected": [],
+        "threshold": threshold,
+        "anomalies": [],
+        "notice": notice,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+
 def check_anomalies(metrics_dir: Path, threshold: int = 3) -> dict[str, Any]:
     """
     Check for metric anomalies and outliers.
+
+    A metrics directory that does not exist yet (e.g. a fresh checkout, before
+    any pipeline has run -- data/metrics is gitignored) is treated the same as
+    an empty one: "nothing to check" success, not an error. This lets the
+    command run unconditionally in any environment (CI included) rather than
+    requiring callers to special-case a missing directory.
 
     Args:
         metrics_dir: Directory containing *_processing.json files
@@ -293,25 +324,21 @@ def check_anomalies(metrics_dir: Path, threshold: int = 3) -> dict[str, Any]:
 
     Returns:
         Anomaly report with findings
-
-    Raises:
-        FileNotFoundError: If metrics_dir doesn't exist
     """
     if not metrics_dir.exists():
-        raise FileNotFoundError(f"Metrics directory not found: {metrics_dir}")
+        return _empty_anomaly_report(
+            threshold,
+            f"Metrics directory not found: {metrics_dir}. Nothing to check.",
+        )
 
     # Find all processing files
     processing_files = sorted(metrics_dir.glob("*_processing.json"))
 
     if not processing_files:
-        logger.warning(f"No *_processing.json files found in {metrics_dir}")
-        return {
-            "total_files": 0,
-            "total_anomalies": 0,
-            "error_anomalies": 0,
-            "warning_anomalies": 0,
-            "anomalies": [],
-        }
+        return _empty_anomaly_report(
+            threshold,
+            f"No *_processing.json files found in {metrics_dir}. Nothing to check.",
+        )
 
     all_anomalies = []
 
@@ -335,12 +362,18 @@ def check_anomalies(metrics_dir: Path, threshold: int = 3) -> dict[str, Any]:
     # Count by severity
     error_count = sum(1 for a in all_anomalies if a["level"] == AnomalyLevel.ERROR)
     warning_count = sum(1 for a in all_anomalies if a["level"] == AnomalyLevel.WARNING)
+    sources_affected = sorted({a["source"] for a in all_anomalies if a.get("source")})
 
     return {
         "total_files": len(processing_files),
         "total_anomalies": len(all_anomalies),
         "error_anomalies": error_count,
         "warning_anomalies": warning_count,
+        # Aliases matching the keys ci.yml's anomaly-check step parses from
+        # the written JSON report.
+        "error_count": error_count,
+        "warning_count": warning_count,
+        "sources_affected": sources_affected,
         "threshold": threshold,
         "anomalies": all_anomalies,
         "timestamp": datetime.utcnow().isoformat() + "Z",

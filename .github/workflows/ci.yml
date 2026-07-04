@@ -112,7 +112,7 @@ jobs:
         id: anomaly_check
         run: |
           echo "Running metrics anomaly detection..."
-          python scripts/ops/check_metrics_anomalies.py --threshold 3
+          python scripts/ops/check_metrics_anomalies.py --threshold 3 --output test-results/anomalies.json
 
           # Check if anomalies.json exists and parse it
           if [ -f test-results/anomalies.json ]; then

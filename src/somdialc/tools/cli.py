@@ -298,8 +298,13 @@ def validate(metrics_dir: Path, strict: bool):
     "--metrics-dir",
     "-d",
     default="data/metrics",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
-    help="Directory containing metrics JSON files",
+    # NOTE: deliberately NOT exists=True. data/metrics is a gitignored runtime
+    # directory that will not exist on a fresh checkout (e.g. before any
+    # pipeline has run); Click's own existence check would reject it with a
+    # usage error (exit 2) before check_anomalies_fn() ever runs, pre-empting
+    # that function's own graceful "nothing to check" handling below.
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Directory containing metrics JSON files (need not exist yet)",
 )
 @click.option(
     "--output",
@@ -344,6 +349,9 @@ def check_anomalies(metrics_dir: Path, output: Path | None, threshold: int):
 
     try:
         result = check_anomalies_fn(metrics_dir=metrics_dir, threshold=threshold)
+
+        if result.get("notice"):
+            click.echo(f"\nℹ {result['notice']}")
 
         click.echo("\nAnomaly Check Results:")
         click.echo(f"  Files Checked: {result['total_files']}")
