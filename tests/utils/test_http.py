@@ -135,9 +135,34 @@ class TestRateLimiter:
         assert duration >= 0.09
 
 
+@pytest.fixture(scope="module")
+def httpbin_available():
+    """Probe httpbin.org once per test module before running live tests against it.
+
+    httpbin.org is a third-party toy service with no uptime guarantee; a real
+    HTTP session hitting it is worth testing when it's up, but its outages
+    must never turn into a red CI build for this project. Skip (rather than
+    fail) any test using this fixture when the service is unreachable or
+    itself returning a server error.
+    """
+    try:
+        response = requests.head("https://httpbin.org/get", timeout=5)
+    except requests.exceptions.RequestException as e:
+        pytest.skip(f"httpbin.org unavailable: {e}")
+        return
+    if response.status_code >= 500:
+        pytest.skip(f"httpbin.org unavailable (HTTP {response.status_code})")
+
+
 @pytest.mark.integration
+@pytest.mark.usefixtures("httpbin_available")
 class TestHTTPSessionIntegration:
-    """Integration tests for HTTP session functionality."""
+    """Integration tests for HTTP session functionality against the live httpbin.org.
+
+    Skipped automatically (via the httpbin_available fixture) when httpbin.org
+    is unreachable or degraded, so this class retains its integration value
+    when the third-party service is up without making CI depend on it.
+    """
 
     def test_session_can_make_request(self):
         """Test that created session can make actual HTTP request."""
